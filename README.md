@@ -1,73 +1,44 @@
-# React + TypeScript + Vite
+# CogniPace
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+CogniPace is a local-first Chrome MV3 extension for deliberate LeetCode review
+and study pacing.
 
-Currently, two official plugins are available:
+This repository is set up as a WXT + React + TypeScript extension foundation.
+The first implementation slice intentionally keeps product behavior light:
+popup, dashboard, background, and LeetCode content-script surfaces render and
+communicate through typed extension messaging.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Scripts
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```sh
+npm run dev
+npm run build
+npm run check
+npm run format
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- `npm run dev` starts WXT for local extension development.
+- `npm run build` builds the Chrome MV3 extension into `.output/chrome-mv3`.
+- `npm run check` runs WXT type generation, TypeScript, ESLint, and Vitest.
+- `npm run format` checks Prettier formatting.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Source Structure
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```txt
+src/
+  entrypoints/   # WXT boot files only
+  app/           # providers, route shells, surface composition
+  components/    # shared UI adapters
+  extension/     # typed messaging and runtime handlers
+  features/      # product feature modules
+  hooks/         # shared React hooks
+  lib/           # CogniPace-owned integrations
+  platform/      # Chrome, DB, and time adapters
+  testing/       # test setup and helpers
+  types/         # project-wide type declarations
+  utils/         # shared utilities
 ```
+
+The current foundation keeps `lib/fsrs` and `lib/leetcode` ready for product
+logic while deferring SQLite, Drizzle, FSRS scheduling, and final Stitch-driven
+design work to later slices.

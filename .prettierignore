@@ -1,0 +1,9 @@
+.agents
+.output
+.wxt
+dist
+dist-ssr
+node_modules
+package-lock.json
+new_prd.md
+skills-lock.json
