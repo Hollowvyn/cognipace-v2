@@ -6,7 +6,7 @@ import {
   leetcodePendingSubmissionPageHtml,
   leetcodeRuntimeErrorSubmissionResultHtml,
   leetcodeWrongAnswerSubmissionResultHtml,
-} from './submission-result-fixtures'
+} from '../testing/submission-result-fixtures'
 import { readLeetCodeSubmissionResult } from './submission-result-reader'
 
 const location = {

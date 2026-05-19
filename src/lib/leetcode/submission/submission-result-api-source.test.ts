@@ -9,7 +9,7 @@ import {
   leetcodeRuntimeErrorSubmissionApiFixture,
   type LeetCodeSubmissionApiFixture,
   leetcodeWrongAnswerSubmissionApiFixture,
-} from './submission-result-fixtures'
+} from '../testing/submission-result-fixtures'
 import { readLeetCodeSubmissionResultFromApi } from './submission-result-api-source'
 
 const location = {

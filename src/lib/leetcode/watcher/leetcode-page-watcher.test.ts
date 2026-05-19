@@ -5,7 +5,7 @@ import {
   leetcodeAcceptedSubmissionApiFixture,
   leetcodePendingSubmissionApiFixture,
   type LeetCodeSubmissionApiFixture,
-} from '../submission/submission-result-fixtures'
+} from '../testing/submission-result-fixtures'
 import { createLeetCodePageWatcher } from './leetcode-page-watcher'
 
 describe('createLeetCodePageWatcher', () => {

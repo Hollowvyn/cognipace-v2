@@ -1,15 +1,15 @@
 import { parseLeetCodeDifficulty } from '../domain/difficulty'
+import {
+  requestLeetCodeGraphQl,
+  type LeetCodeGraphQlFetch,
+} from '../core/graphql-client'
+import { isObjectRecord, readTrimmedString } from '../core/value-readers'
 import type {
   LeetCodeMetadataResult,
   LeetCodeProblemLocation,
   LeetCodeProblemMetadata,
   LeetCodeTopic,
 } from '../domain/types'
-
-type LeetCodeGraphQlFetch = (
-  input: RequestInfo | URL,
-  init?: RequestInit,
-) => Promise<Response>
 
 type ParsedLeetCodeGraphQlQuestion = {
   title: string | null
@@ -43,92 +43,43 @@ export async function fetchLeetCodeProblemMetadata(
     now?: (() => number) | undefined
   } = {},
 ): Promise<LeetCodeMetadataResult> {
-  const fetchLeetCodeGraphQl =
-    options.fetch ?? globalThis.fetch?.bind(globalThis)
+  const graphQlResult = await requestLeetCodeGraphQl({
+    locationUrl: location.url,
+    query: leetCodeQuestionMetadataQuery,
+    variables: { titleSlug: location.slug },
+    fetch: options.fetch,
+    document: options.document,
+  })
 
-  if (!fetchLeetCodeGraphQl) {
-    return { ok: false, error: new Error('Fetch is not available.') }
+  if (!graphQlResult.ok) {
+    return graphQlResult
   }
 
-  try {
-    const graphQlHeaders = createLeetCodeGraphQlHeaders(options.document)
-    const graphQlResponse = await fetchLeetCodeGraphQl(
-      new URL('/graphql', location.url),
-      {
-        method: 'POST',
-        headers: graphQlHeaders,
-        body: JSON.stringify({
-          query: leetCodeQuestionMetadataQuery,
-          variables: { titleSlug: location.slug },
-        }),
-      },
-    )
+  const parsedQuestionMetadata = readLeetCodeQuestionFromGraphQlPayload(
+    graphQlResult.payload,
+  )
 
-    if (!graphQlResponse.ok) {
-      return {
-        ok: false,
-        error: new Error(
-          `LeetCode GraphQL request failed: ${graphQlResponse.status}`,
-        ),
-      }
-    }
-
-    const graphQlPayload: unknown = await graphQlResponse.json()
-    const parsedQuestionMetadata =
-      readLeetCodeQuestionFromGraphQlPayload(graphQlPayload)
-
-    if (!parsedQuestionMetadata) {
-      return {
-        ok: false,
-        error: new Error('LeetCode GraphQL response did not include question.'),
-      }
-    }
-
-    return {
-      ok: true,
-      metadata: {
-        location,
-        title: parsedQuestionMetadata.title || location.slug,
-        frontendId: parsedQuestionMetadata.questionFrontendId,
-        difficulty: parseLeetCodeDifficulty(parsedQuestionMetadata.difficulty),
-        isPremium: parsedQuestionMetadata.isPaidOnly,
-        topics: parsedQuestionMetadata.topicTags,
-        source: 'graphql',
-        confidence: 'high',
-        capturedAt: options.now?.() ?? Date.now(),
-      } satisfies LeetCodeProblemMetadata,
-    }
-  } catch (error) {
+  if (!parsedQuestionMetadata) {
     return {
       ok: false,
-      error: error instanceof Error ? error : new Error(String(error)),
+      error: new Error('LeetCode GraphQL response did not include question.'),
     }
   }
-}
 
-function createLeetCodeGraphQlHeaders(documentRef: Document | undefined) {
-  const graphQlHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
+  return {
+    ok: true,
+    metadata: {
+      location,
+      title: parsedQuestionMetadata.title || location.slug,
+      frontendId: parsedQuestionMetadata.questionFrontendId,
+      difficulty: parseLeetCodeDifficulty(parsedQuestionMetadata.difficulty),
+      isPremium: parsedQuestionMetadata.isPaidOnly,
+      topics: parsedQuestionMetadata.topicTags,
+      source: 'graphql',
+      confidence: 'high',
+      capturedAt: options.now?.() ?? Date.now(),
+    } satisfies LeetCodeProblemMetadata,
   }
-  const csrfToken = documentRef
-    ? readCookieValue(documentRef.cookie, 'csrftoken')
-    : null
-
-  if (csrfToken) {
-    graphQlHeaders['x-csrftoken'] = csrfToken
-  }
-
-  return graphQlHeaders
-}
-
-function readCookieValue(cookieHeader: string, cookieName: string) {
-  return (
-    cookieHeader
-      .split(';')
-      .map((cookiePart) => cookiePart.trim())
-      .find((cookiePart) => cookiePart.startsWith(`${cookieName}=`))
-      ?.slice(cookieName.length + 1) ?? null
-  )
 }
 
 function readLeetCodeQuestionFromGraphQlPayload(
@@ -181,16 +132,4 @@ function readLeetCodeTopicTagsFromGraphQlValue(
       } satisfies LeetCodeTopic
     })
     .filter((topicTag): topicTag is LeetCodeTopic => Boolean(topicTag))
-}
-
-function readTrimmedString(unknownValue: unknown) {
-  return typeof unknownValue === 'string' && unknownValue.trim()
-    ? unknownValue.trim()
-    : null
-}
-
-function isObjectRecord(
-  unknownValue: unknown,
-): unknownValue is Record<string, unknown> {
-  return typeof unknownValue === 'object' && unknownValue !== null
 }

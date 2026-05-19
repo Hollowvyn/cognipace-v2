@@ -1,4 +1,16 @@
 import { createLeetCodeProblemContentFingerprint } from './content-fingerprint'
+import {
+  escapeRegExp,
+  readMultilineText,
+  readNormalizedText,
+  readTextFromHtml,
+  stripRepeatedWhitespace,
+} from '../core/dom-text'
+import {
+  requestLeetCodeGraphQl,
+  type LeetCodeGraphQlFetch,
+} from '../core/graphql-client'
+import { isObjectRecord, readTrimmedString } from '../core/value-readers'
 import type {
   LeetCodeExample,
   LeetCodeProblemContent,
@@ -7,11 +19,6 @@ import type {
   LeetCodeProblemContentSource,
   LeetCodeProblemLocation,
 } from '../domain/types'
-
-type LeetCodeContentFetch = (
-  input: RequestInfo | URL,
-  init?: RequestInit,
-) => Promise<Response>
 
 type ParsedGraphQlQuestionContent = {
   contentHtml: string | null
@@ -40,7 +47,7 @@ export async function readLeetCodeProblemContent(
   options: {
     root?: ParentNode | undefined
     document?: Document | undefined
-    fetch?: LeetCodeContentFetch | undefined
+    fetch?: LeetCodeGraphQlFetch | undefined
     now?: (() => number) | undefined
   } = {},
 ): Promise<LeetCodeProblemContentResult> {
@@ -84,77 +91,56 @@ export async function readLeetCodeProblemContent(
 export async function fetchLeetCodeProblemContent(
   location: LeetCodeProblemLocation,
   options: {
-    fetch?: LeetCodeContentFetch | undefined
+    fetch?: LeetCodeGraphQlFetch | undefined
     document?: Document | undefined
     now?: (() => number) | undefined
   } = {},
 ): Promise<LeetCodeProblemContentResult> {
-  const fetchLeetCodeGraphQl =
-    options.fetch ?? globalThis.fetch?.bind(globalThis)
+  const graphQlResult = await requestLeetCodeGraphQl({
+    locationUrl: location.url,
+    query: leetCodeQuestionContentQuery,
+    variables: { titleSlug: location.slug },
+    fetch: options.fetch,
+    document: options.document,
+  })
 
-  if (!fetchLeetCodeGraphQl) {
-    return { ok: false, error: new Error('Fetch is not available.') }
+  if (!graphQlResult.ok) {
+    return graphQlResult
   }
 
-  try {
-    const response = await fetchLeetCodeGraphQl(
-      new URL('/graphql', location.url),
-      {
-        method: 'POST',
-        credentials: 'include',
-        headers: createLeetCodeGraphQlHeaders(options.document),
-        body: JSON.stringify({
-          query: leetCodeQuestionContentQuery,
-          variables: { titleSlug: location.slug },
-        }),
-      },
-    )
+  const parsedQuestionContent = readQuestionContentFromGraphQlPayload(
+    graphQlResult.payload,
+  )
 
-    if (!response.ok) {
-      return {
-        ok: false,
-        error: new Error(`LeetCode GraphQL request failed: ${response.status}`),
-      }
-    }
-
-    const payload: unknown = await response.json()
-    const parsedQuestionContent = readQuestionContentFromGraphQlPayload(payload)
-
-    if (!parsedQuestionContent?.contentHtml) {
-      return {
-        ok: false,
-        error: new Error('LeetCode GraphQL response did not include content.'),
-      }
-    }
-
-    const contentDocument = createContentDocumentOrNull(
-      parsedQuestionContent.contentHtml,
-      options.document,
-    )
-    const contentParts = contentDocument
-      ? readContentPartsFromRoot(contentDocument.body)
-      : readContentPartsFromText(
-          readTextFromHtml(parsedQuestionContent.contentHtml),
-        )
-
-    return {
-      ok: true,
-      content: createProblemContent({
-        location,
-        statement: contentParts.statement,
-        examples: contentParts.examples,
-        constraints: contentParts.constraints,
-        hints: parsedQuestionContent.hints,
-        source: 'graphql',
-        confidence: 'high',
-        capturedAt: options.now?.() ?? Date.now(),
-      }),
-    }
-  } catch (error) {
+  if (!parsedQuestionContent?.contentHtml) {
     return {
       ok: false,
-      error: error instanceof Error ? error : new Error(String(error)),
+      error: new Error('LeetCode GraphQL response did not include content.'),
     }
+  }
+
+  const contentDocument = createContentDocumentOrNull(
+    parsedQuestionContent.contentHtml,
+    options.document,
+  )
+  const contentParts = contentDocument
+    ? readContentPartsFromRoot(contentDocument.body)
+    : readContentPartsFromText(
+        readTextFromHtml(parsedQuestionContent.contentHtml),
+      )
+
+  return {
+    ok: true,
+    content: createProblemContent({
+      location,
+      statement: contentParts.statement,
+      examples: contentParts.examples,
+      constraints: contentParts.constraints,
+      hints: parsedQuestionContent.hints,
+      source: 'graphql',
+      confidence: 'high',
+      capturedAt: options.now?.() ?? Date.now(),
+    }),
   }
 }
 
@@ -239,21 +225,6 @@ function readQuestionContentFromGraphQlPayload(
     contentHtml: readTrimmedString(question.content),
     hints: readStringList(question.hints),
   }
-}
-
-function createLeetCodeGraphQlHeaders(documentRef: Document | undefined) {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  }
-  const csrfToken = documentRef
-    ? readCookieValue(documentRef.cookie, 'csrftoken')
-    : null
-
-  if (csrfToken) {
-    headers['x-csrftoken'] = csrfToken
-  }
-
-  return headers
 }
 
 function createContentDocumentOrNull(
@@ -458,16 +429,6 @@ function findProblemContentRoot(pageRoot: ParentNode) {
   return null
 }
 
-function readCookieValue(cookieHeader: string, cookieName: string) {
-  return (
-    cookieHeader
-      .split(';')
-      .map((cookiePart) => cookiePart.trim())
-      .find((cookiePart) => cookiePart.startsWith(`${cookieName}=`))
-      ?.slice(cookieName.length + 1) ?? null
-  )
-}
-
 function readStringList(value: unknown) {
   if (!Array.isArray(value)) {
     return []
@@ -479,32 +440,6 @@ function readStringList(value: unknown) {
     .filter((text): text is string => Boolean(text))
 }
 
-function readTrimmedString(value: unknown) {
-  return typeof value === 'string' && value.trim() ? value.trim() : null
-}
-
-function readNormalizedText(node: ParentNode) {
-  return (node.textContent ?? '').replace(/\s+/g, ' ').trim()
-}
-
-function readMultilineText(node: ParentNode) {
-  return (node.textContent ?? '')
-    .replace(/\r\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-}
-
-function readTextFromHtml(value: string) {
-  return value
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(?:p|div|pre|li|ul|ol|h\d)>/gi, '\n')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-}
-
 function readAvailableDocument(documentRef: Document | undefined) {
   if (documentRef) {
     return documentRef
@@ -514,17 +449,9 @@ function readAvailableDocument(documentRef: Document | undefined) {
 }
 
 function stripLeetCodeNoise(value: string) {
-  return value.replace(/\s+/g, ' ').trim()
+  return stripRepeatedWhitespace(value)
 }
 
 function uniqueStrings(values: string[]) {
   return Array.from(new Set(values))
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }

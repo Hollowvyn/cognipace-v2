@@ -3,41 +3,21 @@ import type {
   LeetCodePageEvent,
   LeetCodeProblemContent,
   LeetCodeProblemLocation,
-  LeetCodeSubmissionClick,
-  LeetCodeSubmissionPollingDebug,
-  LeetCodeSubmissionPollingPhase,
-  LeetCodeSubmissionResult,
-  LeetCodeSubmittedCodeSnapshot,
 } from '../domain/types'
 import { readLeetCodeProblemContent } from '../content/problem-content-reader'
 import { readLeetCodeCodeSnapshot } from '../editor/code-snapshot-reader'
 import { readLeetCodeProblemMetadata } from '../metadata/metadata-reader'
 import { readLeetCodePageSnapshot } from '../page/page-snapshot-reader'
 import { readLeetCodeSubmissionAttempt } from '../submission/submission-attempt-reader'
-import { readLeetCodeSubmissionResultFromApi } from '../submission/submission-result-api-source'
-import {
-  createLeetCodeSubmissionResultFingerprint,
-  readLeetCodeSubmissionResult,
-} from '../submission/submission-result-reader'
 import { createLeetCodeHydrationScheduler } from './hydration-scheduler'
 import { createLeetCodeNavigationObserver } from './navigation-observer'
+import { createLeetCodeSubmissionResultWatch } from './submission-result-watch'
 import { readLeetCodeSubmissionClickFromMouseEvent } from './submit-click-observer'
 
 export type LeetCodePageWatcher = {
   start: () => void
   stop: () => void
   refresh: () => void
-}
-
-type ActiveSubmissionResultWatch = {
-  click: LeetCodeSubmissionClick
-  submittedCodeSnapshot: LeetCodeSubmittedCodeSnapshot
-  location: LeetCodeProblemLocation
-  token: number
-  expiresAt: number
-  submissionId: string | null
-  checkState: string | null
-  statusText: string | null
 }
 
 export function createLeetCodePageWatcher(options: {
@@ -99,6 +79,17 @@ export function createLeetCodePageWatcher(options: {
     windowRef,
     onNavigate: handleLeetCodeNavigation,
   })
+  const submissionResultWatch = createLeetCodeSubmissionResultWatch({
+    windowRef,
+    documentRef,
+    onEvent: options.onEvent,
+    isStaleRead: isStaleSnapshotRefresh,
+    fetch: fetchLeetCode,
+    now,
+    submissionResultReadDelays,
+    submissionResultWatchDurationMs,
+    domSubmissionResultFallbackDelayMs,
+  })
 
   let activeLocation: LeetCodeProblemLocation | null = null
   let activeToken = 0
@@ -106,10 +97,7 @@ export function createLeetCodePageWatcher(options: {
   let mutationObserver: MutationObserver | null = null
   let mutationRefreshTimer: number | null = null
   let samePageSnapshotRefreshTimer: number | null = null
-  let submissionResultReadTimers: number[] = []
   let latestProblemContentFingerprint: string | null = null
-  let latestSubmissionResultFingerprint: string | null = null
-  let activeSubmissionResultWatch: ActiveSubmissionResultWatch | null = null
   let lastSnapshotRefreshAt = Number.NEGATIVE_INFINITY
 
   function start() {
@@ -121,8 +109,7 @@ export function createLeetCodePageWatcher(options: {
 
   function stop() {
     hydrationScheduler.clearScheduledRefreshes()
-    clearScheduledSubmissionResultReads()
-    activeSubmissionResultWatch = null
+    submissionResultWatch.clear()
     mutationObserver?.disconnect()
     mutationObserver = null
     documentRef.removeEventListener('click', handleClick, true)
@@ -164,11 +151,9 @@ export function createLeetCodePageWatcher(options: {
     activeToken += 1
     readySlug = null
     latestProblemContentFingerprint = null
-    latestSubmissionResultFingerprint = null
-    activeSubmissionResultWatch = null
     lastSnapshotRefreshAt = Number.NEGATIVE_INFINITY
     hydrationScheduler.clearScheduledRefreshes()
-    clearScheduledSubmissionResultReads()
+    submissionResultWatch.clear()
 
     options.onEvent({
       type: 'page-changed',
@@ -274,8 +259,8 @@ export function createLeetCodePageWatcher(options: {
       return
     }
 
-    if (isWatchingSubmissionResultForLocation(location)) {
-      readActiveSubmissionResultAfterMutation(location)
+    if (submissionResultWatch.isWatchingLocation(location)) {
+      submissionResultWatch.readAfterMutation(location)
       return
     }
 
@@ -308,223 +293,11 @@ export function createLeetCodePageWatcher(options: {
       type: 'submission-started',
       attempt,
     })
-    scheduleSubmissionResultReads(
+    submissionResultWatch.start(
       click,
       attempt.submittedCodeSnapshot,
       activeToken,
     )
-  }
-
-  function scheduleSubmissionResultReads(
-    click: LeetCodeSubmissionClick,
-    submittedCodeSnapshot: LeetCodeSubmittedCodeSnapshot,
-    token: number,
-  ) {
-    clearScheduledSubmissionResultReads()
-    latestSubmissionResultFingerprint = null
-    activeSubmissionResultWatch = {
-      click,
-      submittedCodeSnapshot,
-      location: click.location,
-      token,
-      expiresAt: now() + submissionResultWatchDurationMs,
-      submissionId: null,
-      checkState: null,
-      statusText: null,
-    }
-
-    submissionResultReadTimers = submissionResultReadDelays.map((delayMs) => {
-      const timer = windowRef.setTimeout(() => {
-        submissionResultReadTimers = submissionResultReadTimers.filter(
-          (scheduledTimer) => scheduledTimer !== timer,
-        )
-        void readAndEmitSubmissionResult(token, click.location)
-      }, delayMs)
-
-      return timer
-    })
-  }
-
-  function clearScheduledSubmissionResultReads() {
-    for (const timer of submissionResultReadTimers) {
-      windowRef.clearTimeout(timer)
-    }
-
-    submissionResultReadTimers = []
-  }
-
-  function readActiveSubmissionResultAfterMutation(
-    location: LeetCodeProblemLocation,
-  ) {
-    if (
-      !activeSubmissionResultWatch ||
-      activeSubmissionResultWatch.location.slug !== location.slug
-    ) {
-      return
-    }
-
-    if (now() > activeSubmissionResultWatch.expiresAt) {
-      emitSubmissionPollingDebugForWatch(
-        activeSubmissionResultWatch,
-        'timed-out',
-      )
-      completeSubmissionResultWatch(activeSubmissionResultWatch)
-      return
-    }
-
-    void readAndEmitSubmissionResult(
-      activeSubmissionResultWatch.token,
-      activeSubmissionResultWatch.location,
-    )
-  }
-
-  function isWatchingSubmissionResultForLocation(
-    location: LeetCodeProblemLocation,
-  ) {
-    return activeSubmissionResultWatch?.location.slug === location.slug
-  }
-
-  async function readAndEmitSubmissionResult(
-    token: number,
-    location: LeetCodeProblemLocation,
-  ) {
-    if (isStaleSnapshotRefresh(token, location)) {
-      return
-    }
-
-    const submissionResultWatch = activeSubmissionResultWatch
-    const apiResult = submissionResultWatch
-      ? await readLeetCodeSubmissionResultFromApi({
-          location,
-          click: submissionResultWatch.click,
-          submittedCodeSnapshot: submissionResultWatch.submittedCodeSnapshot,
-          fetch: fetchLeetCode,
-          document: documentRef,
-          now,
-          onDebug: (debug) => {
-            updateActiveSubmissionResultWatchDebug(submissionResultWatch, debug)
-            emitSubmissionPollingDebug(location, debug)
-          },
-        })
-      : null
-
-    if (isStaleSnapshotRefresh(token, location)) {
-      return
-    }
-
-    if (
-      submissionResultWatch &&
-      activeSubmissionResultWatch !== submissionResultWatch
-    ) {
-      return
-    }
-
-    if (apiResult) {
-      emitSubmissionResult(apiResult)
-      completeSubmissionResultWatch(submissionResultWatch)
-      return
-    }
-
-    if (!canReadDomSubmissionResultFallback(submissionResultWatch)) {
-      return
-    }
-
-    if (submissionResultWatch) {
-      emitSubmissionPollingDebugForWatch(
-        submissionResultWatch,
-        'dom-fallback-used',
-      )
-    } else {
-      emitSubmissionPollingDebug(location, {
-        phase: 'dom-fallback-used',
-        submissionId: null,
-        checkState: null,
-        statusText: null,
-        checkedAt: now(),
-      })
-    }
-
-    const result = readLeetCodeSubmissionResult(documentRef, {
-      location,
-      now,
-    })
-
-    if (!result) {
-      if (submissionResultWatch && now() >= submissionResultWatch.expiresAt) {
-        emitSubmissionPollingDebugForWatch(submissionResultWatch, 'timed-out')
-        completeSubmissionResultWatch(submissionResultWatch)
-      }
-      return
-    }
-
-    emitSubmissionResult(result)
-
-    if (submissionResultWatch) {
-      completeSubmissionResultWatch(submissionResultWatch)
-    }
-  }
-
-  function canReadDomSubmissionResultFallback(
-    submissionResultWatch: ActiveSubmissionResultWatch | null,
-  ) {
-    if (!submissionResultWatch) {
-      return true
-    }
-
-    return (
-      now() - submissionResultWatch.click.clickedAt >=
-      domSubmissionResultFallbackDelayMs
-    )
-  }
-
-  function updateActiveSubmissionResultWatchDebug(
-    submissionResultWatch: ActiveSubmissionResultWatch,
-    debug: LeetCodeSubmissionPollingDebug,
-  ) {
-    submissionResultWatch.submissionId =
-      debug.submissionId ?? submissionResultWatch.submissionId
-    submissionResultWatch.checkState =
-      debug.checkState ?? submissionResultWatch.checkState
-    submissionResultWatch.statusText =
-      debug.statusText ?? submissionResultWatch.statusText
-  }
-
-  function emitSubmissionPollingDebugForWatch(
-    submissionResultWatch: ActiveSubmissionResultWatch,
-    phase: LeetCodeSubmissionPollingPhase,
-  ) {
-    emitSubmissionPollingDebug(submissionResultWatch.location, {
-      phase,
-      submissionId: submissionResultWatch.submissionId,
-      checkState: submissionResultWatch.checkState,
-      statusText: submissionResultWatch.statusText,
-      checkedAt: now(),
-    })
-  }
-
-  function emitSubmissionPollingDebug(
-    location: LeetCodeProblemLocation,
-    debug: LeetCodeSubmissionPollingDebug,
-  ) {
-    options.onEvent({
-      type: 'submission-polling-updated',
-      location,
-      debug,
-    })
-  }
-
-  function emitSubmissionResult(result: LeetCodeSubmissionResult) {
-    const resultFingerprint = createLeetCodeSubmissionResultFingerprint(result)
-
-    if (latestSubmissionResultFingerprint === resultFingerprint) {
-      return
-    }
-
-    latestSubmissionResultFingerprint = resultFingerprint
-    options.onEvent({
-      type: 'submission-result-updated',
-      result,
-    })
   }
 
   function emitProblemContentIfUseful(
@@ -554,20 +327,6 @@ export function createLeetCodePageWatcher(options: {
       content.constraints.length > 0 ||
       content.hints.length > 0
     )
-  }
-
-  function completeSubmissionResultWatch(
-    submissionResultWatch: ActiveSubmissionResultWatch | null,
-  ) {
-    if (
-      submissionResultWatch &&
-      activeSubmissionResultWatch !== submissionResultWatch
-    ) {
-      return
-    }
-
-    activeSubmissionResultWatch = null
-    clearScheduledSubmissionResultReads()
   }
 
   function observeMutations() {

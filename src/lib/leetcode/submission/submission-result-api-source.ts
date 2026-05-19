@@ -6,12 +6,19 @@ import type {
   LeetCodeSubmissionStatus,
   LeetCodeSubmittedCodeSnapshot,
 } from '../domain/types'
+import {
+  requestLeetCodeGraphQl,
+  type LeetCodeGraphQlFetch,
+} from '../core/graphql-client'
+import {
+  isObjectRecord,
+  readBoolean,
+  readNumber,
+  readTrimmedString,
+} from '../core/value-readers'
 import { normalizeLeetCodeLanguageLabel } from '../domain/language'
 
-type LeetCodeSubmissionFetch = (
-  input: RequestInfo | URL,
-  init?: RequestInit,
-) => Promise<Response>
+type LeetCodeSubmissionFetch = LeetCodeGraphQlFetch
 
 type SubmissionListEntry = {
   id: string
@@ -385,31 +392,24 @@ async function readSubmissionDetailsPayload(options: {
     return null
   }
 
-  const response = await options.fetch(
-    new URL('/graphql', options.location.url),
-    {
-      method: 'POST',
-      credentials: 'include',
-      headers: createLeetCodeGraphQlHeaders(options.document),
-      body: JSON.stringify({
-        query: leetCodeSubmissionDetailsQuery,
-        variables: { submissionId: submissionIdNumber },
-        operationName: 'submissionDetails',
-      }),
-    },
-  )
+  const graphQlResult = await requestLeetCodeGraphQl({
+    locationUrl: options.location.url,
+    query: leetCodeSubmissionDetailsQuery,
+    variables: { submissionId: submissionIdNumber },
+    operationName: 'submissionDetails',
+    fetch: options.fetch,
+    document: options.document,
+  })
 
-  if (!response.ok) {
+  if (!graphQlResult.ok || !isObjectRecord(graphQlResult.payload)) {
     return null
   }
 
-  const payload: unknown = await response.json()
-
-  if (!isObjectRecord(payload) || !isObjectRecord(payload.data)) {
+  if (!isObjectRecord(graphQlResult.payload.data)) {
     return null
   }
 
-  const details = payload.data.submissionDetails
+  const details = graphQlResult.payload.data.submissionDetails
 
   if (!isObjectRecord(details)) {
     return null
@@ -532,35 +532,6 @@ function normalizeLeetCodeSubmissionStatus(
   return 'unknown'
 }
 
-function createLeetCodeGraphQlHeaders(documentRef: Document | undefined) {
-  const graphQlHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
-  }
-  const csrfToken = documentRef
-    ? readCookieValue(documentRef.cookie, 'csrftoken')
-    : null
-
-  if (csrfToken) {
-    graphQlHeaders['x-csrftoken'] = csrfToken
-  }
-
-  return graphQlHeaders
-}
-
-function readCookieValue(cookieHeader: string, cookieName: string) {
-  return (
-    cookieHeader
-      .split(';')
-      .map((cookiePart) => cookiePart.trim())
-      .find((cookiePart) => cookiePart.startsWith(`${cookieName}=`))
-      ?.slice(cookieName.length + 1) ?? null
-  )
-}
-
-function readTrimmedString(value: unknown) {
-  return typeof value === 'string' && value.trim() ? value.trim() : null
-}
-
 function readLanguageLabel(value: unknown) {
   return typeof value === 'string'
     ? normalizeLeetCodeLanguageLabel(value)
@@ -573,26 +544,4 @@ function readSubmissionId(value: unknown) {
   }
 
   return readTrimmedString(value)
-}
-
-function readNumber(value: unknown) {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value
-  }
-
-  if (typeof value !== 'string' || !value.trim()) {
-    return null
-  }
-
-  const parsedValue = Number(value)
-
-  return Number.isFinite(parsedValue) ? parsedValue : null
-}
-
-function readBoolean(value: unknown) {
-  return typeof value === 'boolean' ? value : null
-}
-
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }

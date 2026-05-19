@@ -5,6 +5,8 @@ import type {
   LeetCodeSubmissionStatus,
   LeetCodeSubmittedCodeSnapshot,
 } from '../domain/types'
+import { readNormalizedText } from '../core/dom-text'
+import { readBoundedTextAfterLabel as readLabeledTextAfter } from '../core/labeled-fields'
 import { normalizeLeetCodeLanguageLabel } from '../domain/language'
 
 type SubmissionStatusMatch = {
@@ -381,17 +383,11 @@ function readBoundedTextAfterLabel(
   labels: readonly string[],
   stopLabels: readonly string[] = boundedTextStopLabels,
 ) {
-  const joinedLabels = labels.map(escapeRegExp).join('|')
-  const joinedStopLabels = stopLabels.join('|')
-  const match = text.match(
-    new RegExp(
-      `\\b(?:${joinedLabels})\\b\\s*:?\\s*([\\s\\S]+?)(?:\\b(?:${joinedStopLabels})\\b|$)`,
-      'i',
-    ),
-  )
-  const value = match?.[1]?.trim()
-
-  return value ? value.slice(0, 500) : null
+  return readLabeledTextAfter({
+    text,
+    labels,
+    stopLabelPatterns: stopLabels,
+  })
 }
 
 function readSubmissionResultCodeSnapshot(
@@ -530,16 +526,4 @@ function readDocumentUrl(pageRoot: ParentNode) {
       : pageRoot.ownerDocument
 
   return rootDocument?.location?.href ?? null
-}
-
-function readNormalizedText(node: ParentNode) {
-  if (node.nodeType === Node.DOCUMENT_NODE) {
-    return readNormalizedText((node as Document).body)
-  }
-
-  return (node.textContent ?? '').replace(/\s+/g, ' ').trim()
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
