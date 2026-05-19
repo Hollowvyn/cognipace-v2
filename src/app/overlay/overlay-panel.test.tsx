@@ -30,6 +30,7 @@ const premiumSession = {
   codeSnapshot: null,
   lastSubmissionClick: null,
   lastSubmissionAttempt: null,
+  lastSubmissionPollingDebug: null,
   lastSubmissionResult: null,
   status: 'ready',
   feedback: null,
@@ -128,6 +129,26 @@ describe('OverlayPanel', () => {
     expect(
       screen.getByText('Watching LeetCode submission APIs'),
     ).toBeInTheDocument()
+  })
+
+  it('shows submission polling debug details', () => {
+    render(
+      <OverlayPanel
+        {...premiumSession}
+        lastSubmissionPollingDebug={{
+          phase: 'checking-result',
+          submissionId: '1234567890',
+          checkState: 'PENDING',
+          statusText: 'Pending',
+          checkedAt: 5000,
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Polling debug')).toBeInTheDocument()
+    expect(screen.getByText('checking result')).toBeInTheDocument()
+    expect(screen.getByText('1234567890')).toBeInTheDocument()
+    expect(screen.getByText('PENDING')).toBeInTheDocument()
   })
 
   it('shows submission result debug details', () => {

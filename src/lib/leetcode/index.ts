@@ -60,6 +60,8 @@ export type {
   LeetCodeSubmittedCodeSnapshot,
   LeetCodeSubmissionAttempt,
   LeetCodeSubmissionClick,
+  LeetCodeSubmissionPollingDebug,
+  LeetCodeSubmissionPollingPhase,
   LeetCodeSubmissionResult,
   LeetCodeSubmissionResultSource,
   LeetCodeSubmissionStatus,

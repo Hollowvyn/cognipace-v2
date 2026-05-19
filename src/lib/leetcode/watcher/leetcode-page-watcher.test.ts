@@ -301,6 +301,21 @@ describe('createLeetCodePageWatcher', () => {
     watcher.stop()
 
     expect(events).toContainEqual({
+      type: 'submission-polling-updated',
+      location: {
+        slug: 'two-sum',
+        url: 'https://leetcode.com/problems/two-sum/',
+        host: 'leetcode.com',
+      },
+      debug: {
+        phase: 'dom-fallback-used',
+        submissionId: null,
+        checkState: null,
+        statusText: 'No matching submission found',
+        checkedAt: 3000,
+      },
+    })
+    expect(events).toContainEqual({
       type: 'submission-result-updated',
       result: {
         location: {
@@ -411,6 +426,17 @@ describe('createLeetCodePageWatcher', () => {
     await vi.runAllTimersAsync()
     watcher.stop()
 
+    expect(
+      events
+        .filter((event) => event.type === 'submission-polling-updated')
+        .map((event) => event.debug.phase),
+    ).toEqual([
+      'finding-submission',
+      'submission-found',
+      'checking-result',
+      'api-result-found',
+      'graphql-details-found',
+    ])
     expect(events).toContainEqual({
       type: 'submission-result-updated',
       result: {
@@ -509,6 +535,52 @@ describe('createLeetCodePageWatcher', () => {
     expect(
       events.some((event) => event.type === 'submission-result-updated'),
     ).toBe(false)
+  })
+
+  it('emits polling timeout debug when no result becomes available', async () => {
+    vi.useFakeTimers()
+    document.body.innerHTML = `
+      <main>
+        <h1>1. Two Sum</h1>
+        <button data-cy="lang-select">Python3</button>
+        <div class="view-lines">
+          <div class="view-line">class Solution:</div>
+          <div class="view-line">    pass</div>
+        </div>
+        <button data-e2e-locator="console-submit-button">Submit</button>
+      </main>
+    `
+    let currentTime = 0
+    const events: LeetCodePageEvent[] = []
+    const watcher = createLeetCodePageWatcher({
+      getCurrentUrl: () => 'https://leetcode.com/problems/two-sum/',
+      hydrationDelays: [],
+      submissionResultReadDelays: [1000],
+      submissionResultWatchDurationMs: 1000,
+      domSubmissionResultFallbackDelayMs: 1000,
+      onEvent: (event) => events.push(event),
+      fetch: () => Promise.resolve(new Response('', { status: 500 })),
+      now: () => currentTime,
+    })
+
+    watcher.start()
+    document
+      .querySelector('[data-e2e-locator="console-submit-button"]')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    currentTime = 1000
+    await vi.advanceTimersByTimeAsync(1000)
+    watcher.stop()
+
+    expect(
+      events
+        .filter((event) => event.type === 'submission-polling-updated')
+        .map((event) => event.debug.phase),
+    ).toEqual([
+      'finding-submission',
+      'submission-not-found',
+      'dom-fallback-used',
+      'timed-out',
+    ])
   })
 
   it('stops polling after an API submission result is emitted', async () => {

@@ -1,6 +1,7 @@
 import type {
   LeetCodeProblemLocation,
   LeetCodeSubmissionClick,
+  LeetCodeSubmissionPollingDebug,
   LeetCodeSubmissionResult,
   LeetCodeSubmissionStatus,
   LeetCodeSubmittedCodeSnapshot,
@@ -30,7 +31,12 @@ type SubmissionCheckPayload = {
   memory: string | null
   passedTestCount: number | null
   totalTestCount: number | null
-  failingTestcase: string | null
+  compileError: string | null
+  runtimeError: string | null
+  lastTestcase: string | null
+  codeOutput: string | null
+  expectedOutput: string | null
+  stdOutput: string | null
   errorMessage: string | null
   language: string | null
 }
@@ -42,7 +48,12 @@ type SubmissionDetailsPayload = {
   memory: string | null
   passedTestCount: number | null
   totalTestCount: number | null
-  failingTestcase: string | null
+  compileError: string | null
+  runtimeError: string | null
+  lastTestcase: string | null
+  codeOutput: string | null
+  expectedOutput: string | null
+  stdOutput: string | null
   errorMessage: string | null
   code: string | null
   language: string | null
@@ -82,12 +93,20 @@ export async function readLeetCodeSubmissionResultFromApi(options: {
   fetch?: LeetCodeSubmissionFetch | undefined
   document?: Document | undefined
   now?: (() => number) | undefined
+  onDebug?: ((debug: LeetCodeSubmissionPollingDebug) => void) | undefined
 }): Promise<LeetCodeSubmissionResult | null> {
   const fetchLeetCode = options.fetch ?? globalThis.fetch?.bind(globalThis)
 
   if (!fetchLeetCode) {
     return null
   }
+
+  emitSubmissionPollingDebug(options, {
+    phase: 'finding-submission',
+    submissionId: null,
+    checkState: null,
+    statusText: null,
+  })
 
   const submissionListEntry = await findSubmissionListEntryForClick({
     location: options.location,
@@ -96,8 +115,21 @@ export async function readLeetCodeSubmissionResultFromApi(options: {
   })
 
   if (!submissionListEntry) {
+    emitSubmissionPollingDebug(options, {
+      phase: 'submission-not-found',
+      submissionId: null,
+      checkState: null,
+      statusText: 'No matching submission found',
+    })
     return null
   }
+
+  emitSubmissionPollingDebug(options, {
+    phase: 'submission-found',
+    submissionId: submissionListEntry.id,
+    checkState: null,
+    statusText: submissionListEntry.statusText,
+  })
 
   const checkPayload = await readSubmissionCheckPayload({
     location: options.location,
@@ -105,15 +137,41 @@ export async function readLeetCodeSubmissionResultFromApi(options: {
     fetch: fetchLeetCode,
   })
 
+  emitSubmissionPollingDebug(options, {
+    phase: 'checking-result',
+    submissionId: submissionListEntry.id,
+    checkState: checkPayload?.state ?? null,
+    statusText: checkPayload?.statusText ?? 'Submission check unavailable',
+  })
+
   if (!checkPayload || !isTerminalSubmissionCheck(checkPayload)) {
     return null
   }
+
+  emitSubmissionPollingDebug(options, {
+    phase: 'api-result-found',
+    submissionId: submissionListEntry.id,
+    checkState: checkPayload.state,
+    statusText:
+      checkPayload.statusText ?? submissionListEntry.statusText ?? 'Unknown',
+  })
 
   const detailsPayload = await readSubmissionDetailsPayload({
     location: options.location,
     submissionId: submissionListEntry.id,
     fetch: fetchLeetCode,
     document: options.document,
+  })
+  const graphQlDetailsStatusText =
+    detailsPayload?.statusText ??
+    checkPayload.statusText ??
+    submissionListEntry.statusText
+
+  emitSubmissionPollingDebug(options, {
+    phase: detailsPayload ? 'graphql-details-found' : 'graphql-details-missing',
+    submissionId: submissionListEntry.id,
+    checkState: checkPayload.state,
+    statusText: graphQlDetailsStatusText ?? 'Unknown',
   })
 
   const statusText =
@@ -132,6 +190,34 @@ export async function readLeetCodeSubmissionResultFromApi(options: {
     submissionListEntry.language ??
     options.submittedCodeSnapshot.language
   const capturedAt = options.now?.() ?? Date.now()
+  const compileError =
+    status === 'accepted'
+      ? null
+      : (detailsPayload?.compileError ?? checkPayload.compileError)
+  const runtimeError =
+    status === 'accepted'
+      ? null
+      : (detailsPayload?.runtimeError ?? checkPayload.runtimeError)
+  const lastTestcase =
+    status === 'accepted'
+      ? null
+      : (detailsPayload?.lastTestcase ?? checkPayload.lastTestcase)
+  const codeOutput =
+    status === 'accepted'
+      ? null
+      : (detailsPayload?.codeOutput ?? checkPayload.codeOutput)
+  const expectedOutput =
+    status === 'accepted'
+      ? null
+      : (detailsPayload?.expectedOutput ?? checkPayload.expectedOutput)
+  const stdOutput = detailsPayload?.stdOutput ?? checkPayload.stdOutput
+  const errorMessage =
+    status === 'accepted'
+      ? null
+      : (runtimeError ??
+        compileError ??
+        detailsPayload?.errorMessage ??
+        checkPayload.errorMessage)
 
   return {
     location: options.location,
@@ -152,14 +238,14 @@ export async function readLeetCodeSubmissionResultFromApi(options: {
       detailsPayload?.passedTestCount ?? checkPayload.passedTestCount,
     totalTestCount:
       detailsPayload?.totalTestCount ?? checkPayload.totalTestCount,
-    failingTestcase:
-      status === 'accepted'
-        ? null
-        : (detailsPayload?.failingTestcase ?? checkPayload.failingTestcase),
-    errorMessage:
-      status === 'accepted'
-        ? null
-        : (detailsPayload?.errorMessage ?? checkPayload.errorMessage),
+    failingTestcase: lastTestcase,
+    errorMessage,
+    compileError,
+    runtimeError,
+    lastTestcase,
+    codeOutput,
+    expectedOutput,
+    stdOutput,
     resultCodeSnapshot: {
       code,
       language,
@@ -169,6 +255,19 @@ export async function readLeetCodeSubmissionResultFromApi(options: {
       capturedAt,
     },
   }
+}
+
+function emitSubmissionPollingDebug(
+  options: {
+    now?: (() => number) | undefined
+    onDebug?: ((debug: LeetCodeSubmissionPollingDebug) => void) | undefined
+  },
+  debug: Omit<LeetCodeSubmissionPollingDebug, 'checkedAt'>,
+) {
+  options.onDebug?.({
+    ...debug,
+    checkedAt: options.now?.() ?? Date.now(),
+  })
 }
 
 async function findSubmissionListEntryForClick(options: {
@@ -239,11 +338,30 @@ async function readSubmissionCheckPayload(options: {
     totalTestCount: readNumber(
       payload.total_testcases ?? payload.totalTestcases,
     ),
-    failingTestcase: readTrimmedString(
+    compileError: readTrimmedString(payload.compile_error),
+    runtimeError: readTrimmedString(
+      payload.runtime_error ?? payload.full_runtime_error,
+    ),
+    lastTestcase: readTrimmedString(
       payload.last_testcase ??
         payload.lastTestcase ??
         payload.input_formatted ??
         payload.input,
+    ),
+    codeOutput: readTrimmedString(
+      payload.code_output ?? payload.codeOutput ?? payload.output,
+    ),
+    expectedOutput: readTrimmedString(
+      payload.expected_output ??
+        payload.expectedOutput ??
+        payload.expected_code_answer ??
+        payload.expectedCodeAnswer,
+    ),
+    stdOutput: readTrimmedString(
+      payload.std_output ??
+        payload.stdOutput ??
+        payload.stdout ??
+        payload.standard_output,
     ),
     errorMessage: readTrimmedString(
       payload.runtime_error ??
@@ -313,7 +431,12 @@ async function readSubmissionDetailsPayload(options: {
       readTrimmedString(details.memory),
     passedTestCount: readNumber(details.totalCorrect),
     totalTestCount: readNumber(details.totalTestcases),
-    failingTestcase: readTrimmedString(details.lastTestcase),
+    compileError: readTrimmedString(details.compileError),
+    runtimeError: readTrimmedString(details.runtimeError),
+    lastTestcase: readTrimmedString(details.lastTestcase),
+    codeOutput: readTrimmedString(details.codeOutput),
+    expectedOutput: readTrimmedString(details.expectedOutput),
+    stdOutput: readTrimmedString(details.stdOutput),
     errorMessage: readTrimmedString(
       details.runtimeError ?? details.compileError,
     ),

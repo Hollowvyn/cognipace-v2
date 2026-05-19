@@ -4,6 +4,8 @@ import type {
   LeetCodeProblemContent,
   LeetCodeProblemLocation,
   LeetCodeSubmissionClick,
+  LeetCodeSubmissionPollingDebug,
+  LeetCodeSubmissionPollingPhase,
   LeetCodeSubmissionResult,
   LeetCodeSubmittedCodeSnapshot,
 } from '../domain/types'
@@ -33,6 +35,9 @@ type ActiveSubmissionResultWatch = {
   location: LeetCodeProblemLocation
   token: number
   expiresAt: number
+  submissionId: string | null
+  checkState: string | null
+  statusText: string | null
 }
 
 export function createLeetCodePageWatcher(options: {
@@ -323,6 +328,9 @@ export function createLeetCodePageWatcher(options: {
       location: click.location,
       token,
       expiresAt: now() + submissionResultWatchDurationMs,
+      submissionId: null,
+      checkState: null,
+      statusText: null,
     }
 
     submissionResultReadTimers = submissionResultReadDelays.map((delayMs) => {
@@ -356,6 +364,10 @@ export function createLeetCodePageWatcher(options: {
     }
 
     if (now() > activeSubmissionResultWatch.expiresAt) {
+      emitSubmissionPollingDebugForWatch(
+        activeSubmissionResultWatch,
+        'timed-out',
+      )
       completeSubmissionResultWatch(activeSubmissionResultWatch)
       return
     }
@@ -389,6 +401,10 @@ export function createLeetCodePageWatcher(options: {
           fetch: fetchLeetCode,
           document: documentRef,
           now,
+          onDebug: (debug) => {
+            updateActiveSubmissionResultWatchDebug(submissionResultWatch, debug)
+            emitSubmissionPollingDebug(location, debug)
+          },
         })
       : null
 
@@ -413,6 +429,21 @@ export function createLeetCodePageWatcher(options: {
       return
     }
 
+    if (submissionResultWatch) {
+      emitSubmissionPollingDebugForWatch(
+        submissionResultWatch,
+        'dom-fallback-used',
+      )
+    } else {
+      emitSubmissionPollingDebug(location, {
+        phase: 'dom-fallback-used',
+        submissionId: null,
+        checkState: null,
+        statusText: null,
+        checkedAt: now(),
+      })
+    }
+
     const result = readLeetCodeSubmissionResult(documentRef, {
       location,
       now,
@@ -420,6 +451,7 @@ export function createLeetCodePageWatcher(options: {
 
     if (!result) {
       if (submissionResultWatch && now() >= submissionResultWatch.expiresAt) {
+        emitSubmissionPollingDebugForWatch(submissionResultWatch, 'timed-out')
         completeSubmissionResultWatch(submissionResultWatch)
       }
       return
@@ -443,6 +475,42 @@ export function createLeetCodePageWatcher(options: {
       now() - submissionResultWatch.click.clickedAt >=
       domSubmissionResultFallbackDelayMs
     )
+  }
+
+  function updateActiveSubmissionResultWatchDebug(
+    submissionResultWatch: ActiveSubmissionResultWatch,
+    debug: LeetCodeSubmissionPollingDebug,
+  ) {
+    submissionResultWatch.submissionId =
+      debug.submissionId ?? submissionResultWatch.submissionId
+    submissionResultWatch.checkState =
+      debug.checkState ?? submissionResultWatch.checkState
+    submissionResultWatch.statusText =
+      debug.statusText ?? submissionResultWatch.statusText
+  }
+
+  function emitSubmissionPollingDebugForWatch(
+    submissionResultWatch: ActiveSubmissionResultWatch,
+    phase: LeetCodeSubmissionPollingPhase,
+  ) {
+    emitSubmissionPollingDebug(submissionResultWatch.location, {
+      phase,
+      submissionId: submissionResultWatch.submissionId,
+      checkState: submissionResultWatch.checkState,
+      statusText: submissionResultWatch.statusText,
+      checkedAt: now(),
+    })
+  }
+
+  function emitSubmissionPollingDebug(
+    location: LeetCodeProblemLocation,
+    debug: LeetCodeSubmissionPollingDebug,
+  ) {
+    options.onEvent({
+      type: 'submission-polling-updated',
+      location,
+      debug,
+    })
   }
 
   function emitSubmissionResult(result: LeetCodeSubmissionResult) {

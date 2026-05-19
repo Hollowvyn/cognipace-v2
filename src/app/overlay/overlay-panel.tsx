@@ -32,6 +32,7 @@ export function OverlayPanel({
   feedback,
   lastSubmissionClick,
   lastSubmissionAttempt,
+  lastSubmissionPollingDebug,
   lastSubmissionResult,
   location,
   metadata,
@@ -203,6 +204,39 @@ export function OverlayPanel({
         </section>
       ) : null}
 
+      {lastSubmissionPollingDebug ? (
+        <section
+          className="cp-overlay-debug"
+          aria-label="Submission polling debug"
+        >
+          <div className="cp-overlay-debug-heading">
+            <Activity size={14} aria-hidden="true" />
+            <span>Polling debug</span>
+          </div>
+          <div className="cp-overlay-debug-status">
+            {formatSubmissionPollingPhase(lastSubmissionPollingDebug.phase)}
+          </div>
+          <div className="cp-overlay-debug-grid">
+            <span>id</span>
+            <strong>
+              {formatNullableValue(lastSubmissionPollingDebug.submissionId)}
+            </strong>
+            <span>check</span>
+            <strong>
+              {formatNullableValue(lastSubmissionPollingDebug.checkState)}
+            </strong>
+            <span>status</span>
+            <strong>
+              {formatNullableValue(lastSubmissionPollingDebug.statusText)}
+            </strong>
+            <span>checked</span>
+            <strong>
+              {formatClockTime(lastSubmissionPollingDebug.checkedAt)}
+            </strong>
+          </div>
+        </section>
+      ) : null}
+
       {lastSubmissionResult ? (
         <section
           className="cp-overlay-debug"
@@ -285,6 +319,10 @@ function formatClockTime(timestamp: number) {
 
 function formatNullableValue(value: string | null) {
   return value ?? 'unknown'
+}
+
+function formatSubmissionPollingPhase(phase: string) {
+  return phase.replaceAll('-', ' ')
 }
 
 function formatTestProgress(result: {

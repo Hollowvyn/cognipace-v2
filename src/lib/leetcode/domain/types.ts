@@ -24,6 +24,17 @@ export type LeetCodeCodeSnapshotSource =
 
 export type LeetCodeSubmissionResultSource = 'api' | 'dom'
 
+export type LeetCodeSubmissionPollingPhase =
+  | 'finding-submission'
+  | 'submission-found'
+  | 'submission-not-found'
+  | 'checking-result'
+  | 'api-result-found'
+  | 'graphql-details-found'
+  | 'graphql-details-missing'
+  | 'dom-fallback-used'
+  | 'timed-out'
+
 export type LeetCodeSubmissionStatus =
   | 'accepted'
   | 'wrong-answer'
@@ -123,7 +134,21 @@ export type LeetCodeSubmissionResult = {
   totalTestCount: number | null
   failingTestcase: string | null
   errorMessage: string | null
+  compileError: string | null
+  runtimeError: string | null
+  lastTestcase: string | null
+  codeOutput: string | null
+  expectedOutput: string | null
+  stdOutput: string | null
   resultCodeSnapshot: LeetCodeSubmittedCodeSnapshot
+}
+
+export type LeetCodeSubmissionPollingDebug = {
+  phase: LeetCodeSubmissionPollingPhase
+  submissionId: string | null
+  checkState: string | null
+  statusText: string | null
+  checkedAt: number
 }
 
 export type LeetCodePageEvent =
@@ -162,6 +187,11 @@ export type LeetCodePageEvent =
   | {
       type: 'submission-started'
       attempt: LeetCodeSubmissionAttempt
+    }
+  | {
+      type: 'submission-polling-updated'
+      location: LeetCodeProblemLocation
+      debug: LeetCodeSubmissionPollingDebug
     }
   | {
       type: 'submission-result-updated'

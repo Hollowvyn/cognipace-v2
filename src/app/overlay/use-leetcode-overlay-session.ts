@@ -18,6 +18,7 @@ import {
   type LeetCodeProblemMetadata,
   type LeetCodeSubmissionAttempt,
   type LeetCodeSubmissionClick,
+  type LeetCodeSubmissionPollingDebug,
   type LeetCodeSubmissionResult,
 } from '@/lib/leetcode'
 
@@ -38,6 +39,7 @@ export type LeetCodeOverlaySession = {
   codeSnapshot: LeetCodeCodeSnapshot | null
   lastSubmissionClick: LeetCodeSubmissionClick | null
   lastSubmissionAttempt: LeetCodeSubmissionAttempt | null
+  lastSubmissionPollingDebug: LeetCodeSubmissionPollingDebug | null
   lastSubmissionResult: LeetCodeSubmissionResult | null
   status: OverlaySyncStatus
   feedback: string | null
@@ -61,6 +63,8 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
     useState<LeetCodeSubmissionClick | null>(null)
   const [lastSubmissionAttempt, setLastSubmissionAttempt] =
     useState<LeetCodeSubmissionAttempt | null>(null)
+  const [lastSubmissionPollingDebug, setLastSubmissionPollingDebug] =
+    useState<LeetCodeSubmissionPollingDebug | null>(null)
   const [lastSubmissionResult, setLastSubmissionResult] =
     useState<LeetCodeSubmissionResult | null>(null)
   const [pageReadyAt, setPageReadyAt] = useState<number | null>(null)
@@ -186,6 +190,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
           setCodeSnapshot(null)
           setLastSubmissionClick(null)
           setLastSubmissionAttempt(null)
+          setLastSubmissionPollingDebug(null)
           setLastSubmissionResult(null)
           setPageReadyAt(null)
           setElapsedSeconds(0)
@@ -217,9 +222,13 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
           return
         case 'submission-started':
           setLastSubmissionAttempt(event.attempt)
+          setLastSubmissionPollingDebug(null)
           setLastSubmissionResult(null)
           setCodeSnapshot(event.attempt.submittedCodeSnapshot)
           setFeedback('Submitted code snapshot captured.')
+          return
+        case 'submission-polling-updated':
+          setLastSubmissionPollingDebug(event.debug)
           return
         case 'submission-result-updated':
           setLastSubmissionResult(event.result)
@@ -280,6 +289,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
     codeSnapshot,
     lastSubmissionClick,
     lastSubmissionAttempt,
+    lastSubmissionPollingDebug,
     lastSubmissionResult,
     status,
     feedback,
