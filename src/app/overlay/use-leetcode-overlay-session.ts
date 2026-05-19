@@ -13,6 +13,7 @@ import {
   parseLeetCodeProblemLocation,
   type LeetCodeCodeSnapshot,
   type LeetCodePageEvent,
+  type LeetCodeProblemContent,
   type LeetCodeProblemLocation,
   type LeetCodeProblemMetadata,
   type LeetCodeSubmissionAttempt,
@@ -32,6 +33,7 @@ export type OverlaySyncStatus =
 export type LeetCodeOverlaySession = {
   location: LeetCodeProblemLocation | null
   metadata: LeetCodeProblemMetadata | null
+  problemContent: LeetCodeProblemContent | null
   context: RuntimeProblemContext
   codeSnapshot: LeetCodeCodeSnapshot | null
   lastSubmissionClick: LeetCodeSubmissionClick | null
@@ -49,6 +51,8 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
     initialLocation,
   )
   const [metadata, setMetadata] = useState<LeetCodeProblemMetadata | null>(null)
+  const [problemContent, setProblemContent] =
+    useState<LeetCodeProblemContent | null>(null)
   const [context, setContext] = useState<RuntimeProblemContext>(null)
   const [codeSnapshot, setCodeSnapshot] = useState<LeetCodeCodeSnapshot | null>(
     null,
@@ -177,6 +181,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
           syncTokenRef.current += 1
           setLocation(event.location)
           setMetadata(null)
+          setProblemContent(null)
           setContext(null)
           setCodeSnapshot(null)
           setLastSubmissionClick(null)
@@ -197,6 +202,9 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
         case 'metadata-updated':
           setMetadata(event.metadata)
           syncProblemIfNeeded(event.metadata, syncTokenRef.current)
+          return
+        case 'problem-content-updated':
+          setProblemContent(event.content)
           return
         case 'code-updated':
           setCodeSnapshot(event.snapshot)
@@ -267,6 +275,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
   return {
     location,
     metadata,
+    problemContent,
     context,
     codeSnapshot,
     lastSubmissionClick,

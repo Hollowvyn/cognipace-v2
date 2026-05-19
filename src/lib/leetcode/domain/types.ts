@@ -11,6 +11,10 @@ export type LeetCodeMetadataSource = 'graphql' | 'dom' | 'fallback'
 
 export type LeetCodeMetadataConfidence = 'high' | 'medium' | 'low'
 
+export type LeetCodeProblemContentSource = 'graphql' | 'dom' | 'fallback'
+
+export type LeetCodeProblemContentConfidence = 'high' | 'medium' | 'low'
+
 export type LeetCodeCodeSnapshotSource =
   | 'api'
   | 'monaco'
@@ -41,6 +45,14 @@ export type LeetCodeTopic = {
   slug: string | null
 }
 
+export type LeetCodeExample = {
+  label: string
+  input: string | null
+  output: string | null
+  explanation: string | null
+  rawText: string
+}
+
 export type LeetCodePageSnapshot = {
   location: LeetCodeProblemLocation
   title: string | null
@@ -62,6 +74,18 @@ export type LeetCodeProblemMetadata = {
   source: LeetCodeMetadataSource
   confidence: LeetCodeMetadataConfidence
   capturedAt: number
+}
+
+export type LeetCodeProblemContent = {
+  location: LeetCodeProblemLocation
+  statement: string
+  examples: LeetCodeExample[]
+  constraints: string[]
+  hints: string[]
+  source: LeetCodeProblemContentSource
+  confidence: LeetCodeProblemContentConfidence
+  capturedAt: number
+  contentFingerprint: string
 }
 
 export type LeetCodeCodeSnapshot = {
@@ -122,6 +146,11 @@ export type LeetCodePageEvent =
       metadata: LeetCodeProblemMetadata
     }
   | {
+      type: 'problem-content-updated'
+      location: LeetCodeProblemLocation
+      content: LeetCodeProblemContent
+    }
+  | {
       type: 'code-updated'
       location: LeetCodeProblemLocation
       snapshot: LeetCodeCodeSnapshot
@@ -149,6 +178,16 @@ export type LeetCodeMetadataResult =
   | {
       ok: true
       metadata: LeetCodeProblemMetadata
+    }
+  | {
+      ok: false
+      error: Error
+    }
+
+export type LeetCodeProblemContentResult =
+  | {
+      ok: true
+      content: LeetCodeProblemContent
     }
   | {
       ok: false

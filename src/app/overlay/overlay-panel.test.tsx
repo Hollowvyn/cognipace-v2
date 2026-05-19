@@ -25,6 +25,7 @@ const premiumSession = {
     confidence: 'high',
     capturedAt: 100,
   },
+  problemContent: null,
   context: null,
   codeSnapshot: null,
   lastSubmissionClick: null,
@@ -68,6 +69,41 @@ describe('OverlayPanel', () => {
     expect(
       screen.getByLabelText('Submission attempt debug').textContent,
     ).toContain('class Solution:')
+  })
+
+  it('shows problem content debug details', () => {
+    render(
+      <OverlayPanel
+        {...premiumSession}
+        problemContent={{
+          location: premiumSession.location,
+          statement: 'Given a binary tree, flip it upside down.',
+          examples: [
+            {
+              label: 'Example 1',
+              input: 'root = [1,2,3]',
+              output: '[2,3,1]',
+              explanation: null,
+              rawText: 'Input: root = [1,2,3]\nOutput: [2,3,1]',
+            },
+          ],
+          constraints: ['The number of nodes is in the range [0, 10].'],
+          hints: ['Think recursively.'],
+          source: 'graphql',
+          confidence: 'high',
+          capturedAt: 6000,
+          contentFingerprint: 'lc-content-debug123',
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Problem content')).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('Problem content debug').textContent,
+    ).toContain('Given a binary tree')
+    expect(
+      screen.getByLabelText('Problem content debug').textContent,
+    ).toContain('debug123')
   })
 
   it('shows when the submission result is still pending', () => {

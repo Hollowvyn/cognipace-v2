@@ -4,6 +4,12 @@ export {
   normalizeLeetCodeLanguageLabel,
   readLeetCodeLanguageLabelFromText,
 } from './domain/language'
+export { createLeetCodeProblemContentFingerprint } from './content/content-fingerprint'
+export {
+  fetchLeetCodeProblemContent,
+  readLeetCodeProblemContent,
+  readLeetCodeProblemContentFromDom,
+} from './content/problem-content-reader'
 export {
   readLeetCodeDomSnapshot,
   readLeetCodePageSnapshot,
@@ -39,11 +45,16 @@ export { readLeetCodeSubmissionResultFromApi } from './submission/submission-res
 export type {
   LeetCodeCodeSnapshot,
   LeetCodeDifficulty,
+  LeetCodeExample,
   LeetCodeMetadataConfidence,
   LeetCodeMetadataResult,
   LeetCodeMetadataSource,
   LeetCodePageEvent,
   LeetCodePageSnapshot,
+  LeetCodeProblemContent,
+  LeetCodeProblemContentConfidence,
+  LeetCodeProblemContentResult,
+  LeetCodeProblemContentSource,
   LeetCodeProblemLocation,
   LeetCodeProblemMetadata,
   LeetCodeSubmittedCodeSnapshot,

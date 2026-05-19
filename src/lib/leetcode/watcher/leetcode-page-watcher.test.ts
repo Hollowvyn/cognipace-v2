@@ -53,6 +53,79 @@ describe('createLeetCodePageWatcher', () => {
     })
   })
 
+  it('emits problem content when LeetCode content is readable', async () => {
+    vi.useFakeTimers()
+    document.body.innerHTML =
+      '<main><h1>1. Two Sum</h1><span>Easy</span></main>'
+    const events: LeetCodePageEvent[] = []
+    const fetcher = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+      const requestBody = typeof init?.body === 'string' ? init.body : ''
+
+      if (requestBody.includes('questionContent')) {
+        return Promise.resolve(
+          Response.json({
+            data: {
+              question: {
+                content:
+                  '<p>Return indices.</p><p><strong>Example 1:</strong></p><pre>Input: nums = [2,7]\nOutput: [0,1]</pre><p><strong>Constraints:</strong></p><ul><li>2 <= nums.length</li></ul>',
+                hints: ['Use a hash map.'],
+              },
+            },
+          }),
+        )
+      }
+
+      return Promise.resolve(
+        Response.json({
+          data: {
+            question: {
+              title: 'Two Sum',
+              questionFrontendId: '1',
+              difficulty: 'Easy',
+              isPaidOnly: false,
+              topicTags: [{ name: 'Array', slug: 'array' }],
+            },
+          },
+        }),
+      )
+    })
+    const watcher = createLeetCodePageWatcher({
+      getCurrentUrl: () => 'https://leetcode.com/problems/two-sum/',
+      hydrationDelays: [0],
+      onEvent: (event) => events.push(event),
+      fetch: fetcher,
+      now: () => 1000,
+    })
+
+    watcher.start()
+    await vi.runAllTimersAsync()
+    watcher.stop()
+
+    const contentEvent = events.find(
+      (
+        event,
+      ): event is Extract<
+        LeetCodePageEvent,
+        { type: 'problem-content-updated' }
+      > => event.type === 'problem-content-updated',
+    )
+
+    expect(contentEvent?.location.slug).toBe('two-sum')
+    expect(contentEvent?.content).toMatchObject({
+      statement: 'Return indices.',
+      examples: [
+        {
+          input: 'nums = [2,7]',
+          output: '[0,1]',
+        },
+      ],
+      constraints: ['2 <= nums.length'],
+      hints: ['Use a hash map.'],
+      source: 'graphql',
+      confidence: 'high',
+    })
+  })
+
   it('emits page changes when the active slug changes', async () => {
     vi.useFakeTimers()
     let url = 'https://leetcode.com/problems/two-sum/'
@@ -117,7 +190,7 @@ describe('createLeetCodePageWatcher', () => {
 
     watcher.stop()
 
-    expect(fetcher).toHaveBeenCalledTimes(1)
+    expect(fetcher).toHaveBeenCalledTimes(2)
   })
 
   it('emits submit-clicked without saving a review', async () => {

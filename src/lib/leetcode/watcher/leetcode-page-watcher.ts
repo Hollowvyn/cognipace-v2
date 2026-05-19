@@ -1,11 +1,13 @@
 import { parseLeetCodeProblemLocation } from '../domain/problem-url'
 import type {
   LeetCodePageEvent,
+  LeetCodeProblemContent,
   LeetCodeProblemLocation,
   LeetCodeSubmissionClick,
   LeetCodeSubmissionResult,
   LeetCodeSubmittedCodeSnapshot,
 } from '../domain/types'
+import { readLeetCodeProblemContent } from '../content/problem-content-reader'
 import { readLeetCodeCodeSnapshot } from '../editor/code-snapshot-reader'
 import { readLeetCodeProblemMetadata } from '../metadata/metadata-reader'
 import { readLeetCodePageSnapshot } from '../page/page-snapshot-reader'
@@ -100,6 +102,7 @@ export function createLeetCodePageWatcher(options: {
   let mutationRefreshTimer: number | null = null
   let samePageSnapshotRefreshTimer: number | null = null
   let submissionResultReadTimers: number[] = []
+  let latestProblemContentFingerprint: string | null = null
   let latestSubmissionResultFingerprint: string | null = null
   let activeSubmissionResultWatch: ActiveSubmissionResultWatch | null = null
   let lastSnapshotRefreshAt = Number.NEGATIVE_INFINITY
@@ -155,6 +158,7 @@ export function createLeetCodePageWatcher(options: {
     activeLocation = location
     activeToken += 1
     readySlug = null
+    latestProblemContentFingerprint = null
     latestSubmissionResultFingerprint = null
     activeSubmissionResultWatch = null
     lastSnapshotRefreshAt = Number.NEGATIVE_INFINITY
@@ -214,6 +218,23 @@ export function createLeetCodePageWatcher(options: {
         location,
         metadata: problemMetadata,
       })
+
+      const contentReadResult = await readLeetCodeProblemContent(location, {
+        root: documentRef,
+        document: documentRef,
+        fetch: options.fetch,
+        now,
+      })
+
+      if (isStaleSnapshotRefresh(token, location)) {
+        return
+      }
+
+      if (contentReadResult.ok) {
+        emitProblemContentIfUseful(location, contentReadResult.content)
+      } else {
+        emitWatcherError(location, contentReadResult.error)
+      }
 
       const codeSnapshot = readLeetCodeCodeSnapshot(documentRef, now)
 
@@ -436,6 +457,35 @@ export function createLeetCodePageWatcher(options: {
       type: 'submission-result-updated',
       result,
     })
+  }
+
+  function emitProblemContentIfUseful(
+    location: LeetCodeProblemLocation,
+    content: LeetCodeProblemContent,
+  ) {
+    if (!isUsefulProblemContent(content)) {
+      return
+    }
+
+    if (latestProblemContentFingerprint === content.contentFingerprint) {
+      return
+    }
+
+    latestProblemContentFingerprint = content.contentFingerprint
+    options.onEvent({
+      type: 'problem-content-updated',
+      location,
+      content,
+    })
+  }
+
+  function isUsefulProblemContent(content: LeetCodeProblemContent) {
+    return (
+      content.statement.length > 0 ||
+      content.examples.length > 0 ||
+      content.constraints.length > 0 ||
+      content.hints.length > 0
+    )
   }
 
   function completeSubmissionResultWatch(

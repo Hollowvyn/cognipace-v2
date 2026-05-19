@@ -1,5 +1,6 @@
 import {
   Activity,
+  BookOpenText,
   CheckCircle2,
   Clock3,
   Code2,
@@ -34,6 +35,7 @@ export function OverlayPanel({
   lastSubmissionResult,
   location,
   metadata,
+  problemContent,
   saveReview,
   status,
 }: OverlayPanelProps) {
@@ -109,6 +111,47 @@ export function OverlayPanel({
             {formatClockTime(lastSubmissionClick.clickedAt)}
           </span>
         </div>
+      ) : null}
+
+      {problemContent ? (
+        <section
+          className="cp-overlay-debug"
+          aria-label="Problem content debug"
+        >
+          <div className="cp-overlay-debug-heading">
+            <BookOpenText size={14} aria-hidden="true" />
+            <span>Problem content</span>
+          </div>
+          <div className="cp-overlay-debug-grid">
+            <span>source</span>
+            <strong>{problemContent.source}</strong>
+            <span>confidence</span>
+            <strong>{problemContent.confidence}</strong>
+            <span>examples</span>
+            <strong>{problemContent.examples.length}</strong>
+            <span>constraints</span>
+            <strong>{problemContent.constraints.length}</strong>
+            <span>hints</span>
+            <strong>{problemContent.hints.length}</strong>
+            <span>fingerprint</span>
+            <strong>
+              {formatShortFingerprint(problemContent.contentFingerprint)}
+            </strong>
+          </div>
+          <pre className="cp-overlay-code-preview">
+            {formatProblemContentPreview(problemContent.statement)}
+          </pre>
+          {problemContent.examples[0] ? (
+            <pre className="cp-overlay-code-preview">
+              {formatProblemContentPreview(problemContent.examples[0].rawText)}
+            </pre>
+          ) : null}
+          {problemContent.constraints.length > 0 ? (
+            <pre className="cp-overlay-code-preview">
+              {formatListPreview(problemContent.constraints)}
+            </pre>
+          ) : null}
+        </section>
       ) : null}
 
       {lastSubmissionAttempt ? (
@@ -268,4 +311,20 @@ function formatCodePreview(code: string | null) {
   const hasMoreLines = code.split('\n').length > previewLines.length
 
   return `${previewLines.join('\n')}${hasMoreLines ? '\n...' : ''}`
+}
+
+function formatProblemContentPreview(value: string) {
+  if (!value) {
+    return 'No content captured.'
+  }
+
+  return value.length > 220 ? `${value.slice(0, 220).trim()}...` : value
+}
+
+function formatListPreview(values: readonly string[]) {
+  return values.slice(0, 4).join('\n')
+}
+
+function formatShortFingerprint(fingerprint: string) {
+  return fingerprint.replace(/^lc-content-/, '')
 }
