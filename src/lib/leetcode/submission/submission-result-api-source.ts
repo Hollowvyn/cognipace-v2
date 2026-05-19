@@ -5,6 +5,7 @@ import type {
   LeetCodeSubmissionStatus,
   LeetCodeSubmittedCodeSnapshot,
 } from '../domain/types'
+import { normalizeLeetCodeLanguageLabel } from '../domain/language'
 
 type LeetCodeSubmissionFetch = (
   input: RequestInfo | URL,
@@ -250,7 +251,7 @@ async function readSubmissionCheckPayload(options: {
         payload.full_runtime_error ??
         payload.status_msg,
     ),
-    language: readTrimmedString(payload.pretty_lang ?? payload.lang),
+    language: readLanguageLabel(payload.pretty_lang ?? payload.lang),
   }
 }
 
@@ -297,8 +298,8 @@ async function readSubmissionDetailsPayload(options: {
   }
 
   const language = isObjectRecord(details.lang)
-    ? (readTrimmedString(details.lang.verboseName) ??
-      readTrimmedString(details.lang.name))
+    ? (readLanguageLabel(details.lang.verboseName) ??
+      readLanguageLabel(details.lang.name))
     : null
 
   return {
@@ -352,7 +353,7 @@ function readSubmissionListEntries(payload: unknown): SubmissionListEntry[] {
         ),
         runtime: readTrimmedString(submissionValue.runtime),
         memory: readTrimmedString(submissionValue.memory),
-        language: readTrimmedString(
+        language: readLanguageLabel(
           submissionValue.lang_name ??
             submissionValue.langName ??
             submissionValue.lang,
@@ -435,6 +436,12 @@ function readCookieValue(cookieHeader: string, cookieName: string) {
 
 function readTrimmedString(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function readLanguageLabel(value: unknown) {
+  return typeof value === 'string'
+    ? normalizeLeetCodeLanguageLabel(value)
+    : null
 }
 
 function readSubmissionId(value: unknown) {

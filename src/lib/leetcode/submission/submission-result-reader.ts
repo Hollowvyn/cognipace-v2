@@ -5,6 +5,7 @@ import type {
   LeetCodeSubmissionStatus,
   LeetCodeSubmittedCodeSnapshot,
 } from '../domain/types'
+import { normalizeLeetCodeLanguageLabel } from '../domain/language'
 
 type SubmissionStatusMatch = {
   status: LeetCodeSubmissionStatus
@@ -357,8 +358,8 @@ function findResultCodeHeading(resultRoot: ParentNode) {
 }
 
 function readLanguageFromCodeHeading(codeHeading: Element) {
-  return (
-    readNormalizedText(codeHeading).match(/^Code\s*\|\s*(.+)$/i)?.[1] ?? null
+  return normalizeLeetCodeLanguageLabel(
+    readNormalizedText(codeHeading).match(/^Code\s*\|\s*(.+)$/i)?.[1],
   )
 }
 

@@ -1,4 +1,5 @@
 import type { LeetCodeCodeSnapshot } from '../domain/types'
+import { readLeetCodeLanguageLabelFromText } from '../domain/language'
 
 export function readLeetCodeCodeSnapshot(
   editorRoot: ParentNode = document,
@@ -45,14 +46,39 @@ function readSelectedLanguageLabel(editorRoot: ParentNode) {
   const languageSelectorCandidates = [
     '[data-cy="lang-select"]',
     '[data-e2e-locator="console-language-picker"]',
+    '[data-e2e-locator*="language" i]',
+    '[data-cy*="language" i]',
+    '[class*="language" i]',
+    '[class*="lang" i]',
     'button[aria-haspopup="listbox"]',
     'button[aria-label*="language" i]',
+    '[role="button"][aria-haspopup="listbox"]',
   ] as const
 
   for (const selector of languageSelectorCandidates) {
-    const languageLabel = editorRoot
-      .querySelector(selector)
-      ?.textContent?.trim()
+    const languageLabel = readLeetCodeLanguageLabelFromText(
+      editorRoot.querySelector(selector)?.textContent,
+    )
+
+    if (languageLabel) {
+      return languageLabel
+    }
+  }
+
+  const compactTextCandidates = Array.from(
+    editorRoot.querySelectorAll(
+      'button, [role="button"], h1, h2, h3, h4, span, div',
+    ),
+  )
+
+  for (const textCandidate of compactTextCandidates) {
+    if (textCandidate.closest('.view-lines, .monaco-editor')) {
+      continue
+    }
+
+    const languageLabel = readLeetCodeLanguageLabelFromText(
+      textCandidate.textContent,
+    )
 
     if (languageLabel) {
       return languageLabel

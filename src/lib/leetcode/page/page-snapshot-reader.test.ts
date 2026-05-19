@@ -104,6 +104,45 @@ describe('readLeetCodeCodeSnapshot', () => {
     })
   })
 
+  it('reads language from the compact editor toolbar text', () => {
+    document.body.innerHTML = `
+      <div>
+        <button aria-haspopup="listbox">
+          <span>Python3</span>
+          <span>Auto</span>
+        </button>
+      </div>
+      <div class="view-lines">
+        <div class="view-line">class Solution:</div>
+        <div class="view-line">    pass</div>
+      </div>
+    `
+
+    expect(readLeetCodeCodeSnapshot(document, () => 240)).toMatchObject({
+      code: 'class Solution:\n    pass',
+      language: 'Python3',
+      source: 'monaco',
+    })
+  })
+
+  it('reads language from the submitted code heading', () => {
+    document.body.innerHTML = `
+      <section>
+        <h3>Code | Python3</h3>
+        <div class="view-lines">
+          <div class="view-line">class Solution:</div>
+          <div class="view-line">    pass</div>
+        </div>
+      </section>
+    `
+
+    expect(readLeetCodeCodeSnapshot(document, () => 260)).toMatchObject({
+      code: 'class Solution:\n    pass',
+      language: 'Python3',
+      source: 'monaco',
+    })
+  })
+
   it('returns an empty source when no editor is present', () => {
     document.body.innerHTML = '<main></main>'
 

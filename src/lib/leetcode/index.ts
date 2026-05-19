@@ -1,6 +1,10 @@
 export { readLeetCodeCodeSnapshot } from './editor/code-snapshot-reader'
 export { parseLeetCodeDifficulty } from './domain/difficulty'
 export {
+  normalizeLeetCodeLanguageLabel,
+  readLeetCodeLanguageLabelFromText,
+} from './domain/language'
+export {
   readLeetCodeDomSnapshot,
   readLeetCodePageSnapshot,
   readLeetCodeProblemLocationFromPageRoot,
