@@ -1,7 +1,43 @@
+import { vi } from 'vitest'
+
 export type LeetCodeSubmissionApiFixture = {
   submissionListPayload: Record<string, unknown>
   checkPayload: Record<string, unknown>
   graphQlPayload: Record<string, unknown> | null
+}
+
+export function createLeetCodeSubmissionApiFixtureFetcher(
+  fixture: LeetCodeSubmissionApiFixture,
+) {
+  return vi.fn((input: RequestInfo | URL) => {
+    const requestUrl = readLeetCodeFixtureRequestUrl(input)
+
+    if (requestUrl.includes('/api/submissions/two-sum/')) {
+      return Promise.resolve(Response.json(fixture.submissionListPayload))
+    }
+
+    if (requestUrl.includes('/submissions/detail/1234567890/check/')) {
+      return Promise.resolve(Response.json(fixture.checkPayload))
+    }
+
+    if (requestUrl.endsWith('/graphql') && fixture.graphQlPayload) {
+      return Promise.resolve(Response.json(fixture.graphQlPayload))
+    }
+
+    return Promise.resolve(new Response('', { status: 500 }))
+  })
+}
+
+export function readLeetCodeFixtureRequestUrl(input: RequestInfo | URL) {
+  if (input instanceof URL) {
+    return input.toString()
+  }
+
+  if (typeof input === 'string') {
+    return input
+  }
+
+  return input.url
 }
 
 export const leetcodeAcceptedSubmissionApiFixture: LeetCodeSubmissionApiFixture =

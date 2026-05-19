@@ -45,18 +45,18 @@ export type LeetCodeSubmissionStatus =
   | 'output-limit-exceeded'
   | 'unknown'
 
-export type LeetCodeProblemLocation = {
+export interface LeetCodeProblemLocation {
   slug: string
   url: string
   host: string
 }
 
-export type LeetCodeTopic = {
+export interface LeetCodeTopic {
   name: string
   slug: string | null
 }
 
-export type LeetCodeExample = {
+export interface LeetCodeExample {
   label: string
   input: string | null
   output: string | null
@@ -64,7 +64,7 @@ export type LeetCodeExample = {
   rawText: string
 }
 
-export type LeetCodePageSnapshot = {
+export interface LeetCodePageSnapshot {
   location: LeetCodeProblemLocation
   title: string | null
   frontendId: string | null
@@ -75,7 +75,7 @@ export type LeetCodePageSnapshot = {
   capturedAt: number
 }
 
-export type LeetCodeProblemMetadata = {
+export interface LeetCodeProblemMetadata {
   location: LeetCodeProblemLocation
   title: string
   frontendId: string | null
@@ -87,7 +87,7 @@ export type LeetCodeProblemMetadata = {
   capturedAt: number
 }
 
-export type LeetCodeProblemContent = {
+export interface LeetCodeProblemContent {
   location: LeetCodeProblemLocation
   statement: string
   examples: LeetCodeExample[]
@@ -99,14 +99,14 @@ export type LeetCodeProblemContent = {
   contentFingerprint: string
 }
 
-export type LeetCodeCodeSnapshot = {
+export interface LeetCodeCodeSnapshot {
   code: string | null
   language: string | null
   source: LeetCodeCodeSnapshotSource
   capturedAt: number
 }
 
-export type LeetCodeSubmissionClick = {
+export interface LeetCodeSubmissionClick {
   location: LeetCodeProblemLocation
   clickedAt: number
   buttonText: string
@@ -114,14 +114,14 @@ export type LeetCodeSubmissionClick = {
 
 export type LeetCodeSubmittedCodeSnapshot = LeetCodeCodeSnapshot
 
-export type LeetCodeSubmissionAttempt = {
+export interface LeetCodeSubmissionAttempt {
   location: LeetCodeProblemLocation
   clickedAt: number
   submitButtonText: string
   submittedCodeSnapshot: LeetCodeSubmittedCodeSnapshot
 }
 
-export type LeetCodeSubmissionResult = {
+export interface LeetCodeSubmissionResult {
   location: LeetCodeProblemLocation
   submissionId: string | null
   source: LeetCodeSubmissionResultSource
@@ -143,7 +143,7 @@ export type LeetCodeSubmissionResult = {
   resultCodeSnapshot: LeetCodeSubmittedCodeSnapshot
 }
 
-export type LeetCodeSubmissionPollingDebug = {
+export interface LeetCodeSubmissionPollingDebug {
   phase: LeetCodeSubmissionPollingPhase
   submissionId: string | null
   checkState: string | null

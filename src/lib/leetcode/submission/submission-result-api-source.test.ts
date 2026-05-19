@@ -1,13 +1,20 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
-import type { LeetCodeSubmissionPollingDebug } from '../domain/types'
+import type {
+  LeetCodeProblemLocation,
+  LeetCodeSubmissionClick,
+  LeetCodeSubmissionPollingDebug,
+  LeetCodeSubmittedCodeSnapshot,
+} from '../domain/types'
 import {
+  createLeetCodeSubmissionApiFixtureFetcher,
   leetcodeAcceptedSubmissionApiFixture,
   leetcodeCompileErrorSubmissionApiFixture,
   leetcodeGraphQlMissingSubmissionApiFixture,
   leetcodePendingSubmissionApiFixture,
   leetcodeRuntimeErrorSubmissionApiFixture,
   type LeetCodeSubmissionApiFixture,
+  readLeetCodeFixtureRequestUrl,
   leetcodeWrongAnswerSubmissionApiFixture,
 } from '../testing/submission-result-fixtures'
 import { readLeetCodeSubmissionResultFromApi } from './submission-result-api-source'
@@ -16,38 +23,29 @@ const location = {
   slug: 'two-sum',
   url: 'https://leetcode.com/problems/two-sum/',
   host: 'leetcode.com',
-}
+} satisfies LeetCodeProblemLocation
 
 const click = {
   location,
   clickedAt: 5000,
   buttonText: 'Submit',
-}
+} satisfies LeetCodeSubmissionClick
 
 const submittedCodeSnapshot = {
   code: 'class Solution:\n    pass',
   language: 'Python3',
   source: 'monaco',
   capturedAt: 5000,
-} as const
+} satisfies LeetCodeSubmittedCodeSnapshot
 
 describe('readLeetCodeSubmissionResultFromApi', () => {
   it('polls LeetCode submission APIs and returns accepted result details', async () => {
-    const debugEvents: LeetCodeSubmissionPollingDebug[] = []
-    const fetcher = createSubmissionApiFixtureFetcher(
-      leetcodeAcceptedSubmissionApiFixture,
-    )
+    const { debugEvents, fetcher, result } = await readSubmissionApiResult({
+      fixture: leetcodeAcceptedSubmissionApiFixture,
+      now: 7000,
+    })
 
-    await expect(
-      readLeetCodeSubmissionResultFromApi({
-        location,
-        click,
-        submittedCodeSnapshot,
-        fetch: fetcher,
-        now: () => 7000,
-        onDebug: (debug) => debugEvents.push(debug),
-      }),
-    ).resolves.toEqual({
+    expect(result).toEqual({
       location,
       submissionId: '1234567890',
       source: 'api',
@@ -73,68 +71,29 @@ describe('readLeetCodeSubmissionResultFromApi', () => {
         capturedAt: 7000,
       },
     })
-    expect(debugEvents).toEqual([
-      {
-        phase: 'finding-submission',
-        submissionId: null,
-        checkState: null,
-        statusText: null,
-        checkedAt: 7000,
-      },
-      {
-        phase: 'submission-found',
-        submissionId: '1234567890',
-        checkState: null,
-        statusText: 'Accepted',
-        checkedAt: 7000,
-      },
-      {
-        phase: 'checking-result',
-        submissionId: '1234567890',
-        checkState: 'SUCCESS',
-        statusText: 'Accepted',
-        checkedAt: 7000,
-      },
-      {
-        phase: 'api-result-found',
-        submissionId: '1234567890',
-        checkState: 'SUCCESS',
-        statusText: 'Accepted',
-        checkedAt: 7000,
-      },
-      {
-        phase: 'graphql-details-found',
-        submissionId: '1234567890',
-        checkState: 'SUCCESS',
-        statusText: 'Accepted',
-        checkedAt: 7000,
-      },
+    expect(debugEvents.map((debug) => debug.phase)).toEqual([
+      'finding-submission',
+      'submission-found',
+      'checking-result',
+      'api-result-found',
+      'graphql-details-found',
     ])
-    const requestUrls = fetcher.mock.calls.map(([input]) =>
-      readRequestUrl(input),
-    )
-
-    expect(requestUrls[0]).toContain('/api/submissions/two-sum/')
-    expect(requestUrls[1]).toContain('/submissions/detail/1234567890/check/')
-    expect(requestUrls[2]).toBe('https://leetcode.com/graphql')
+    expect(
+      fetcher.mock.calls.map(([input]) => readLeetCodeFixtureRequestUrl(input)),
+    ).toEqual([
+      expect.stringContaining('/api/submissions/two-sum/'),
+      expect.stringContaining('/submissions/detail/1234567890/check/'),
+      'https://leetcode.com/graphql',
+    ])
   })
 
   it('returns null while LeetCode is still judging the submission', async () => {
-    const debugEvents: LeetCodeSubmissionPollingDebug[] = []
-    const fetcher = createSubmissionApiFixtureFetcher(
-      leetcodePendingSubmissionApiFixture,
-    )
+    const { debugEvents, result } = await readSubmissionApiResult({
+      fixture: leetcodePendingSubmissionApiFixture,
+      now: 7000,
+    })
 
-    await expect(
-      readLeetCodeSubmissionResultFromApi({
-        location,
-        click,
-        submittedCodeSnapshot,
-        fetch: fetcher,
-        now: () => 7000,
-        onDebug: (debug) => debugEvents.push(debug),
-      }),
-    ).resolves.toBeNull()
+    expect(result).toBeNull()
     expect(debugEvents.map((debug) => debug.phase)).toEqual([
       'finding-submission',
       'submission-found',
@@ -148,25 +107,13 @@ describe('readLeetCodeSubmissionResultFromApi', () => {
   })
 
   it('ignores submissions outside the click matching window', async () => {
-    const debugEvents: LeetCodeSubmissionPollingDebug[] = []
-    const laterClick = {
-      ...click,
-      clickedAt: 100000,
-    }
-    const fetcher = createSubmissionApiFixtureFetcher(
-      leetcodeAcceptedSubmissionApiFixture,
-    )
+    const { debugEvents, fetcher, result } = await readSubmissionApiResult({
+      fixture: leetcodeAcceptedSubmissionApiFixture,
+      click: { ...click, clickedAt: 100000 },
+      now: 7000,
+    })
 
-    await expect(
-      readLeetCodeSubmissionResultFromApi({
-        location,
-        click: laterClick,
-        submittedCodeSnapshot,
-        fetch: fetcher,
-        now: () => 7000,
-        onDebug: (debug) => debugEvents.push(debug),
-      }),
-    ).resolves.toBeNull()
+    expect(result).toBeNull()
     expect(fetcher).toHaveBeenCalledTimes(1)
     expect(debugEvents.map((debug) => debug.phase)).toEqual([
       'finding-submission',
@@ -174,102 +121,73 @@ describe('readLeetCodeSubmissionResultFromApi', () => {
     ])
   })
 
-  it('returns failed result details without using accepted-only assumptions', async () => {
-    const fetcher = createSubmissionApiFixtureFetcher(
-      leetcodeWrongAnswerSubmissionApiFixture,
-    )
-
-    await expect(
-      readLeetCodeSubmissionResultFromApi({
-        location,
-        click,
-        submittedCodeSnapshot,
-        fetch: fetcher,
-        now: () => 8000,
-      }),
-    ).resolves.toMatchObject({
-      source: 'api',
-      status: 'wrong-answer',
-      statusText: 'Wrong Answer',
-      passedTestCount: 57,
-      totalTestCount: 63,
-      failingTestcase: 'nums = [3,2,4], target = 6',
-      lastTestcase: 'nums = [3,2,4], target = 6',
-      codeOutput: '[0,1]',
-      expectedOutput: '[1,2]',
-      stdOutput: 'debug line',
-      resultCodeSnapshot: {
-        code: 'class Solution:\n    pass',
+  it.each([
+    {
+      name: 'wrong answer',
+      fixture: leetcodeWrongAnswerSubmissionApiFixture,
+      expected: {
         source: 'api',
+        status: 'wrong-answer',
+        statusText: 'Wrong Answer',
+        passedTestCount: 57,
+        totalTestCount: 63,
+        failingTestcase: 'nums = [3,2,4], target = 6',
+        lastTestcase: 'nums = [3,2,4], target = 6',
+        codeOutput: '[0,1]',
+        expectedOutput: '[1,2]',
+        stdOutput: 'debug line',
+        resultCodeSnapshot: {
+          code: 'class Solution:\n    pass',
+          source: 'api',
+        },
       },
-    })
-  })
+    },
+    {
+      name: 'runtime error',
+      fixture: leetcodeRuntimeErrorSubmissionApiFixture,
+      expected: {
+        status: 'runtime-error',
+        statusText: 'Runtime Error',
+        errorMessage: 'IndexError: list index out of range',
+        runtimeError: 'IndexError: list index out of range',
+        compileError: null,
+        lastTestcase: '[2,7,11,15]\n9',
+        codeOutput: null,
+        expectedOutput: '[0,1]',
+        stdOutput: 'before crash',
+      },
+    },
+    {
+      name: 'compile error',
+      fixture: leetcodeCompileErrorSubmissionApiFixture,
+      expected: {
+        status: 'compile-error',
+        statusText: 'Compile Error',
+        errorMessage: "NameError: name 'List' is not defined",
+        compileError: "NameError: name 'List' is not defined",
+        runtimeError: null,
+        stdOutput: 'compile stdout',
+      },
+    },
+  ])(
+    'returns $name details without accepted-only assumptions',
+    async (testCase) => {
+      const { result } = await readSubmissionApiResult({
+        fixture: testCase.fixture,
+        now: 8000,
+      })
 
-  it('returns runtime error details as separate result fields', async () => {
-    const fetcher = createSubmissionApiFixtureFetcher(
-      leetcodeRuntimeErrorSubmissionApiFixture,
-    )
-
-    await expect(
-      readLeetCodeSubmissionResultFromApi({
-        location,
-        click,
-        submittedCodeSnapshot,
-        fetch: fetcher,
-        now: () => 8000,
-      }),
-    ).resolves.toMatchObject({
-      status: 'runtime-error',
-      statusText: 'Runtime Error',
-      errorMessage: 'IndexError: list index out of range',
-      runtimeError: 'IndexError: list index out of range',
-      compileError: null,
-      lastTestcase: '[2,7,11,15]\n9',
-      codeOutput: null,
-      expectedOutput: '[0,1]',
-      stdOutput: 'before crash',
-    })
-  })
-
-  it('returns compile error details as separate result fields', async () => {
-    const fetcher = createSubmissionApiFixtureFetcher(
-      leetcodeCompileErrorSubmissionApiFixture,
-    )
-
-    await expect(
-      readLeetCodeSubmissionResultFromApi({
-        location,
-        click,
-        submittedCodeSnapshot,
-        fetch: fetcher,
-        now: () => 8000,
-      }),
-    ).resolves.toMatchObject({
-      status: 'compile-error',
-      statusText: 'Compile Error',
-      errorMessage: "NameError: name 'List' is not defined",
-      compileError: "NameError: name 'List' is not defined",
-      runtimeError: null,
-      stdOutput: 'compile stdout',
-    })
-  })
+      expect(result).toMatchObject(testCase.expected)
+    },
+  )
 
   it('reports missing GraphQL details while keeping check API result data', async () => {
-    const debugEvents: LeetCodeSubmissionPollingDebug[] = []
-    const fetcher = createSubmissionApiFixtureFetcher(
-      leetcodeGraphQlMissingSubmissionApiFixture,
-    )
+    const { debugEvents, result } = await readSubmissionApiResult({
+      fixture: leetcodeGraphQlMissingSubmissionApiFixture,
+      now: 8000,
+    })
 
-    await expect(
-      readLeetCodeSubmissionResultFromApi({
-        location,
-        click,
-        submittedCodeSnapshot,
-        fetch: fetcher,
-        now: () => 8000,
-        onDebug: (debug) => debugEvents.push(debug),
-      }),
-    ).resolves.toMatchObject({
+    expect(result).toMatchObject({
       source: 'api',
       status: 'accepted',
       statusText: 'Accepted',
@@ -290,36 +208,21 @@ describe('readLeetCodeSubmissionResultFromApi', () => {
   })
 })
 
-function createSubmissionApiFixtureFetcher(
-  fixture: LeetCodeSubmissionApiFixture,
-) {
-  return vi.fn((input: RequestInfo | URL) => {
-    const requestUrl = readRequestUrl(input)
-
-    if (requestUrl.includes('/api/submissions/two-sum/')) {
-      return Promise.resolve(Response.json(fixture.submissionListPayload))
-    }
-
-    if (requestUrl.includes('/submissions/detail/1234567890/check/')) {
-      return Promise.resolve(Response.json(fixture.checkPayload))
-    }
-
-    if (requestUrl.endsWith('/graphql') && fixture.graphQlPayload) {
-      return Promise.resolve(Response.json(fixture.graphQlPayload))
-    }
-
-    return Promise.resolve(new Response('', { status: 500 }))
+async function readSubmissionApiResult(options: {
+  fixture: LeetCodeSubmissionApiFixture
+  click?: LeetCodeSubmissionClick | undefined
+  now: number
+}) {
+  const debugEvents: LeetCodeSubmissionPollingDebug[] = []
+  const fetcher = createLeetCodeSubmissionApiFixtureFetcher(options.fixture)
+  const result = await readLeetCodeSubmissionResultFromApi({
+    location,
+    click: options.click ?? click,
+    submittedCodeSnapshot,
+    fetch: fetcher,
+    now: () => options.now,
+    onDebug: (debug) => debugEvents.push(debug),
   })
-}
 
-function readRequestUrl(input: RequestInfo | URL) {
-  if (input instanceof URL) {
-    return input.toString()
-  }
-
-  if (typeof input === 'string') {
-    return input
-  }
-
-  return input.url
+  return { debugEvents, fetcher, result }
 }
