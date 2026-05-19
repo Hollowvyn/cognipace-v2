@@ -92,6 +92,21 @@ const resultCodeBlockSelectors = [
   'textarea',
 ].join(',')
 
+const boundedTextStopLabels = [
+  'Last\\s+executed\\s+input',
+  'Last\\s+Testcase',
+  'Input',
+  'Code\\s+Output',
+  'Expected\\s+Output',
+  'Output',
+  'Expected',
+  'Stdout',
+  'Std\\s+Output',
+  'Standard\\s+Output',
+  'Code\\s*\\|',
+  'More challenges',
+] as const
+
 export function readLeetCodeSubmissionResult(
   pageRoot: ParentNode,
   options: {
@@ -113,6 +128,18 @@ export function readLeetCodeSubmissionResult(
   }
 
   const now = options.now ?? Date.now
+  const compileError = readCompileError(statusMatch.status, resultText)
+  const runtimeError = readRuntimeError(statusMatch.status, resultText)
+  const lastTestcase = readLastTestcase(statusMatch.status, resultText)
+  const codeOutput = readCodeOutput(statusMatch.status, resultText)
+  const expectedOutput = readExpectedOutput(statusMatch.status, resultText)
+  const stdOutput = readStdOutput(resultText)
+  const errorMessage = readSubmissionErrorMessage({
+    status: statusMatch.status,
+    compileError,
+    runtimeError,
+    text: resultText,
+  })
 
   return {
     location: options.location,
@@ -125,14 +152,14 @@ export function readLeetCodeSubmissionResult(
     memory: readMemory(resultText),
     passedTestCount: readPassedTestCount(resultText),
     totalTestCount: readTotalTestCount(resultText),
-    failingTestcase:
-      statusMatch.status === 'accepted'
-        ? null
-        : readFailingTestcase(resultText),
-    errorMessage:
-      statusMatch.status === 'accepted'
-        ? null
-        : readSubmissionErrorMessage(resultText),
+    failingTestcase: lastTestcase,
+    errorMessage,
+    compileError,
+    runtimeError,
+    lastTestcase,
+    codeOutput,
+    expectedOutput,
+    stdOutput,
     resultCodeSnapshot: readSubmissionResultCodeSnapshot(
       resultRoot,
       pageRoot,
@@ -156,6 +183,12 @@ export function createLeetCodeSubmissionResultFingerprint(
     result.totalTestCount,
     result.failingTestcase,
     result.errorMessage,
+    result.compileError,
+    result.runtimeError,
+    result.lastTestcase,
+    result.codeOutput,
+    result.expectedOutput,
+    result.stdOutput,
     result.resultCodeSnapshot.language,
     result.resultCodeSnapshot.source,
     result.resultCodeSnapshot.code,
@@ -278,7 +311,11 @@ function readTotalTestCount(text: string) {
   return totalTestCount ? Number(totalTestCount) : null
 }
 
-function readFailingTestcase(text: string) {
+function readLastTestcase(status: LeetCodeSubmissionStatus, text: string) {
+  if (status === 'accepted') {
+    return null
+  }
+
   return readBoundedTextAfterLabel(text, [
     'Last executed input',
     'Last Testcase',
@@ -286,21 +323,69 @@ function readFailingTestcase(text: string) {
   ])
 }
 
-function readSubmissionErrorMessage(text: string) {
-  return readBoundedTextAfterLabel(text, [
-    'Runtime Error',
-    'Compile Error',
-    'Time Limit Exceeded',
-    'Memory Limit Exceeded',
-    'Output Limit Exceeded',
-  ])
+function readCodeOutput(status: LeetCodeSubmissionStatus, text: string) {
+  return status === 'accepted'
+    ? null
+    : readBoundedTextAfterLabel(text, ['Code Output', 'Output'])
 }
 
-function readBoundedTextAfterLabel(text: string, labels: readonly string[]) {
+function readExpectedOutput(status: LeetCodeSubmissionStatus, text: string) {
+  return status === 'accepted'
+    ? null
+    : readBoundedTextAfterLabel(text, ['Expected Output', 'Expected'])
+}
+
+function readStdOutput(text: string) {
+  return readBoundedTextAfterLabel(
+    text,
+    ['Stdout', 'Std Output', 'Standard Output'],
+    ['Code\\s*\\|', 'More challenges'],
+  )
+}
+
+function readRuntimeError(status: LeetCodeSubmissionStatus, text: string) {
+  return status === 'runtime-error'
+    ? readBoundedTextAfterLabel(text, ['Runtime Error'])
+    : null
+}
+
+function readCompileError(status: LeetCodeSubmissionStatus, text: string) {
+  return status === 'compile-error'
+    ? readBoundedTextAfterLabel(text, ['Compile Error'])
+    : null
+}
+
+function readSubmissionErrorMessage(options: {
+  status: LeetCodeSubmissionStatus
+  compileError: string | null
+  runtimeError: string | null
+  text: string
+}) {
+  if (options.status === 'accepted') {
+    return null
+  }
+
+  return (
+    options.runtimeError ??
+    options.compileError ??
+    readBoundedTextAfterLabel(options.text, [
+      'Time Limit Exceeded',
+      'Memory Limit Exceeded',
+      'Output Limit Exceeded',
+    ])
+  )
+}
+
+function readBoundedTextAfterLabel(
+  text: string,
+  labels: readonly string[],
+  stopLabels: readonly string[] = boundedTextStopLabels,
+) {
   const joinedLabels = labels.map(escapeRegExp).join('|')
+  const joinedStopLabels = stopLabels.join('|')
   const match = text.match(
     new RegExp(
-      `\\b(?:${joinedLabels})\\b\\s*:?\\s*([\\s\\S]+?)(?:\\b(?:Output|Expected|Stdout|Code\\s*\\||More challenges)\\b|$)`,
+      `\\b(?:${joinedLabels})\\b\\s*:?\\s*([\\s\\S]+?)(?:\\b(?:${joinedStopLabels})\\b|$)`,
       'i',
     ),
   )
