@@ -1,41 +1,47 @@
 import type { LeetCodeProblemLocation } from '../domain/types'
 
 export type LeetCodeHydrationScheduler = {
-  scheduleRefreshes: (token: number, location: LeetCodeProblemLocation) => void
+  scheduleHydrationRefreshes: (
+    token: number,
+    location: LeetCodeProblemLocation,
+  ) => void
   clearScheduledRefreshes: () => void
 }
 
 export function createLeetCodeHydrationScheduler(options: {
   windowRef: Window
   hydrationDelays: readonly number[]
-  refreshSnapshot: (
+  refreshProblemSnapshot: (
     token: number,
     location: LeetCodeProblemLocation,
   ) => Promise<void>
 }): LeetCodeHydrationScheduler {
-  const timeoutIds = new Set<number>()
+  const scheduledRefreshTimerIds = new Set<number>()
 
-  function scheduleRefreshes(token: number, location: LeetCodeProblemLocation) {
+  function scheduleHydrationRefreshes(
+    token: number,
+    location: LeetCodeProblemLocation,
+  ) {
     for (const delay of options.hydrationDelays) {
       const timeoutId = options.windowRef.setTimeout(() => {
-        timeoutIds.delete(timeoutId)
-        void options.refreshSnapshot(token, location)
+        scheduledRefreshTimerIds.delete(timeoutId)
+        void options.refreshProblemSnapshot(token, location)
       }, delay)
 
-      timeoutIds.add(timeoutId)
+      scheduledRefreshTimerIds.add(timeoutId)
     }
   }
 
   function clearScheduledRefreshes() {
-    for (const timeoutId of timeoutIds) {
+    for (const timeoutId of scheduledRefreshTimerIds) {
       options.windowRef.clearTimeout(timeoutId)
     }
 
-    timeoutIds.clear()
+    scheduledRefreshTimerIds.clear()
   }
 
   return {
-    scheduleRefreshes,
+    scheduleHydrationRefreshes,
     clearScheduledRefreshes,
   }
 }

@@ -33,11 +33,11 @@ export function createLeetCodePageWatcher(options: {
   const hydrationScheduler = createLeetCodeHydrationScheduler({
     windowRef,
     hydrationDelays,
-    refreshSnapshot,
+    refreshProblemSnapshot,
   })
   const navigationObserver = createLeetCodeNavigationObserver({
     windowRef,
-    onNavigate: handleNavigation,
+    onNavigate: handleLeetCodeNavigation,
   })
 
   let activeLocation: LeetCodeProblemLocation | null = null
@@ -78,7 +78,7 @@ export function createLeetCodePageWatcher(options: {
     }
 
     if (activeLocation?.slug === location.slug) {
-      hydrationScheduler.scheduleRefreshes(activeToken, location)
+      hydrationScheduler.scheduleHydrationRefreshes(activeToken, location)
       return
     }
 
@@ -94,43 +94,43 @@ export function createLeetCodePageWatcher(options: {
       previousLocation,
       changedAt: now(),
     })
-    hydrationScheduler.scheduleRefreshes(activeToken, location)
+    hydrationScheduler.scheduleHydrationRefreshes(activeToken, location)
   }
 
-  async function refreshSnapshot(
+  async function refreshProblemSnapshot(
     token: number,
     location: LeetCodeProblemLocation,
   ) {
     try {
-      const snapshot = readLeetCodePageSnapshot(documentRef, {
+      const pageSnapshot = readLeetCodePageSnapshot(documentRef, {
         location,
         now,
       })
-      const metadataResult = await readLeetCodeProblemMetadata(location, {
+      const metadataReadResult = await readLeetCodeProblemMetadata(location, {
         root: documentRef,
         document: documentRef,
         fetch: options.fetch,
         now,
       })
 
-      if (isStale(token, location)) {
+      if (isStaleSnapshotRefresh(token, location)) {
         return
       }
 
-      if (!metadataResult.ok) {
-        emitError(location, metadataResult.error)
+      if (!metadataReadResult.ok) {
+        emitWatcherError(location, metadataReadResult.error)
         return
       }
 
-      const metadata = metadataResult.metadata
+      const problemMetadata = metadataReadResult.metadata
 
       if (readySlug !== location.slug) {
         readySlug = location.slug
         options.onEvent({
           type: 'page-ready',
           location,
-          snapshot,
-          metadata,
+          snapshot: pageSnapshot,
+          metadata: problemMetadata,
           pageReadyAt: now(),
         })
       }
@@ -138,7 +138,7 @@ export function createLeetCodePageWatcher(options: {
       options.onEvent({
         type: 'metadata-updated',
         location,
-        metadata,
+        metadata: problemMetadata,
       })
 
       const codeSnapshot = readLeetCodeCodeSnapshot(documentRef, now)
@@ -151,14 +151,14 @@ export function createLeetCodePageWatcher(options: {
         })
       }
     } catch (error) {
-      emitError(
+      emitWatcherError(
         location,
         error instanceof Error ? error : new Error(String(error)),
       )
     }
   }
 
-  function handleNavigation() {
+  function handleLeetCodeNavigation() {
     activateFromCurrentUrl()
   }
 
@@ -210,11 +210,17 @@ export function createLeetCodePageWatcher(options: {
     })
   }
 
-  function isStale(token: number, location: LeetCodeProblemLocation) {
+  function isStaleSnapshotRefresh(
+    token: number,
+    location: LeetCodeProblemLocation,
+  ) {
     return activeToken !== token || activeLocation?.slug !== location.slug
   }
 
-  function emitError(location: LeetCodeProblemLocation | null, error: Error) {
+  function emitWatcherError(
+    location: LeetCodeProblemLocation | null,
+    error: Error,
+  ) {
     options.onEvent({
       type: 'watcher-error',
       location,

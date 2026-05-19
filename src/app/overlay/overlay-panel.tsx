@@ -1,4 +1,11 @@
-import { CheckCircle2, Clock3, Code2, Send, Sparkles } from 'lucide-react'
+import {
+  CheckCircle2,
+  Clock3,
+  Code2,
+  LockKeyhole,
+  Send,
+  Sparkles,
+} from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -31,6 +38,7 @@ export function OverlayPanel({
   const problemTitle =
     metadata?.title ?? context?.problem.title ?? location?.slug
   const topics = metadata?.topics ?? []
+  const isPremiumProblem = metadata?.isPremium === true
 
   return (
     <aside className="cp-overlay-host cp-stack p-3" aria-label="CogniPace">
@@ -52,6 +60,7 @@ export function OverlayPanel({
       <div className="cp-overlay-meta">
         <Badge>{location?.slug ?? 'No problem'}</Badge>
         <Badge>{metadata?.source ?? 'waiting'}</Badge>
+        {isPremiumProblem ? <Badge>Premium</Badge> : null}
         {context?.practiceStatus ? (
           <Badge>{context.practiceStatus}</Badge>
         ) : null}
@@ -77,6 +86,13 @@ export function OverlayPanel({
           </span>
         </div>
       </div>
+
+      {isPremiumProblem ? (
+        <div className="cp-overlay-feedback">
+          <LockKeyhole size={14} aria-hidden="true" />
+          <span>Premium locked on LeetCode</span>
+        </div>
+      ) : null}
 
       {lastSubmissionClick ? (
         <div className="cp-overlay-feedback">

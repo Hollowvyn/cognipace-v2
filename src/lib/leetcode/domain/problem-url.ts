@@ -1,61 +1,63 @@
 import type { LeetCodeProblemLocation } from './types'
 
 export function parseLeetCodeProblemLocation(
-  value: string | URL,
+  locationInput: string | URL,
 ): LeetCodeProblemLocation | null {
-  const url = readUrl(value)
+  const parsedUrl = readAbsoluteUrl(locationInput)
 
-  if (!url || !isLeetCodeHost(url.hostname)) {
+  if (!parsedUrl || !isLeetCodeHost(parsedUrl.hostname)) {
     return null
   }
 
-  const [section, rawSlug] = url.pathname.split('/').filter(Boolean)
+  const [pathSection, slugPathSegment] = parsedUrl.pathname
+    .split('/')
+    .filter(Boolean)
 
-  if (section !== 'problems' || !rawSlug) {
+  if (pathSection !== 'problems' || !slugPathSegment) {
     return null
   }
 
-  const slug = normalizeLeetCodeSlug(rawSlug)
+  const normalizedSlug = normalizeLeetCodeSlug(slugPathSegment)
 
-  if (!slug) {
+  if (!normalizedSlug) {
     return null
   }
 
   return {
-    slug,
-    url: createLeetCodeProblemUrl(slug),
-    host: url.hostname,
+    slug: normalizedSlug,
+    url: createLeetCodeProblemUrl(normalizedSlug),
+    host: parsedUrl.hostname,
   }
 }
 
-export function parseLeetCodeProblemInput(value: string) {
-  const location = parseLeetCodeProblemLocation(value)
+export function parseLeetCodeProblemInput(problemInput: string) {
+  const parsedLocation = parseLeetCodeProblemLocation(problemInput)
 
-  if (location) {
-    return location
+  if (parsedLocation) {
+    return parsedLocation
   }
 
-  const slug = normalizeLeetCodeSlug(value)
+  const normalizedSlug = normalizeLeetCodeSlug(problemInput)
 
-  if (!slug) {
+  if (!normalizedSlug) {
     return null
   }
 
   return {
-    slug,
-    url: createLeetCodeProblemUrl(slug),
+    slug: normalizedSlug,
+    url: createLeetCodeProblemUrl(normalizedSlug),
     host: 'leetcode.com',
   } satisfies LeetCodeProblemLocation
 }
 
-export function normalizeLeetCodeSlug(value: string) {
-  const location = parseLeetCodeProblemLocation(value)
+export function normalizeLeetCodeSlug(slugInput: string) {
+  const parsedLocation = parseLeetCodeProblemLocation(slugInput)
 
-  if (location) {
-    return location.slug
+  if (parsedLocation) {
+    return parsedLocation.slug
   }
 
-  return value
+  return slugInput
     .trim()
     .toLowerCase()
     .replace(/^problems\//, '')
@@ -78,21 +80,21 @@ export function titleFromLeetCodeSlug(slug: string) {
     .join(' ')
 }
 
-export function isLeetCodeProblemUrl(value: string | URL) {
-  return Boolean(parseLeetCodeProblemLocation(value))
+export function isLeetCodeProblemUrl(locationInput: string | URL) {
+  return Boolean(parseLeetCodeProblemLocation(locationInput))
 }
 
 export function isLeetCodeHost(hostname: string) {
   return hostname === 'leetcode.com' || hostname === 'www.leetcode.com'
 }
 
-function readUrl(value: string | URL) {
-  if (value instanceof URL) {
-    return value
+function readAbsoluteUrl(urlInput: string | URL) {
+  if (urlInput instanceof URL) {
+    return urlInput
   }
 
   try {
-    return new URL(value)
+    return new URL(urlInput)
   } catch {
     return null
   }

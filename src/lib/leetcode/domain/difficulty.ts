@@ -1,19 +1,19 @@
 import type { LeetCodeDifficulty } from './types'
 
 export function parseLeetCodeDifficulty(
-  value: string | null | undefined,
+  difficultyText: string | null | undefined,
 ): LeetCodeDifficulty {
-  const normalized = value?.trim().toLowerCase() ?? ''
+  const normalizedDifficultyText = difficultyText?.trim().toLowerCase() ?? ''
 
-  if (normalized.includes('easy')) {
+  if (normalizedDifficultyText.includes('easy')) {
     return 'Easy'
   }
 
-  if (normalized.includes('medium')) {
+  if (normalizedDifficultyText.includes('medium')) {
     return 'Medium'
   }
 
-  if (normalized.includes('hard')) {
+  if (normalizedDifficultyText.includes('hard')) {
     return 'Hard'
   }
 

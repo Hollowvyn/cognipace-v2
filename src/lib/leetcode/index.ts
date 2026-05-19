@@ -3,6 +3,8 @@ export { parseLeetCodeDifficulty } from './domain/difficulty'
 export {
   readLeetCodeDomSnapshot,
   readLeetCodePageSnapshot,
+  readLeetCodeProblemLocationFromPageRoot,
+  readLeetCodeVisibleProblemSummary,
   readLocationFromRoot,
 } from './page/page-snapshot-reader'
 export { fetchLeetCodeProblemMetadata } from './metadata/graphql-metadata-source'

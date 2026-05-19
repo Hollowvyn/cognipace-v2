@@ -139,8 +139,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
 
   const syncProblemIfNeeded = useCallback(
     (nextMetadata: LeetCodeProblemMetadata, syncToken: number) => {
-      const fingerprint =
-        createLeetCodeProblemMetadataFingerprint(nextMetadata)
+      const fingerprint = createLeetCodeProblemMetadataFingerprint(nextMetadata)
 
       if (
         requestedMetadataFingerprintRef.current === fingerprint ||

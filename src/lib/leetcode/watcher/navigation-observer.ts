@@ -11,16 +11,16 @@ export function createLeetCodeNavigationObserver(options: {
   let originalReplaceState: History['replaceState'] | null = null
 
   function start() {
-    patchHistory()
+    patchBrowserHistoryForLeetCodeSpaNavigation()
     options.windowRef.addEventListener('popstate', options.onNavigate)
   }
 
   function stop() {
     options.windowRef.removeEventListener('popstate', options.onNavigate)
-    restoreHistory()
+    restoreBrowserHistory()
   }
 
-  function patchHistory() {
+  function patchBrowserHistoryForLeetCodeSpaNavigation() {
     const historyRef = options.windowRef.history
 
     if (originalPushState || originalReplaceState) {
@@ -31,25 +31,25 @@ export function createLeetCodeNavigationObserver(options: {
     originalReplaceState = historyRef.replaceState.bind(historyRef)
 
     historyRef.pushState = ((
-      data: unknown,
+      stateData: unknown,
       unused: string,
       url?: string | URL | null,
     ) => {
-      originalPushState?.(data, unused, url)
+      originalPushState?.(stateData, unused, url)
       options.windowRef.setTimeout(options.onNavigate, 0)
     }) as History['pushState']
 
     historyRef.replaceState = ((
-      data: unknown,
+      stateData: unknown,
       unused: string,
       url?: string | URL | null,
     ) => {
-      originalReplaceState?.(data, unused, url)
+      originalReplaceState?.(stateData, unused, url)
       options.windowRef.setTimeout(options.onNavigate, 0)
     }) as History['replaceState']
   }
 
-  function restoreHistory() {
+  function restoreBrowserHistory() {
     if (originalPushState) {
       options.windowRef.history.pushState = originalPushState
       originalPushState = null

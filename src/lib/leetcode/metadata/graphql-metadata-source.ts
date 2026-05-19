@@ -6,12 +6,20 @@ import type {
   LeetCodeTopic,
 } from '../domain/types'
 
-type FetchLike = (
+type LeetCodeGraphQlFetch = (
   input: RequestInfo | URL,
   init?: RequestInit,
 ) => Promise<Response>
 
-const questionMetadataQuery = `
+type ParsedLeetCodeGraphQlQuestion = {
+  title: string | null
+  questionFrontendId: string | null
+  difficulty: string | null
+  isPaidOnly: boolean | null
+  topicTags: LeetCodeTopic[]
+}
+
+const leetCodeQuestionMetadataQuery = `
   query questionTitle($titleSlug: String!) {
     question(titleSlug: $titleSlug) {
       title
@@ -30,39 +38,46 @@ const questionMetadataQuery = `
 export async function fetchLeetCodeProblemMetadata(
   location: LeetCodeProblemLocation,
   options: {
-    fetch?: FetchLike | undefined
+    fetch?: LeetCodeGraphQlFetch | undefined
     document?: Document | undefined
     now?: (() => number) | undefined
   } = {},
 ): Promise<LeetCodeMetadataResult> {
-  const fetcher = options.fetch ?? globalThis.fetch?.bind(globalThis)
+  const fetchLeetCodeGraphQl =
+    options.fetch ?? globalThis.fetch?.bind(globalThis)
 
-  if (!fetcher) {
+  if (!fetchLeetCodeGraphQl) {
     return { ok: false, error: new Error('Fetch is not available.') }
   }
 
   try {
-    const headers = readGraphQlHeaders(options.document)
-    const response = await fetcher(new URL('/graphql', location.url), {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        query: questionMetadataQuery,
-        variables: { titleSlug: location.slug },
-      }),
-    })
+    const graphQlHeaders = createLeetCodeGraphQlHeaders(options.document)
+    const graphQlResponse = await fetchLeetCodeGraphQl(
+      new URL('/graphql', location.url),
+      {
+        method: 'POST',
+        headers: graphQlHeaders,
+        body: JSON.stringify({
+          query: leetCodeQuestionMetadataQuery,
+          variables: { titleSlug: location.slug },
+        }),
+      },
+    )
 
-    if (!response.ok) {
+    if (!graphQlResponse.ok) {
       return {
         ok: false,
-        error: new Error(`LeetCode GraphQL request failed: ${response.status}`),
+        error: new Error(
+          `LeetCode GraphQL request failed: ${graphQlResponse.status}`,
+        ),
       }
     }
 
-    const payload: unknown = await response.json()
-    const question = readQuestion(payload)
+    const graphQlPayload: unknown = await graphQlResponse.json()
+    const parsedQuestionMetadata =
+      readLeetCodeQuestionFromGraphQlPayload(graphQlPayload)
 
-    if (!question) {
+    if (!parsedQuestionMetadata) {
       return {
         ok: false,
         error: new Error('LeetCode GraphQL response did not include question.'),
@@ -73,11 +88,11 @@ export async function fetchLeetCodeProblemMetadata(
       ok: true,
       metadata: {
         location,
-        title: question.title || location.slug,
-        frontendId: question.questionFrontendId,
-        difficulty: parseLeetCodeDifficulty(question.difficulty),
-        isPremium: question.isPaidOnly,
-        topics: question.topicTags,
+        title: parsedQuestionMetadata.title || location.slug,
+        frontendId: parsedQuestionMetadata.questionFrontendId,
+        difficulty: parseLeetCodeDifficulty(parsedQuestionMetadata.difficulty),
+        isPremium: parsedQuestionMetadata.isPaidOnly,
+        topics: parsedQuestionMetadata.topicTags,
         source: 'graphql',
         confidence: 'high',
         capturedAt: options.now?.() ?? Date.now(),
@@ -91,81 +106,91 @@ export async function fetchLeetCodeProblemMetadata(
   }
 }
 
-function readGraphQlHeaders(documentRef: Document | undefined) {
-  const headers: Record<string, string> = {
+function createLeetCodeGraphQlHeaders(documentRef: Document | undefined) {
+  const graphQlHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
   }
   const csrfToken = documentRef
-    ? readCookie(documentRef.cookie, 'csrftoken')
+    ? readCookieValue(documentRef.cookie, 'csrftoken')
     : null
 
   if (csrfToken) {
-    headers['x-csrftoken'] = csrfToken
+    graphQlHeaders['x-csrftoken'] = csrfToken
   }
 
-  return headers
+  return graphQlHeaders
 }
 
-function readCookie(cookie: string, name: string) {
+function readCookieValue(cookieHeader: string, cookieName: string) {
   return (
-    cookie
+    cookieHeader
       .split(';')
-      .map((part) => part.trim())
-      .find((part) => part.startsWith(`${name}=`))
-      ?.slice(name.length + 1) ?? null
+      .map((cookiePart) => cookiePart.trim())
+      .find((cookiePart) => cookiePart.startsWith(`${cookieName}=`))
+      ?.slice(cookieName.length + 1) ?? null
   )
 }
 
-function readQuestion(payload: unknown) {
-  if (!isRecord(payload) || !isRecord(payload.data)) {
+function readLeetCodeQuestionFromGraphQlPayload(
+  graphQlPayload: unknown,
+): ParsedLeetCodeGraphQlQuestion | null {
+  if (!isObjectRecord(graphQlPayload) || !isObjectRecord(graphQlPayload.data)) {
     return null
   }
 
-  const question = payload.data.question
+  const questionRecord = graphQlPayload.data.question
 
-  if (!isRecord(question)) {
+  if (!isObjectRecord(questionRecord)) {
     return null
   }
 
   return {
-    title: readString(question.title),
-    questionFrontendId: readString(question.questionFrontendId),
-    difficulty: readString(question.difficulty),
+    title: readTrimmedString(questionRecord.title),
+    questionFrontendId: readTrimmedString(questionRecord.questionFrontendId),
+    difficulty: readTrimmedString(questionRecord.difficulty),
     isPaidOnly:
-      typeof question.isPaidOnly === 'boolean' ? question.isPaidOnly : null,
-    topicTags: readTopicTags(question.topicTags),
+      typeof questionRecord.isPaidOnly === 'boolean'
+        ? questionRecord.isPaidOnly
+        : null,
+    topicTags: readLeetCodeTopicTagsFromGraphQlValue(questionRecord.topicTags),
   }
 }
 
-function readTopicTags(value: unknown): LeetCodeTopic[] {
-  if (!Array.isArray(value)) {
+function readLeetCodeTopicTagsFromGraphQlValue(
+  topicTagsValue: unknown,
+): LeetCodeTopic[] {
+  if (!Array.isArray(topicTagsValue)) {
     return []
   }
 
-  return value
-    .map((topic) => {
-      if (!isRecord(topic)) {
+  return topicTagsValue
+    .map((topicTagRecord) => {
+      if (!isObjectRecord(topicTagRecord)) {
         return null
       }
 
-      const name = readString(topic.name)
+      const topicName = readTrimmedString(topicTagRecord.name)
 
-      if (!name) {
+      if (!topicName) {
         return null
       }
 
       return {
-        name,
-        slug: readString(topic.slug),
+        name: topicName,
+        slug: readTrimmedString(topicTagRecord.slug),
       } satisfies LeetCodeTopic
     })
-    .filter((topic): topic is LeetCodeTopic => Boolean(topic))
+    .filter((topicTag): topicTag is LeetCodeTopic => Boolean(topicTag))
 }
 
-function readString(value: unknown) {
-  return typeof value === 'string' && value.trim() ? value.trim() : null
+function readTrimmedString(unknownValue: unknown) {
+  return typeof unknownValue === 'string' && unknownValue.trim()
+    ? unknownValue.trim()
+    : null
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
+function isObjectRecord(
+  unknownValue: unknown,
+): unknownValue is Record<string, unknown> {
+  return typeof unknownValue === 'object' && unknownValue !== null
 }

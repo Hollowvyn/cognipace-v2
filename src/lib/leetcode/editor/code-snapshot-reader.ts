@@ -1,51 +1,61 @@
 import type { LeetCodeCodeSnapshot } from '../domain/types'
 
 export function readLeetCodeCodeSnapshot(
-  root: ParentNode = document,
+  editorRoot: ParentNode = document,
   now = Date.now,
 ): LeetCodeCodeSnapshot {
-  const monacoCode = readMonacoCode(root)
-  const textareaCode = readTextareaCode(root)
-  const code = monacoCode ?? textareaCode
+  const visibleMonacoEditorCode = readVisibleMonacoEditorCode(editorRoot)
+  const textareaEditorCode = readTextareaEditorCode(editorRoot)
+  const detectedEditorCode = visibleMonacoEditorCode ?? textareaEditorCode
 
   return {
-    code,
-    language: readLanguage(root),
-    source: monacoCode ? 'monaco' : textareaCode ? 'textarea' : 'none',
+    code: detectedEditorCode,
+    language: readSelectedLanguageLabel(editorRoot),
+    source: visibleMonacoEditorCode
+      ? 'monaco'
+      : textareaEditorCode
+        ? 'textarea'
+        : 'none',
     capturedAt: now(),
   }
 }
 
-function readMonacoCode(root: ParentNode) {
-  const lines = Array.from(root.querySelectorAll('.view-lines .view-line')).map(
-    (line) => line.textContent ?? '',
-  )
+function readVisibleMonacoEditorCode(editorRoot: ParentNode) {
+  const visibleEditorLines = Array.from(
+    editorRoot.querySelectorAll('.view-lines .view-line'),
+  ).map((line) => line.textContent ?? '')
 
-  return lines.length > 0 ? lines.join('\n').trimEnd() : null
+  return visibleEditorLines.length > 0
+    ? visibleEditorLines.join('\n').trimEnd()
+    : null
 }
 
-function readTextareaCode(root: ParentNode) {
-  const textarea = root.querySelector<HTMLTextAreaElement>(
+function readTextareaEditorCode(editorRoot: ParentNode) {
+  const editorTextarea = editorRoot.querySelector<HTMLTextAreaElement>(
     '.monaco-editor textarea, textarea',
   )
-  const value = textarea?.value
+  const textareaEditorCode = editorTextarea?.value
 
-  return value && value.length > 0 ? value : null
+  return textareaEditorCode && textareaEditorCode.length > 0
+    ? textareaEditorCode
+    : null
 }
 
-function readLanguage(root: ParentNode) {
-  const selectors = [
+function readSelectedLanguageLabel(editorRoot: ParentNode) {
+  const languageSelectorCandidates = [
     '[data-cy="lang-select"]',
     '[data-e2e-locator="console-language-picker"]',
     'button[aria-haspopup="listbox"]',
     'button[aria-label*="language" i]',
   ] as const
 
-  for (const selector of selectors) {
-    const text = root.querySelector(selector)?.textContent?.trim()
+  for (const selector of languageSelectorCandidates) {
+    const languageLabel = editorRoot
+      .querySelector(selector)
+      ?.textContent?.trim()
 
-    if (text) {
-      return text
+    if (languageLabel) {
+      return languageLabel
     }
   }
 

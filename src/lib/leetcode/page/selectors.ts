@@ -13,9 +13,7 @@ export const leetCodeVisibleTitleSelectors = [
   'h1',
 ] as const
 
-export const leetCodePageTitleSelectors = [
-  'meta[property="og:title"]',
-] as const
+export const leetCodePageTitleSelectors = ['meta[property="og:title"]'] as const
 
 export const leetCodeFrontendIdSelectors = [
   '[data-cy="question-title"]',

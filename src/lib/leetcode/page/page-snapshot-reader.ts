@@ -26,13 +26,15 @@ export type LeetCodeDomSnapshot = Pick<
   'title' | 'difficulty' | 'isPremium'
 >
 
-export function readLeetCodeDomSnapshot(
-  root: ParentNode = document,
+export type LeetCodeVisibleProblemSummary = LeetCodeDomSnapshot
+
+export function readLeetCodeVisibleProblemSummary(
+  pageRoot: ParentNode = document,
 ): LeetCodeDomSnapshot {
-  const location = readLocationFromRoot(root)
-  const snapshot = readLeetCodePageSnapshot(root, {
+  const problemLocation = readLeetCodeProblemLocationFromPageRoot(pageRoot)
+  const pageSnapshot = readLeetCodePageSnapshot(pageRoot, {
     location:
-      location ??
+      problemLocation ??
       ({
         slug: '',
         url: 'https://leetcode.com/problems/',
@@ -41,206 +43,236 @@ export function readLeetCodeDomSnapshot(
   })
 
   return {
-    title: snapshot.title,
-    difficulty: snapshot.difficulty,
-    isPremium: snapshot.isPremium,
+    title: pageSnapshot.title,
+    difficulty: pageSnapshot.difficulty,
+    isPremium: pageSnapshot.isPremium,
   }
 }
 
+export const readLeetCodeDomSnapshot = readLeetCodeVisibleProblemSummary
+
 export function readLeetCodePageSnapshot(
-  root: ParentNode = document,
-  options: {
+  pageRoot: ParentNode = document,
+  snapshotOptions: {
     location?: LeetCodeProblemLocation | null | undefined
     now?: (() => number) | undefined
   } = {},
 ): LeetCodePageSnapshot {
-  const location = options.location ?? readLocationFromRoot(root)
+  const problemLocation =
+    snapshotOptions.location ??
+    readLeetCodeProblemLocationFromPageRoot(pageRoot)
 
-  if (!location) {
+  if (!problemLocation) {
     throw new Error('Cannot read a LeetCode page snapshot without a location.')
   }
 
-  const metadataRoot = readProblemMetadataRoot(root)
-  const titleParts = readTitleParts(root, metadataRoot, location.slug)
-  const difficulty = readDifficulty(metadataRoot)
-  const topics = readTopics(metadataRoot)
+  const problemMetadataRoot = readLeetCodeProblemMetadataRoot(pageRoot)
+  const problemTitle = readLeetCodeProblemTitle(
+    pageRoot,
+    problemMetadataRoot,
+    problemLocation.slug,
+  )
+  const problemDifficulty = readLeetCodeDifficultyFromPage(problemMetadataRoot)
+  const problemTopics = readLeetCodeTopics(problemMetadataRoot)
 
   return {
-    location,
-    title: titleParts.title,
-    frontendId: titleParts.frontendId,
-    difficulty,
-    isPremium: readPremium(metadataRoot),
-    topics,
+    location: problemLocation,
+    title: problemTitle.title,
+    frontendId: problemTitle.frontendId,
+    difficulty: problemDifficulty,
+    isPremium: readLeetCodePremiumLockState(problemMetadataRoot),
+    topics: problemTopics,
     isReady: Boolean(
-      titleParts.title || difficulty !== 'Unknown' || topics.length,
+      problemTitle.title ||
+      problemDifficulty !== 'Unknown' ||
+      problemTopics.length,
     ),
-    capturedAt: options.now?.() ?? Date.now(),
+    capturedAt: snapshotOptions.now?.() ?? Date.now(),
   }
 }
 
-export function readLocationFromRoot(root: ParentNode) {
-  const documentRef = getDocument(root)
-  const href = documentRef?.defaultView?.location.href
+export function readLeetCodeProblemLocationFromPageRoot(pageRoot: ParentNode) {
+  const ownerDocument = getOwnerDocument(pageRoot)
+  const pageHref = ownerDocument?.defaultView?.location.href
 
-  return href ? parseLeetCodeProblemLocation(href) : null
+  return pageHref ? parseLeetCodeProblemLocation(pageHref) : null
 }
 
-function readTitleParts(
-  root: ParentNode,
-  metadataRoot: ParentNode,
+export const readLocationFromRoot = readLeetCodeProblemLocationFromPageRoot
+
+function readLeetCodeProblemTitle(
+  pageRoot: ParentNode,
+  problemMetadataRoot: ParentNode,
   slug: string,
 ) {
-  const rawTitle =
-    readTextFromFirstMatch(metadataRoot, leetCodeVisibleTitleSelectors) ??
-    readTextFromFirstMatch(root, leetCodePageTitleSelectors) ??
+  const problemTitleText =
+    readFirstNonEmptyTextFromSelectors(
+      problemMetadataRoot,
+      leetCodeVisibleTitleSelectors,
+    ) ??
+    readFirstNonEmptyTextFromSelectors(pageRoot, leetCodePageTitleSelectors) ??
     titleFromLeetCodeSlug(slug)
-  const titleMatch = rawTitle.match(/^\s*(\d+)\.\s+(.+?)\s*$/)
+  const numberedTitleMatch = problemTitleText.match(/^\s*(\d+)\.\s+(.+?)\s*$/)
 
   return {
-    title: (titleMatch?.[2] ?? rawTitle).trim() || null,
-    frontendId: titleMatch?.[1] ?? readFrontendId(metadataRoot),
+    title: (numberedTitleMatch?.[2] ?? problemTitleText).trim() || null,
+    frontendId:
+      numberedTitleMatch?.[1] ?? readLeetCodeFrontendId(problemMetadataRoot),
   }
 }
 
-function readFrontendId(root: ParentNode) {
-  const candidate = readTextFromFirstMatch(root, leetCodeFrontendIdSelectors)
+function readLeetCodeFrontendId(problemMetadataRoot: ParentNode) {
+  const titleWithFrontendId = readFirstNonEmptyTextFromSelectors(
+    problemMetadataRoot,
+    leetCodeFrontendIdSelectors,
+  )
 
-  return candidate?.match(/^\s*(\d+)\./)?.[1] ?? null
+  return titleWithFrontendId?.match(/^\s*(\d+)\./)?.[1] ?? null
 }
 
-function readProblemMetadataRoot(root: ParentNode) {
+function readLeetCodeProblemMetadataRoot(pageRoot: ParentNode) {
   for (const selector of leetCodeProblemMetadataRootSelectors) {
-    const node = root.querySelector(selector)
+    const problemMetadataElement = pageRoot.querySelector(selector)
 
-    if (node) {
-      return node
+    if (problemMetadataElement) {
+      return problemMetadataElement
     }
   }
 
-  return root
+  return pageRoot
 }
 
-function readDifficulty(root: ParentNode): LeetCodeDifficulty {
-  const scopedText = readTextFromFirstMatch(
-    root,
+function readLeetCodeDifficultyFromPage(
+  problemMetadataRoot: ParentNode,
+): LeetCodeDifficulty {
+  const scopedDifficultyText = readFirstNonEmptyTextFromSelectors(
+    problemMetadataRoot,
     leetCodeScopedDifficultySelectors,
   )
 
-  if (scopedText) {
-    return parseLeetCodeDifficulty(scopedText)
+  if (scopedDifficultyText) {
+    return parseLeetCodeDifficulty(scopedDifficultyText)
   }
 
-  const exact = Array.from(
-    root.querySelectorAll(leetCodeDifficultyCandidatesSelector),
+  const visibleDifficultyText = Array.from(
+    problemMetadataRoot.querySelectorAll(leetCodeDifficultyCandidatesSelector),
   )
-    .map((node) => node.textContent?.trim() ?? '')
-    .find((text) => text === 'Easy' || text === 'Medium' || text === 'Hard')
+    .map((difficultyElement) => difficultyElement.textContent?.trim() ?? '')
+    .find(
+      (difficultyText) =>
+        difficultyText === 'Easy' ||
+        difficultyText === 'Medium' ||
+        difficultyText === 'Hard',
+    )
 
-  return parseLeetCodeDifficulty(exact)
+  return parseLeetCodeDifficulty(visibleDifficultyText)
 }
 
-function readPremium(root: ParentNode) {
-  if (root.querySelector(leetCodePremiumSelector)) {
+function readLeetCodePremiumLockState(problemMetadataRoot: ParentNode) {
+  if (problemMetadataRoot.querySelector(leetCodePremiumSelector)) {
     return true
   }
 
-  const marker = Array.from(
-    root.querySelectorAll(leetCodePremiumTextCandidatesSelector),
-  ).some((node) => {
-    const text = node.textContent?.trim().toLowerCase()
+  const hasPremiumLockText = Array.from(
+    problemMetadataRoot.querySelectorAll(leetCodePremiumTextCandidatesSelector),
+  ).some((premiumCandidateElement) => {
+    const premiumCandidateText = premiumCandidateElement.textContent
+      ?.trim()
+      .toLowerCase()
     return (
-      text === 'premium' ||
-      text === 'premium only' ||
-      text === 'subscribe to unlock'
+      premiumCandidateText === 'premium' ||
+      premiumCandidateText === 'premium only' ||
+      premiumCandidateText === 'subscribe to unlock'
     )
   })
 
-  return marker ? true : null
+  return hasPremiumLockText ? true : null
 }
 
-function readTopics(root: ParentNode): LeetCodeTopic[] {
-  const topics = Array.from(
-    root.querySelectorAll<HTMLAnchorElement>(leetCodeTopicLinkSelector),
+function readLeetCodeTopics(problemMetadataRoot: ParentNode): LeetCodeTopic[] {
+  const detectedTopics = Array.from(
+    problemMetadataRoot.querySelectorAll<HTMLAnchorElement>(
+      leetCodeTopicLinkSelector,
+    ),
   )
-    .map((anchor) => {
-      const name = anchor.textContent?.trim()
+    .map((topicLink) => {
+      const topicName = topicLink.textContent?.trim()
 
-      if (!name) {
+      if (!topicName) {
         return null
       }
 
       return {
-        name,
-        slug: readSlugFromHref(anchor.getAttribute('href')),
+        name: topicName,
+        slug: readLeetCodeTopicSlugFromHref(topicLink.getAttribute('href')),
       } satisfies LeetCodeTopic
     })
     .filter((topic): topic is LeetCodeTopic => Boolean(topic))
 
-  return uniqueTopics(topics)
+  return uniqueTopicsBySlugOrName(detectedTopics)
 }
 
-function readTextFromFirstMatch(
-  root: ParentNode,
+function readFirstNonEmptyTextFromSelectors(
+  elementRoot: ParentNode,
   selectors: readonly string[],
 ) {
   for (const selector of selectors) {
-    const node = root.querySelector(selector)
+    const matchingElement = elementRoot.querySelector(selector)
 
-    if (!node) {
+    if (!matchingElement) {
       continue
     }
 
-    if (node instanceof HTMLMetaElement) {
-      const content = node.getAttribute('content')?.trim()
+    if (matchingElement instanceof HTMLMetaElement) {
+      const metaContent = matchingElement.getAttribute('content')?.trim()
 
-      if (content) {
-        return content
+      if (metaContent) {
+        return metaContent
       }
     }
 
-    const text = node.textContent?.trim()
+    const elementText = matchingElement.textContent?.trim()
 
-    if (text) {
-      return text
+    if (elementText) {
+      return elementText
     }
   }
 
   return null
 }
 
-function readSlugFromHref(value: string | null) {
-  if (!value) {
+function readLeetCodeTopicSlugFromHref(topicHref: string | null) {
+  if (!topicHref) {
     return null
   }
 
   try {
-    const url = new URL(value, 'https://leetcode.com')
-    return url.pathname.split('/').filter(Boolean).at(-1) ?? null
+    const topicUrl = new URL(topicHref, 'https://leetcode.com')
+    return topicUrl.pathname.split('/').filter(Boolean).at(-1) ?? null
   } catch {
     return null
   }
 }
 
-function uniqueTopics(topics: LeetCodeTopic[]) {
-  const seen = new Set<string>()
+function uniqueTopicsBySlugOrName(topics: LeetCodeTopic[]) {
+  const seenTopicKeys = new Set<string>()
 
   return topics.filter((topic) => {
-    const key = topic.slug ?? topic.name.toLowerCase()
+    const topicKey = topic.slug ?? topic.name.toLowerCase()
 
-    if (seen.has(key)) {
+    if (seenTopicKeys.has(topicKey)) {
       return false
     }
 
-    seen.add(key)
+    seenTopicKeys.add(topicKey)
     return true
   })
 }
 
-function getDocument(root: ParentNode) {
-  if ('nodeType' in root && root.nodeType === Node.DOCUMENT_NODE) {
-    return root as Document
+function getOwnerDocument(pageRoot: ParentNode) {
+  if ('nodeType' in pageRoot && pageRoot.nodeType === Node.DOCUMENT_NODE) {
+    return pageRoot as Document
   }
 
-  return root.ownerDocument
+  return pageRoot.ownerDocument
 }

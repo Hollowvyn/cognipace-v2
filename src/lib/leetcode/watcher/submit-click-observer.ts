@@ -14,21 +14,21 @@ export function readLeetCodeSubmissionClickFromMouseEvent(
     return null
   }
 
-  const button = findSubmitButton(event.target)
+  const submitButton = findLeetCodeSubmitButtonFromClickTarget(event.target)
 
-  if (!button) {
+  if (!submitButton) {
     return null
   }
 
   return {
     location: options.location,
     clickedAt: options.now(),
-    buttonText: button.textContent?.trim() || 'Submit',
+    buttonText: submitButton.textContent?.trim() || 'Submit',
   }
 }
 
-function findSubmitButton(target: Element) {
-  const button = target.closest(
+function findLeetCodeSubmitButtonFromClickTarget(clickTarget: Element) {
+  const submitButton = clickTarget.closest(
     [
       '[data-e2e-locator="console-submit-button"]',
       'button[data-cy="submit-code-btn"]',
@@ -36,14 +36,16 @@ function findSubmitButton(target: Element) {
     ].join(','),
   )
 
-  if (!button) {
+  if (!submitButton) {
     return null
   }
 
-  const text = button.textContent?.trim().toLowerCase() ?? ''
-  const hasSubmitLocator =
-    button.matches('[data-e2e-locator="console-submit-button"]') ||
-    button.matches('button[data-cy="submit-code-btn"]')
+  const submitButtonText = submitButton.textContent?.trim().toLowerCase() ?? ''
+  const matchesKnownSubmitButtonLocator =
+    submitButton.matches('[data-e2e-locator="console-submit-button"]') ||
+    submitButton.matches('button[data-cy="submit-code-btn"]')
 
-  return hasSubmitLocator || text === 'submit' ? button : null
+  return matchesKnownSubmitButtonLocator || submitButtonText === 'submit'
+    ? submitButton
+    : null
 }
