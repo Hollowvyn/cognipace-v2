@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { LeetCodePageEvent } from '../domain/types'
+import {
+  leetcodeAcceptedSubmissionApiFixture,
+  leetcodePendingSubmissionApiFixture,
+  type LeetCodeSubmissionApiFixture,
+} from '../submission/submission-result-fixtures'
 import { createLeetCodePageWatcher } from './leetcode-page-watcher'
 
 describe('createLeetCodePageWatcher', () => {
@@ -334,6 +339,12 @@ describe('createLeetCodePageWatcher', () => {
         totalTestCount: 58,
         failingTestcase: null,
         errorMessage: null,
+        compileError: null,
+        runtimeError: null,
+        lastTestcase: null,
+        codeOutput: null,
+        expectedOutput: null,
+        stdOutput: null,
         resultCodeSnapshot: {
           code: 'class Solution:\n    pass',
           language: 'Python3',
@@ -358,58 +369,9 @@ describe('createLeetCodePageWatcher', () => {
       </main>
     `
     const events: LeetCodePageEvent[] = []
-    const fetcher = vi.fn((input: RequestInfo | URL) => {
-      const requestUrl = readRequestUrl(input)
-
-      if (requestUrl.includes('/api/submissions/two-sum/')) {
-        return Promise.resolve(
-          Response.json({
-            submission_list: [
-              {
-                id: '1234567890',
-                timestamp: 5,
-                status_display: 'Accepted',
-              },
-            ],
-          }),
-        )
-      }
-
-      if (requestUrl.includes('/submissions/detail/1234567890/check/')) {
-        return Promise.resolve(
-          Response.json({
-            state: 'SUCCESS',
-            status_code: 10,
-            status_msg: 'Accepted',
-            status_runtime: '4 ms',
-            status_memory: '20.62 MB',
-            total_correct: 63,
-            total_testcases: 63,
-          }),
-        )
-      }
-
-      if (requestUrl.endsWith('/graphql')) {
-        return Promise.resolve(
-          Response.json({
-            data: {
-              submissionDetails: {
-                statusCode: 10,
-                statusDisplay: 'Accepted',
-                runtimeDisplay: '4 ms',
-                memoryDisplay: '20.62 MB',
-                totalCorrect: 63,
-                totalTestcases: 63,
-                code: 'class Solution:\n    def twoSum(self):\n        return []',
-                lang: { verboseName: 'Python3' },
-              },
-            },
-          }),
-        )
-      }
-
-      return Promise.resolve(new Response('', { status: 500 }))
-    })
+    const fetcher = createSubmissionApiFixtureFetcher(
+      leetcodeAcceptedSubmissionApiFixture,
+    )
     const watcher = createLeetCodePageWatcher({
       getCurrentUrl: () => 'https://leetcode.com/problems/two-sum/',
       hydrationDelays: [],
@@ -456,6 +418,12 @@ describe('createLeetCodePageWatcher', () => {
         totalTestCount: 63,
         failingTestcase: null,
         errorMessage: null,
+        compileError: null,
+        runtimeError: null,
+        lastTestcase: null,
+        codeOutput: null,
+        expectedOutput: null,
+        stdOutput: null,
         resultCodeSnapshot: {
           code: 'class Solution:\n    def twoSum(self):\n        return []',
           language: 'Python3',
@@ -480,34 +448,9 @@ describe('createLeetCodePageWatcher', () => {
       </main>
     `
     const events: LeetCodePageEvent[] = []
-    const fetcher = vi.fn((input: RequestInfo | URL) => {
-      const requestUrl = readRequestUrl(input)
-
-      if (requestUrl.includes('/api/submissions/two-sum/')) {
-        return Promise.resolve(
-          Response.json({
-            submission_list: [
-              {
-                id: '1234567890',
-                timestamp: 5,
-                status_display: 'Runtime Error',
-              },
-            ],
-          }),
-        )
-      }
-
-      if (requestUrl.includes('/submissions/detail/1234567890/check/')) {
-        return Promise.resolve(
-          Response.json({
-            state: 'PENDING',
-            status_msg: 'Pending',
-          }),
-        )
-      }
-
-      return Promise.resolve(new Response('', { status: 500 }))
-    })
+    const fetcher = createSubmissionApiFixtureFetcher(
+      leetcodePendingSubmissionApiFixture,
+    )
     const watcher = createLeetCodePageWatcher({
       getCurrentUrl: () => 'https://leetcode.com/problems/two-sum/',
       hydrationDelays: [],
@@ -534,6 +477,13 @@ describe('createLeetCodePageWatcher', () => {
 
     expect(
       events.some((event) => event.type === 'submission-result-updated'),
+    ).toBe(false)
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'submission-polling-updated' &&
+          event.debug.phase === 'dom-fallback-used',
+      ),
     ).toBe(false)
   })
 
@@ -598,58 +548,9 @@ describe('createLeetCodePageWatcher', () => {
     `
     let currentTime = 5000
     const events: LeetCodePageEvent[] = []
-    const fetcher = vi.fn((input: RequestInfo | URL) => {
-      const requestUrl = readRequestUrl(input)
-
-      if (requestUrl.includes('/api/submissions/two-sum/')) {
-        return Promise.resolve(
-          Response.json({
-            submission_list: [
-              {
-                id: '1234567890',
-                timestamp: 5,
-                status_display: 'Accepted',
-              },
-            ],
-          }),
-        )
-      }
-
-      if (requestUrl.includes('/submissions/detail/1234567890/check/')) {
-        return Promise.resolve(
-          Response.json({
-            state: 'SUCCESS',
-            status_code: 10,
-            status_msg: 'Accepted',
-            status_runtime: '4 ms',
-            status_memory: '20.62 MB',
-            total_correct: 63,
-            total_testcases: 63,
-          }),
-        )
-      }
-
-      if (requestUrl.endsWith('/graphql')) {
-        return Promise.resolve(
-          Response.json({
-            data: {
-              submissionDetails: {
-                statusCode: 10,
-                statusDisplay: 'Accepted',
-                runtimeDisplay: '4 ms',
-                memoryDisplay: '20.62 MB',
-                totalCorrect: 63,
-                totalTestcases: 63,
-                code: 'class Solution:\n    pass',
-                lang: { verboseName: 'Python3' },
-              },
-            },
-          }),
-        )
-      }
-
-      return Promise.resolve(new Response('', { status: 500 }))
-    })
+    const fetcher = createSubmissionApiFixtureFetcher(
+      leetcodeAcceptedSubmissionApiFixture,
+    )
     const watcher = createLeetCodePageWatcher({
       getCurrentUrl: () => 'https://leetcode.com/problems/two-sum/',
       hydrationDelays: [],
@@ -734,6 +635,28 @@ describe('createLeetCodePageWatcher', () => {
     ).toBe(true)
   })
 })
+
+function createSubmissionApiFixtureFetcher(
+  fixture: LeetCodeSubmissionApiFixture,
+) {
+  return vi.fn((input: RequestInfo | URL) => {
+    const requestUrl = readRequestUrl(input)
+
+    if (requestUrl.includes('/api/submissions/two-sum/')) {
+      return Promise.resolve(Response.json(fixture.submissionListPayload))
+    }
+
+    if (requestUrl.includes('/submissions/detail/1234567890/check/')) {
+      return Promise.resolve(Response.json(fixture.checkPayload))
+    }
+
+    if (requestUrl.endsWith('/graphql') && fixture.graphQlPayload) {
+      return Promise.resolve(Response.json(fixture.graphQlPayload))
+    }
+
+    return Promise.resolve(new Response('', { status: 500 }))
+  })
+}
 
 function readRequestUrl(input: RequestInfo | URL) {
   if (input instanceof URL) {
