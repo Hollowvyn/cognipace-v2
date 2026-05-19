@@ -1,4 +1,9 @@
 export {
+  createEmptyLeetCodeCaptureState,
+  createLeetCodeReviewContext,
+  reduceLeetCodeCaptureState,
+} from './capture/capture-state'
+export {
   normalizeLeetCodeLanguageLabel,
   readLeetCodeLanguageLabelFromText,
 } from './domain/language'
@@ -16,6 +21,10 @@ export {
   createLeetCodePageWatcher,
   type LeetCodePageWatcher,
 } from './watcher/leetcode-page-watcher'
+export type {
+  LeetCodeCaptureState,
+  LeetCodeReviewContext,
+} from './capture/capture-state'
 export type {
   LeetCodeCodeSnapshot,
   LeetCodeDifficulty,

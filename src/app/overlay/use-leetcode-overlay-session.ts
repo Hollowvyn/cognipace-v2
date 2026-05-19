@@ -8,9 +8,11 @@ import {
 } from '@/features/problems'
 import type { ReviewRating } from '@/lib/fsrs'
 import {
+  createEmptyLeetCodeCaptureState,
   createLeetCodeProblemMetadataFingerprint,
   createLeetCodePageWatcher,
   parseLeetCodeProblemLocation,
+  reduceLeetCodeCaptureState,
   type LeetCodeCodeSnapshot,
   type LeetCodePageEvent,
   type LeetCodeProblemContent,
@@ -49,25 +51,10 @@ export type LeetCodeOverlaySession = {
 
 export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
   const initialLocation = parseLeetCodeProblemLocation(window.location.href)
-  const [location, setLocation] = useState<LeetCodeProblemLocation | null>(
-    initialLocation,
+  const [captureState, setCaptureState] = useState(() =>
+    createEmptyLeetCodeCaptureState(initialLocation),
   )
-  const [metadata, setMetadata] = useState<LeetCodeProblemMetadata | null>(null)
-  const [problemContent, setProblemContent] =
-    useState<LeetCodeProblemContent | null>(null)
   const [context, setContext] = useState<RuntimeProblemContext>(null)
-  const [codeSnapshot, setCodeSnapshot] = useState<LeetCodeCodeSnapshot | null>(
-    null,
-  )
-  const [lastSubmissionClick, setLastSubmissionClick] =
-    useState<LeetCodeSubmissionClick | null>(null)
-  const [lastSubmissionAttempt, setLastSubmissionAttempt] =
-    useState<LeetCodeSubmissionAttempt | null>(null)
-  const [lastSubmissionPollingDebug, setLastSubmissionPollingDebug] =
-    useState<LeetCodeSubmissionPollingDebug | null>(null)
-  const [lastSubmissionResult, setLastSubmissionResult] =
-    useState<LeetCodeSubmissionResult | null>(null)
-  const [pageReadyAt, setPageReadyAt] = useState<number | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [status, setStatus] = useState<OverlaySyncStatus>(
     initialLocation ? 'booting' : 'error',
@@ -90,6 +77,8 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
   }, [elapsedSeconds])
 
   useEffect(() => {
+    const pageReadyAt = captureState.pageReadyAt
+
     if (!pageReadyAt) {
       return
     }
@@ -104,7 +93,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
     updateElapsedSeconds()
 
     return () => window.clearInterval(intervalId)
-  }, [pageReadyAt])
+  }, [captureState.pageReadyAt])
 
   const syncProblem = useCallback(
     async (
@@ -180,19 +169,14 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
     return () => watcher.stop()
 
     function handlePageEvent(event: LeetCodePageEvent) {
+      setCaptureState((currentCaptureState) =>
+        reduceLeetCodeCaptureState(currentCaptureState, event),
+      )
+
       switch (event.type) {
         case 'page-changed':
           syncTokenRef.current += 1
-          setLocation(event.location)
-          setMetadata(null)
-          setProblemContent(null)
           setContext(null)
-          setCodeSnapshot(null)
-          setLastSubmissionClick(null)
-          setLastSubmissionAttempt(null)
-          setLastSubmissionPollingDebug(null)
-          setLastSubmissionResult(null)
-          setPageReadyAt(null)
           setElapsedSeconds(0)
           requestedMetadataFingerprintRef.current = null
           syncedMetadataFingerprintRef.current = null
@@ -200,38 +184,26 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
           setFeedback(null)
           return
         case 'page-ready':
-          setPageReadyAt(event.pageReadyAt)
-          setMetadata(event.metadata)
           syncProblemIfNeeded(event.metadata, syncTokenRef.current)
           return
         case 'metadata-updated':
-          setMetadata(event.metadata)
           syncProblemIfNeeded(event.metadata, syncTokenRef.current)
           return
         case 'problem-content-updated':
-          setProblemContent(event.content)
           return
         case 'code-updated':
-          setCodeSnapshot(event.snapshot)
           return
         case 'submit-clicked':
-          setLastSubmissionClick(event.click)
           setFeedback(
             'LeetCode submit detected. CogniPace is still waiting for your rating.',
           )
           return
         case 'submission-started':
-          setLastSubmissionAttempt(event.attempt)
-          setLastSubmissionPollingDebug(null)
-          setLastSubmissionResult(null)
-          setCodeSnapshot(event.attempt.submittedCodeSnapshot)
           setFeedback('Submitted code snapshot captured.')
           return
         case 'submission-polling-updated':
-          setLastSubmissionPollingDebug(event.debug)
           return
         case 'submission-result-updated':
-          setLastSubmissionResult(event.result)
           setFeedback(`Submission result captured: ${event.result.statusText}.`)
           return
         case 'watcher-error':
@@ -282,15 +254,15 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
   }
 
   return {
-    location,
-    metadata,
-    problemContent,
+    location: captureState.location,
+    metadata: captureState.metadata,
+    problemContent: captureState.problemContent,
     context,
-    codeSnapshot,
-    lastSubmissionClick,
-    lastSubmissionAttempt,
-    lastSubmissionPollingDebug,
-    lastSubmissionResult,
+    codeSnapshot: captureState.codeSnapshot,
+    lastSubmissionClick: captureState.submissionClick,
+    lastSubmissionAttempt: captureState.submissionAttempt,
+    lastSubmissionPollingDebug: captureState.submissionPollingDebug,
+    lastSubmissionResult: captureState.submissionResult,
     status,
     feedback,
     elapsedSeconds,
