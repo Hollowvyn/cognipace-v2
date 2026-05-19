@@ -1,6 +1,13 @@
 import { defineExtensionMessaging } from '@webext-core/messaging'
 import { z } from 'zod'
 
+import {
+  leetcodeProblemRemoteRequestSchema,
+  leetcodeSubmissionResultRemoteRequestSchema,
+  type SerializedLeetCodeMetadataResult,
+  type SerializedLeetCodeProblemContentResult,
+  type SerializedLeetCodeSubmissionResultRemoteResponse,
+} from '@/features/leetcode-capture/domain/leetcode-capture-contracts'
 import { problemDifficulties } from '@/features/problems'
 import { type UserSettings, userSettingsPatchSchema } from '@/features/settings'
 import { reviewRatings } from '@/lib/fsrs'
@@ -201,6 +208,24 @@ export const settingsUpdateRequestSchema = z.object({
 
 export type SettingsUpdateRequest = z.infer<typeof settingsUpdateRequestSchema>
 
+export const leetcodeProblemRemoteRuntimeRequestSchema =
+  leetcodeProblemRemoteRequestSchema.extend({
+    surface: z.literal('content-script'),
+  })
+
+export type LeetCodeProblemRemoteRuntimeRequest = z.infer<
+  typeof leetcodeProblemRemoteRuntimeRequestSchema
+>
+
+export const leetcodeSubmissionResultRemoteRuntimeRequestSchema =
+  leetcodeSubmissionResultRemoteRequestSchema.extend({
+    surface: z.literal('content-script'),
+  })
+
+export type LeetCodeSubmissionResultRemoteRuntimeRequest = z.infer<
+  typeof leetcodeSubmissionResultRemoteRuntimeRequestSchema
+>
+
 export interface ProtocolMap {
   'runtime.ping'(request: PingRequest): PingResponse
   'app.getShellData'(request: AppShellRequest): AppShellData
@@ -217,6 +242,15 @@ export interface ProtocolMap {
   'tracks.getActiveTrack'(request: TracksRequest): SerializedActiveTrack
   'settings.getSettings'(request: SettingsRequest): UserSettings
   'settings.updateSettings'(request: SettingsUpdateRequest): UserSettings
+  'leetcode.readProblemMetadata'(
+    request: LeetCodeProblemRemoteRuntimeRequest,
+  ): SerializedLeetCodeMetadataResult
+  'leetcode.readProblemContent'(
+    request: LeetCodeProblemRemoteRuntimeRequest,
+  ): SerializedLeetCodeProblemContentResult
+  'leetcode.readSubmissionResult'(
+    request: LeetCodeSubmissionResultRemoteRuntimeRequest,
+  ): SerializedLeetCodeSubmissionResultRemoteResponse
 }
 
 const extensionMessenger = defineExtensionMessaging<ProtocolMap>()

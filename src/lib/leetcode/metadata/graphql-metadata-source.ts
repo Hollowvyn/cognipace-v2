@@ -40,6 +40,7 @@ export async function fetchLeetCodeProblemMetadata(
   options: {
     fetch?: LeetCodeGraphQlFetch | undefined
     document?: Document | undefined
+    csrfToken?: string | null | undefined
     now?: (() => number) | undefined
   } = {},
 ): Promise<LeetCodeMetadataResult> {
@@ -49,6 +50,7 @@ export async function fetchLeetCodeProblemMetadata(
     variables: { titleSlug: location.slug },
     fetch: options.fetch,
     document: options.document,
+    csrfToken: options.csrfToken,
   })
 
   if (!graphQlResult.ok) {

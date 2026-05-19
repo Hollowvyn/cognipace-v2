@@ -14,12 +14,14 @@ export async function readLeetCodeProblemMetadata(
     root?: ParentNode | undefined
     document?: Document | undefined
     fetch?: typeof fetch | undefined
+    csrfToken?: string | null | undefined
     now?: (() => number) | undefined
   } = {},
 ): Promise<LeetCodeMetadataResult> {
   const graphqlResult = await fetchLeetCodeProblemMetadata(location, {
     fetch: options.fetch,
     document: options.document,
+    csrfToken: options.csrfToken,
     now: options.now,
   })
 

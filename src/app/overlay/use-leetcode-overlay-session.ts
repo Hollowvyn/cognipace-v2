@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { saveReviewResultViaRuntime } from '@/features/practice'
+import { createLeetCodeCaptureRemoteClient } from '@/features/leetcode-capture'
 import {
   getProblemContextViaRuntime,
   upsertProblemFromPageViaRuntime,
@@ -161,6 +162,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
 
   useEffect(() => {
     const watcher = createLeetCodePageWatcher({
+      remoteClient: createLeetCodeCaptureRemoteClient(),
       onEvent: handlePageEvent,
     })
 

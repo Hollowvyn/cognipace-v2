@@ -7,6 +7,7 @@ describe('LeetCode public API facade', () => {
     expect(Object.keys(leetcode).sort()).toEqual(
       [
         'createEmptyLeetCodeCaptureState',
+        'createLeetCodeFetchRemoteClient',
         'createLeetCodePageWatcher',
         'createLeetCodeProblemMetadataFingerprint',
         'createLeetCodeProblemUrl',
@@ -18,6 +19,7 @@ describe('LeetCode public API facade', () => {
         'parseLeetCodeProblemInput',
         'parseLeetCodeProblemLocation',
         'readLeetCodeLanguageLabelFromText',
+        'readLeetCodeRemoteAuthFromDocument',
         'reduceLeetCodeCaptureState',
         'titleFromLeetCodeSlug',
       ].sort(),

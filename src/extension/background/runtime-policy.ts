@@ -10,6 +10,9 @@ const methodSurfaceAccess = {
   'tracks.getActiveTrack': ['popup', 'dashboard'],
   'settings.getSettings': ['popup', 'dashboard'],
   'settings.updateSettings': ['popup', 'dashboard'],
+  'leetcode.readProblemMetadata': ['content-script'],
+  'leetcode.readProblemContent': ['content-script'],
+  'leetcode.readSubmissionResult': ['content-script'],
 } as const satisfies Record<string, readonly ExtensionSurface[]>
 
 export type ExtensionMethod = keyof typeof methodSurfaceAccess

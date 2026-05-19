@@ -17,11 +17,20 @@ export {
   parseLeetCodeProblemLocation,
   titleFromLeetCodeSlug,
 } from './domain/problem-url'
+export { createLeetCodeFetchRemoteClient } from './remote/leetcode-fetch-remote-client'
+export { readLeetCodeRemoteAuthFromDocument } from './remote/leetcode-remote-auth'
 export {
   createLeetCodePageWatcher,
   type LeetCodePageWatcher,
   type LeetCodePageWatcherOptions,
 } from './watcher/leetcode-page-watcher'
+export type {
+  LeetCodeProblemRemoteRequest,
+  LeetCodeRemoteAuth,
+  LeetCodeRemoteClient,
+  LeetCodeSubmissionResultRemoteRequest,
+  LeetCodeSubmissionResultRemoteResponse,
+} from './remote/leetcode-remote-client'
 export type {
   LeetCodeCaptureState,
   LeetCodeReviewContext,
@@ -31,11 +40,13 @@ export type {
   LeetCodeDifficulty,
   LeetCodeExample,
   LeetCodeMetadataConfidence,
+  LeetCodeMetadataResult,
   LeetCodeMetadataSource,
   LeetCodePageEvent,
   LeetCodePageSnapshot,
   LeetCodeProblemContent,
   LeetCodeProblemContentConfidence,
+  LeetCodeProblemContentResult,
   LeetCodeProblemContentSource,
   LeetCodeProblemLocation,
   LeetCodeProblemMetadata,

@@ -22,6 +22,7 @@ export async function requestLeetCodeGraphQl(options: {
   operationName?: string | undefined
   fetch?: LeetCodeGraphQlFetch | undefined
   document?: Document | undefined
+  csrfToken?: string | null | undefined
 }): Promise<LeetCodeGraphQlRequestResult> {
   const fetchLeetCodeGraphQl =
     options.fetch ?? globalThis.fetch?.bind(globalThis)
@@ -36,7 +37,10 @@ export async function requestLeetCodeGraphQl(options: {
       {
         method: 'POST',
         credentials: 'include',
-        headers: createLeetCodeGraphQlHeaders(options.document),
+        headers: createLeetCodeGraphQlHeaders({
+          document: options.document,
+          csrfToken: options.csrfToken,
+        }),
         body: JSON.stringify({
           query: options.query,
           variables: options.variables,
@@ -63,13 +67,18 @@ export async function requestLeetCodeGraphQl(options: {
   }
 }
 
-function createLeetCodeGraphQlHeaders(documentRef: Document | undefined) {
+function createLeetCodeGraphQlHeaders(options: {
+  document: Document | undefined
+  csrfToken: string | null | undefined
+}) {
   const graphQlHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
   }
-  const csrfToken = documentRef
-    ? readCookieValue(documentRef.cookie, 'csrftoken')
-    : null
+  const csrfToken =
+    options.csrfToken ??
+    (options.document
+      ? readCookieValue(options.document.cookie, 'csrftoken')
+      : null)
 
   if (csrfToken) {
     graphQlHeaders['x-csrftoken'] = csrfToken

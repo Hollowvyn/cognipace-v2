@@ -5,10 +5,11 @@ import type {
   LeetCodeProblemLocation,
   LeetCodeProblemMetadata,
 } from '../domain/types'
-import { readLeetCodeProblemContent } from '../content/problem-content-reader'
-import { readLeetCodeProblemMetadata } from '../metadata/metadata-reader'
 import { createLeetCodeProblemMetadataFingerprint } from '../metadata/metadata-fingerprint'
 import { readLeetCodePageSnapshot } from '../page/page-snapshot-reader'
+import { createLeetCodeFetchRemoteClient } from '../remote/leetcode-fetch-remote-client'
+import { readLeetCodeRemoteAuthFromDocument } from '../remote/leetcode-remote-auth'
+import type { LeetCodeRemoteClient } from '../remote/leetcode-remote-client'
 import { readLeetCodeSubmissionAttempt } from '../submission/submission-attempt-reader'
 import { createLeetCodeHydrationScheduler } from './hydration-scheduler'
 import { createLeetCodeNavigationObserver } from './navigation-observer'
@@ -28,6 +29,7 @@ export interface LeetCodePageWatcherOptions {
   windowRef?: Window | undefined
   documentRef?: Document | undefined
   fetch?: typeof fetch | undefined
+  remoteClient?: LeetCodeRemoteClient | undefined
   getCurrentUrl?: (() => string) | undefined
   now?: (() => number) | undefined
   hydrationDelays?: readonly number[] | undefined
@@ -54,6 +56,13 @@ export function createLeetCodePageWatcher(
     options.fetch ??
     windowRef.fetch?.bind(windowRef) ??
     globalThis.fetch?.bind(globalThis)
+  const remoteClient =
+    options.remoteClient ??
+    createLeetCodeFetchRemoteClient({
+      document: documentRef,
+      fetch: fetchLeetCode,
+      now,
+    })
   const submissionResultWatchDurationMs =
     options.submissionResultWatchDurationMs ?? 45000
   const hydrationDelays = options.hydrationDelays ?? [0, 500, 1500, 3000]
@@ -97,7 +106,7 @@ export function createLeetCodePageWatcher(
     documentRef,
     onEvent: options.onEvent,
     isStaleRead: isStaleSnapshotRefresh,
-    fetch: fetchLeetCode,
+    remoteClient,
     now,
     submissionResultReadDelays,
     submissionResultWatchDurationMs,
@@ -226,11 +235,9 @@ export function createLeetCodePageWatcher(
         location,
         now,
       })
-      const metadataReadResult = await readLeetCodeProblemMetadata(location, {
-        root: documentRef,
-        document: documentRef,
-        fetch: options.fetch,
-        now,
+      const metadataReadResult = await remoteClient.readProblemMetadata({
+        location,
+        auth: readLeetCodeRemoteAuthFromDocument(documentRef),
       })
 
       if (isStaleSnapshotRefresh(token, location)) {
@@ -258,11 +265,9 @@ export function createLeetCodePageWatcher(
 
       emitProblemMetadataIfUseful(location, problemMetadata)
 
-      const contentReadResult = await readLeetCodeProblemContent(location, {
-        root: documentRef,
-        document: documentRef,
-        fetch: options.fetch,
-        now,
+      const contentReadResult = await remoteClient.readProblemContent({
+        location,
+        auth: readLeetCodeRemoteAuthFromDocument(documentRef),
       })
 
       if (isStaleSnapshotRefresh(token, location)) {

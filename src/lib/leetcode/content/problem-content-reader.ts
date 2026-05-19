@@ -48,12 +48,14 @@ export async function readLeetCodeProblemContent(
     root?: ParentNode | undefined
     document?: Document | undefined
     fetch?: LeetCodeGraphQlFetch | undefined
+    csrfToken?: string | null | undefined
     now?: (() => number) | undefined
   } = {},
 ): Promise<LeetCodeProblemContentResult> {
   const graphQlContentResult = await fetchLeetCodeProblemContent(location, {
     fetch: options.fetch,
     document: options.document,
+    csrfToken: options.csrfToken,
     now: options.now,
   })
 
@@ -93,6 +95,7 @@ export async function fetchLeetCodeProblemContent(
   options: {
     fetch?: LeetCodeGraphQlFetch | undefined
     document?: Document | undefined
+    csrfToken?: string | null | undefined
     now?: (() => number) | undefined
   } = {},
 ): Promise<LeetCodeProblemContentResult> {
@@ -102,6 +105,7 @@ export async function fetchLeetCodeProblemContent(
     variables: { titleSlug: location.slug },
     fetch: options.fetch,
     document: options.document,
+    csrfToken: options.csrfToken,
   })
 
   if (!graphQlResult.ok) {

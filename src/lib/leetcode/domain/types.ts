@@ -221,6 +221,7 @@ export type LeetCodePageEvent =
       occurredAt: number
     }
 
+/** Result returned by LeetCode metadata remote clients and readers. */
 export type LeetCodeMetadataResult =
   | {
       ok: true
@@ -231,6 +232,7 @@ export type LeetCodeMetadataResult =
       error: Error
     }
 
+/** Result returned by LeetCode content remote clients and readers. */
 export type LeetCodeProblemContentResult =
   | {
       ok: true

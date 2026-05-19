@@ -2,6 +2,8 @@ import {
   activeTrackSchema,
   appShellDataSchema,
   appShellRequestSchema,
+  leetcodeProblemRemoteRuntimeRequestSchema,
+  leetcodeSubmissionResultRemoteRuntimeRequestSchema,
   onMessage,
   pingRequestSchema,
   practiceSaveReviewResultRequestSchema,
@@ -21,6 +23,11 @@ import {
   type SerializedTodayQueue,
 } from '@/extension/messaging'
 import { getAppShellData } from '@/features/app-shell'
+import {
+  readLeetCodeProblemContentInBackground,
+  readLeetCodeProblemMetadataInBackground,
+  readLeetCodeSubmissionResultInBackground,
+} from '@/features/leetcode-capture'
 import { saveReviewResult } from '@/features/practice'
 import {
   getProblemContext,
@@ -173,6 +180,40 @@ export function registerBackgroundHandlers() {
       sender,
     )
     return getAppDb().then(async ({ db }) => updateSettings(db, request.patch))
+  })
+
+  onMessage('leetcode.readProblemMetadata', ({ data, sender }) => {
+    const request = leetcodeProblemRemoteRuntimeRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'leetcode.readProblemMetadata',
+      request.surface,
+      sender,
+    )
+    return readLeetCodeProblemMetadataInBackground(request)
+  })
+
+  onMessage('leetcode.readProblemContent', ({ data, sender }) => {
+    const request = leetcodeProblemRemoteRuntimeRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'leetcode.readProblemContent',
+      request.surface,
+      sender,
+    )
+    return readLeetCodeProblemContentInBackground(request)
+  })
+
+  onMessage('leetcode.readSubmissionResult', ({ data, sender }) => {
+    const request =
+      leetcodeSubmissionResultRemoteRuntimeRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'leetcode.readSubmissionResult',
+      request.surface,
+      sender,
+    )
+    return readLeetCodeSubmissionResultInBackground(request)
   })
 }
 

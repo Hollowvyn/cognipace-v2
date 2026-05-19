@@ -99,6 +99,7 @@ export async function readLeetCodeSubmissionResultFromApi(options: {
   submittedCodeSnapshot: LeetCodeSubmittedCodeSnapshot
   fetch?: LeetCodeSubmissionFetch | undefined
   document?: Document | undefined
+  csrfToken?: string | null | undefined
   now?: (() => number) | undefined
   onDebug?: ((debug: LeetCodeSubmissionPollingDebug) => void) | undefined
 }): Promise<LeetCodeSubmissionResult | null> {
@@ -168,6 +169,7 @@ export async function readLeetCodeSubmissionResultFromApi(options: {
     submissionId: submissionListEntry.id,
     fetch: fetchLeetCode,
     document: options.document,
+    csrfToken: options.csrfToken,
   })
   const graphQlDetailsStatusText =
     detailsPayload?.statusText ??
@@ -385,6 +387,7 @@ async function readSubmissionDetailsPayload(options: {
   submissionId: string
   fetch: LeetCodeSubmissionFetch
   document?: Document | undefined
+  csrfToken?: string | null | undefined
 }): Promise<SubmissionDetailsPayload | null> {
   const submissionIdNumber = Number(options.submissionId)
 
@@ -399,6 +402,7 @@ async function readSubmissionDetailsPayload(options: {
     operationName: 'submissionDetails',
     fetch: options.fetch,
     document: options.document,
+    csrfToken: options.csrfToken,
   })
 
   if (!graphQlResult.ok || !isObjectRecord(graphQlResult.payload)) {

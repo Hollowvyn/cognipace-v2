@@ -7,7 +7,8 @@ import type {
   LeetCodeSubmissionResult,
   LeetCodeSubmittedCodeSnapshot,
 } from '../domain/types'
-import { readLeetCodeSubmissionResultFromApi } from '../submission/submission-result-api-source'
+import { readLeetCodeRemoteAuthFromDocument } from '../remote/leetcode-remote-auth'
+import type { LeetCodeRemoteClient } from '../remote/leetcode-remote-client'
 import {
   createLeetCodeSubmissionResultFingerprint,
   readLeetCodeSubmissionResult,
@@ -40,7 +41,7 @@ export function createLeetCodeSubmissionResultWatch(options: {
   documentRef: Document
   onEvent: (event: LeetCodePageEvent) => void
   isStaleRead: (token: number, location: LeetCodeProblemLocation) => boolean
-  fetch?: typeof fetch | undefined
+  remoteClient: LeetCodeRemoteClient
   now: () => number
   submissionResultReadDelays: readonly number[]
   submissionResultWatchDurationMs: number
@@ -162,20 +163,16 @@ export function createLeetCodeSubmissionResultWatch(options: {
     }
 
     const submissionResultWatch = activeSubmissionResultWatch
-    const apiResult = submissionResultWatch
-      ? await readLeetCodeSubmissionResultFromApi({
-          location,
-          click: submissionResultWatch.click,
-          submittedCodeSnapshot: submissionResultWatch.submittedCodeSnapshot,
-          fetch: options.fetch,
-          document: options.documentRef,
-          now: options.now,
-          onDebug: (debug) => {
-            updateActiveSubmissionResultWatchDebug(submissionResultWatch, debug)
-            emitSubmissionPollingDebug(location, debug)
-          },
-        })
+    const apiResponse = submissionResultWatch
+      ? await readSubmissionResultFromRemoteClient(submissionResultWatch)
       : null
+
+    if (submissionResultWatch && apiResponse) {
+      for (const debug of apiResponse.debugEvents) {
+        updateActiveSubmissionResultWatchDebug(submissionResultWatch, debug)
+        emitSubmissionPollingDebug(location, debug)
+      }
+    }
 
     if (options.isStaleRead(token, location)) {
       return
@@ -188,8 +185,8 @@ export function createLeetCodeSubmissionResultWatch(options: {
       return
     }
 
-    if (apiResult) {
-      emitSubmissionResult(apiResult)
+    if (apiResponse?.result) {
+      emitSubmissionResult(apiResponse.result)
       completeSubmissionResultWatch(submissionResultWatch)
       return
     }
@@ -233,6 +230,21 @@ export function createLeetCodeSubmissionResultWatch(options: {
 
     if (submissionResultWatch) {
       completeSubmissionResultWatch(submissionResultWatch)
+    }
+  }
+
+  async function readSubmissionResultFromRemoteClient(
+    submissionResultWatch: ActiveSubmissionResultWatch,
+  ) {
+    try {
+      return await options.remoteClient.readSubmissionResult({
+        location: submissionResultWatch.location,
+        click: submissionResultWatch.click,
+        submittedCodeSnapshot: submissionResultWatch.submittedCodeSnapshot,
+        auth: readLeetCodeRemoteAuthFromDocument(options.documentRef),
+      })
+    } catch {
+      return null
     }
   }
 
