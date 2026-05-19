@@ -1,7 +1,9 @@
 import {
+  Activity,
   CheckCircle2,
   Clock3,
   Code2,
+  FileCode2,
   LockKeyhole,
   Send,
   Sparkles,
@@ -28,6 +30,8 @@ export function OverlayPanel({
   elapsedSeconds,
   feedback,
   lastSubmissionClick,
+  lastSubmissionAttempt,
+  lastSubmissionResult,
   location,
   metadata,
   saveReview,
@@ -39,6 +43,9 @@ export function OverlayPanel({
     metadata?.title ?? context?.problem.title ?? location?.slug
   const topics = metadata?.topics ?? []
   const isPremiumProblem = metadata?.isPremium === true
+  const isWaitingForSubmissionResult = Boolean(
+    lastSubmissionAttempt && !lastSubmissionResult,
+  )
 
   return (
     <aside className="cp-overlay-host cp-stack p-3" aria-label="CogniPace">
@@ -104,6 +111,96 @@ export function OverlayPanel({
         </div>
       ) : null}
 
+      {lastSubmissionAttempt ? (
+        <section
+          className="cp-overlay-debug"
+          aria-label="Submission attempt debug"
+        >
+          <div className="cp-overlay-debug-heading">
+            <FileCode2 size={14} aria-hidden="true" />
+            <span>Submitted snapshot</span>
+          </div>
+          <div className="cp-overlay-debug-grid">
+            <span>language</span>
+            <strong>
+              {lastSubmissionAttempt.submittedCodeSnapshot.language ??
+                'unknown'}
+            </strong>
+            <span>source</span>
+            <strong>
+              {lastSubmissionAttempt.submittedCodeSnapshot.source}
+            </strong>
+            <span>lines</span>
+            <strong>
+              {countCodeLines(lastSubmissionAttempt.submittedCodeSnapshot.code)}
+            </strong>
+            <span>captured</span>
+            <strong>{formatClockTime(lastSubmissionAttempt.clickedAt)}</strong>
+          </div>
+          <pre className="cp-overlay-code-preview">
+            {formatCodePreview(
+              lastSubmissionAttempt.submittedCodeSnapshot.code,
+            )}
+          </pre>
+        </section>
+      ) : null}
+
+      {isWaitingForSubmissionResult ? (
+        <section
+          className="cp-overlay-debug"
+          aria-label="Submission result pending"
+        >
+          <div className="cp-overlay-debug-heading">
+            <Activity size={14} aria-hidden="true" />
+            <span>Waiting for result</span>
+          </div>
+          <div className="cp-overlay-debug-status">
+            Watching LeetCode submission APIs
+          </div>
+        </section>
+      ) : null}
+
+      {lastSubmissionResult ? (
+        <section
+          className="cp-overlay-debug"
+          aria-label="Submission result debug"
+        >
+          <div className="cp-overlay-debug-heading">
+            <Activity size={14} aria-hidden="true" />
+            <span>Submission result</span>
+          </div>
+          <div className="cp-overlay-debug-status">
+            {lastSubmissionResult.statusText}
+          </div>
+          <div className="cp-overlay-debug-grid">
+            <span>source</span>
+            <strong>{lastSubmissionResult.source}</strong>
+            <span>runtime</span>
+            <strong>{formatNullableValue(lastSubmissionResult.runtime)}</strong>
+            <span>memory</span>
+            <strong>{formatNullableValue(lastSubmissionResult.memory)}</strong>
+            <span>tests</span>
+            <strong>{formatTestProgress(lastSubmissionResult)}</strong>
+            <span>id</span>
+            <strong>
+              {formatNullableValue(lastSubmissionResult.submissionId)}
+            </strong>
+            <span>checked</span>
+            <strong>{formatClockTime(lastSubmissionResult.checkedAt)}</strong>
+            <span>code source</span>
+            <strong>{lastSubmissionResult.resultCodeSnapshot.source}</strong>
+          </div>
+          {lastSubmissionResult.failingTestcase ? (
+            <pre className="cp-overlay-code-preview">
+              {lastSubmissionResult.failingTestcase}
+            </pre>
+          ) : null}
+          <pre className="cp-overlay-code-preview">
+            {formatCodePreview(lastSubmissionResult.resultCodeSnapshot.code)}
+          </pre>
+        </section>
+      ) : null}
+
       {feedback ? (
         <div className="cp-overlay-feedback" role="status">
           <CheckCircle2 size={14} aria-hidden="true" />
@@ -141,4 +238,34 @@ function formatClockTime(timestamp: number) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function formatNullableValue(value: string | null) {
+  return value ?? 'unknown'
+}
+
+function formatTestProgress(result: {
+  passedTestCount: number | null
+  totalTestCount: number | null
+}) {
+  if (result.passedTestCount === null || result.totalTestCount === null) {
+    return 'unknown'
+  }
+
+  return `${result.passedTestCount}/${result.totalTestCount}`
+}
+
+function countCodeLines(code: string | null) {
+  return code ? code.split('\n').length : 0
+}
+
+function formatCodePreview(code: string | null) {
+  if (!code) {
+    return 'No submitted code captured.'
+  }
+
+  const previewLines = code.split('\n').slice(0, 6)
+  const hasMoreLines = code.split('\n').length > previewLines.length
+
+  return `${previewLines.join('\n')}${hasMoreLines ? '\n...' : ''}`
 }

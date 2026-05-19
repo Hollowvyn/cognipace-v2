@@ -15,7 +15,9 @@ import {
   type LeetCodePageEvent,
   type LeetCodeProblemLocation,
   type LeetCodeProblemMetadata,
+  type LeetCodeSubmissionAttempt,
   type LeetCodeSubmissionClick,
+  type LeetCodeSubmissionResult,
 } from '@/lib/leetcode'
 
 export type OverlaySyncStatus =
@@ -33,6 +35,8 @@ export type LeetCodeOverlaySession = {
   context: RuntimeProblemContext
   codeSnapshot: LeetCodeCodeSnapshot | null
   lastSubmissionClick: LeetCodeSubmissionClick | null
+  lastSubmissionAttempt: LeetCodeSubmissionAttempt | null
+  lastSubmissionResult: LeetCodeSubmissionResult | null
   status: OverlaySyncStatus
   feedback: string | null
   elapsedSeconds: number
@@ -51,6 +55,10 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
   )
   const [lastSubmissionClick, setLastSubmissionClick] =
     useState<LeetCodeSubmissionClick | null>(null)
+  const [lastSubmissionAttempt, setLastSubmissionAttempt] =
+    useState<LeetCodeSubmissionAttempt | null>(null)
+  const [lastSubmissionResult, setLastSubmissionResult] =
+    useState<LeetCodeSubmissionResult | null>(null)
   const [pageReadyAt, setPageReadyAt] = useState<number | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [status, setStatus] = useState<OverlaySyncStatus>(
@@ -172,6 +180,8 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
           setContext(null)
           setCodeSnapshot(null)
           setLastSubmissionClick(null)
+          setLastSubmissionAttempt(null)
+          setLastSubmissionResult(null)
           setPageReadyAt(null)
           setElapsedSeconds(0)
           requestedMetadataFingerprintRef.current = null
@@ -196,6 +206,16 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
           setFeedback(
             'LeetCode submit detected. CogniPace is still waiting for your rating.',
           )
+          return
+        case 'submission-started':
+          setLastSubmissionAttempt(event.attempt)
+          setLastSubmissionResult(null)
+          setCodeSnapshot(event.attempt.submittedCodeSnapshot)
+          setFeedback('Submitted code snapshot captured.')
+          return
+        case 'submission-result-updated':
+          setLastSubmissionResult(event.result)
+          setFeedback(`Submission result captured: ${event.result.statusText}.`)
           return
         case 'watcher-error':
           setStatus('error')
@@ -250,6 +270,8 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
     context,
     codeSnapshot,
     lastSubmissionClick,
+    lastSubmissionAttempt,
+    lastSubmissionResult,
     status,
     feedback,
     elapsedSeconds,

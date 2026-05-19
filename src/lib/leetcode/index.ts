@@ -26,6 +26,12 @@ export {
   createLeetCodePageWatcher,
   type LeetCodePageWatcher,
 } from './watcher/leetcode-page-watcher'
+export { readLeetCodeSubmissionAttempt } from './submission/submission-attempt-reader'
+export {
+  createLeetCodeSubmissionResultFingerprint,
+  readLeetCodeSubmissionResult,
+} from './submission/submission-result-reader'
+export { readLeetCodeSubmissionResultFromApi } from './submission/submission-result-api-source'
 export type {
   LeetCodeCodeSnapshot,
   LeetCodeDifficulty,
@@ -36,8 +42,11 @@ export type {
   LeetCodePageSnapshot,
   LeetCodeProblemLocation,
   LeetCodeProblemMetadata,
+  LeetCodeSubmittedCodeSnapshot,
+  LeetCodeSubmissionAttempt,
   LeetCodeSubmissionClick,
   LeetCodeSubmissionResult,
+  LeetCodeSubmissionResultSource,
   LeetCodeSubmissionStatus,
   LeetCodeTopic,
 } from './domain/types'

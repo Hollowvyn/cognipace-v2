@@ -11,7 +11,14 @@ export type LeetCodeMetadataSource = 'graphql' | 'dom' | 'fallback'
 
 export type LeetCodeMetadataConfidence = 'high' | 'medium' | 'low'
 
-export type LeetCodeCodeSnapshotSource = 'monaco' | 'textarea' | 'none'
+export type LeetCodeCodeSnapshotSource =
+  | 'api'
+  | 'monaco'
+  | 'textarea'
+  | 'code-block'
+  | 'none'
+
+export type LeetCodeSubmissionResultSource = 'api' | 'dom'
 
 export type LeetCodeSubmissionStatus =
   | 'accepted'
@@ -20,6 +27,7 @@ export type LeetCodeSubmissionStatus =
   | 'compile-error'
   | 'time-limit-exceeded'
   | 'memory-limit-exceeded'
+  | 'output-limit-exceeded'
   | 'unknown'
 
 export type LeetCodeProblemLocation = {
@@ -69,14 +77,29 @@ export type LeetCodeSubmissionClick = {
   buttonText: string
 }
 
+export type LeetCodeSubmittedCodeSnapshot = LeetCodeCodeSnapshot
+
+export type LeetCodeSubmissionAttempt = {
+  location: LeetCodeProblemLocation
+  clickedAt: number
+  submitButtonText: string
+  submittedCodeSnapshot: LeetCodeSubmittedCodeSnapshot
+}
+
 export type LeetCodeSubmissionResult = {
   location: LeetCodeProblemLocation
   submissionId: string | null
+  source: LeetCodeSubmissionResultSource
   status: LeetCodeSubmissionStatus
   statusText: string
   checkedAt: number
+  runtime: string | null
+  memory: string | null
+  passedTestCount: number | null
+  totalTestCount: number | null
   failingTestcase: string | null
-  runtimeError: string | null
+  errorMessage: string | null
+  resultCodeSnapshot: LeetCodeSubmittedCodeSnapshot
 }
 
 export type LeetCodePageEvent =
@@ -106,6 +129,14 @@ export type LeetCodePageEvent =
   | {
       type: 'submit-clicked'
       click: LeetCodeSubmissionClick
+    }
+  | {
+      type: 'submission-started'
+      attempt: LeetCodeSubmissionAttempt
+    }
+  | {
+      type: 'submission-result-updated'
+      result: LeetCodeSubmissionResult
     }
   | {
       type: 'watcher-error'

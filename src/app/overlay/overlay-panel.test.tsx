@@ -28,6 +28,8 @@ const premiumSession = {
   context: null,
   codeSnapshot: null,
   lastSubmissionClick: null,
+  lastSubmissionAttempt: null,
+  lastSubmissionResult: null,
   status: 'ready',
   feedback: null,
   elapsedSeconds: 239,
@@ -40,5 +42,91 @@ describe('OverlayPanel', () => {
 
     expect(screen.getByText('Premium')).toBeInTheDocument()
     expect(screen.getByText('Premium locked on LeetCode')).toBeInTheDocument()
+  })
+
+  it('shows submitted attempt debug details', () => {
+    render(
+      <OverlayPanel
+        {...premiumSession}
+        lastSubmissionAttempt={{
+          location: premiumSession.location,
+          clickedAt: 5000,
+          submitButtonText: 'Submit',
+          submittedCodeSnapshot: {
+            code: 'class Solution:\n    pass',
+            language: 'Python3',
+            source: 'monaco',
+            capturedAt: 5000,
+          },
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Submitted snapshot')).toBeInTheDocument()
+    expect(screen.getByText('Python3')).toBeInTheDocument()
+    expect(screen.getByText('monaco')).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('Submission attempt debug').textContent,
+    ).toContain('class Solution:')
+  })
+
+  it('shows when the submission result is still pending', () => {
+    render(
+      <OverlayPanel
+        {...premiumSession}
+        lastSubmissionAttempt={{
+          location: premiumSession.location,
+          clickedAt: 5000,
+          submitButtonText: 'Submit',
+          submittedCodeSnapshot: {
+            code: 'class Solution:\n    pass',
+            language: 'Python3',
+            source: 'monaco',
+            capturedAt: 5000,
+          },
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Waiting for result')).toBeInTheDocument()
+    expect(
+      screen.getByText('Watching LeetCode submission APIs'),
+    ).toBeInTheDocument()
+  })
+
+  it('shows submission result debug details', () => {
+    render(
+      <OverlayPanel
+        {...premiumSession}
+        lastSubmissionResult={{
+          location: premiumSession.location,
+          submissionId: '1234567890',
+          source: 'api',
+          status: 'accepted',
+          statusText: 'Accepted',
+          checkedAt: 5000,
+          runtime: '8 ms',
+          memory: '17.4 MB',
+          passedTestCount: 58,
+          totalTestCount: 58,
+          failingTestcase: null,
+          errorMessage: null,
+          resultCodeSnapshot: {
+            code: 'class Solution:\n    pass',
+            language: 'Python3',
+            source: 'code-block',
+            capturedAt: 5000,
+          },
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Submission result')).toBeInTheDocument()
+    expect(screen.getByText('Accepted')).toBeInTheDocument()
+    expect(screen.getByText('8 ms')).toBeInTheDocument()
+    expect(screen.getByText('58/58')).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('Submission result debug').textContent,
+    ).toContain('class Solution:')
   })
 })
