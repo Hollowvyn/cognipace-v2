@@ -1,6 +1,6 @@
 import { PopupShell } from './popup-shell'
 
-import { useAppShellData } from '@/hooks/use-app-shell-data'
+import { useAppShellData } from '@/features/app-shell'
 import { useExtensionPing } from '@/hooks/use-extension-ping'
 
 const fallbackData = {

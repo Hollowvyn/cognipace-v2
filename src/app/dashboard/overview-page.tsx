@@ -1,5 +1,5 @@
 import { SurfaceCard } from '@/components/ui/surface-card'
-import { useAppShellData } from '@/hooks/use-app-shell-data'
+import { useAppShellData } from '@/features/app-shell'
 import { useExtensionPing } from '@/hooks/use-extension-ping'
 
 export function OverviewPage() {

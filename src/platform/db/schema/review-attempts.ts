@@ -1,0 +1,48 @@
+import { relations } from 'drizzle-orm'
+import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+
+import { fsrsCards } from './fsrs-cards'
+import { problemPractice } from './problem-practice'
+import { problems } from './problems'
+
+export const reviewAttempts = sqliteTable(
+  'review_attempts',
+  {
+    id: text('id').primaryKey(),
+    problemId: text('problem_id')
+      .notNull()
+      .references(() => problems.id, { onDelete: 'cascade' }),
+    cardId: text('card_id')
+      .notNull()
+      .references(() => fsrsCards.id, { onDelete: 'cascade' }),
+    rating: text('rating').notNull(),
+    reviewMode: text('review_mode').notNull(),
+    reviewedAt: integer('reviewed_at').notNull(),
+    elapsedSeconds: integer('elapsed_seconds'),
+    isCorrect: integer('is_correct', { mode: 'boolean' }),
+    notes: text('notes'),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [
+    index('review_attempts_problem_idx').on(table.problemId),
+    index('review_attempts_card_idx').on(table.cardId),
+    index('review_attempts_reviewed_at_idx').on(table.reviewedAt),
+  ],
+)
+
+export const reviewAttemptsRelations = relations(reviewAttempts, ({ one }) => ({
+  problem: one(problems, {
+    fields: [reviewAttempts.problemId],
+    references: [problems.id],
+  }),
+  practice: one(problemPractice, {
+    fields: [reviewAttempts.problemId],
+    references: [problemPractice.problemId],
+  }),
+  card: one(fsrsCards, {
+    fields: [reviewAttempts.cardId],
+    references: [fsrsCards.id],
+  }),
+}))
+
+export type ReviewAttemptRow = typeof reviewAttempts.$inferSelect

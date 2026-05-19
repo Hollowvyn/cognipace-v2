@@ -1,18 +1,49 @@
 import {
+  activeTrackSchema,
   appShellDataSchema,
   appShellRequestSchema,
   onMessage,
   pingRequestSchema,
+  practiceSaveReviewResultRequestSchema,
+  problemContextSchema,
+  problemContextRequestSchema,
+  problemsUpsertFromPageRequestSchema,
+  queueRequestSchema,
+  reviewResultSchema,
+  settingsRequestSchema,
+  settingsUpdateRequestSchema,
+  todayQueueSchema,
+  tracksRequestSchema,
+  type SerializedActiveTrack,
+  type SerializedProblem,
+  type SerializedProblemContext,
+  type SerializedReviewResult,
+  type SerializedTodayQueue,
 } from '@/extension/messaging'
+import { getAppShellData } from '@/features/app-shell'
+import { saveReviewResult } from '@/features/practice'
+import {
+  getProblemContext,
+  upsertProblemFromPage,
+  type Problem,
+  type ProblemContext,
+} from '@/features/problems'
+import { getTodayQueue, type TodayQueue } from '@/features/queue'
+import {
+  getSettings,
+  updateSettings,
+  type UserSettings,
+} from '@/features/settings'
+import { getActiveTrack, type ActiveTrack } from '@/features/tracks'
+import { getAppDb } from '@/platform/db'
 
-import { getAppShellData } from './app-shell-service'
-import { assertCanCallExtensionMethod } from './runtime-policy'
+import { assertCanSenderCallExtensionMethod } from './runtime-policy'
 
 export function registerBackgroundHandlers() {
-  onMessage('runtime.ping', ({ data }) => {
+  onMessage('runtime.ping', ({ data, sender }) => {
     const request = pingRequestSchema.parse(data)
 
-    assertCanCallExtensionMethod('runtime.ping', request.surface)
+    assertCanSenderCallExtensionMethod('runtime.ping', request.surface, sender)
     return {
       ok: true,
       surface: request.surface,
@@ -20,10 +51,193 @@ export function registerBackgroundHandlers() {
     }
   })
 
-  onMessage('app.getShellData', ({ data }) => {
+  onMessage('app.getShellData', ({ data, sender }) => {
     const request = appShellRequestSchema.parse(data)
 
-    assertCanCallExtensionMethod('app.getShellData', request.surface)
-    return appShellDataSchema.parse(getAppShellData(request))
+    assertCanSenderCallExtensionMethod(
+      'app.getShellData',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      appShellDataSchema.parse(await getAppShellData(db, request)),
+    )
   })
+
+  onMessage('problems.upsertFromPage', ({ data, sender }) => {
+    const request = problemsUpsertFromPageRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'problems.upsertFromPage',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) => {
+      const problem = await upsertProblemFromPage(db, request)
+      return serializeProblem(problem)
+    })
+  })
+
+  onMessage('problems.getContext', ({ data, sender }) => {
+    const request = problemContextRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'problems.getContext',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      serializeProblemContext(await getProblemContext(db, request.slug)),
+    )
+  })
+
+  onMessage('practice.saveReviewResult', ({ data, sender }) => {
+    const request = practiceSaveReviewResultRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'practice.saveReviewResult',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) => {
+      const settings = await getSettings(db)
+      const reviewInput = {
+        problemId: request.problemId,
+        rating: request.rating,
+        elapsedSeconds: request.elapsedSeconds,
+        isCorrect: request.isCorrect,
+        notes: request.notes,
+        targetRetention: settings.memoryReview.targetRetention,
+      }
+
+      const result = await saveReviewResult(db, {
+        ...reviewInput,
+        ...(request.reviewedAt
+          ? { reviewedAt: new Date(request.reviewedAt) }
+          : {}),
+        ...(request.reviewMode ? { reviewMode: request.reviewMode } : {}),
+      })
+
+      return serializeReviewResult(result)
+    })
+  })
+
+  onMessage('queue.getTodayQueue', ({ data, sender }) => {
+    const request = queueRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'queue.getTodayQueue',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      serializeTodayQueue(
+        await getTodayQueue(db, request.at ? new Date(request.at) : undefined),
+      ),
+    )
+  })
+
+  onMessage('tracks.getActiveTrack', ({ data, sender }) => {
+    const request = tracksRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'tracks.getActiveTrack',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      serializeActiveTrack(await getActiveTrack(db)),
+    )
+  })
+
+  onMessage('settings.getSettings', ({ data, sender }) => {
+    const request = settingsRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'settings.getSettings',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) => {
+      const settings = await getSettings(db)
+      return settings satisfies UserSettings
+    })
+  })
+
+  onMessage('settings.updateSettings', ({ data, sender }) => {
+    const request = settingsUpdateRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'settings.updateSettings',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) => updateSettings(db, request.patch))
+  })
+}
+
+function serializeProblem(problem: Problem): SerializedProblem {
+  return {
+    ...problem,
+    createdAt: problem.createdAt.toISOString(),
+    updatedAt: problem.updatedAt.toISOString(),
+  }
+}
+
+function serializeProblemContext(
+  context: ProblemContext | null,
+): SerializedProblemContext {
+  return problemContextSchema.parse(
+    context
+      ? {
+          ...context,
+          problem: serializeProblem(context.problem),
+          dueAt: context.dueAt?.toISOString() ?? null,
+        }
+      : null,
+  )
+}
+
+function serializeReviewResult(result: {
+  problemId: string
+  cardId: string
+  rating: SerializedReviewResult['rating']
+  status: string
+  dueAt: Date
+  reviewedAt: Date
+}): SerializedReviewResult {
+  return reviewResultSchema.parse({
+    problemId: result.problemId,
+    cardId: result.cardId,
+    rating: result.rating,
+    status: result.status,
+    dueAt: result.dueAt.toISOString(),
+    reviewedAt: result.reviewedAt.toISOString(),
+  })
+}
+
+function serializeTodayQueue(queue: TodayQueue): SerializedTodayQueue {
+  return todayQueueSchema.parse({
+    generatedAt: queue.generatedAt.toISOString(),
+    dailyGoal: queue.dailyGoal,
+    items: queue.items.map((item) => ({
+      ...item,
+      dueAt: item.dueAt?.toISOString() ?? null,
+    })),
+  })
+}
+
+function serializeActiveTrack(
+  activeTrack: ActiveTrack | null,
+): SerializedActiveTrack {
+  return activeTrackSchema.parse(
+    activeTrack
+      ? {
+          ...activeTrack,
+          nextProblem: activeTrack.nextProblem
+            ? serializeProblem(activeTrack.nextProblem)
+            : null,
+        }
+      : null,
+  )
 }

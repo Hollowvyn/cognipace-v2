@@ -20,5 +20,11 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", ".wxt/**/*.d.ts", "wxt.config.ts", "vitest.config.ts"]
+  "include": [
+    "src",
+    ".wxt/**/*.d.ts",
+    "drizzle.config.ts",
+    "wxt.config.ts",
+    "vitest.config.ts"
+  ]
 }
