@@ -1,4 +1,8 @@
 export {
+  saveReviewResultViaRuntime,
+  useSaveReviewResult,
+} from './api/practice-api'
+export {
   practiceStatuses,
   reviewModes,
   statusFromReview,

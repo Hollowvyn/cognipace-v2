@@ -1,4 +1,4 @@
-import { normalizeLeetCodeSlug } from '@/lib/leetcode/problem-url'
+import { normalizeLeetCodeSlug } from '@/lib/leetcode'
 
 export const problemDifficulties = [
   'easy',

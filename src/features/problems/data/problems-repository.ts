@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 
-import { normalizeLeetCodeSlug } from '@/lib/leetcode/problem-url'
+import { normalizeLeetCodeSlug } from '@/lib/leetcode'
 import type { Db } from '@/platform/db'
 import {
   fsrsCards,

@@ -1,4 +1,11 @@
 export {
+  getProblemContextViaRuntime,
+  upsertProblemFromPageViaRuntime,
+  useProblemContext,
+  useUpsertProblemFromPage,
+  type RuntimeProblemContext,
+} from './api/problems-api'
+export {
   createLeetCodeProblemId,
   normalizeProblemDifficulty,
   problemDifficulties,

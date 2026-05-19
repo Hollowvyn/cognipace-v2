@@ -1,4 +1,4 @@
-import { parseLeetCodeProblemLocation } from '@/lib/leetcode/problem-url'
+import { parseLeetCodeProblemLocation } from '@/lib/leetcode'
 import type { Db } from '@/platform/db'
 
 import { createProblemsRepository } from '../data/problems-repository'

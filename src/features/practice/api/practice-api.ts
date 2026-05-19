@@ -5,12 +5,17 @@ import {
   type PracticeSaveReviewResultRequest,
 } from '@/extension/messaging'
 
+export function saveReviewResultViaRuntime(
+  request: PracticeSaveReviewResultRequest,
+) {
+  return sendMessage('practice.saveReviewResult', request)
+}
+
 export function useSaveReviewResult() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (request: PracticeSaveReviewResultRequest) =>
-      sendMessage('practice.saveReviewResult', request),
+    mutationFn: saveReviewResultViaRuntime,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['today-queue'] })
       void queryClient.invalidateQueries({ queryKey: ['app-shell-data'] })

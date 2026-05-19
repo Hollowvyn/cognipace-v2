@@ -5,7 +5,7 @@ import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root'
 import '@/app/styles.css'
 import { OverlayApp } from '@/app/overlay/overlay-app'
 import { AppProviders } from '@/app/providers/app-providers'
-import { parseLeetCodeProblemLocation } from '@/lib/leetcode/problem-url'
+import { parseLeetCodeProblemLocation } from '@/lib/leetcode'
 
 export default defineContentScript({
   matches: [
@@ -15,9 +15,7 @@ export default defineContentScript({
   runAt: 'document_idle',
   cssInjectionMode: 'ui',
   async main(ctx) {
-    const problem = parseLeetCodeProblemLocation(window.location.href)
-
-    if (!problem) {
+    if (!parseLeetCodeProblemLocation(window.location.href)) {
       return
     }
 
@@ -34,7 +32,7 @@ export default defineContentScript({
 
         root.render(
           <AppProviders>
-            <OverlayApp problem={problem} />
+            <OverlayApp />
           </AppProviders>,
         )
 
