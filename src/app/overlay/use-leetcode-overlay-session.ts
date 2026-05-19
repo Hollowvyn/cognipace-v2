@@ -191,8 +191,6 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
           return
         case 'problem-content-updated':
           return
-        case 'code-updated':
-          return
         case 'submit-clicked':
           setFeedback(
             'LeetCode submit detected. CogniPace is still waiting for your rating.',

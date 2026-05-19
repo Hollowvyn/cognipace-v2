@@ -198,11 +198,6 @@ export type LeetCodePageEvent =
       content: LeetCodeProblemContent
     }
   | {
-      type: 'code-updated'
-      location: LeetCodeProblemLocation
-      snapshot: LeetCodeCodeSnapshot
-    }
-  | {
       type: 'submit-clicked'
       click: LeetCodeSubmissionClick
     }

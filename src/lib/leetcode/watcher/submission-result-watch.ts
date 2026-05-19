@@ -49,6 +49,11 @@ export function createLeetCodeSubmissionResultWatch(options: {
   let activeSubmissionResultWatch: ActiveSubmissionResultWatch | null = null
   let submissionResultReadTimers: number[] = []
   let latestSubmissionResultFingerprint: string | null = null
+  let activeSubmissionResultRead: {
+    token: number
+    slug: string
+    promise: Promise<void>
+  } | null = null
 
   function start(
     click: LeetCodeSubmissionClick,
@@ -57,6 +62,7 @@ export function createLeetCodeSubmissionResultWatch(options: {
   ) {
     clear()
     latestSubmissionResultFingerprint = null
+    activeSubmissionResultRead = null
     activeSubmissionResultWatch = {
       click,
       submittedCodeSnapshot,
@@ -89,6 +95,7 @@ export function createLeetCodeSubmissionResultWatch(options: {
 
     submissionResultReadTimers = []
     activeSubmissionResultWatch = null
+    activeSubmissionResultRead = null
   }
 
   function readAfterMutation(location: LeetCodeProblemLocation) {
@@ -119,6 +126,34 @@ export function createLeetCodeSubmissionResultWatch(options: {
   }
 
   async function readAndEmitSubmissionResult(
+    token: number,
+    location: LeetCodeProblemLocation,
+  ) {
+    if (
+      activeSubmissionResultRead?.token === token &&
+      activeSubmissionResultRead.slug === location.slug
+    ) {
+      await activeSubmissionResultRead.promise
+      return
+    }
+
+    const submissionResultRead = {
+      token,
+      slug: location.slug,
+      promise: readAndEmitSubmissionResultOnce(token, location),
+    }
+    activeSubmissionResultRead = submissionResultRead
+
+    try {
+      await submissionResultRead.promise
+    } finally {
+      if (activeSubmissionResultRead === submissionResultRead) {
+        activeSubmissionResultRead = null
+      }
+    }
+  }
+
+  async function readAndEmitSubmissionResultOnce(
     token: number,
     location: LeetCodeProblemLocation,
   ) {

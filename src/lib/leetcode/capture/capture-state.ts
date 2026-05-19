@@ -105,13 +105,6 @@ export function reduceLeetCodeCaptureState(
         problemContent: event.content,
         lastUpdatedAt: event.content.capturedAt,
       }
-    case 'code-updated':
-      return {
-        ...state,
-        location: event.location,
-        codeSnapshot: event.snapshot,
-        lastUpdatedAt: event.snapshot.capturedAt,
-      }
     case 'submit-clicked':
       return {
         ...state,
@@ -158,7 +151,7 @@ export function reduceLeetCodeCaptureState(
  * Builds review-ready context once required problem metadata and content exist.
  *
  * Returns null until the capture state has enough problem context to be useful.
- * Current code, submitted code, and submission results are included when known.
+ * Submitted code and submission results are included when known.
  */
 export function createLeetCodeReviewContext(
   state: LeetCodeCaptureState,

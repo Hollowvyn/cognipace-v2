@@ -78,6 +78,24 @@ describe('createLeetCodePageWatcher', () => {
     })
   })
 
+  it('reads problem details once for a slug across hydration retries', async () => {
+    vi.useFakeTimers()
+    renderProblemHeader()
+    const fetcher = createQuestionContentFetcher()
+    const { events, watcher } = createWatcherTestHarness({
+      hydrationDelays: [0, 500, 1500],
+      fetch: fetcher,
+    })
+
+    watcher.start()
+    await vi.runAllTimersAsync()
+    watcher.stop()
+
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    expect(filterEvents(events, 'metadata-updated')).toHaveLength(1)
+    expect(filterEvents(events, 'problem-content-updated')).toHaveLength(1)
+  })
+
   it('emits page changes when the active slug changes', async () => {
     vi.useFakeTimers()
     let currentUrl = problemUrl

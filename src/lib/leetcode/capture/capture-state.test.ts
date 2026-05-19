@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import type {
-  LeetCodeCodeSnapshot,
   LeetCodePageEvent,
   LeetCodePageSnapshot,
   LeetCodeProblemContent,
@@ -59,13 +58,6 @@ const content = {
   capturedAt: 1200,
   contentFingerprint: 'content:two-sum',
 } satisfies LeetCodeProblemContent
-
-const codeSnapshot = {
-  code: 'class Solution:\n    pass',
-  language: 'Python3',
-  source: 'monaco',
-  capturedAt: 1500,
-} satisfies LeetCodeCodeSnapshot
 
 const submissionAttempt = {
   location,
@@ -132,7 +124,6 @@ describe('LeetCode capture state', () => {
         pageReadyAt: 1000,
       },
       { type: 'problem-content-updated', location, content },
-      { type: 'code-updated', location, snapshot: codeSnapshot },
       {
         type: 'submit-clicked',
         click: { location, clickedAt: 1900, buttonText: 'Submit' },
@@ -170,7 +161,6 @@ describe('LeetCode capture state', () => {
     const populatedState = reduceEvents(
       { type: 'metadata-updated', location, metadata },
       { type: 'problem-content-updated', location, content },
-      { type: 'code-updated', location, snapshot: codeSnapshot },
       { type: 'submission-started', attempt: submissionAttempt },
       { type: 'submission-result-updated', result: submissionResult },
     )
@@ -198,7 +188,6 @@ describe('LeetCode capture state', () => {
     const problemState = reduceEvents(
       { type: 'metadata-updated', location, metadata },
       { type: 'problem-content-updated', location, content },
-      { type: 'code-updated', location, snapshot: codeSnapshot },
     )
     const submittedState = reduceEventsFrom(
       problemState,
@@ -212,10 +201,10 @@ describe('LeetCode capture state', () => {
       location,
       problem: metadata,
       content,
-      currentCode: codeSnapshot,
+      currentCode: null,
       submittedCode: null,
       submissionResult: null,
-      capturedAt: 1500,
+      capturedAt: 1200,
     })
     expect(createLeetCodeReviewContext(submittedState)).toMatchObject({
       currentCode: submissionAttempt.submittedCodeSnapshot,

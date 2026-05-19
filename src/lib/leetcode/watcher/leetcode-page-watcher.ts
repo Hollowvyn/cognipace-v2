@@ -3,10 +3,11 @@ import type {
   LeetCodePageEvent,
   LeetCodeProblemContent,
   LeetCodeProblemLocation,
+  LeetCodeProblemMetadata,
 } from '../domain/types'
 import { readLeetCodeProblemContent } from '../content/problem-content-reader'
-import { readLeetCodeCodeSnapshot } from '../editor/code-snapshot-reader'
 import { readLeetCodeProblemMetadata } from '../metadata/metadata-reader'
+import { createLeetCodeProblemMetadataFingerprint } from '../metadata/metadata-fingerprint'
 import { readLeetCodePageSnapshot } from '../page/page-snapshot-reader'
 import { readLeetCodeSubmissionAttempt } from '../submission/submission-attempt-reader'
 import { createLeetCodeHydrationScheduler } from './hydration-scheduler'
@@ -109,7 +110,13 @@ export function createLeetCodePageWatcher(
   let mutationObserver: MutationObserver | null = null
   let mutationRefreshTimer: number | null = null
   let samePageSnapshotRefreshTimer: number | null = null
+  let latestProblemMetadataFingerprint: string | null = null
   let latestProblemContentFingerprint: string | null = null
+  let activeProblemDetailsRead: {
+    slug: string
+    promise: Promise<void>
+  } | null = null
+  let completedProblemDetailsReadSlug: string | null = null
   let lastSnapshotRefreshAt = Number.NEGATIVE_INFINITY
 
   function start() {
@@ -153,6 +160,7 @@ export function createLeetCodePageWatcher(
 
     if (activeLocation?.slug === location.slug) {
       if (settings.forceSamePageSnapshotRefresh) {
+        completedProblemDetailsReadSlug = null
         scheduleSamePageSnapshotRefresh(location, 0)
       }
       return
@@ -162,7 +170,10 @@ export function createLeetCodePageWatcher(
     activeLocation = location
     activeToken += 1
     readySlug = null
+    latestProblemMetadataFingerprint = null
     latestProblemContentFingerprint = null
+    activeProblemDetailsRead = null
+    completedProblemDetailsReadSlug = null
     lastSnapshotRefreshAt = Number.NEGATIVE_INFINITY
     hydrationScheduler.clearScheduledRefreshes()
     submissionResultWatch.clear()
@@ -180,8 +191,37 @@ export function createLeetCodePageWatcher(
     token: number,
     location: LeetCodeProblemLocation,
   ) {
+    lastSnapshotRefreshAt = now()
+
+    if (completedProblemDetailsReadSlug === location.slug) {
+      return
+    }
+
+    if (activeProblemDetailsRead?.slug === location.slug) {
+      await activeProblemDetailsRead.promise
+      return
+    }
+
+    const problemDetailsRead = {
+      slug: location.slug,
+      promise: readAndEmitProblemDetails(token, location),
+    }
+    activeProblemDetailsRead = problemDetailsRead
+
     try {
-      lastSnapshotRefreshAt = now()
+      await problemDetailsRead.promise
+    } finally {
+      if (activeProblemDetailsRead === problemDetailsRead) {
+        activeProblemDetailsRead = null
+      }
+    }
+  }
+
+  async function readAndEmitProblemDetails(
+    token: number,
+    location: LeetCodeProblemLocation,
+  ) {
+    try {
       const pageSnapshot = readLeetCodePageSnapshot(documentRef, {
         location,
         now,
@@ -203,6 +243,7 @@ export function createLeetCodePageWatcher(
       }
 
       const problemMetadata = metadataReadResult.metadata
+      completedProblemDetailsReadSlug = location.slug
 
       if (readySlug !== location.slug) {
         readySlug = location.slug
@@ -215,11 +256,7 @@ export function createLeetCodePageWatcher(
         })
       }
 
-      options.onEvent({
-        type: 'metadata-updated',
-        location,
-        metadata: problemMetadata,
-      })
+      emitProblemMetadataIfUseful(location, problemMetadata)
 
       const contentReadResult = await readLeetCodeProblemContent(location, {
         root: documentRef,
@@ -236,16 +273,6 @@ export function createLeetCodePageWatcher(
         emitProblemContentIfUseful(location, contentReadResult.content)
       } else {
         emitWatcherError(location, contentReadResult.error)
-      }
-
-      const codeSnapshot = readLeetCodeCodeSnapshot(documentRef, now)
-
-      if (codeSnapshot.source !== 'none') {
-        options.onEvent({
-          type: 'code-updated',
-          location,
-          snapshot: codeSnapshot,
-        })
       }
     } catch (error) {
       emitWatcherError(
@@ -310,6 +337,25 @@ export function createLeetCodePageWatcher(
       attempt.submittedCodeSnapshot,
       activeToken,
     )
+  }
+
+  function emitProblemMetadataIfUseful(
+    location: LeetCodeProblemLocation,
+    metadata: LeetCodeProblemMetadata,
+  ) {
+    const metadataFingerprint =
+      createLeetCodeProblemMetadataFingerprint(metadata)
+
+    if (latestProblemMetadataFingerprint === metadataFingerprint) {
+      return
+    }
+
+    latestProblemMetadataFingerprint = metadataFingerprint
+    options.onEvent({
+      type: 'metadata-updated',
+      location,
+      metadata,
+    })
   }
 
   function emitProblemContentIfUseful(
