@@ -252,6 +252,14 @@
     overflow-wrap: anywhere;
   }
 
+  .cp-overlay-debug-label {
+    color: var(--color-muted-foreground);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
   .cp-overlay-code-preview {
     max-height: 112px;
     margin: 0;

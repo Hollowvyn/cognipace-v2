@@ -168,6 +168,12 @@ describe('OverlayPanel', () => {
           totalTestCount: 58,
           failingTestcase: null,
           errorMessage: null,
+          compileError: null,
+          runtimeError: null,
+          lastTestcase: null,
+          codeOutput: null,
+          expectedOutput: null,
+          stdOutput: null,
           resultCodeSnapshot: {
             code: 'class Solution:\n    pass',
             language: 'Python3',
@@ -185,5 +191,57 @@ describe('OverlayPanel', () => {
     expect(
       screen.getByLabelText('Submission result debug').textContent,
     ).toContain('class Solution:')
+  })
+
+  it('shows complete submission result detail fields', () => {
+    render(
+      <OverlayPanel
+        {...premiumSession}
+        lastSubmissionResult={{
+          location: premiumSession.location,
+          submissionId: '1234567890',
+          source: 'api',
+          status: 'runtime-error',
+          statusText: 'Runtime Error',
+          checkedAt: 5000,
+          runtime: null,
+          memory: null,
+          passedTestCount: 0,
+          totalTestCount: 63,
+          failingTestcase: '[2,7,11,15]\n9',
+          errorMessage: 'IndexError: list index out of range',
+          compileError: null,
+          runtimeError: 'IndexError: list index out of range',
+          lastTestcase: '[2,7,11,15]\n9',
+          codeOutput: '[]',
+          expectedOutput: '[0,1]',
+          stdOutput: 'before crash',
+          resultCodeSnapshot: {
+            code: 'class Solution:\n    raise IndexError()',
+            language: 'Python3',
+            source: 'api',
+            capturedAt: 5000,
+          },
+        }}
+      />,
+    )
+
+    const resultPanel = screen.getByLabelText('Submission result debug')
+
+    expect(resultPanel.textContent).toContain('Runtime Error')
+    expect(resultPanel.textContent).toContain('runtime error')
+    expect(resultPanel.textContent).toContain(
+      'IndexError: list index out of range',
+    )
+    expect(resultPanel.textContent).toContain('failing testcase')
+    expect(resultPanel.textContent).toContain('[2,7,11,15]')
+    expect(resultPanel.textContent).toContain('output')
+    expect(resultPanel.textContent).toContain('[]')
+    expect(resultPanel.textContent).toContain('expected')
+    expect(resultPanel.textContent).toContain('[0,1]')
+    expect(resultPanel.textContent).toContain('stdout')
+    expect(resultPanel.textContent).toContain('before crash')
+    expect(resultPanel.textContent).toContain('result code')
+    expect(resultPanel.textContent).toContain('raise IndexError')
   })
 })

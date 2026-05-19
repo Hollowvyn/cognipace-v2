@@ -267,11 +267,34 @@ export function OverlayPanel({
             <span>code source</span>
             <strong>{lastSubmissionResult.resultCodeSnapshot.source}</strong>
           </div>
-          {lastSubmissionResult.failingTestcase ? (
-            <pre className="cp-overlay-code-preview">
-              {lastSubmissionResult.failingTestcase}
-            </pre>
-          ) : null}
+          <SubmissionResultDetailPreview
+            label="compile error"
+            value={lastSubmissionResult.compileError}
+          />
+          <SubmissionResultDetailPreview
+            label="runtime error"
+            value={lastSubmissionResult.runtimeError}
+          />
+          <SubmissionResultDetailPreview
+            label="failing testcase"
+            value={
+              lastSubmissionResult.lastTestcase ??
+              lastSubmissionResult.failingTestcase
+            }
+          />
+          <SubmissionResultDetailPreview
+            label="output"
+            value={lastSubmissionResult.codeOutput}
+          />
+          <SubmissionResultDetailPreview
+            label="expected"
+            value={lastSubmissionResult.expectedOutput}
+          />
+          <SubmissionResultDetailPreview
+            label="stdout"
+            value={lastSubmissionResult.stdOutput}
+          />
+          <div className="cp-overlay-debug-label">result code</div>
           <pre className="cp-overlay-code-preview">
             {formatCodePreview(lastSubmissionResult.resultCodeSnapshot.code)}
           </pre>
@@ -300,6 +323,25 @@ export function OverlayPanel({
         ))}
       </div>
     </aside>
+  )
+}
+
+function SubmissionResultDetailPreview({
+  label,
+  value,
+}: {
+  label: string
+  value: string | null
+}) {
+  if (!value) {
+    return null
+  }
+
+  return (
+    <>
+      <div className="cp-overlay-debug-label">{label}</div>
+      <pre className="cp-overlay-code-preview">{value}</pre>
+    </>
   )
 }
 
