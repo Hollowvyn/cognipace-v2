@@ -11,6 +11,12 @@ import type {
   LeetCodeSubmissionResult,
 } from '../domain/types'
 
+/**
+ * Snapshot of all LeetCode data captured from the active problem page.
+ *
+ * This is the public state shape features should consume instead of subscribing
+ * to low-level DOM, GraphQL, editor, or submission readers directly.
+ */
 export interface LeetCodeCaptureState {
   location: LeetCodeProblemLocation | null
   metadata: LeetCodeProblemMetadata | null
@@ -24,6 +30,12 @@ export interface LeetCodeCaptureState {
   lastUpdatedAt: number | null
 }
 
+/**
+ * Review-ready LeetCode context for future analysis features.
+ *
+ * This shape is intentionally provider-agnostic: GenAI, review summaries, and
+ * debugging features can consume it without depending on LeetCode DOM details.
+ */
 export interface LeetCodeReviewContext {
   location: LeetCodeProblemLocation
   problem: LeetCodeProblemMetadata
@@ -34,6 +46,10 @@ export interface LeetCodeReviewContext {
   capturedAt: number
 }
 
+/**
+ * Creates an empty capture state, optionally seeded with the current problem
+ * location parsed from the page URL.
+ */
 export function createEmptyLeetCodeCaptureState(
   initialLocation: LeetCodeProblemLocation | null = null,
 ): LeetCodeCaptureState {
@@ -51,6 +67,12 @@ export function createEmptyLeetCodeCaptureState(
   }
 }
 
+/**
+ * Applies one page watcher event to the current capture state.
+ *
+ * Use this reducer as the single public event-to-state boundary for LeetCode
+ * capture data in app or feature code.
+ */
 export function reduceLeetCodeCaptureState(
   state: LeetCodeCaptureState,
   event: LeetCodePageEvent,
@@ -132,6 +154,12 @@ export function reduceLeetCodeCaptureState(
   }
 }
 
+/**
+ * Builds review-ready context once required problem metadata and content exist.
+ *
+ * Returns null until the capture state has enough problem context to be useful.
+ * Current code, submitted code, and submission results are included when known.
+ */
 export function createLeetCodeReviewContext(
   state: LeetCodeCaptureState,
 ): LeetCodeReviewContext | null {

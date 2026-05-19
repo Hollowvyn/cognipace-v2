@@ -14,13 +14,15 @@ import { createLeetCodeNavigationObserver } from './navigation-observer'
 import { createLeetCodeSubmissionResultWatch } from './submission-result-watch'
 import { readLeetCodeSubmissionClickFromMouseEvent } from './submit-click-observer'
 
-export type LeetCodePageWatcher = {
+/** Controls the active LeetCode page watcher lifecycle. */
+export interface LeetCodePageWatcher {
   start: () => void
   stop: () => void
   refresh: () => void
 }
 
-export function createLeetCodePageWatcher(options: {
+/** Options for wiring the LeetCode page watcher to a browser page. */
+export interface LeetCodePageWatcherOptions {
   onEvent: (event: LeetCodePageEvent) => void
   windowRef?: Window | undefined
   documentRef?: Document | undefined
@@ -33,7 +35,17 @@ export function createLeetCodePageWatcher(options: {
   domSubmissionResultFallbackDelayMs?: number | undefined
   mutationRefreshDebounceMs?: number | undefined
   samePageSnapshotRefreshCooldownMs?: number | undefined
-}): LeetCodePageWatcher {
+}
+
+/**
+ * Watches a LeetCode problem page and emits normalized capture events.
+ *
+ * The watcher owns DOM/page observation only; consumers should reduce emitted
+ * events with reduceLeetCodeCaptureState instead of reading internals directly.
+ */
+export function createLeetCodePageWatcher(
+  options: LeetCodePageWatcherOptions,
+): LeetCodePageWatcher {
   const windowRef = options.windowRef ?? window
   const documentRef = options.documentRef ?? windowRef.document
   const now = options.now ?? Date.now

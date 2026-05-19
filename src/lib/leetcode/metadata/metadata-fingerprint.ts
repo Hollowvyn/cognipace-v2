@@ -1,5 +1,6 @@
 import type { LeetCodeProblemMetadata } from '../domain/types'
 
+/** Creates a stable metadata fingerprint for deduping problem sync work. */
 export function createLeetCodeProblemMetadataFingerprint(
   metadata: LeetCodeProblemMetadata,
 ) {

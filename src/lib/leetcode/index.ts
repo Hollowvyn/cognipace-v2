@@ -20,6 +20,7 @@ export {
 export {
   createLeetCodePageWatcher,
   type LeetCodePageWatcher,
+  type LeetCodePageWatcherOptions,
 } from './watcher/leetcode-page-watcher'
 export type {
   LeetCodeCaptureState,

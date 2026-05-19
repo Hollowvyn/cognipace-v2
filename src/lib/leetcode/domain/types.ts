@@ -5,16 +5,22 @@ export const leetcodeDifficulties = [
   'Unknown',
 ] as const
 
+/** LeetCode difficulty label normalized from GraphQL or page DOM. */
 export type LeetCodeDifficulty = (typeof leetcodeDifficulties)[number]
 
+/** Source that produced problem metadata. */
 export type LeetCodeMetadataSource = 'graphql' | 'dom' | 'fallback'
 
+/** Confidence level for captured problem metadata. */
 export type LeetCodeMetadataConfidence = 'high' | 'medium' | 'low'
 
+/** Source that produced problem statement/content data. */
 export type LeetCodeProblemContentSource = 'graphql' | 'dom' | 'fallback'
 
+/** Confidence level for captured problem content data. */
 export type LeetCodeProblemContentConfidence = 'high' | 'medium' | 'low'
 
+/** Source that produced an editor or submitted-code snapshot. */
 export type LeetCodeCodeSnapshotSource =
   | 'api'
   | 'monaco'
@@ -22,8 +28,10 @@ export type LeetCodeCodeSnapshotSource =
   | 'code-block'
   | 'none'
 
+/** Source that produced the submission result. */
 export type LeetCodeSubmissionResultSource = 'api' | 'dom'
 
+/** Debug phase emitted while polling LeetCode submission result APIs. */
 export type LeetCodeSubmissionPollingPhase =
   | 'finding-submission'
   | 'submission-found'
@@ -35,6 +43,7 @@ export type LeetCodeSubmissionPollingPhase =
   | 'dom-fallback-used'
   | 'timed-out'
 
+/** Normalized terminal status for a LeetCode submission result. */
 export type LeetCodeSubmissionStatus =
   | 'accepted'
   | 'wrong-answer'
@@ -45,17 +54,20 @@ export type LeetCodeSubmissionStatus =
   | 'output-limit-exceeded'
   | 'unknown'
 
+/** Canonical identity for a LeetCode problem page. */
 export interface LeetCodeProblemLocation {
   slug: string
   url: string
   host: string
 }
 
+/** LeetCode topic tag attached to a problem. */
 export interface LeetCodeTopic {
   name: string
   slug: string | null
 }
 
+/** Parsed example block from the LeetCode problem statement. */
 export interface LeetCodeExample {
   label: string
   input: string | null
@@ -64,6 +76,7 @@ export interface LeetCodeExample {
   rawText: string
 }
 
+/** Synchronous page snapshot from currently visible LeetCode DOM. */
 export interface LeetCodePageSnapshot {
   location: LeetCodeProblemLocation
   title: string | null
@@ -75,6 +88,7 @@ export interface LeetCodePageSnapshot {
   capturedAt: number
 }
 
+/** Problem metadata normalized from LeetCode GraphQL or DOM fallback. */
 export interface LeetCodeProblemMetadata {
   location: LeetCodeProblemLocation
   title: string
@@ -87,6 +101,7 @@ export interface LeetCodeProblemMetadata {
   capturedAt: number
 }
 
+/** Problem statement, examples, constraints, and hints captured from LeetCode. */
 export interface LeetCodeProblemContent {
   location: LeetCodeProblemLocation
   statement: string
@@ -99,6 +114,7 @@ export interface LeetCodeProblemContent {
   contentFingerprint: string
 }
 
+/** Snapshot of editor or submitted solution code. */
 export interface LeetCodeCodeSnapshot {
   code: string | null
   language: string | null
@@ -106,14 +122,17 @@ export interface LeetCodeCodeSnapshot {
   capturedAt: number
 }
 
+/** User submit-click event captured from the LeetCode page. */
 export interface LeetCodeSubmissionClick {
   location: LeetCodeProblemLocation
   clickedAt: number
   buttonText: string
 }
 
+/** Code snapshot associated with a submitted LeetCode attempt. */
 export type LeetCodeSubmittedCodeSnapshot = LeetCodeCodeSnapshot
 
+/** Captured submission attempt before the final LeetCode result is known. */
 export interface LeetCodeSubmissionAttempt {
   location: LeetCodeProblemLocation
   clickedAt: number
@@ -121,6 +140,7 @@ export interface LeetCodeSubmissionAttempt {
   submittedCodeSnapshot: LeetCodeSubmittedCodeSnapshot
 }
 
+/** Final LeetCode submission result with error/output fields when available. */
 export interface LeetCodeSubmissionResult {
   location: LeetCodeProblemLocation
   submissionId: string | null
@@ -143,6 +163,7 @@ export interface LeetCodeSubmissionResult {
   resultCodeSnapshot: LeetCodeSubmittedCodeSnapshot
 }
 
+/** Lightweight diagnostics for the active submission polling cycle. */
 export interface LeetCodeSubmissionPollingDebug {
   phase: LeetCodeSubmissionPollingPhase
   submissionId: string | null
@@ -151,6 +172,7 @@ export interface LeetCodeSubmissionPollingDebug {
   checkedAt: number
 }
 
+/** Event stream emitted by createLeetCodePageWatcher. */
 export type LeetCodePageEvent =
   | {
       type: 'page-changed'

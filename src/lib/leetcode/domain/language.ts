@@ -49,6 +49,7 @@ const leetCodeLanguageAliases = new Map<string, string>([
   ['postgresql', 'PostgreSQL'],
 ])
 
+/** Normalizes LeetCode language labels and common aliases into display labels. */
 export function normalizeLeetCodeLanguageLabel(
   value: string | null | undefined,
 ) {
@@ -76,6 +77,7 @@ export function normalizeLeetCodeLanguageLabel(
   return exactLabel ?? normalizedValue
 }
 
+/** Extracts a LeetCode language label from compact page or result text. */
 export function readLeetCodeLanguageLabelFromText(
   text: string | null | undefined,
 ) {
