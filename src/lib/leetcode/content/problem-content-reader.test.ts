@@ -236,11 +236,14 @@ describe('readLeetCodeProblemContent', () => {
 
   it('returns a low confidence fallback when no content can be read', async () => {
     document.body.innerHTML = '<main></main>'
+    const fetcher = vi.fn(() =>
+      Promise.resolve(new Response('', { status: 500 })),
+    )
 
     await expect(
       readLeetCodeProblemContent(location, {
         root: document,
-        fetch: undefined,
+        fetch: fetcher,
         now: () => 4000,
       }),
     ).resolves.toMatchObject({
