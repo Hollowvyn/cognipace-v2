@@ -9,12 +9,12 @@ import {
 import type {
   SerializedLeetCodeMetadataResult,
   SerializedLeetCodeProblemContentResult,
-} from '../domain/leetcode-capture-contracts'
+} from '../api/leetcode-capture-contracts'
 import {
   leetcodeSubmissionResultRemoteResponseSchema,
   serializedLeetCodeMetadataResultSchema,
   serializedLeetCodeProblemContentResultSchema,
-} from '../domain/leetcode-capture-contracts'
+} from '../api/leetcode-capture-contracts'
 
 type LeetCodeProblemRemoteRequest = Parameters<
   LeetCodeRemoteClient['readProblemMetadata']

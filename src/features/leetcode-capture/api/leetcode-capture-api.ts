@@ -16,7 +16,7 @@ import {
 import type {
   SerializedLeetCodeMetadataResult,
   SerializedLeetCodeProblemContentResult,
-} from '../domain/leetcode-capture-contracts'
+} from './leetcode-capture-contracts'
 
 export function createLeetCodeCaptureRemoteClient(
   options: {

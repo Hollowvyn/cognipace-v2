@@ -7,7 +7,7 @@ import {
   type SerializedLeetCodeMetadataResult,
   type SerializedLeetCodeProblemContentResult,
   type SerializedLeetCodeSubmissionResultRemoteResponse,
-} from '@/features/leetcode-capture/domain/leetcode-capture-contracts'
+} from '@/features/leetcode-capture/api/leetcode-capture-contracts'
 import { problemDifficulties } from '@/features/problems'
 import { type UserSettings, userSettingsPatchSchema } from '@/features/settings'
 import { reviewRatings } from '@/lib/fsrs'
