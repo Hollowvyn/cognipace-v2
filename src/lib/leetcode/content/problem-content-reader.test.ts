@@ -70,6 +70,44 @@ Explanation: Because nums[0] + nums[1] == 9, we return [0, 1].
       },
     })
   })
+
+  it('preserves chained comparison constraints from LeetCode markup', async () => {
+    const fetcher = vi.fn(() =>
+      Promise.resolve(
+        Response.json({
+          data: {
+            question: {
+              content: `
+                <p>You are given two non-empty linked lists.</p>
+                <p><strong>Constraints:</strong></p>
+                <ul>
+                  <li>The number of nodes in each linked list is in the range <code>[1, 100]</code>.</li>
+                  <li><code>0 <= Node.val <= 9</code></li>
+                </ul>
+              `,
+              hints: [],
+            },
+          },
+        }),
+      ),
+    )
+
+    await expect(
+      fetchLeetCodeProblemContent(location, {
+        fetch: fetcher,
+        document,
+        now: () => 1100,
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      content: {
+        constraints: [
+          'The number of nodes in each linked list is in the range [1, 100].',
+          '0 <= Node.val <= 9',
+        ],
+      },
+    })
+  })
 })
 
 describe('readLeetCodeProblemContentFromDom', () => {
@@ -112,6 +150,58 @@ Output: [0,1]
       source: 'dom',
       confidence: 'medium',
       capturedAt: 2000,
+    })
+  })
+
+  it('reads constraints when the heading text is inside a strong element', () => {
+    document.body.innerHTML = `
+      <main>
+        <section data-track-load="description_content">
+          <p>You are given two non-empty linked lists.</p>
+          <p><strong>Constraints:</strong></p>
+          <ul>
+            <li>The number of nodes in each linked list is in the range <code>[1, 100]</code>.</li>
+            <li><code>0 <= Node.val <= 9</code></li>
+          </ul>
+        </section>
+      </main>
+    `
+
+    expect(
+      readLeetCodeProblemContentFromDom(document, {
+        location,
+        now: () => 2100,
+      }),
+    ).toMatchObject({
+      constraints: [
+        'The number of nodes in each linked list is in the range [1, 100].',
+        '0 <= Node.val <= 9',
+      ],
+    })
+  })
+
+  it('preserves chained comparison constraints from paragraph fallback text', () => {
+    document.body.innerHTML = `
+      <main>
+        <section data-track-load="description_content">
+          <p>You are given two non-empty linked lists.</p>
+          <p><strong>Constraints:</strong></p>
+          <p>The number of nodes in each linked list is in the range <code>[1, 100]</code>.</p>
+          <p><code>0 <= Node.val <= 9</code></p>
+        </section>
+      </main>
+    `
+
+    expect(
+      readLeetCodeProblemContentFromDom(document, {
+        location,
+        now: () => 2200,
+      }),
+    ).toMatchObject({
+      constraints: [
+        'The number of nodes in each linked list is in the range [1, 100].',
+        '0 <= Node.val <= 9',
+      ],
     })
   })
 })

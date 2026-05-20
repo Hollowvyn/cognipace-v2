@@ -380,10 +380,22 @@ function readConstraintsFromText(text: string) {
   }
 
   return uniqueStrings(
-    constraintsText
-      .split(/(?=(?:\d+\s*<=|-\d+\s*<=|[a-zA-Z_][\w.]*\s*(?:==|<=|>=|<|>)))/)
+    splitConstraintCandidates(constraintsText)
       .map(stripLeetCodeNoise)
       .filter(Boolean),
+  )
+}
+
+function splitConstraintCandidates(constraintsText: string) {
+  const lineCandidates = constraintsText
+    .split(/\n+/)
+    .map(stripLeetCodeNoise)
+    .filter(Boolean)
+
+  return lineCandidates.flatMap((lineCandidate) =>
+    lineCandidate.split(
+      /(?<=[.;])\s+(?=(?:-?\d+\s*<=|[a-zA-Z_][\w.]*\s*(?:==|<=|>=|<|>)))/,
+    ),
   )
 }
 

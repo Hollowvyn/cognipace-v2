@@ -274,7 +274,8 @@
     font-size: 11px;
     line-height: 1.4;
     white-space: pre-wrap;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
   }
 
   .cp-overlay-rating-grid {
