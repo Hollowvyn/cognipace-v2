@@ -1,8 +1,11 @@
 export {
+  getPracticeDetailsViaRuntime,
   overrideLastReviewResultViaRuntime,
   saveReviewResultViaRuntime,
+  usePracticeDetails,
   useOverrideLastReviewResult,
   useSaveReviewResult,
+  type RuntimePracticeDetails,
 } from './api/practice-api'
 export {
   derivePracticeSummary,
@@ -11,7 +14,10 @@ export {
   reviewModes,
   statusFromReview,
   type OverrideLastReviewResultInput,
+  type PracticeDetails,
   type PracticeLogFields,
+  type PracticeReviewAttemptSnapshot,
+  type PracticeReadOptions,
   type PracticeStateSnapshot,
   type PracticeStatus,
   type PracticeSummary,
@@ -25,6 +31,7 @@ export {
   PracticeRepository,
 } from './data/practice-repository'
 export {
+  getPracticeDetails,
   overrideLastReviewResult,
   saveReviewResult,
 } from './server/practice-service'

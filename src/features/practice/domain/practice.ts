@@ -72,6 +72,12 @@ export interface ReviewResult {
   summary: PracticeSummary
 }
 
+export interface PracticeReadOptions {
+  cardKind?: FsrsCardKind | undefined
+  now?: Date | undefined
+  targetRetention?: number | undefined
+}
+
 export interface PracticeStateSnapshot {
   status: PracticeStatus
   lastReviewedAt: Date | null
@@ -82,6 +88,20 @@ export interface PracticeStateSnapshot {
   lastElapsedSeconds: number | null
   bestElapsedSeconds: number | null
   log: Required<PracticeLogFields>
+}
+
+export interface PracticeReviewAttemptSnapshot {
+  id: string
+  problemId: string
+  cardId: string
+  rating: ReviewRating
+  reviewMode: ReviewMode
+  reviewedAt: Date
+  elapsedSeconds: number | null
+  isCorrect: boolean | null
+  log: Required<PracticeLogFields>
+  createdAt: Date
+  updatedAt: Date
 }
 
 export interface PracticeSummary {
@@ -99,6 +119,18 @@ export interface PracticeSummary {
   isOverdue: boolean
   overdueDays: number
   retrievability: number | null
+}
+
+export interface PracticeDetails {
+  problemId: string
+  cardId: string
+  practice: PracticeStateSnapshot | null
+  card: FsrsCardSnapshot | null
+  summary: PracticeSummary
+  currentLog: Required<PracticeLogFields>
+  recentAttempts: PracticeReviewAttemptSnapshot[]
+  latestAttempt: PracticeReviewAttemptSnapshot | null
+  canOverrideLatestReview: boolean
 }
 
 export function statusFromReview(

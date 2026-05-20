@@ -69,6 +69,84 @@ describe('practice core', () => {
     })
   })
 
+  it('reads a complete practice details model with the latest five attempts', async () => {
+    const handle = await createTestDb()
+    const repository = createPracticeRepository(handle.db)
+
+    for (const index of [1, 2, 3, 4, 5, 6]) {
+      await repository.saveReviewResult({
+        problemId: 'leetcode:two-sum',
+        rating: 'good',
+        reviewedAt: new Date(`2026-01-0${index}T10:00:00.000Z`),
+        elapsedSeconds: 600 + index,
+        isCorrect: true,
+        log: { notes: `Attempt ${index}` },
+        reviewAttemptId: `review-${index}`,
+      })
+    }
+
+    const details = await repository.getPracticeDetails('leetcode:two-sum', {
+      now: new Date('2026-01-06T10:01:00.000Z'),
+    })
+
+    expect(details).toMatchObject({
+      problemId: 'leetcode:two-sum',
+      cardId: 'leetcode:two-sum:default',
+      canOverrideLatestReview: true,
+      currentLog: { notes: 'Attempt 6' },
+      summary: {
+        isStarted: true,
+        reviewCount: 6,
+      },
+    })
+    expect(details.card?.reps).toBe(6)
+    expect(details.latestAttempt?.id).toBe('review-6')
+    expect(details.recentAttempts.map((attempt) => attempt.id)).toEqual([
+      'review-6',
+      'review-5',
+      'review-4',
+      'review-3',
+      'review-2',
+    ])
+  })
+
+  it('reads a log-only practice row as unstarted details', async () => {
+    const handle = await createTestDb()
+    const repository = createPracticeRepository(handle.db)
+    const timestamp = new Date('2026-01-01T10:00:00.000Z').getTime()
+
+    await handle.db.insert(problemPractice).values({
+      problemId: 'leetcode:two-sum',
+      status: 'new',
+      firstSeenAt: timestamp,
+      lastSeenAt: timestamp,
+      lastReviewedAt: null,
+      solvedCount: 0,
+      attemptCount: 0,
+      isSuspended: false,
+      notes: 'Read the two-pointer variant.',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+
+    const details = await repository.getPracticeDetails('leetcode:two-sum')
+
+    expect(details).toMatchObject({
+      card: null,
+      latestAttempt: null,
+      canOverrideLatestReview: false,
+      currentLog: {
+        notes: 'Read the two-pointer variant.',
+      },
+      summary: {
+        phase: 'new',
+        isStarted: false,
+        reviewCount: 0,
+      },
+    })
+    expect(details.recentAttempts).toEqual([])
+  })
+
   it('carries the current aggregate log snapshot when a quick save has no log draft', async () => {
     const handle = await createTestDb()
     const repository = createPracticeRepository(handle.db)

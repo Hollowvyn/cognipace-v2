@@ -1,12 +1,14 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   sendMessage,
+  type PracticeDetailsRequest,
   type PracticeOverrideLastReviewResultRequest,
   type PracticeSaveReviewResultRequest,
 } from '@/extension/messaging'
 
 const practiceRelatedQueryKeys = [
+  ['practice-details'],
   ['today-queue'],
   ['app-shell-data'],
   ['problem-context'],
@@ -18,10 +20,25 @@ export function saveReviewResultViaRuntime(
   return sendMessage('practice.saveReviewResult', request)
 }
 
+export function getPracticeDetailsViaRuntime(request: PracticeDetailsRequest) {
+  return sendMessage('practice.getDetails', request)
+}
+
 export function overrideLastReviewResultViaRuntime(
   request: PracticeOverrideLastReviewResultRequest,
 ) {
   return sendMessage('practice.overrideLastReviewResult', request)
+}
+
+export type RuntimePracticeDetails = Awaited<
+  ReturnType<typeof getPracticeDetailsViaRuntime>
+>
+
+export function usePracticeDetails(request: PracticeDetailsRequest) {
+  return useQuery({
+    queryKey: ['practice-details', request.problemId, request.at ?? null],
+    queryFn: () => getPracticeDetailsViaRuntime(request),
+  })
 }
 
 export function useSaveReviewResult() {

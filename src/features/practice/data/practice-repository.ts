@@ -12,7 +12,6 @@ import {
   type FsrsCardKind,
   type FsrsCardSnapshot,
   type FsrsReviewLogSnapshot,
-  type ReviewRating,
 } from '@/lib/fsrs'
 import type { Db } from '@/platform/db'
 import {
@@ -30,7 +29,10 @@ import {
   reviewModes,
   statusFromReview,
   type OverrideLastReviewResultInput,
+  type PracticeDetails,
   type PracticeLogFields,
+  type PracticeReviewAttemptSnapshot,
+  type PracticeReadOptions,
   type PracticeStateSnapshot,
   type PracticeSummary,
   type ReviewMode,
@@ -150,7 +152,7 @@ export class PracticeRepository {
         previousPractice?.log ?? latestAttempt.log,
         input.log,
       )
-      const updatedAttempt: PracticeReviewAttempt = {
+      const updatedAttempt: StoredPracticeReviewAttempt = {
         ...latestAttempt,
         rating: input.rating,
         reviewedAt: input.reviewedAt ?? latestAttempt.reviewedAt,
@@ -224,26 +226,45 @@ export class PracticeRepository {
     })
   }
 
-  async getPracticeSummary(
+  async getPracticeDetails(
     problemId: string,
-    options: {
-      cardKind?: FsrsCardKind | undefined
-      now?: Date | undefined
-      targetRetention?: number | undefined
-    } = {},
-  ): Promise<PracticeSummary> {
+    options: PracticeReadOptions = {},
+  ): Promise<PracticeDetails> {
     const cardKind = options.cardKind ?? defaultFsrsCardKind
-    const [practice, card] = await Promise.all([
+    const cardId = createFsrsCardId(problemId, cardKind)
+    const [practice, card, attempts] = await Promise.all([
       this.getPracticeState(problemId),
       this.getCard(problemId, cardKind),
+      this.readReviewAttempts(this.db, { problemId, cardId }),
     ])
-
-    return derivePracticeSummary({
+    const summary = derivePracticeSummary({
       practice,
       card,
       now: options.now,
       targetRetention: options.targetRetention,
     })
+    const latestAttempt = attempts.at(-1) ?? null
+
+    return {
+      problemId,
+      cardId,
+      practice,
+      card,
+      summary,
+      currentLog: practice?.log ?? normalizeReviewLogFields(),
+      recentAttempts: attempts.slice(-5).reverse().map(toReviewAttemptSnapshot),
+      latestAttempt: latestAttempt
+        ? toReviewAttemptSnapshot(latestAttempt)
+        : null,
+      canOverrideLatestReview: latestAttempt !== null,
+    }
+  }
+
+  async getPracticeSummary(
+    problemId: string,
+    options: PracticeReadOptions = {},
+  ): Promise<PracticeSummary> {
+    return (await this.getPracticeDetails(problemId, options)).summary
   }
 
   async getCard(
@@ -283,7 +304,7 @@ export class PracticeRepository {
       problemId: string
       cardId: string
     },
-  ): Promise<PracticeReviewAttempt[]> {
+  ): Promise<StoredPracticeReviewAttempt[]> {
     const rows = await db
       .select()
       .from(reviewAttempts)
@@ -293,7 +314,11 @@ export class PracticeRepository {
           eq(reviewAttempts.cardId, input.cardId),
         ),
       )
-      .orderBy(asc(reviewAttempts.reviewedAt), asc(reviewAttempts.createdAt))
+      .orderBy(
+        asc(reviewAttempts.reviewedAt),
+        asc(reviewAttempts.createdAt),
+        asc(reviewAttempts.id),
+      )
 
     return rows.map(mapReviewAttempt)
   }
@@ -303,7 +328,7 @@ export class PracticeRepository {
     input: {
       problemId: string
       status: PracticeStateSnapshot['status']
-      attempts: PracticeReviewAttempt[]
+      attempts: StoredPracticeReviewAttempt[]
       log?: Required<PracticeLogFields> | undefined
       now: Date
     },
@@ -395,18 +420,7 @@ export class PracticeRepository {
 type PracticeReadDb = Pick<Db, 'select'>
 type PracticeWriteDb = Pick<Db, 'insert' | 'select' | 'update'>
 
-interface PracticeReviewAttempt {
-  id: string
-  problemId: string
-  cardId: string
-  rating: ReviewRating
-  reviewMode: ReviewMode
-  reviewedAt: Date
-  elapsedSeconds: number | null
-  isCorrect: boolean | null
-  log: Required<PracticeLogFields>
-  createdAt: Date
-  updatedAt: Date
+interface StoredPracticeReviewAttempt extends PracticeReviewAttemptSnapshot {
   fsrsReviewLog: FsrsReviewLogSnapshot | null
 }
 
@@ -451,7 +465,7 @@ function mapPracticeState(row: ProblemPracticeRow): PracticeStateSnapshot {
   }
 }
 
-function mapReviewAttempt(row: ReviewAttemptRow): PracticeReviewAttempt {
+function mapReviewAttempt(row: ReviewAttemptRow): StoredPracticeReviewAttempt {
   return {
     id: row.id,
     problemId: row.problemId,
@@ -502,7 +516,7 @@ function toFsrsCardRow(input: {
   }
 }
 
-function summarizeAttempts(attempts: PracticeReviewAttempt[]) {
+function summarizeAttempts(attempts: StoredPracticeReviewAttempt[]) {
   const [firstAttempt] = attempts
   const lastAttempt = attempts.at(-1)
 
@@ -545,6 +559,24 @@ function toPracticeLogRow(log: Required<PracticeLogFields>) {
 
 function toReviewLogRow(log: Required<PracticeLogFields>) {
   return toPracticeLogRow(log)
+}
+
+function toReviewAttemptSnapshot(
+  attempt: StoredPracticeReviewAttempt,
+): PracticeReviewAttemptSnapshot {
+  return {
+    id: attempt.id,
+    problemId: attempt.problemId,
+    cardId: attempt.cardId,
+    rating: attempt.rating,
+    reviewMode: attempt.reviewMode,
+    reviewedAt: attempt.reviewedAt,
+    elapsedSeconds: attempt.elapsedSeconds,
+    isCorrect: attempt.isCorrect,
+    log: attempt.log,
+    createdAt: attempt.createdAt,
+    updatedAt: attempt.updatedAt,
+  }
 }
 
 function createPracticeLogSnapshot(

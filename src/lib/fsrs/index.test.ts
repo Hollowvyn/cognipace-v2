@@ -9,6 +9,7 @@ describe('FSRS public API facade', () => {
         'createInitialFsrsCard',
         'defaultFsrsCardKind',
         'defaultFsrsSchedulingOptions',
+        'fsrsCardStates',
         'getRetrievability',
         'isFsrsCardKind',
         'isFsrsReviewLogSnapshot',

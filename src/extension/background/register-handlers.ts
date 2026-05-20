@@ -6,6 +6,8 @@ import {
   leetcodeSubmissionResultRemoteRuntimeRequestSchema,
   onMessage,
   pingRequestSchema,
+  practiceDetailsRequestSchema,
+  practiceDetailsSchema,
   practiceOverrideLastReviewResultRequestSchema,
   practiceSaveReviewResultRequestSchema,
   problemContextSchema,
@@ -18,6 +20,7 @@ import {
   todayQueueSchema,
   tracksRequestSchema,
   type SerializedActiveTrack,
+  type SerializedPracticeDetails,
   type SerializedProblem,
   type SerializedProblemContext,
   type SerializedReviewResult,
@@ -29,7 +32,12 @@ import {
   readLeetCodeProblemMetadataInBackground,
   readLeetCodeSubmissionResultInBackground,
 } from '@/features/leetcode-capture'
-import { overrideLastReviewResult, saveReviewResult } from '@/features/practice'
+import {
+  getPracticeDetails,
+  overrideLastReviewResult,
+  saveReviewResult,
+  type PracticeDetails,
+} from '@/features/practice'
 import {
   getProblemContext,
   upsertProblemFromPage,
@@ -97,6 +105,25 @@ export function registerBackgroundHandlers() {
     return getAppDb().then(async ({ db }) =>
       serializeProblemContext(await getProblemContext(db, request.slug)),
     )
+  })
+
+  onMessage('practice.getDetails', ({ data, sender }) => {
+    const request = practiceDetailsRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'practice.getDetails',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) => {
+      const settings = await getSettings(db)
+      const details = await getPracticeDetails(db, request.problemId, {
+        targetRetention: settings.memoryReview.targetRetention,
+        ...(request.at ? { now: new Date(request.at) } : {}),
+      })
+
+      return serializePracticeDetails(details)
+    })
   })
 
   onMessage('practice.saveReviewResult', ({ data, sender }) => {
@@ -267,13 +294,15 @@ function serializeProblemContext(
 }
 
 function readReviewLogRequest(request: {
-  log?: {
-    interviewPattern?: string | null | undefined
-    timeComplexity?: string | null | undefined
-    spaceComplexity?: string | null | undefined
-    languages?: string | null | undefined
-    notes?: string | null | undefined
-  } | undefined
+  log?:
+    | {
+        interviewPattern?: string | null | undefined
+        timeComplexity?: string | null | undefined
+        spaceComplexity?: string | null | undefined
+        languages?: string | null | undefined
+        notes?: string | null | undefined
+      }
+    | undefined
   notes?: string | null | undefined
 }) {
   if (request.log) {
@@ -283,29 +312,57 @@ function readReviewLogRequest(request: {
   return request.notes === undefined ? undefined : { notes: request.notes }
 }
 
+function serializePracticeDetails(
+  details: PracticeDetails,
+): SerializedPracticeDetails {
+  return practiceDetailsSchema.parse({
+    problemId: details.problemId,
+    cardId: details.cardId,
+    practice: details.practice
+      ? {
+          ...details.practice,
+          lastReviewedAt:
+            details.practice.lastReviewedAt?.toISOString() ?? null,
+        }
+      : null,
+    card: details.card ? serializeFsrsCard(details.card) : null,
+    summary: serializePracticeSummary(details.summary),
+    currentLog: details.currentLog,
+    recentAttempts: details.recentAttempts.map(serializePracticeAttempt),
+    latestAttempt: details.latestAttempt
+      ? serializePracticeAttempt(details.latestAttempt)
+      : null,
+    canOverrideLatestReview: details.canOverrideLatestReview,
+  })
+}
+
+function serializeFsrsCard(card: NonNullable<PracticeDetails['card']>) {
+  return {
+    ...card,
+    dueAt: card.dueAt.toISOString(),
+    lastReviewAt: card.lastReviewAt?.toISOString() ?? null,
+  }
+}
+
+function serializePracticeAttempt(
+  attempt: PracticeDetails['recentAttempts'][number],
+) {
+  return {
+    ...attempt,
+    reviewedAt: attempt.reviewedAt.toISOString(),
+    createdAt: attempt.createdAt.toISOString(),
+    updatedAt: attempt.updatedAt.toISOString(),
+  }
+}
+
 function serializeReviewResult(result: {
   problemId: string
   cardId: string
   rating: SerializedReviewResult['rating']
-  status: string
+  status: SerializedReviewResult['status']
   dueAt: Date
   reviewedAt: Date
-  summary: {
-    phase: SerializedReviewResult['summary']['phase']
-    nextReviewAt: Date | null
-    lastReviewedAt: Date | null
-    reviewCount: number
-    lapses: number
-    difficulty: number | null
-    stability: number | null
-    scheduledDays: number | null
-    suspended: boolean
-    isStarted: boolean
-    isDue: boolean
-    isOverdue: boolean
-    overdueDays: number
-    retrievability: number | null
-  }
+  summary: PracticeDetails['summary']
 }): SerializedReviewResult {
   return reviewResultSchema.parse({
     problemId: result.problemId,
@@ -314,12 +371,16 @@ function serializeReviewResult(result: {
     status: result.status,
     dueAt: result.dueAt.toISOString(),
     reviewedAt: result.reviewedAt.toISOString(),
-    summary: {
-      ...result.summary,
-      nextReviewAt: result.summary.nextReviewAt?.toISOString() ?? null,
-      lastReviewedAt: result.summary.lastReviewedAt?.toISOString() ?? null,
-    },
+    summary: serializePracticeSummary(result.summary),
   })
+}
+
+function serializePracticeSummary(summary: PracticeDetails['summary']) {
+  return {
+    ...summary,
+    nextReviewAt: summary.nextReviewAt?.toISOString() ?? null,
+    lastReviewedAt: summary.lastReviewedAt?.toISOString() ?? null,
+  }
 }
 
 function serializeTodayQueue(queue: TodayQueue): SerializedTodayQueue {
@@ -332,11 +393,7 @@ function serializeTodayQueue(queue: TodayQueue): SerializedTodayQueue {
     items: queue.items.map((item) => ({
       ...item,
       dueAt: item.dueAt?.toISOString() ?? null,
-      summary: {
-        ...item.summary,
-        nextReviewAt: item.summary.nextReviewAt?.toISOString() ?? null,
-        lastReviewedAt: item.summary.lastReviewedAt?.toISOString() ?? null,
-      },
+      summary: serializePracticeSummary(item.summary),
     })),
   })
 }

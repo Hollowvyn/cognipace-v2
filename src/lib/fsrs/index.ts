@@ -1,5 +1,6 @@
 export {
   defaultFsrsCardKind,
+  fsrsCardStates,
   isFsrsCardKind,
   isFsrsCardState,
   parseFsrsCardKind,

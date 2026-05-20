@@ -8,9 +8,14 @@ import {
   type SerializedLeetCodeProblemContentResult,
   type SerializedLeetCodeSubmissionResultRemoteResponse,
 } from '@/features/leetcode-capture/api/leetcode-capture-contracts'
+import {
+  practicePhases,
+  practiceStatuses,
+  reviewModes,
+} from '@/features/practice/domain'
 import { problemDifficulties } from '@/features/problems'
 import { type UserSettings, userSettingsPatchSchema } from '@/features/settings'
-import { reviewRatings } from '@/lib/fsrs'
+import { fsrsCardStates, reviewRatings } from '@/lib/fsrs'
 
 export const extensionSurfaceSchema = z.enum([
   'background',
@@ -75,16 +80,18 @@ export const problemContextSchema = z
 
 export type SerializedProblemContext = z.infer<typeof problemContextSchema>
 
-export const reviewLogFieldsSchema = z.object({
-  interviewPattern: z.string().nullish(),
-  timeComplexity: z.string().nullish(),
-  spaceComplexity: z.string().nullish(),
-  languages: z.string().nullish(),
-  notes: z.string().nullish(),
+export const practiceLogSnapshotSchema = z.object({
+  interviewPattern: z.string().nullable(),
+  timeComplexity: z.string().nullable(),
+  spaceComplexity: z.string().nullable(),
+  languages: z.string().nullable(),
+  notes: z.string().nullable(),
 })
 
+export const reviewLogFieldsSchema = practiceLogSnapshotSchema.partial()
+
 export const practiceSummarySchema = z.object({
-  phase: z.enum(['new', 'learning', 'review', 'relearning', 'suspended']),
+  phase: z.enum(practicePhases),
   nextReviewAt: z.string().nullable(),
   lastReviewedAt: z.string().nullable(),
   reviewCount: z.number().int().min(0),
@@ -100,11 +107,64 @@ export const practiceSummarySchema = z.object({
   retrievability: z.number().nullable(),
 })
 
+export const fsrsCardSnapshotSchema = z.object({
+  dueAt: z.string(),
+  stability: z.number(),
+  difficulty: z.number(),
+  elapsedDays: z.number().int(),
+  scheduledDays: z.number().int(),
+  learningSteps: z.number().int(),
+  reps: z.number().int().min(0),
+  lapses: z.number().int().min(0),
+  state: z.enum(fsrsCardStates),
+  lastReviewAt: z.string().nullable(),
+})
+
+export const practiceStateSnapshotSchema = z.object({
+  status: z.enum(practiceStatuses),
+  lastReviewedAt: z.string().nullable(),
+  attemptCount: z.number().int().min(0),
+  solvedCount: z.number().int().min(0),
+  isSuspended: z.boolean(),
+  lastRating: z.enum(reviewRatings).nullable(),
+  lastElapsedSeconds: z.number().int().positive().nullable(),
+  bestElapsedSeconds: z.number().int().positive().nullable(),
+  log: practiceLogSnapshotSchema,
+})
+
+export const practiceReviewAttemptSchema = z.object({
+  id: z.string(),
+  problemId: z.string(),
+  cardId: z.string(),
+  rating: z.enum(reviewRatings),
+  reviewMode: z.enum(reviewModes),
+  reviewedAt: z.string(),
+  elapsedSeconds: z.number().int().positive().nullable(),
+  isCorrect: z.boolean().nullable(),
+  log: practiceLogSnapshotSchema,
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
+export const practiceDetailsSchema = z.object({
+  problemId: z.string(),
+  cardId: z.string(),
+  practice: practiceStateSnapshotSchema.nullable(),
+  card: fsrsCardSnapshotSchema.nullable(),
+  summary: practiceSummarySchema,
+  currentLog: practiceLogSnapshotSchema,
+  recentAttempts: z.array(practiceReviewAttemptSchema),
+  latestAttempt: practiceReviewAttemptSchema.nullable(),
+  canOverrideLatestReview: z.boolean(),
+})
+
+export type SerializedPracticeDetails = z.infer<typeof practiceDetailsSchema>
+
 export const reviewResultSchema = z.object({
   problemId: z.string(),
   cardId: z.string(),
   rating: z.enum(reviewRatings),
-  status: z.string(),
+  status: z.enum(practiceStatuses),
   dueAt: z.string(),
   reviewedAt: z.string(),
   summary: practiceSummarySchema,
@@ -197,6 +257,16 @@ export const problemContextRequestSchema = z.object({
 
 export type ProblemContextRequest = z.infer<typeof problemContextRequestSchema>
 
+export const practiceDetailsRequestSchema = z.object({
+  surface: uiSurfaceSchema,
+  problemId: z.string(),
+  at: z.string().optional(),
+})
+
+export type PracticeDetailsRequest = z.infer<
+  typeof practiceDetailsRequestSchema
+>
+
 export const practiceSaveReviewResultRequestSchema = z.object({
   surface: uiSurfaceSchema,
   problemId: z.string(),
@@ -283,6 +353,9 @@ export interface ProtocolMap {
   'practice.saveReviewResult'(
     request: PracticeSaveReviewResultRequest,
   ): SerializedReviewResult
+  'practice.getDetails'(
+    request: PracticeDetailsRequest,
+  ): SerializedPracticeDetails
   'practice.overrideLastReviewResult'(
     request: PracticeOverrideLastReviewResultRequest,
   ): SerializedReviewResult
