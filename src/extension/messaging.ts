@@ -283,15 +283,16 @@ export type PracticeSaveReviewResultRequest = z.infer<
   typeof practiceSaveReviewResultRequestSchema
 >
 
-export const practiceOverrideLastReviewResultRequestSchema = z.object({
-  surface: uiSurfaceSchema,
-  problemId: z.string(),
-  rating: z.enum(reviewRatings),
-  reviewedAt: z.string().optional(),
-  elapsedSeconds: z.number().int().positive().nullish(),
-  isCorrect: z.boolean().nullish(),
-  log: reviewLogFieldsSchema.optional(),
-})
+export const practiceOverrideLastReviewResultRequestSchema = z
+  .object({
+    surface: uiSurfaceSchema,
+    problemId: z.string(),
+    rating: z.enum(reviewRatings),
+    elapsedSeconds: z.number().int().positive().nullish(),
+    isCorrect: z.boolean().nullish(),
+    log: reviewLogFieldsSchema.optional(),
+  })
+  .strict()
 
 export type PracticeOverrideLastReviewResultRequest = z.infer<
   typeof practiceOverrideLastReviewResultRequestSchema

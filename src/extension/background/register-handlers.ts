@@ -174,9 +174,6 @@ export function registerBackgroundHandlers() {
         isCorrect: request.isCorrect,
         log: readReviewLogRequest(request),
         targetRetention: settings.memoryReview.targetRetention,
-        ...(request.reviewedAt
-          ? { reviewedAt: new Date(request.reviewedAt) }
-          : {}),
       })
 
       return serializeReviewResult(result)

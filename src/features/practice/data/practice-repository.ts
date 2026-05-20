@@ -59,6 +59,8 @@ export class PracticeRepository {
     })
     const status = statusFromReview(input.rating, scheduled.card)
     const timestamp = reviewedAt.getTime()
+    const createdAt = new Date()
+    const createdAtTimestamp = createdAt.getTime()
     const reviewAttemptId =
       input.reviewAttemptId ?? createReviewAttemptId(input.problemId, timestamp)
 
@@ -91,8 +93,8 @@ export class PracticeRepository {
         isCorrect: input.isCorrect ?? null,
         ...toReviewLogRow(reviewLogSnapshot),
         fsrsReviewLog: serializeFsrsReviewLogSnapshot(scheduled.log),
-        createdAt: timestamp,
-        updatedAt: timestamp,
+        createdAt: createdAtTimestamp,
+        updatedAt: createdAtTimestamp,
       })
 
       const attempts = await this.readReviewAttempts(transactionDb, {
@@ -155,7 +157,7 @@ export class PracticeRepository {
       const updatedAttempt: StoredPracticeReviewAttempt = {
         ...latestAttempt,
         rating: input.rating,
-        reviewedAt: input.reviewedAt ?? latestAttempt.reviewedAt,
+        reviewedAt: latestAttempt.reviewedAt,
         elapsedSeconds:
           input.elapsedSeconds === undefined
             ? latestAttempt.elapsedSeconds
@@ -314,11 +316,7 @@ export class PracticeRepository {
           eq(reviewAttempts.cardId, input.cardId),
         ),
       )
-      .orderBy(
-        asc(reviewAttempts.reviewedAt),
-        asc(reviewAttempts.createdAt),
-        asc(reviewAttempts.id),
-      )
+      .orderBy(asc(reviewAttempts.createdAt), asc(reviewAttempts.id))
 
     return rows.map(mapReviewAttempt)
   }

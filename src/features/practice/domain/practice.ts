@@ -53,7 +53,6 @@ export interface SaveReviewResultInput {
 export interface OverrideLastReviewResultInput {
   problemId: string
   rating: ReviewRating
-  reviewedAt?: Date | undefined
   elapsedSeconds?: number | null | undefined
   isCorrect?: boolean | null | undefined
   log?: PracticeLogFields | undefined

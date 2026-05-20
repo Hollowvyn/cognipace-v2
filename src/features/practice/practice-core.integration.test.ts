@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { createPracticeRepository } from '@/features/practice'
 import { createTestDb } from '@/platform/db/test-db'
@@ -314,5 +314,58 @@ describe('practice core', () => {
     expect(card?.reps).toBe(2)
     expect(card?.dueAt).not.toBe(beforeOverride.dueAt.getTime())
     expect(override.summary.reviewCount).toBe(2)
+  })
+
+  it('overrides the latest saved review when review times match', async () => {
+    const handle = await createTestDb()
+    const repository = createPracticeRepository(handle.db)
+    const reviewedAt = new Date('2026-01-01T10:00:00.000Z')
+
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date('2026-01-01T10:01:00.000Z'))
+      await repository.saveReviewResult({
+        problemId: 'leetcode:two-sum',
+        rating: 'good',
+        reviewedAt,
+        reviewAttemptId: 'review-1',
+      })
+
+      vi.setSystemTime(new Date('2026-01-01T10:02:00.000Z'))
+      await repository.saveReviewResult({
+        problemId: 'leetcode:two-sum',
+        rating: 'easy',
+        reviewedAt,
+        reviewAttemptId: 'review-2',
+      })
+
+      vi.setSystemTime(new Date('2026-01-01T10:03:00.000Z'))
+      await repository.overrideLastReviewResult({
+        problemId: 'leetcode:two-sum',
+        rating: 'again',
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+
+    const attempts = await handle.db
+      .select()
+      .from(reviewAttempts)
+      .where(eq(reviewAttempts.problemId, 'leetcode:two-sum'))
+    const details = await repository.getPracticeDetails('leetcode:two-sum')
+
+    expect(attempts.find((attempt) => attempt.id === 'review-1')).toMatchObject(
+      {
+        rating: 'good',
+      },
+    )
+    expect(attempts.find((attempt) => attempt.id === 'review-2')).toMatchObject(
+      {
+        rating: 'again',
+        reviewedAt: reviewedAt.getTime(),
+      },
+    )
+    expect(details.latestAttempt?.id).toBe('review-2')
+    expect(details.summary.reviewCount).toBe(2)
   })
 })
