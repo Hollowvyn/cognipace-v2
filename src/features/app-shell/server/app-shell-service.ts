@@ -25,13 +25,13 @@ export async function getAppShellData(
       detail: `Local SQLite, FSRS, and typed messaging are connected for ${scope}.`,
     },
     metrics: [
-      { label: 'Due Today', value: String(queue.items.length) },
+      { label: 'Due Today', value: String(queue.dueCount) },
       { label: 'Daily Goal', value: String(settings.dailyQuestionGoal) },
     ],
     recommendation: recommendation
       ? {
           title: recommendation.title,
-          detail: `${recommendation.kind === 'due' ? 'Review' : 'Start'} ${recommendation.difficulty}.`,
+          detail: `${recommendation.category === 'due' ? 'Review' : 'Start'} ${recommendation.difficulty}.`,
         }
       : {
           title: 'Queue is clear',

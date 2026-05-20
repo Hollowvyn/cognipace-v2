@@ -6,6 +6,7 @@ import {
   leetcodeSubmissionResultRemoteRuntimeRequestSchema,
   onMessage,
   pingRequestSchema,
+  practiceOverrideLastReviewResultRequestSchema,
   practiceSaveReviewResultRequestSchema,
   problemContextSchema,
   problemContextRequestSchema,
@@ -28,7 +29,7 @@ import {
   readLeetCodeProblemMetadataInBackground,
   readLeetCodeSubmissionResultInBackground,
 } from '@/features/leetcode-capture'
-import { saveReviewResult } from '@/features/practice'
+import { overrideLastReviewResult, saveReviewResult } from '@/features/practice'
 import {
   getProblemContext,
   upsertProblemFromPage,
@@ -113,7 +114,7 @@ export function registerBackgroundHandlers() {
         rating: request.rating,
         elapsedSeconds: request.elapsedSeconds,
         isCorrect: request.isCorrect,
-        notes: request.notes,
+        log: readReviewLogRequest(request),
         targetRetention: settings.memoryReview.targetRetention,
       }
 
@@ -123,6 +124,32 @@ export function registerBackgroundHandlers() {
           ? { reviewedAt: new Date(request.reviewedAt) }
           : {}),
         ...(request.reviewMode ? { reviewMode: request.reviewMode } : {}),
+      })
+
+      return serializeReviewResult(result)
+    })
+  })
+
+  onMessage('practice.overrideLastReviewResult', ({ data, sender }) => {
+    const request = practiceOverrideLastReviewResultRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'practice.overrideLastReviewResult',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) => {
+      const settings = await getSettings(db)
+      const result = await overrideLastReviewResult(db, {
+        problemId: request.problemId,
+        rating: request.rating,
+        elapsedSeconds: request.elapsedSeconds,
+        isCorrect: request.isCorrect,
+        log: readReviewLogRequest(request),
+        targetRetention: settings.memoryReview.targetRetention,
+        ...(request.reviewedAt
+          ? { reviewedAt: new Date(request.reviewedAt) }
+          : {}),
       })
 
       return serializeReviewResult(result)
@@ -239,6 +266,23 @@ function serializeProblemContext(
   )
 }
 
+function readReviewLogRequest(request: {
+  log?: {
+    interviewPattern?: string | null | undefined
+    timeComplexity?: string | null | undefined
+    spaceComplexity?: string | null | undefined
+    languages?: string | null | undefined
+    notes?: string | null | undefined
+  } | undefined
+  notes?: string | null | undefined
+}) {
+  if (request.log) {
+    return request.log
+  }
+
+  return request.notes === undefined ? undefined : { notes: request.notes }
+}
+
 function serializeReviewResult(result: {
   problemId: string
   cardId: string
@@ -246,6 +290,22 @@ function serializeReviewResult(result: {
   status: string
   dueAt: Date
   reviewedAt: Date
+  summary: {
+    phase: SerializedReviewResult['summary']['phase']
+    nextReviewAt: Date | null
+    lastReviewedAt: Date | null
+    reviewCount: number
+    lapses: number
+    difficulty: number | null
+    stability: number | null
+    scheduledDays: number | null
+    suspended: boolean
+    isStarted: boolean
+    isDue: boolean
+    isOverdue: boolean
+    overdueDays: number
+    retrievability: number | null
+  }
 }): SerializedReviewResult {
   return reviewResultSchema.parse({
     problemId: result.problemId,
@@ -254,6 +314,11 @@ function serializeReviewResult(result: {
     status: result.status,
     dueAt: result.dueAt.toISOString(),
     reviewedAt: result.reviewedAt.toISOString(),
+    summary: {
+      ...result.summary,
+      nextReviewAt: result.summary.nextReviewAt?.toISOString() ?? null,
+      lastReviewedAt: result.summary.lastReviewedAt?.toISOString() ?? null,
+    },
   })
 }
 
@@ -261,9 +326,17 @@ function serializeTodayQueue(queue: TodayQueue): SerializedTodayQueue {
   return todayQueueSchema.parse({
     generatedAt: queue.generatedAt.toISOString(),
     dailyGoal: queue.dailyGoal,
+    dueCount: queue.dueCount,
+    newCount: queue.newCount,
+    reinforcementCount: queue.reinforcementCount,
     items: queue.items.map((item) => ({
       ...item,
       dueAt: item.dueAt?.toISOString() ?? null,
+      summary: {
+        ...item.summary,
+        nextReviewAt: item.summary.nextReviewAt?.toISOString() ?? null,
+        lastReviewedAt: item.summary.lastReviewedAt?.toISOString() ?? null,
+      },
     })),
   })
 }

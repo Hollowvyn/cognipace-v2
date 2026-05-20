@@ -6,6 +6,7 @@ const methodSurfaceAccess = {
   'problems.upsertFromPage': ['content-script', 'dashboard'],
   'problems.getContext': ['popup', 'dashboard', 'content-script'],
   'practice.saveReviewResult': ['popup', 'dashboard', 'content-script'],
+  'practice.overrideLastReviewResult': ['popup', 'dashboard', 'content-script'],
   'queue.getTodayQueue': ['popup', 'dashboard'],
   'tracks.getActiveTrack': ['popup', 'dashboard'],
   'settings.getSettings': ['popup', 'dashboard'],

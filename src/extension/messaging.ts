@@ -75,6 +75,31 @@ export const problemContextSchema = z
 
 export type SerializedProblemContext = z.infer<typeof problemContextSchema>
 
+export const reviewLogFieldsSchema = z.object({
+  interviewPattern: z.string().nullish(),
+  timeComplexity: z.string().nullish(),
+  spaceComplexity: z.string().nullish(),
+  languages: z.string().nullish(),
+  notes: z.string().nullish(),
+})
+
+export const practiceSummarySchema = z.object({
+  phase: z.enum(['new', 'learning', 'review', 'relearning', 'suspended']),
+  nextReviewAt: z.string().nullable(),
+  lastReviewedAt: z.string().nullable(),
+  reviewCount: z.number().int().min(0),
+  lapses: z.number().int().min(0),
+  difficulty: z.number().nullable(),
+  stability: z.number().nullable(),
+  scheduledDays: z.number().int().min(0).nullable(),
+  suspended: z.boolean(),
+  isStarted: z.boolean(),
+  isDue: z.boolean(),
+  isOverdue: z.boolean(),
+  overdueDays: z.number().int().min(0),
+  retrievability: z.number().nullable(),
+})
+
 export const reviewResultSchema = z.object({
   problemId: z.string(),
   cardId: z.string(),
@@ -82,23 +107,28 @@ export const reviewResultSchema = z.object({
   status: z.string(),
   dueAt: z.string(),
   reviewedAt: z.string(),
+  summary: practiceSummarySchema,
 })
 
 export type SerializedReviewResult = z.infer<typeof reviewResultSchema>
 
 export const queueItemSchema = z.object({
-  kind: z.enum(['due', 'new']),
+  category: z.enum(['due', 'new', 'reinforcement']),
   problemId: z.string(),
   title: z.string(),
   slug: z.string(),
   difficulty: z.enum(problemDifficulties),
   dueAt: z.string().nullable(),
-  position: z.number(),
+  activeTrackPosition: z.number().nullable(),
+  summary: practiceSummarySchema,
 })
 
 export const todayQueueSchema = z.object({
   generatedAt: z.string(),
   dailyGoal: z.number(),
+  dueCount: z.number().int().min(0),
+  newCount: z.number().int().min(0),
+  reinforcementCount: z.number().int().min(0),
   items: z.array(queueItemSchema),
 })
 
@@ -176,10 +206,25 @@ export const practiceSaveReviewResultRequestSchema = z.object({
   elapsedSeconds: z.number().int().positive().nullish(),
   isCorrect: z.boolean().nullish(),
   notes: z.string().nullish(),
+  log: reviewLogFieldsSchema.optional(),
 })
 
 export type PracticeSaveReviewResultRequest = z.infer<
   typeof practiceSaveReviewResultRequestSchema
+>
+
+export const practiceOverrideLastReviewResultRequestSchema = z.object({
+  surface: uiSurfaceSchema,
+  problemId: z.string(),
+  rating: z.enum(reviewRatings),
+  reviewedAt: z.string().optional(),
+  elapsedSeconds: z.number().int().positive().nullish(),
+  isCorrect: z.boolean().nullish(),
+  log: reviewLogFieldsSchema.optional(),
+})
+
+export type PracticeOverrideLastReviewResultRequest = z.infer<
+  typeof practiceOverrideLastReviewResultRequestSchema
 >
 
 export const queueRequestSchema = z.object({
@@ -237,6 +282,9 @@ export interface ProtocolMap {
   ): SerializedProblemContext
   'practice.saveReviewResult'(
     request: PracticeSaveReviewResultRequest,
+  ): SerializedReviewResult
+  'practice.overrideLastReviewResult'(
+    request: PracticeOverrideLastReviewResultRequest,
   ): SerializedReviewResult
   'queue.getTodayQueue'(request: QueueRequest): SerializedTodayQueue
   'tracks.getActiveTrack'(request: TracksRequest): SerializedActiveTrack

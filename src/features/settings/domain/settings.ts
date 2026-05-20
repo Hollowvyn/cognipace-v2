@@ -51,14 +51,14 @@ export type ReviewOrder = z.infer<typeof reviewOrderSchema>
 export type StudyMode = z.infer<typeof studyModeSchema>
 
 export const defaultUserSettings: UserSettings = {
-  dailyQuestionGoal: 18,
+  dailyQuestionGoal: 4,
   studyMode: 'studyPlan',
   notifications: {
     enabled: false,
     dailyTime: '09:00',
   },
   memoryReview: {
-    targetRetention: 0.85,
+    targetRetention: 0.9,
     reviewOrder: 'dueFirst',
   },
   questionFilters: {

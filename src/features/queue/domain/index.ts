@@ -1,7 +1,7 @@
 export {
   buildTodayQueue,
   type QueueCandidate,
+  type QueueItemCategory,
   type QueueItem,
-  type QueueItemKind,
   type TodayQueue,
 } from './queue'

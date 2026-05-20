@@ -1,5 +1,6 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
+import { defaultFsrsCardKind } from '@/lib/fsrs'
 import { normalizeLeetCodeSlug } from '@/lib/leetcode'
 import type { Db } from '@/platform/db'
 import {
@@ -113,7 +114,13 @@ export class ProblemsRepository {
       })
       .from(problems)
       .leftJoin(problemPractice, eq(problemPractice.problemId, problems.id))
-      .leftJoin(fsrsCards, eq(fsrsCards.problemId, problems.id))
+      .leftJoin(
+        fsrsCards,
+        and(
+          eq(fsrsCards.problemId, problems.id),
+          eq(fsrsCards.cardKind, defaultFsrsCardKind),
+        ),
+      )
       .where(eq(problems.slug, normalizeLeetCodeSlug(slug)))
       .limit(1)
 
