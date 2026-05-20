@@ -1,0 +1,75 @@
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    background: var(--cp-color-background);
+    color: var(--cp-color-foreground);
+    font-family: var(--cp-font-sans);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    min-width: 320px;
+    margin: 0;
+    overflow-x: hidden;
+    background: var(--cp-color-background);
+    color: var(--cp-color-foreground);
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    letter-spacing: 0;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  button:disabled,
+  [aria-disabled='true'] {
+    cursor: not-allowed;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  :where(button, [role='button'], a, input, textarea, select):focus-visible {
+    outline: 2px solid var(--cp-color-ring);
+    outline-offset: 2px;
+  }
+
+  :where(h1, h2, h3, h4, h5, h6) {
+    text-wrap: balance;
+  }
+
+  :where(p, li, dd) {
+    text-wrap: pretty;
+  }
+
+  :where(svg) {
+    flex-shrink: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

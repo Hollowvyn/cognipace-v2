@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest'
 
 const repoRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 const srcRoot = join(repoRoot, 'src')
+const featureDeepImportPattern =
+  /(?:\bfrom\s+|\bimport\s+|\bimport\()\s*['"](@\/features\/([^/'"]+)\/[^'"]+)['"]/g
 
 describe('architecture boundaries', () => {
   it('keeps shared infrastructure from importing app or feature code', () => {
@@ -25,22 +27,47 @@ describe('architecture boundaries', () => {
     expect(offenders.map(toRepoPath)).toEqual([])
   })
 
+  it('keeps app feature imports on public feature barrels', () => {
+    const offenders = sourceFiles(['app']).flatMap((file) =>
+      findNestedFeatureImports(file).map(({ importPath }) =>
+        formatImportOffender(file, importPath),
+      ),
+    )
+
+    expect(offenders).toEqual([])
+  })
+
   it('keeps cross-feature imports on public feature barrels', () => {
-    const featureFiles = sourceFiles(['features'])
-    const offenders = featureFiles.filter((file) => {
-      const content = readFileSync(file, 'utf8')
-      return /from ['"]@\/features\/[^'"]+\/(api|data|domain|server)\//.test(
-        content,
-      )
+    const offenders = sourceFiles(['features']).flatMap((file) => {
+      const currentFeatureName = getOwningFeatureName(file)
+
+      return findNestedFeatureImports(file)
+        .filter(({ featureName }) => featureName !== currentFeatureName)
+        .map(({ importPath }) => formatImportOffender(file, importPath))
     })
 
-    expect(offenders.map(toRepoPath)).toEqual([])
+    expect(offenders).toEqual([])
   })
 
   it('does not introduce a custom runtime-rpc library', () => {
     const libEntries = readdirSync(join(srcRoot, 'lib'))
 
     expect(libEntries).not.toContain('runtime-rpc')
+  })
+
+  it('keeps global styles free of legacy product class selectors', () => {
+    const styleFiles = [
+      join(srcRoot, 'app/styles.css'),
+      join(srcRoot, 'styles/base.css'),
+      join(srcRoot, 'styles/surfaces.css'),
+      join(srcRoot, 'styles/tokens.css'),
+    ]
+    const offenders = styleFiles.filter((file) => {
+      const content = readFileSync(file, 'utf8')
+      return /\.cp-[a-z0-9-]+/.test(content)
+    })
+
+    expect(offenders.map(toRepoPath)).toEqual([])
   })
 })
 
@@ -53,6 +80,36 @@ function sourceFiles(directories: string[]) {
         !file.endsWith('.test.tsx'),
     ),
   )
+}
+
+function findNestedFeatureImports(file: string) {
+  const content = readFileSync(file, 'utf8')
+  const imports: Array<{ featureName: string; importPath: string }> = []
+
+  for (const match of content.matchAll(featureDeepImportPattern)) {
+    const importPath = match[1]
+    const featureName = match[2]
+
+    if (importPath && featureName) {
+      imports.push({ featureName, importPath })
+    }
+  }
+
+  return imports
+}
+
+function getOwningFeatureName(file: string) {
+  const [featureName] = relative(join(srcRoot, 'features'), file).split(/[\\/]/)
+
+  if (!featureName) {
+    throw new Error(`Could not determine owning feature for ${file}`)
+  }
+
+  return featureName
+}
+
+function formatImportOffender(file: string, importPath: string) {
+  return `${toRepoPath(file)} -> ${importPath}`
 }
 
 function walk(path: string): string[] {

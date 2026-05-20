@@ -1,0 +1,319 @@
+@theme inline {
+  --font-sans: var(--cp-font-sans);
+  --font-mono: var(--cp-font-mono);
+  --color-background: var(--cp-color-background);
+  --color-foreground: var(--cp-color-foreground);
+  --color-card: var(--cp-color-card);
+  --color-card-foreground: var(--cp-color-card-foreground);
+  --color-muted: var(--cp-color-muted);
+  --color-muted-foreground: var(--cp-color-muted-foreground);
+  --color-border: var(--cp-color-border);
+  --color-primary: var(--cp-color-primary);
+  --color-primary-foreground: var(--cp-color-primary-foreground);
+  --color-secondary: var(--cp-color-secondary);
+  --color-secondary-foreground: var(--cp-color-secondary-foreground);
+  --color-destructive: var(--cp-color-danger);
+  --color-destructive-foreground: var(--cp-color-danger-foreground);
+  --color-ring: var(--cp-color-ring);
+  --radius-sm: var(--cp-radius-sm);
+  --radius-md: var(--cp-radius-md);
+  --radius-lg: var(--cp-radius-lg);
+  --shadow-surface: var(--cp-shadow-surface);
+  --shadow-overlay: var(--cp-shadow-overlay);
+}
+
+@layer base {
+  :root,
+  [data-cp-theme='light'],
+  [data-cp-theme='system'] {
+    color-scheme: light;
+    --cp-font-sans:
+      ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+      sans-serif;
+    --cp-font-mono:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+      monospace;
+
+    --cp-color-background: #f7f8fb;
+    --cp-color-foreground: #16181f;
+    --cp-color-card: #ffffff;
+    --cp-color-card-foreground: #16181f;
+    --cp-color-muted: #eef1f5;
+    --cp-color-muted-foreground: #616977;
+    --cp-color-border: #d9dee7;
+    --cp-color-primary: #2347a8;
+    --cp-color-primary-foreground: #ffffff;
+    --cp-color-secondary: #0f766e;
+    --cp-color-secondary-foreground: #ffffff;
+    --cp-color-danger: #b42318;
+    --cp-color-danger-foreground: #ffffff;
+    --cp-color-ring: #2347a8;
+
+    --cp-tone-neutral-bg: #eef1f5;
+    --cp-tone-neutral-fg: #46505f;
+    --cp-tone-neutral-border: #d9dee7;
+    --cp-tone-info-bg: #e9f3ff;
+    --cp-tone-info-fg: #1d4d86;
+    --cp-tone-info-border: #bfdbfe;
+    --cp-tone-success-bg: #e7f7ed;
+    --cp-tone-success-fg: #146c43;
+    --cp-tone-success-border: #b7e4c7;
+    --cp-tone-warning-bg: #fff5d6;
+    --cp-tone-warning-fg: #8a5a00;
+    --cp-tone-warning-border: #f6d365;
+    --cp-tone-danger-bg: #fff0ee;
+    --cp-tone-danger-fg: #b42318;
+    --cp-tone-danger-border: #f3b8b1;
+    --cp-tone-leetcode-easy-bg: #e5f8f1;
+    --cp-tone-leetcode-easy-fg: #007a55;
+    --cp-tone-leetcode-easy-border: #a9e6d0;
+    --cp-tone-leetcode-medium-bg: #fff4d6;
+    --cp-tone-leetcode-medium-fg: #9a6200;
+    --cp-tone-leetcode-medium-border: #ffd98a;
+    --cp-tone-leetcode-hard-bg: #fff0ef;
+    --cp-tone-leetcode-hard-fg: #c02b2b;
+    --cp-tone-leetcode-hard-border: #f3b4ae;
+    --cp-tone-premium-bg: #fff6dc;
+    --cp-tone-premium-fg: #8a5a00;
+    --cp-tone-premium-border: #f6d365;
+    --cp-tone-review-again-bg: #fff0ee;
+    --cp-tone-review-again-fg: #b42318;
+    --cp-tone-review-again-border: #f3b8b1;
+    --cp-tone-review-hard-bg: #fff4d6;
+    --cp-tone-review-hard-fg: #8a5a00;
+    --cp-tone-review-hard-border: #f6d365;
+    --cp-tone-review-good-bg: #e9f3ff;
+    --cp-tone-review-good-fg: #1d4d86;
+    --cp-tone-review-good-border: #bfdbfe;
+    --cp-tone-review-easy-bg: #e7f7ed;
+    --cp-tone-review-easy-fg: #146c43;
+    --cp-tone-review-easy-border: #b7e4c7;
+
+    --cp-space-1: 0.25rem;
+    --cp-space-2: 0.5rem;
+    --cp-space-3: 0.75rem;
+    --cp-space-4: 1rem;
+    --cp-space-5: 1.25rem;
+    --cp-space-6: 1.5rem;
+    --cp-space-7: 1.75rem;
+    --cp-space-8: 2rem;
+
+    --cp-radius-sm: 0.25rem;
+    --cp-radius-md: 0.375rem;
+    --cp-radius-lg: 0.5rem;
+    --cp-radius-xl: 0.75rem;
+    --cp-radius-full: 9999px;
+
+    --cp-shadow-surface: 0 1px 2px rgb(16 24 40 / 8%);
+    --cp-shadow-overlay: 0 14px 36px rgb(16 24 40 / 16%);
+    --cp-z-overlay: 2147483000;
+    --cp-z-dialog: 2147483100;
+    --cp-z-tooltip: 2147483200;
+
+    --cp-motion-duration-fast: 120ms;
+    --cp-motion-duration-medium: 180ms;
+    --cp-motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  [data-cp-theme='dark'] {
+    color-scheme: dark;
+    --cp-color-background: #101414;
+    --cp-color-foreground: #dfe3e2;
+    --cp-color-card: #1c2020;
+    --cp-color-card-foreground: #eef2f1;
+    --cp-color-muted: #262b2b;
+    --cp-color-muted-foreground: #b6c0ba;
+    --cp-color-border: #414943;
+    --cp-color-primary: #a1d1b4;
+    --cp-color-primary-foreground: #063824;
+    --cp-color-secondary: #fbbc00;
+    --cp-color-secondary-foreground: #402d00;
+    --cp-color-danger: #ffb4ab;
+    --cp-color-danger-foreground: #690005;
+    --cp-color-ring: #a1d1b4;
+
+    --cp-tone-neutral-bg: rgb(182 192 186 / 14%);
+    --cp-tone-neutral-fg: #c0c9c1;
+    --cp-tone-neutral-border: rgb(192 201 193 / 22%);
+    --cp-tone-info-bg: rgb(148 219 255 / 15%);
+    --cp-tone-info-fg: #94dbff;
+    --cp-tone-info-border: rgb(148 219 255 / 28%);
+    --cp-tone-success-bg: rgb(143 224 166 / 15%);
+    --cp-tone-success-fg: #8fe0a6;
+    --cp-tone-success-border: rgb(143 224 166 / 28%);
+    --cp-tone-warning-bg: rgb(255 210 74 / 15%);
+    --cp-tone-warning-fg: #ffd24a;
+    --cp-tone-warning-border: rgb(255 210 74 / 32%);
+    --cp-tone-danger-bg: rgb(255 180 171 / 15%);
+    --cp-tone-danger-fg: #ffb4ab;
+    --cp-tone-danger-border: rgb(255 180 171 / 28%);
+    --cp-tone-leetcode-easy-bg: rgb(0 184 163 / 16%);
+    --cp-tone-leetcode-easy-fg: #5ee6d0;
+    --cp-tone-leetcode-easy-border: rgb(94 230 208 / 30%);
+    --cp-tone-leetcode-medium-bg: rgb(255 192 30 / 16%);
+    --cp-tone-leetcode-medium-fg: #ffd66b;
+    --cp-tone-leetcode-medium-border: rgb(255 214 107 / 32%);
+    --cp-tone-leetcode-hard-bg: rgb(255 55 95 / 16%);
+    --cp-tone-leetcode-hard-fg: #ff9bab;
+    --cp-tone-leetcode-hard-border: rgb(255 155 171 / 30%);
+    --cp-tone-premium-bg: rgb(251 188 0 / 16%);
+    --cp-tone-premium-fg: #fbbc00;
+    --cp-tone-premium-border: rgb(251 188 0 / 32%);
+    --cp-tone-review-again-bg: rgb(255 180 171 / 15%);
+    --cp-tone-review-again-fg: #ffb4ab;
+    --cp-tone-review-again-border: rgb(255 180 171 / 28%);
+    --cp-tone-review-hard-bg: rgb(255 210 74 / 15%);
+    --cp-tone-review-hard-fg: #ffd24a;
+    --cp-tone-review-hard-border: rgb(255 210 74 / 32%);
+    --cp-tone-review-good-bg: rgb(148 219 255 / 15%);
+    --cp-tone-review-good-fg: #94dbff;
+    --cp-tone-review-good-border: rgb(148 219 255 / 28%);
+    --cp-tone-review-easy-bg: rgb(143 224 166 / 15%);
+    --cp-tone-review-easy-fg: #8fe0a6;
+    --cp-tone-review-easy-border: rgb(143 224 166 / 28%);
+
+    --cp-shadow-surface: 0 1px 2px rgb(0 0 0 / 30%);
+    --cp-shadow-overlay: 0 18px 42px rgb(0 0 0 / 44%);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    [data-cp-theme='system'] {
+      color-scheme: dark;
+      --cp-color-background: #101414;
+      --cp-color-foreground: #dfe3e2;
+      --cp-color-card: #1c2020;
+      --cp-color-card-foreground: #eef2f1;
+      --cp-color-muted: #262b2b;
+      --cp-color-muted-foreground: #b6c0ba;
+      --cp-color-border: #414943;
+      --cp-color-primary: #a1d1b4;
+      --cp-color-primary-foreground: #063824;
+      --cp-color-secondary: #fbbc00;
+      --cp-color-secondary-foreground: #402d00;
+      --cp-color-danger: #ffb4ab;
+      --cp-color-danger-foreground: #690005;
+      --cp-color-ring: #a1d1b4;
+
+      --cp-tone-neutral-bg: rgb(182 192 186 / 14%);
+      --cp-tone-neutral-fg: #c0c9c1;
+      --cp-tone-neutral-border: rgb(192 201 193 / 22%);
+      --cp-tone-info-bg: rgb(148 219 255 / 15%);
+      --cp-tone-info-fg: #94dbff;
+      --cp-tone-info-border: rgb(148 219 255 / 28%);
+      --cp-tone-success-bg: rgb(143 224 166 / 15%);
+      --cp-tone-success-fg: #8fe0a6;
+      --cp-tone-success-border: rgb(143 224 166 / 28%);
+      --cp-tone-warning-bg: rgb(255 210 74 / 15%);
+      --cp-tone-warning-fg: #ffd24a;
+      --cp-tone-warning-border: rgb(255 210 74 / 32%);
+      --cp-tone-danger-bg: rgb(255 180 171 / 15%);
+      --cp-tone-danger-fg: #ffb4ab;
+      --cp-tone-danger-border: rgb(255 180 171 / 28%);
+      --cp-tone-leetcode-easy-bg: rgb(0 184 163 / 16%);
+      --cp-tone-leetcode-easy-fg: #5ee6d0;
+      --cp-tone-leetcode-easy-border: rgb(94 230 208 / 30%);
+      --cp-tone-leetcode-medium-bg: rgb(255 192 30 / 16%);
+      --cp-tone-leetcode-medium-fg: #ffd66b;
+      --cp-tone-leetcode-medium-border: rgb(255 214 107 / 32%);
+      --cp-tone-leetcode-hard-bg: rgb(255 55 95 / 16%);
+      --cp-tone-leetcode-hard-fg: #ff9bab;
+      --cp-tone-leetcode-hard-border: rgb(255 155 171 / 30%);
+      --cp-tone-premium-bg: rgb(251 188 0 / 16%);
+      --cp-tone-premium-fg: #fbbc00;
+      --cp-tone-premium-border: rgb(251 188 0 / 32%);
+      --cp-tone-review-again-bg: rgb(255 180 171 / 15%);
+      --cp-tone-review-again-fg: #ffb4ab;
+      --cp-tone-review-again-border: rgb(255 180 171 / 28%);
+      --cp-tone-review-hard-bg: rgb(255 210 74 / 15%);
+      --cp-tone-review-hard-fg: #ffd24a;
+      --cp-tone-review-hard-border: rgb(255 210 74 / 32%);
+      --cp-tone-review-good-bg: rgb(148 219 255 / 15%);
+      --cp-tone-review-good-fg: #94dbff;
+      --cp-tone-review-good-border: rgb(148 219 255 / 28%);
+      --cp-tone-review-easy-bg: rgb(143 224 166 / 15%);
+      --cp-tone-review-easy-fg: #8fe0a6;
+      --cp-tone-review-easy-border: rgb(143 224 166 / 28%);
+
+      --cp-shadow-surface: 0 1px 2px rgb(0 0 0 / 30%);
+      --cp-shadow-overlay: 0 18px 42px rgb(0 0 0 / 44%);
+    }
+  }
+
+  [data-cp-tone] {
+    --cp-tone-bg: var(--cp-tone-neutral-bg);
+    --cp-tone-fg: var(--cp-tone-neutral-fg);
+    --cp-tone-border: var(--cp-tone-neutral-border);
+  }
+
+  [data-cp-tone='info'] {
+    --cp-tone-bg: var(--cp-tone-info-bg);
+    --cp-tone-fg: var(--cp-tone-info-fg);
+    --cp-tone-border: var(--cp-tone-info-border);
+  }
+
+  [data-cp-tone='success'] {
+    --cp-tone-bg: var(--cp-tone-success-bg);
+    --cp-tone-fg: var(--cp-tone-success-fg);
+    --cp-tone-border: var(--cp-tone-success-border);
+  }
+
+  [data-cp-tone='warning'] {
+    --cp-tone-bg: var(--cp-tone-warning-bg);
+    --cp-tone-fg: var(--cp-tone-warning-fg);
+    --cp-tone-border: var(--cp-tone-warning-border);
+  }
+
+  [data-cp-tone='danger'] {
+    --cp-tone-bg: var(--cp-tone-danger-bg);
+    --cp-tone-fg: var(--cp-tone-danger-fg);
+    --cp-tone-border: var(--cp-tone-danger-border);
+  }
+
+  [data-cp-tone='leetcode-easy'] {
+    --cp-tone-bg: var(--cp-tone-leetcode-easy-bg);
+    --cp-tone-fg: var(--cp-tone-leetcode-easy-fg);
+    --cp-tone-border: var(--cp-tone-leetcode-easy-border);
+  }
+
+  [data-cp-tone='leetcode-medium'] {
+    --cp-tone-bg: var(--cp-tone-leetcode-medium-bg);
+    --cp-tone-fg: var(--cp-tone-leetcode-medium-fg);
+    --cp-tone-border: var(--cp-tone-leetcode-medium-border);
+  }
+
+  [data-cp-tone='leetcode-hard'] {
+    --cp-tone-bg: var(--cp-tone-leetcode-hard-bg);
+    --cp-tone-fg: var(--cp-tone-leetcode-hard-fg);
+    --cp-tone-border: var(--cp-tone-leetcode-hard-border);
+  }
+
+  [data-cp-tone='premium'] {
+    --cp-tone-bg: var(--cp-tone-premium-bg);
+    --cp-tone-fg: var(--cp-tone-premium-fg);
+    --cp-tone-border: var(--cp-tone-premium-border);
+  }
+
+  [data-cp-tone='review-again'] {
+    --cp-tone-bg: var(--cp-tone-review-again-bg);
+    --cp-tone-fg: var(--cp-tone-review-again-fg);
+    --cp-tone-border: var(--cp-tone-review-again-border);
+  }
+
+  [data-cp-tone='review-hard'] {
+    --cp-tone-bg: var(--cp-tone-review-hard-bg);
+    --cp-tone-fg: var(--cp-tone-review-hard-fg);
+    --cp-tone-border: var(--cp-tone-review-hard-border);
+  }
+
+  [data-cp-tone='review-good'] {
+    --cp-tone-bg: var(--cp-tone-review-good-bg);
+    --cp-tone-fg: var(--cp-tone-review-good-fg);
+    --cp-tone-border: var(--cp-tone-review-good-border);
+  }
+
+  [data-cp-tone='review-easy'] {
+    --cp-tone-bg: var(--cp-tone-review-easy-bg);
+    --cp-tone-fg: var(--cp-tone-review-easy-fg);
+    --cp-tone-border: var(--cp-tone-review-easy-border);
+  }
+}

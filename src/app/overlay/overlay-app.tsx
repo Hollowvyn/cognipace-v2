@@ -1,8 +1,10 @@
-import { OverlayPanel } from './overlay-panel'
-import { useLeetCodeOverlaySession } from './use-leetcode-overlay-session'
+import {
+  OverlayShell,
+  useLeetCodeOverlaySession,
+} from '@/features/overlay-session'
 
 export function OverlayApp() {
   const session = useLeetCodeOverlaySession()
 
-  return <OverlayPanel {...session} />
+  return <OverlayShell {...session} />
 }

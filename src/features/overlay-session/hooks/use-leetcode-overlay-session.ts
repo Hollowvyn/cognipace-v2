@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { saveReviewResultViaRuntime } from '@/features/practice'
 import { createLeetCodeCaptureRemoteClient } from '@/features/leetcode-capture'
+import { saveReviewResultViaRuntime } from '@/features/practice'
 import {
   getProblemContextViaRuntime,
   upsertProblemFromPageViaRuntime,
@@ -14,15 +14,9 @@ import {
   createLeetCodePageWatcher,
   parseLeetCodeProblemLocation,
   reduceLeetCodeCaptureState,
-  type LeetCodeCodeSnapshot,
   type LeetCodePageEvent,
-  type LeetCodeProblemContent,
   type LeetCodeProblemLocation,
   type LeetCodeProblemMetadata,
-  type LeetCodeSubmissionAttempt,
-  type LeetCodeSubmissionClick,
-  type LeetCodeSubmissionPollingDebug,
-  type LeetCodeSubmissionResult,
 } from '@/lib/leetcode'
 
 export type OverlaySyncStatus =
@@ -37,13 +31,7 @@ export type OverlaySyncStatus =
 export type LeetCodeOverlaySession = {
   location: LeetCodeProblemLocation | null
   metadata: LeetCodeProblemMetadata | null
-  problemContent: LeetCodeProblemContent | null
   context: RuntimeProblemContext
-  codeSnapshot: LeetCodeCodeSnapshot | null
-  lastSubmissionClick: LeetCodeSubmissionClick | null
-  lastSubmissionAttempt: LeetCodeSubmissionAttempt | null
-  lastSubmissionPollingDebug: LeetCodeSubmissionPollingDebug | null
-  lastSubmissionResult: LeetCodeSubmissionResult | null
   status: OverlaySyncStatus
   feedback: string | null
   elapsedSeconds: number
@@ -186,27 +174,20 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
           setFeedback(null)
           return
         case 'page-ready':
-          syncProblemIfNeeded(event.metadata, syncTokenRef.current)
-          return
         case 'metadata-updated':
           syncProblemIfNeeded(event.metadata, syncTokenRef.current)
           return
         case 'problem-content-updated':
-          return
         case 'submit-clicked':
-          setFeedback(
-            'LeetCode submit detected. CogniPace is still waiting for your rating.',
-          )
-          return
         case 'submission-started':
-          setFeedback('Submitted code snapshot captured.')
-          return
         case 'submission-polling-updated':
-          return
         case 'submission-result-updated':
-          setFeedback(`Submission result captured: ${event.result.statusText}.`)
           return
         case 'watcher-error':
+          if (latestContextRef.current) {
+            return
+          }
+
           setStatus('error')
           setFeedback(event.error.message)
           return
@@ -256,13 +237,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
   return {
     location: captureState.location,
     metadata: captureState.metadata,
-    problemContent: captureState.problemContent,
     context,
-    codeSnapshot: captureState.codeSnapshot,
-    lastSubmissionClick: captureState.submissionClick,
-    lastSubmissionAttempt: captureState.submissionAttempt,
-    lastSubmissionPollingDebug: captureState.submissionPollingDebug,
-    lastSubmissionResult: captureState.submissionResult,
     status,
     feedback,
     elapsedSeconds,

@@ -29,12 +29,12 @@ describe('PopupShell', () => {
     render(<PopupShell data={shellData} pingLabel="Connected" />)
 
     expect(
-      screen.getByRole('heading', { name: 'Study loop' }),
+      screen.getByRole('heading', { name: 'Study Loop' }),
     ).toBeInTheDocument()
     expect(
       screen.getByText('Recommendation service pending'),
     ).toBeInTheDocument()
     expect(screen.getByText('Track service pending')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Refresh queue' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Refresh Queue' })).toBeDisabled()
   })
 })

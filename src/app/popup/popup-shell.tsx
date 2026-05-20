@@ -2,7 +2,8 @@ import { ExternalLink, RefreshCw, Settings } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { SurfaceCard } from '@/components/ui/surface-card'
+import { IconButton } from '@/components/ui/icon-button'
+import { Surface, SurfaceRoot } from '@/components/ui/surface'
 import type { AppShellData } from '@/extension/messaging'
 
 type PopupShellProps = {
@@ -12,69 +13,103 @@ type PopupShellProps = {
 
 export function PopupShell({ data, pingLabel }: PopupShellProps) {
   return (
-    <main className="cp-surface cp-popup cp-stack p-4">
-      <header className="cp-row">
-        <div>
-          <p className="cp-kicker">CogniPace</p>
-          <h1 className="cp-title">Study loop</h1>
+    <SurfaceRoot
+      className="flex flex-col gap-[var(--cp-surface-gap)] p-[var(--cp-surface-padding)]"
+      surface="popup"
+    >
+      <header className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="m-0 text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
+            CogniPace
+          </p>
+          <h1 className="mt-1 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
+            Study Loop
+          </h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            aria-label="Refresh queue"
+          <IconButton
             disabled
-            size="icon"
+            label="Refresh Queue"
+            tooltip="Refresh Queue"
             variant="ghost"
           >
-            <RefreshCw />
-          </Button>
-          <Button
-            aria-label="Open settings"
+            <RefreshCw aria-hidden="true" />
+          </IconButton>
+          <IconButton
             disabled
-            size="icon"
+            label="Open Settings"
+            tooltip="Open Settings"
             variant="ghost"
           >
-            <Settings />
-          </Button>
+            <Settings aria-hidden="true" />
+          </IconButton>
         </div>
       </header>
 
-      <SurfaceCard>
-        <div className="cp-row">
-          <div>
-            <p className="cp-kicker">Status</p>
-            <h2 className="cp-title">{data.status.label}</h2>
-            <p className="cp-copy">{data.status.detail}</p>
+      <Surface>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="m-0 text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
+              Status
+            </p>
+            <h2 className="mt-1 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
+              {data.status.label}
+            </h2>
+            <p className="mt-1 text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
+              {data.status.detail}
+            </p>
           </div>
-          <Badge>{pingLabel}</Badge>
+          <Badge tone={pingLabel === 'Connected' ? 'success' : 'warning'}>
+            {pingLabel}
+          </Badge>
         </div>
-      </SurfaceCard>
+      </Surface>
 
-      <section className="cp-metric-grid" aria-label="Practice metrics">
+      <section
+        aria-label="Practice Metrics"
+        className="grid grid-cols-2 gap-[var(--cp-space-2)]"
+      >
         {data.metrics.map((metric) => (
-          <SurfaceCard key={metric.label}>
-            <p className="cp-kicker">{metric.label}</p>
-            <strong className="cp-metric-value">{metric.value}</strong>
-          </SurfaceCard>
+          <Surface key={metric.label}>
+            <p className="m-0 text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
+              {metric.label}
+            </p>
+            <strong className="mt-2 block text-[1.375rem] font-extrabold leading-none text-foreground tabular-nums">
+              {metric.value}
+            </strong>
+          </Surface>
         ))}
       </section>
 
-      <SurfaceCard>
-        <p className="cp-kicker">Recommended Now</p>
-        <h2 className="cp-title">{data.recommendation.title}</h2>
-        <p className="cp-copy">{data.recommendation.detail}</p>
+      <Surface>
+        <p className="m-0 text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
+          Recommended Now
+        </p>
+        <h2 className="mt-1 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
+          {data.recommendation.title}
+        </h2>
+        <p className="mt-1 text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
+          {data.recommendation.detail}
+        </p>
         <div className="mt-4">
           <Button disabled variant="outline">
-            <ExternalLink />
-            Open problem
+            <ExternalLink aria-hidden="true" data-icon="inline-start" />
+            Open Problem
           </Button>
         </div>
-      </SurfaceCard>
+      </Surface>
 
-      <SurfaceCard>
-        <p className="cp-kicker">Active Track</p>
-        <h2 className="cp-title">{data.activeTrack.title}</h2>
-        <p className="cp-copy">{data.activeTrack.detail}</p>
-      </SurfaceCard>
-    </main>
+      <Surface>
+        <p className="m-0 text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
+          Active Track
+        </p>
+        <h2 className="mt-1 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
+          {data.activeTrack.title}
+        </h2>
+        <p className="mt-1 text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
+          {data.activeTrack.detail}
+        </p>
+      </Surface>
+    </SurfaceRoot>
   )
 }

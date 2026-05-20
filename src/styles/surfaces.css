@@ -1,0 +1,74 @@
+@layer base {
+  [data-cp-surface] {
+    --cp-surface-padding: var(--cp-space-4);
+    --cp-surface-gap: var(--cp-space-3);
+    --cp-panel-padding: var(--cp-space-4);
+    --cp-panel-radius: var(--cp-radius-lg);
+    --cp-control-height-sm: 2rem;
+    --cp-control-height: 2.25rem;
+    --cp-control-height-lg: 2.5rem;
+    --cp-control-padding-x: var(--cp-space-4);
+    --cp-control-radius: var(--cp-radius-md);
+    --cp-control-font-size: 0.875rem;
+    --cp-icon-button-size: 2.25rem;
+    --cp-icon-size: 1rem;
+    --cp-badge-radius: var(--cp-radius-sm);
+    --cp-badge-padding-x: 0.5rem;
+    --cp-badge-padding-y: 0.125rem;
+    --cp-badge-font-size: 0.75rem;
+    --cp-kicker-font-size: 0.75rem;
+    --cp-title-font-size: 1.125rem;
+    --cp-copy-font-size: 0.8125rem;
+    --cp-timer-font-size: 1.375rem;
+    --cp-timer-min-width: 5ch;
+    background: var(--cp-color-background);
+    color: var(--cp-color-foreground);
+  }
+
+  [data-cp-surface='popup'] {
+    width: 360px;
+    min-height: 520px;
+    --cp-surface-padding: var(--cp-space-4);
+    --cp-surface-gap: var(--cp-space-3);
+    --cp-panel-padding: var(--cp-space-4);
+    --cp-control-height: 2.25rem;
+    --cp-icon-button-size: 2.25rem;
+    --cp-title-font-size: 1.125rem;
+  }
+
+  [data-cp-surface='overlay'] {
+    position: fixed;
+    top: 88px;
+    right: 16px;
+    z-index: var(--cp-z-overlay);
+    width: 320px;
+    max-height: calc(100vh - 112px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--cp-color-border);
+    border-radius: var(--cp-radius-lg);
+    box-shadow: var(--cp-shadow-overlay);
+    --cp-surface-padding: var(--cp-space-3);
+    --cp-surface-gap: var(--cp-space-2);
+    --cp-panel-padding: var(--cp-space-3);
+    --cp-control-height-sm: 2rem;
+    --cp-control-height: 2.125rem;
+    --cp-control-padding-x: 0.75rem;
+    --cp-icon-button-size: 2rem;
+    --cp-title-font-size: 1rem;
+    --cp-copy-font-size: 0.75rem;
+    --cp-timer-font-size: 1.375rem;
+    --cp-timer-min-width: 5ch;
+  }
+
+  [data-cp-surface='dashboard'] {
+    min-height: 100vh;
+    --cp-surface-padding: 1.75rem;
+    --cp-surface-gap: var(--cp-space-4);
+    --cp-panel-padding: var(--cp-space-5);
+    --cp-control-height: 2.5rem;
+    --cp-icon-button-size: 2.5rem;
+    --cp-title-font-size: 1.25rem;
+    --cp-copy-font-size: 0.875rem;
+  }
+}

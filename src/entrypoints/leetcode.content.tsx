@@ -7,6 +7,8 @@ import { OverlayApp } from '@/app/overlay/overlay-app'
 import { AppProviders } from '@/app/providers/app-providers'
 import { parseLeetCodeProblemLocation } from '@/lib/leetcode'
 
+const overlayZIndex = 2147483000
+
 export default defineContentScript({
   matches: [
     'https://leetcode.com/problems/*',
@@ -25,7 +27,7 @@ export default defineContentScript({
       anchor: 'body',
       append: 'last',
       alignment: 'top-right',
-      zIndex: 2147483647,
+      zIndex: overlayZIndex,
       isolateEvents: true,
       onMount: (container) => {
         const root = createRoot(container)
