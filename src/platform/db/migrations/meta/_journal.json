@@ -8,6 +8,13 @@
       "when": 1779152273006,
       "tag": "0000_initial",
       "breakpoints": false
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1779255644049,
+      "tag": "0001_lively_namor",
+      "breakpoints": true
     }
   ]
 }

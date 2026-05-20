@@ -1,6 +1,5 @@
-import initialMigrationSql from './migrations/0000_initial.sql?raw'
-
 import { createDb, createSqliteWasmLocator, type DbHandle } from './client'
+import { migrationSql } from './migration-sql'
 import { setOnMutationHook } from './proxy'
 import { seedInitialCatalog } from './seed'
 import {
@@ -51,7 +50,7 @@ export function resetAppDbForTesting() {
 }
 
 async function openAppDb() {
-  const fingerprint = computeFingerprint(initialMigrationSql)
+  const fingerprint = computeFingerprint(migrationSql)
   const storedSnapshot = canUseChromeStorage()
     ? await readSnapshotFromStorage()
     : null
@@ -71,7 +70,7 @@ async function openAppDb() {
   }
 
   const freshHandle = await createDb({
-    migrationSql: initialMigrationSql,
+    migrationSql,
     locateWasm: createSqliteWasmLocator(),
   })
   await seedInitialCatalog(freshHandle.db)
@@ -101,7 +100,7 @@ async function persistSnapshot() {
   }
 
   await writeSnapshotToStorage({
-    fingerprint: computeFingerprint(initialMigrationSql),
+    fingerprint: computeFingerprint(migrationSql),
     bytes: serializeDb(activeHandle),
   })
 }

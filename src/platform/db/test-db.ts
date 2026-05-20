@@ -1,6 +1,5 @@
-import initialMigrationSql from './migrations/0000_initial.sql?raw'
-
 import { createDb, createSqliteWasmLocator } from './client'
+import { migrationSql } from './migration-sql'
 import { seedInitialCatalog } from './seed'
 
 export interface CreateTestDbOptions {
@@ -10,7 +9,7 @@ export interface CreateTestDbOptions {
 
 export async function createTestDb(options: CreateTestDbOptions = {}) {
   const handle = await createDb({
-    migrationSql: initialMigrationSql,
+    migrationSql,
     locateWasm: createSqliteWasmLocator(),
   })
 
