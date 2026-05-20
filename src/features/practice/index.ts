@@ -4,11 +4,13 @@ export {
   resetPracticeScheduleViaRuntime,
   saveReviewResultViaRuntime,
   setPracticeSuspendedViaRuntime,
+  updateCurrentPracticeLogViaRuntime,
   usePracticeDetails,
   useOverrideLastReviewResult,
   useResetPracticeSchedule,
   useSaveReviewResult,
   useSetPracticeSuspended,
+  useUpdateCurrentPracticeLog,
   type RuntimePracticeDetails,
 } from './api/practice-api'
 export {
@@ -26,11 +28,13 @@ export {
   practiceSetSuspendedRequestSchema,
   practiceStateSnapshotSchema,
   practiceSummarySchema,
+  practiceUpdateCurrentLogRequestSchema,
   type PracticeDetailsRequest,
   type PracticeOverrideLastReviewResultRequest,
   type PracticeResetScheduleRequest,
   type PracticeSaveReviewResultRequest,
   type PracticeSetSuspendedRequest,
+  type PracticeUpdateCurrentLogRequest,
   type SerializedPracticeDetails,
   type SerializedReviewResult,
 } from './api/practice-contracts'
@@ -53,6 +57,7 @@ export {
   type ResetPracticeScheduleInput,
   type SaveReviewResultInput,
   type SetPracticeSuspendedInput,
+  type UpdatePracticeLogInput,
 } from './domain'
 export {
   createFsrsCardId,
@@ -65,4 +70,5 @@ export {
   resetPracticeSchedule,
   saveReviewResult,
   setPracticeSuspended,
+  updateCurrentPracticeLog,
 } from './server/practice-service'

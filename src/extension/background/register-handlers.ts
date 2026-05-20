@@ -33,6 +33,7 @@ import {
   practiceReviewResultSchema,
   practiceSaveReviewResultRequestSchema,
   practiceSetSuspendedRequestSchema,
+  practiceUpdateCurrentLogRequestSchema,
   type SerializedPracticeDetails,
   type SerializedReviewResult,
 } from '@/features/practice/api/practice-contracts'
@@ -42,6 +43,7 @@ import {
   resetPracticeSchedule,
   saveReviewResult,
   setPracticeSuspended,
+  updateCurrentPracticeLog,
   type PracticeDetails,
 } from '@/features/practice'
 import {
@@ -220,6 +222,27 @@ export function registerBackgroundHandlers() {
         }),
       ),
     )
+  })
+
+  onMessage('practice.updateCurrentLog', ({ data, sender }) => {
+    const request = practiceUpdateCurrentLogRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'practice.updateCurrentLog',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) => {
+      const settings = await getSettings(db)
+
+      return serializePracticeDetails(
+        await updateCurrentPracticeLog(db, {
+          problemId: request.problemId,
+          log: request.log,
+          targetRetention: settings.memoryReview.targetRetention,
+        }),
+      )
+    })
   })
 
   onMessage('queue.getTodayQueue', ({ data, sender }) => {

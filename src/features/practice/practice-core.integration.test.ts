@@ -465,6 +465,119 @@ describe('practice core', () => {
     })
   })
 
+  it('updates current log before any review without creating schedule history', async () => {
+    const handle = await createTestDb()
+    const repository = createPracticeRepository(handle.db)
+
+    const details = await repository.updateCurrentPracticeLog({
+      problemId: 'leetcode:two-sum',
+      log: {
+        interviewPattern: 'Hash map',
+        timeComplexity: 'O(n)',
+        spaceComplexity: 'O(n)',
+        languages: 'TypeScript',
+        notes: 'Use complements.',
+      },
+    })
+    const attempts = await handle.db
+      .select()
+      .from(reviewAttempts)
+      .where(eq(reviewAttempts.problemId, 'leetcode:two-sum'))
+    const cards = await handle.db
+      .select()
+      .from(fsrsCards)
+      .where(eq(fsrsCards.problemId, 'leetcode:two-sum'))
+
+    expect(attempts).toEqual([])
+    expect(cards).toEqual([])
+    expect(details).toMatchObject({
+      card: null,
+      latestAttempt: null,
+      canOverrideLatestReview: false,
+      currentLog: {
+        interviewPattern: 'Hash map',
+        timeComplexity: 'O(n)',
+        spaceComplexity: 'O(n)',
+        languages: 'TypeScript',
+        notes: 'Use complements.',
+      },
+      practice: {
+        status: 'new',
+        attemptCount: 0,
+        solvedCount: 0,
+        isSuspended: false,
+      },
+      summary: {
+        phase: 'new',
+        isStarted: false,
+        reviewCount: 0,
+      },
+    })
+  })
+
+  it('merges current log patches and clears explicit blank fields', async () => {
+    const handle = await createTestDb()
+    const repository = createPracticeRepository(handle.db)
+
+    await repository.updateCurrentPracticeLog({
+      problemId: 'leetcode:two-sum',
+      log: {
+        interviewPattern: 'Hash map',
+        timeComplexity: 'O(n)',
+        spaceComplexity: 'O(n)',
+        languages: 'TypeScript',
+        notes: 'Keep this note.',
+      },
+    })
+
+    const details = await repository.updateCurrentPracticeLog({
+      problemId: 'leetcode:two-sum',
+      log: {
+        timeComplexity: null,
+        spaceComplexity: '   ',
+        notes: 'Updated note.',
+      },
+    })
+
+    expect(details.currentLog).toEqual({
+      interviewPattern: 'Hash map',
+      timeComplexity: null,
+      spaceComplexity: null,
+      languages: 'TypeScript',
+      notes: 'Updated note.',
+    })
+  })
+
+  it('snapshots the current log when a review is saved without a log draft', async () => {
+    const handle = await createTestDb()
+    const repository = createPracticeRepository(handle.db)
+
+    await repository.updateCurrentPracticeLog({
+      problemId: 'leetcode:two-sum',
+      log: {
+        interviewPattern: 'Hash map',
+        notes: 'Saved before solving.',
+      },
+    })
+
+    await repository.saveReviewResult({
+      problemId: 'leetcode:two-sum',
+      rating: 'good',
+      reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
+      reviewAttemptId: 'review-1',
+    })
+
+    const [attempt] = await handle.db
+      .select()
+      .from(reviewAttempts)
+      .where(eq(reviewAttempts.id, 'review-1'))
+
+    expect(attempt).toMatchObject({
+      interviewPattern: 'Hash map',
+      notes: 'Saved before solving.',
+    })
+  })
+
   it('reset clears schedule history while preserving log and suspension by default', async () => {
     const handle = await createTestDb()
     const repository = createPracticeRepository(handle.db)

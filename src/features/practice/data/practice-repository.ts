@@ -40,6 +40,7 @@ import {
   type ResetPracticeScheduleInput,
   type SaveReviewResultInput,
   type SetPracticeSuspendedInput,
+  type UpdatePracticeLogInput,
 } from '../domain'
 
 export function createPracticeRepository(db: Db) {
@@ -293,6 +294,42 @@ export class PracticeRepository {
     return this.getPracticeDetails(input.problemId, { now })
   }
 
+  async updateCurrentPracticeLog(
+    input: UpdatePracticeLogInput,
+  ): Promise<PracticeDetails> {
+    const now = new Date()
+
+    await this.db.transaction(async (transactionDb) => {
+      const existing = await this.getPracticeState(
+        input.problemId,
+        transactionDb,
+      )
+      const nextLog = createPracticeLogSnapshot(existing?.log, input.log)
+
+      if (!existing) {
+        await this.upsertEmptyPracticeState(transactionDb, {
+          problemId: input.problemId,
+          status: 'new',
+          log: nextLog,
+          isSuspended: false,
+          now,
+        })
+        return
+      }
+
+      await this.updatePracticeLog(transactionDb, {
+        problemId: input.problemId,
+        log: nextLog,
+        now,
+      })
+    })
+
+    return this.getPracticeDetails(input.problemId, {
+      now,
+      targetRetention: input.targetRetention,
+    })
+  }
+
   async getPracticeDetails(
     problemId: string,
     options: PracticeReadOptions = {},
@@ -461,6 +498,23 @@ export class PracticeRepository {
       .set({
         status: input.status,
         isSuspended: input.isSuspended,
+        updatedAt: input.now.getTime(),
+      })
+      .where(eq(problemPractice.problemId, input.problemId))
+  }
+
+  private async updatePracticeLog(
+    db: PracticeWriteDb,
+    input: {
+      problemId: string
+      log: Required<PracticeLogFields>
+      now: Date
+    },
+  ) {
+    await db
+      .update(problemPractice)
+      .set({
+        ...toPracticeLogRow(input.log),
         updatedAt: input.now.getTime(),
       })
       .where(eq(problemPractice.problemId, input.problemId))

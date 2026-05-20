@@ -70,6 +70,12 @@ export interface ResetPracticeScheduleInput {
   keepLog?: boolean | undefined
 }
 
+export interface UpdatePracticeLogInput {
+  problemId: string
+  log: PracticeLogFields
+  targetRetention?: number | undefined
+}
+
 export interface ReviewResult {
   problemId: string
   cardId: string

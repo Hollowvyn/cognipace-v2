@@ -15,6 +15,7 @@ import {
   type PracticeResetScheduleRequest,
   type PracticeSaveReviewResultRequest,
   type PracticeSetSuspendedRequest,
+  type PracticeUpdateCurrentLogRequest,
   type SerializedPracticeDetails,
   type SerializedReviewResult,
 } from '@/features/practice/api/practice-contracts'
@@ -236,6 +237,9 @@ export interface ProtocolMap {
   ): SerializedPracticeDetails
   'practice.resetSchedule'(
     request: PracticeResetScheduleRequest,
+  ): SerializedPracticeDetails
+  'practice.updateCurrentLog'(
+    request: PracticeUpdateCurrentLogRequest,
   ): SerializedPracticeDetails
   'queue.getTodayQueue'(request: QueueRequest): SerializedTodayQueue
   'tracks.getActiveTrack'(request: TracksRequest): SerializedActiveTrack
