@@ -8,6 +8,8 @@ const repoRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 const srcRoot = join(repoRoot, 'src')
 const featureDeepImportPattern =
   /(?:\bfrom\s+|\bimport\s+|\bimport\()\s*['"](@\/features\/([^/'"]+)\/[^'"]+)['"]/g
+const reviewSchedulingWritePattern =
+  /\.\s*(?:insert|update|delete)\s*\(\s*(?:reviewAttempts|problemPractice|fsrsCards)\b/
 
 describe('architecture boundaries', () => {
   it('keeps shared infrastructure from importing app or feature code', () => {
@@ -55,6 +57,18 @@ describe('architecture boundaries', () => {
     expect(libEntries).not.toContain('runtime-rpc')
   })
 
+  it('keeps review scheduling writes behind the practice repository', () => {
+    const allowedWriteFile = 'src/features/practice/data/practice-repository.ts'
+    const offenders = productionSourceFiles()
+      .filter((file) => toRepoPath(file) !== allowedWriteFile)
+      .filter((file) => {
+        const content = readFileSync(file, 'utf8')
+        return reviewSchedulingWritePattern.test(content)
+      })
+
+    expect(offenders.map(toRepoPath)).toEqual([])
+  })
+
   it('keeps global styles free of legacy product class selectors', () => {
     const styleFiles = [
       join(srcRoot, 'app/styles.css'),
@@ -79,6 +93,16 @@ function sourceFiles(directories: string[]) {
         !file.endsWith('.test.ts') &&
         !file.endsWith('.test.tsx'),
     ),
+  )
+}
+
+function productionSourceFiles() {
+  return walk(srcRoot).filter(
+    (file) =>
+      (file.endsWith('.ts') || file.endsWith('.tsx')) &&
+      !file.endsWith('.test.ts') &&
+      !file.endsWith('.test.tsx') &&
+      !toRepoPath(file).startsWith('src/testing/'),
   )
 }
 

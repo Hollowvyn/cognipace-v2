@@ -150,11 +150,16 @@ export function derivePracticeSummary(input: {
     retrievability < targetRetention
   const overdueDays =
     isDue && input.card
-      ? Math.max(0, Math.floor((now.getTime() - input.card.dueAt.getTime()) / dayMs))
+      ? Math.max(
+          0,
+          Math.floor((now.getTime() - input.card.dueAt.getTime()) / dayMs),
+        )
       : 0
 
   return {
-    phase: suspended ? 'suspended' : phaseFromCard(input.card),
+    phase: suspended
+      ? 'suspended'
+      : phaseFromPracticeAndCard(input.practice, input.card),
     nextReviewAt: input.card?.dueAt ?? null,
     lastReviewedAt,
     reviewCount,
@@ -183,8 +188,25 @@ export function normalizeReviewLogFields(
   }
 }
 
-function phaseFromCard(card: FsrsCardSnapshot | null): PracticePhase {
-  return card?.state ?? 'new'
+function phaseFromPracticeAndCard(
+  practice: PracticeStateSnapshot | null,
+  card: FsrsCardSnapshot | null,
+): PracticePhase {
+  if (card) {
+    return card.state
+  }
+
+  switch (practice?.status) {
+    case 'learning':
+      return 'learning'
+    case 'review':
+    case 'mastered':
+      return 'review'
+    case 'new':
+    case 'suspended':
+    case undefined:
+      return 'new'
+  }
 }
 
 function normalizeOptionalLogValue(value: string | null | undefined) {

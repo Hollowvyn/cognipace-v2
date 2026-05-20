@@ -69,7 +69,7 @@ describe('practice core', () => {
     })
   })
 
-  it('preserves the latest aggregate log when a quick save has no log draft', async () => {
+  it('carries the current aggregate log snapshot when a quick save has no log draft', async () => {
     const handle = await createTestDb()
     const repository = createPracticeRepository(handle.db)
 
@@ -97,7 +97,57 @@ describe('practice core', () => {
       .where(eq(reviewAttempts.id, 'review-2'))
 
     expect(practice?.notes).toBe('Keep this note.')
-    expect(quickAttempt?.notes).toBeNull()
+    expect(quickAttempt?.notes).toBe('Keep this note.')
+  })
+
+  it('merges partial log updates into the latest aggregate snapshot', async () => {
+    const handle = await createTestDb()
+    const repository = createPracticeRepository(handle.db)
+
+    await repository.saveReviewResult({
+      problemId: 'leetcode:two-sum',
+      rating: 'good',
+      reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
+      log: {
+        interviewPattern: 'Hash map',
+        timeComplexity: 'O(n)',
+        spaceComplexity: 'O(n)',
+        languages: 'TypeScript',
+        notes: 'Initial note.',
+      },
+      reviewAttemptId: 'review-1',
+    })
+    await repository.saveReviewResult({
+      problemId: 'leetcode:two-sum',
+      rating: 'hard',
+      reviewedAt: new Date('2026-01-02T10:00:00.000Z'),
+      log: { notes: 'Updated note.' },
+      reviewAttemptId: 'review-2',
+    })
+
+    const [practice] = await handle.db
+      .select()
+      .from(problemPractice)
+      .where(eq(problemPractice.problemId, 'leetcode:two-sum'))
+    const [attempt] = await handle.db
+      .select()
+      .from(reviewAttempts)
+      .where(eq(reviewAttempts.id, 'review-2'))
+
+    expect(practice).toMatchObject({
+      interviewPattern: 'Hash map',
+      timeComplexity: 'O(n)',
+      spaceComplexity: 'O(n)',
+      languages: 'TypeScript',
+      notes: 'Updated note.',
+    })
+    expect(attempt).toMatchObject({
+      interviewPattern: 'Hash map',
+      timeComplexity: 'O(n)',
+      spaceComplexity: 'O(n)',
+      languages: 'TypeScript',
+      notes: 'Updated note.',
+    })
   })
 
   it('overrides the latest review without appending a duplicate attempt', async () => {
@@ -118,6 +168,13 @@ describe('practice core', () => {
       reviewedAt: new Date('2026-01-03T10:00:00.000Z'),
       elapsedSeconds: 600,
       isCorrect: true,
+      log: {
+        interviewPattern: 'Hash map',
+        timeComplexity: 'O(n)',
+        spaceComplexity: 'O(n)',
+        languages: 'TypeScript',
+        notes: 'Original note.',
+      },
       reviewAttemptId: 'review-2',
     })
 
@@ -142,16 +199,22 @@ describe('practice core', () => {
       .where(eq(fsrsCards.problemId, 'leetcode:two-sum'))
 
     expect(attempts).toHaveLength(2)
-    expect(attempts.find((attempt) => attempt.id === 'review-2')).toMatchObject({
-      rating: 'again',
-      elapsedSeconds: 900,
-      isCorrect: false,
-      notes: 'Missed edge case.',
-    })
+    expect(attempts.find((attempt) => attempt.id === 'review-2')).toMatchObject(
+      {
+        rating: 'again',
+        elapsedSeconds: 900,
+        isCorrect: false,
+        interviewPattern: 'Hash map',
+        timeComplexity: 'O(n)',
+        spaceComplexity: 'O(n)',
+        languages: 'TypeScript',
+        notes: 'Missed edge case.',
+      },
+    )
     expect(
       JSON.parse(
-        attempts.find((attempt) => attempt.id === 'review-2')
-          ?.fsrsReviewLog ?? '{}',
+        attempts.find((attempt) => attempt.id === 'review-2')?.fsrsReviewLog ??
+          '{}',
       ),
     ).toMatchObject({
       rating: 'again',
@@ -163,6 +226,10 @@ describe('practice core', () => {
       lastRating: 'again',
       lastElapsedSeconds: 900,
       bestElapsedSeconds: 800,
+      interviewPattern: 'Hash map',
+      timeComplexity: 'O(n)',
+      spaceComplexity: 'O(n)',
+      languages: 'TypeScript',
       notes: 'Missed edge case.',
       isSuspended: false,
     })

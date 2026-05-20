@@ -59,12 +59,15 @@ export class PracticeRepository {
     const timestamp = reviewedAt.getTime()
     const reviewAttemptId =
       input.reviewAttemptId ?? createReviewAttemptId(input.problemId, timestamp)
-    const attemptLog = normalizeReviewLogFields(input.log)
 
     return this.db.transaction(async (transactionDb) => {
       const previousPractice = await this.getPracticeState(
         input.problemId,
         transactionDb,
+      )
+      const reviewLogSnapshot = createPracticeLogSnapshot(
+        previousPractice?.log,
+        input.log,
       )
 
       await this.upsertCard(transactionDb, {
@@ -84,7 +87,7 @@ export class PracticeRepository {
         reviewedAt: timestamp,
         elapsedSeconds: normalizeElapsedSeconds(input.elapsedSeconds),
         isCorrect: input.isCorrect ?? null,
-        ...toReviewLogRow(attemptLog),
+        ...toReviewLogRow(reviewLogSnapshot),
         fsrsReviewLog: serializeFsrsReviewLogSnapshot(scheduled.log),
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -98,7 +101,7 @@ export class PracticeRepository {
         problemId: input.problemId,
         status,
         attempts,
-        log: input.log === undefined ? previousPractice?.log : attemptLog,
+        log: reviewLogSnapshot,
         now: reviewedAt,
       })
       const summary = derivePracticeSummary({
@@ -138,7 +141,15 @@ export class PracticeRepository {
         throw new Error('No review result exists to override.')
       }
 
+      const previousPractice = await this.getPracticeState(
+        input.problemId,
+        transactionDb,
+      )
       const changedAt = new Date()
+      const updatedLogSnapshot = createPracticeLogSnapshot(
+        previousPractice?.log ?? latestAttempt.log,
+        input.log,
+      )
       const updatedAttempt: PracticeReviewAttempt = {
         ...latestAttempt,
         rating: input.rating,
@@ -151,10 +162,7 @@ export class PracticeRepository {
           input.isCorrect === undefined
             ? latestAttempt.isCorrect
             : input.isCorrect,
-        log:
-          input.log === undefined
-            ? latestAttempt.log
-            : normalizeReviewLogFields(input.log),
+        log: updatedLogSnapshot,
         updatedAt: changedAt,
       }
       const updatedAttempts = [...attempts.slice(0, -1), updatedAttempt]
@@ -236,29 +244,6 @@ export class PracticeRepository {
       now: options.now,
       targetRetention: options.targetRetention,
     })
-  }
-
-  async getOrCreateCard(
-    problemId: string,
-    cardKind: FsrsCardKind = defaultFsrsCardKind,
-    now = new Date(),
-  ) {
-    const existingCard = await this.getCard(problemId, cardKind)
-
-    if (existingCard) {
-      return existingCard
-    }
-
-    const initialCard = createInitialFsrsCard(now)
-    await this.upsertCard(this.db, {
-      id: createFsrsCardId(problemId, cardKind),
-      problemId,
-      cardKind,
-      card: initialCard,
-      now,
-    })
-
-    return initialCard
   }
 
   async getCard(
@@ -560,6 +545,48 @@ function toPracticeLogRow(log: Required<PracticeLogFields>) {
 
 function toReviewLogRow(log: Required<PracticeLogFields>) {
   return toPracticeLogRow(log)
+}
+
+function createPracticeLogSnapshot(
+  currentLog: Required<PracticeLogFields> | null | undefined,
+  inputLog: PracticeLogFields | undefined,
+): Required<PracticeLogFields> {
+  if (inputLog === undefined) {
+    return normalizeReviewLogFields(currentLog)
+  }
+
+  return {
+    interviewPattern: normalizeReviewLogFieldPatch(
+      currentLog?.interviewPattern,
+      inputLog.interviewPattern,
+    ),
+    timeComplexity: normalizeReviewLogFieldPatch(
+      currentLog?.timeComplexity,
+      inputLog.timeComplexity,
+    ),
+    spaceComplexity: normalizeReviewLogFieldPatch(
+      currentLog?.spaceComplexity,
+      inputLog.spaceComplexity,
+    ),
+    languages: normalizeReviewLogFieldPatch(
+      currentLog?.languages,
+      inputLog.languages,
+    ),
+    notes: normalizeReviewLogFieldPatch(currentLog?.notes, inputLog.notes),
+  }
+}
+
+function normalizeReviewLogFieldPatch(
+  currentValue: string | null | undefined,
+  nextValue: string | null | undefined,
+) {
+  return nextValue === undefined
+    ? normalizePracticeLogValue(currentValue)
+    : normalizePracticeLogValue(nextValue)
+}
+
+function normalizePracticeLogValue(value: string | null | undefined) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
 function parseStoredFsrsReviewLogSnapshot(
