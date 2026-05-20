@@ -76,4 +76,27 @@ describe('runtime-policy', () => {
       ),
     ).not.toThrow()
   })
+
+  it('allows content scripts to use practice controls for the current problem', () => {
+    expect(() =>
+      assertCanSenderCallExtensionMethod(
+        'practice.setSuspended',
+        'content-script',
+        {
+          tab: { id: 7 },
+          url: 'https://leetcode.com/problems/two-sum/',
+        },
+      ),
+    ).not.toThrow()
+    expect(() =>
+      assertCanSenderCallExtensionMethod(
+        'practice.resetSchedule',
+        'content-script',
+        {
+          tab: { id: 7 },
+          url: 'https://leetcode.com/problems/two-sum/',
+        },
+      ),
+    ).not.toThrow()
+  })
 })

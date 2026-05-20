@@ -6,24 +6,17 @@ import {
   leetcodeSubmissionResultRemoteRuntimeRequestSchema,
   onMessage,
   pingRequestSchema,
-  practiceDetailsRequestSchema,
-  practiceDetailsSchema,
-  practiceOverrideLastReviewResultRequestSchema,
-  practiceSaveReviewResultRequestSchema,
   problemContextSchema,
   problemContextRequestSchema,
   problemsUpsertFromPageRequestSchema,
   queueRequestSchema,
-  reviewResultSchema,
   settingsRequestSchema,
   settingsUpdateRequestSchema,
   todayQueueSchema,
   tracksRequestSchema,
   type SerializedActiveTrack,
-  type SerializedPracticeDetails,
   type SerializedProblem,
   type SerializedProblemContext,
-  type SerializedReviewResult,
   type SerializedTodayQueue,
 } from '@/extension/messaging'
 import { getAppShellData } from '@/features/app-shell'
@@ -33,9 +26,22 @@ import {
   readLeetCodeSubmissionResultInBackground,
 } from '@/features/leetcode-capture'
 import {
+  practiceDetailsRequestSchema,
+  practiceDetailsSchema,
+  practiceOverrideLastReviewResultRequestSchema,
+  practiceResetScheduleRequestSchema,
+  practiceReviewResultSchema,
+  practiceSaveReviewResultRequestSchema,
+  practiceSetSuspendedRequestSchema,
+  type SerializedPracticeDetails,
+  type SerializedReviewResult,
+} from '@/features/practice/api/practice-contracts'
+import {
   getPracticeDetails,
   overrideLastReviewResult,
+  resetPracticeSchedule,
   saveReviewResult,
+  setPracticeSuspended,
   type PracticeDetails,
 } from '@/features/practice'
 import {
@@ -178,6 +184,42 @@ export function registerBackgroundHandlers() {
 
       return serializeReviewResult(result)
     })
+  })
+
+  onMessage('practice.setSuspended', ({ data, sender }) => {
+    const request = practiceSetSuspendedRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'practice.setSuspended',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      serializePracticeDetails(
+        await setPracticeSuspended(db, {
+          problemId: request.problemId,
+          suspended: request.suspended,
+        }),
+      ),
+    )
+  })
+
+  onMessage('practice.resetSchedule', ({ data, sender }) => {
+    const request = practiceResetScheduleRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'practice.resetSchedule',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      serializePracticeDetails(
+        await resetPracticeSchedule(db, {
+          problemId: request.problemId,
+          keepLog: request.keepLog,
+        }),
+      ),
+    )
   })
 
   onMessage('queue.getTodayQueue', ({ data, sender }) => {
@@ -361,7 +403,7 @@ function serializeReviewResult(result: {
   reviewedAt: Date
   summary: PracticeDetails['summary']
 }): SerializedReviewResult {
-  return reviewResultSchema.parse({
+  return practiceReviewResultSchema.parse({
     problemId: result.problemId,
     cardId: result.cardId,
     rating: result.rating,

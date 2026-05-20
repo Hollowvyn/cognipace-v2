@@ -8,6 +8,8 @@ const methodSurfaceAccess = {
   'practice.getDetails': ['popup', 'dashboard', 'content-script'],
   'practice.saveReviewResult': ['popup', 'dashboard', 'content-script'],
   'practice.overrideLastReviewResult': ['popup', 'dashboard', 'content-script'],
+  'practice.setSuspended': ['popup', 'dashboard', 'content-script'],
+  'practice.resetSchedule': ['popup', 'dashboard', 'content-script'],
   'queue.getTodayQueue': ['popup', 'dashboard'],
   'tracks.getActiveTrack': ['popup', 'dashboard'],
   'settings.getSettings': ['popup', 'dashboard'],

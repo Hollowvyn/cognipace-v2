@@ -5,7 +5,9 @@ import type {
   PracticeDetails,
   OverrideLastReviewResultInput,
   PracticeReadOptions,
+  ResetPracticeScheduleInput,
   SaveReviewResultInput,
+  SetPracticeSuspendedInput,
 } from '../domain'
 
 export function getPracticeDetails(
@@ -25,4 +27,15 @@ export function overrideLastReviewResult(
   input: OverrideLastReviewResultInput,
 ) {
   return createPracticeRepository(db).overrideLastReviewResult(input)
+}
+
+export function setPracticeSuspended(db: Db, input: SetPracticeSuspendedInput) {
+  return createPracticeRepository(db).setPracticeSuspended(input)
+}
+
+export function resetPracticeSchedule(
+  db: Db,
+  input: ResetPracticeScheduleInput,
+) {
+  return createPracticeRepository(db).resetPracticeSchedule(input)
 }

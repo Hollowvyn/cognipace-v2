@@ -37,7 +37,9 @@ import {
   type PracticeSummary,
   type ReviewMode,
   type ReviewResult,
+  type ResetPracticeScheduleInput,
   type SaveReviewResultInput,
+  type SetPracticeSuspendedInput,
 } from '../domain'
 
 export function createPracticeRepository(db: Db) {
@@ -106,6 +108,7 @@ export class PracticeRepository {
         status,
         attempts,
         log: reviewLogSnapshot,
+        isSuspended: previousPractice?.isSuspended ?? false,
         now: reviewedAt,
       })
       const summary = derivePracticeSummary({
@@ -206,6 +209,7 @@ export class PracticeRepository {
         status,
         attempts: updatedAttempts,
         log: updatedAttempt.log,
+        isSuspended: previousPractice?.isSuspended ?? false,
         now: changedAt,
       })
       const summary = derivePracticeSummary({
@@ -226,6 +230,67 @@ export class PracticeRepository {
         summary,
       }
     })
+  }
+
+  async setPracticeSuspended(
+    input: SetPracticeSuspendedInput,
+  ): Promise<PracticeDetails> {
+    const now = new Date()
+    const existing = await this.getPracticeState(input.problemId)
+
+    if (!existing && !input.suspended) {
+      return this.getPracticeDetails(input.problemId, { now })
+    }
+
+    if (!existing) {
+      await this.upsertEmptyPracticeState(this.db, {
+        problemId: input.problemId,
+        status: 'new',
+        log: normalizeReviewLogFields(),
+        isSuspended: true,
+        now,
+      })
+
+      return this.getPracticeDetails(input.problemId, { now })
+    }
+
+    await this.updateSuspensionFlag(this.db, {
+      problemId: input.problemId,
+      status: existing.status === 'suspended' ? 'new' : existing.status,
+      isSuspended: input.suspended,
+      now,
+    })
+
+    return this.getPracticeDetails(input.problemId, { now })
+  }
+
+  async resetPracticeSchedule(
+    input: ResetPracticeScheduleInput,
+  ): Promise<PracticeDetails> {
+    const now = new Date()
+    const existing = await this.getPracticeState(input.problemId)
+    const preservedLog =
+      input.keepLog === false ? normalizeReviewLogFields() : existing?.log
+    const isSuspended =
+      existing?.isSuspended === true || existing?.status === 'suspended'
+
+    await this.db.transaction(async (transactionDb) => {
+      await transactionDb
+        .delete(reviewAttempts)
+        .where(eq(reviewAttempts.problemId, input.problemId))
+      await transactionDb
+        .delete(fsrsCards)
+        .where(eq(fsrsCards.problemId, input.problemId))
+      await this.upsertEmptyPracticeState(transactionDb, {
+        problemId: input.problemId,
+        status: 'new',
+        log: preservedLog ?? normalizeReviewLogFields(),
+        isSuspended,
+        now,
+      })
+    })
+
+    return this.getPracticeDetails(input.problemId, { now })
   }
 
   async getPracticeDetails(
@@ -328,6 +393,7 @@ export class PracticeRepository {
       status: PracticeStateSnapshot['status']
       attempts: StoredPracticeReviewAttempt[]
       log?: Required<PracticeLogFields> | undefined
+      isSuspended?: boolean | undefined
       now: Date
     },
   ): Promise<PracticeStateSnapshot> {
@@ -347,7 +413,7 @@ export class PracticeRepository {
         lastReviewedAt,
         solvedCount: aggregate.solvedCount,
         attemptCount: aggregate.attemptCount,
-        isSuspended: false,
+        isSuspended: input.isSuspended ?? false,
         lastRating: aggregate.lastAttempt.rating,
         lastElapsedSeconds: aggregate.lastAttempt.elapsedSeconds,
         bestElapsedSeconds: aggregate.bestElapsedSeconds,
@@ -363,12 +429,87 @@ export class PracticeRepository {
           lastReviewedAt,
           solvedCount: aggregate.solvedCount,
           attemptCount: aggregate.attemptCount,
-          isSuspended: false,
+          isSuspended: input.isSuspended ?? false,
           lastRating: aggregate.lastAttempt.rating,
           lastElapsedSeconds: aggregate.lastAttempt.elapsedSeconds,
           bestElapsedSeconds: aggregate.bestElapsedSeconds,
           ...toPracticeLogRow(log),
           updatedAt,
+        },
+      })
+
+    const practice = await this.getPracticeState(input.problemId, db)
+
+    if (!practice) {
+      throw new Error(`Failed to read practice state for "${input.problemId}".`)
+    }
+
+    return practice
+  }
+
+  private async updateSuspensionFlag(
+    db: PracticeWriteDb,
+    input: {
+      problemId: string
+      status: PracticeStateSnapshot['status']
+      isSuspended: boolean
+      now: Date
+    },
+  ) {
+    await db
+      .update(problemPractice)
+      .set({
+        status: input.status,
+        isSuspended: input.isSuspended,
+        updatedAt: input.now.getTime(),
+      })
+      .where(eq(problemPractice.problemId, input.problemId))
+  }
+
+  private async upsertEmptyPracticeState(
+    db: PracticeWriteDb,
+    input: {
+      problemId: string
+      status: PracticeStateSnapshot['status']
+      log: Required<PracticeLogFields>
+      isSuspended: boolean
+      now: Date
+    },
+  ): Promise<PracticeStateSnapshot> {
+    const timestamp = input.now.getTime()
+
+    await db
+      .insert(problemPractice)
+      .values({
+        problemId: input.problemId,
+        status: input.status,
+        firstSeenAt: timestamp,
+        lastSeenAt: timestamp,
+        lastReviewedAt: null,
+        solvedCount: 0,
+        attemptCount: 0,
+        isSuspended: input.isSuspended,
+        lastRating: null,
+        lastElapsedSeconds: null,
+        bestElapsedSeconds: null,
+        ...toPracticeLogRow(input.log),
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      })
+      .onConflictDoUpdate({
+        target: problemPractice.problemId,
+        set: {
+          status: input.status,
+          lastSeenAt: timestamp,
+          lastReviewedAt: null,
+          solvedCount: 0,
+          attemptCount: 0,
+          isSuspended: input.isSuspended,
+          lastRating: null,
+          lastElapsedSeconds: null,
+          bestElapsedSeconds: null,
+          ...toPracticeLogRow(input.log),
+          updatedAt: timestamp,
         },
       })
 
@@ -416,7 +557,7 @@ export class PracticeRepository {
 }
 
 type PracticeReadDb = Pick<Db, 'select'>
-type PracticeWriteDb = Pick<Db, 'insert' | 'select' | 'update'>
+type PracticeWriteDb = Pick<Db, 'delete' | 'insert' | 'select' | 'update'>
 
 interface StoredPracticeReviewAttempt extends PracticeReviewAttemptSnapshot {
   fsrsReviewLog: FsrsReviewLogSnapshot | null

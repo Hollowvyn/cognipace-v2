@@ -16,5 +16,7 @@ export {
   type PracticeSummary,
   type ReviewMode,
   type ReviewResult,
+  type ResetPracticeScheduleInput,
   type SaveReviewResultInput,
+  type SetPracticeSuspendedInput,
 } from './practice'

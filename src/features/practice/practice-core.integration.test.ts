@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { describe, expect, it, vi } from 'vitest'
 
 import { createPracticeRepository } from '@/features/practice'
+import { getTodayQueue } from '@/features/queue'
 import { createTestDb } from '@/platform/db/test-db'
 import {
   fsrsCards,
@@ -367,5 +368,185 @@ describe('practice core', () => {
     )
     expect(details.latestAttempt?.id).toBe('review-2')
     expect(details.summary.reviewCount).toBe(2)
+  })
+
+  it('suspends and resumes practice without deleting review history', async () => {
+    const handle = await createTestDb()
+    const repository = createPracticeRepository(handle.db)
+
+    await repository.saveReviewResult({
+      problemId: 'leetcode:two-sum',
+      rating: 'easy',
+      reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
+      log: { notes: 'Keep the hash-map invariant.' },
+      reviewAttemptId: 'review-1',
+    })
+
+    const suspended = await repository.setPracticeSuspended({
+      problemId: 'leetcode:two-sum',
+      suspended: true,
+    })
+    const queueWhileSuspended = await getTodayQueue(
+      handle.db,
+      new Date('2026-01-01T10:01:00.000Z'),
+    )
+    const resumed = await repository.setPracticeSuspended({
+      problemId: 'leetcode:two-sum',
+      suspended: false,
+    })
+
+    expect(suspended).toMatchObject({
+      canOverrideLatestReview: true,
+      currentLog: { notes: 'Keep the hash-map invariant.' },
+      practice: {
+        attemptCount: 1,
+        isSuspended: true,
+        status: 'review',
+      },
+      summary: {
+        phase: 'suspended',
+        suspended: true,
+        isDue: false,
+      },
+    })
+    expect(suspended.card?.reps).toBe(1)
+    expect(suspended.latestAttempt?.id).toBe('review-1')
+    expect(
+      queueWhileSuspended.items.some(
+        (item) => item.problemId === 'leetcode:two-sum',
+      ),
+    ).toBe(false)
+    expect(resumed).toMatchObject({
+      practice: {
+        attemptCount: 1,
+        isSuspended: false,
+        status: 'review',
+      },
+      summary: {
+        phase: 'review',
+        suspended: false,
+      },
+    })
+    expect(resumed.card?.reps).toBe(1)
+  })
+
+  it('keeps suspension explicit when a suspended problem is reviewed', async () => {
+    const handle = await createTestDb()
+    const repository = createPracticeRepository(handle.db)
+
+    await repository.setPracticeSuspended({
+      problemId: 'leetcode:two-sum',
+      suspended: true,
+    })
+
+    const result = await repository.saveReviewResult({
+      problemId: 'leetcode:two-sum',
+      rating: 'good',
+      reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
+      reviewAttemptId: 'review-1',
+    })
+    const details = await repository.getPracticeDetails('leetcode:two-sum')
+
+    expect(result.summary).toMatchObject({
+      phase: 'suspended',
+      suspended: true,
+    })
+    expect(details).toMatchObject({
+      canOverrideLatestReview: true,
+      practice: {
+        attemptCount: 1,
+        isSuspended: true,
+        status: 'learning',
+      },
+      summary: {
+        phase: 'suspended',
+        suspended: true,
+      },
+    })
+  })
+
+  it('reset clears schedule history while preserving log and suspension by default', async () => {
+    const handle = await createTestDb()
+    const repository = createPracticeRepository(handle.db)
+
+    await repository.saveReviewResult({
+      problemId: 'leetcode:two-sum',
+      rating: 'good',
+      reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
+      log: {
+        interviewPattern: 'Hash map',
+        notes: 'Carry this through reset.',
+      },
+      reviewAttemptId: 'review-1',
+    })
+    await repository.setPracticeSuspended({
+      problemId: 'leetcode:two-sum',
+      suspended: true,
+    })
+
+    const reset = await repository.resetPracticeSchedule({
+      problemId: 'leetcode:two-sum',
+    })
+    const attempts = await handle.db
+      .select()
+      .from(reviewAttempts)
+      .where(eq(reviewAttempts.problemId, 'leetcode:two-sum'))
+    const cards = await handle.db
+      .select()
+      .from(fsrsCards)
+      .where(eq(fsrsCards.problemId, 'leetcode:two-sum'))
+
+    expect(attempts).toEqual([])
+    expect(cards).toEqual([])
+    expect(reset).toMatchObject({
+      card: null,
+      latestAttempt: null,
+      canOverrideLatestReview: false,
+      currentLog: {
+        interviewPattern: 'Hash map',
+        notes: 'Carry this through reset.',
+      },
+      practice: {
+        status: 'new',
+        attemptCount: 0,
+        solvedCount: 0,
+        lastRating: null,
+        lastElapsedSeconds: null,
+        bestElapsedSeconds: null,
+        isSuspended: true,
+      },
+      summary: {
+        phase: 'suspended',
+        isStarted: false,
+        reviewCount: 0,
+        suspended: true,
+      },
+    })
+  })
+
+  it('reset can clear the current practice log', async () => {
+    const handle = await createTestDb()
+    const repository = createPracticeRepository(handle.db)
+
+    await repository.saveReviewResult({
+      problemId: 'leetcode:two-sum',
+      rating: 'good',
+      reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
+      log: { notes: 'Clear me.' },
+      reviewAttemptId: 'review-1',
+    })
+
+    const reset = await repository.resetPracticeSchedule({
+      problemId: 'leetcode:two-sum',
+      keepLog: false,
+    })
+
+    expect(reset.currentLog).toEqual({
+      interviewPattern: null,
+      timeComplexity: null,
+      spaceComplexity: null,
+      languages: null,
+      notes: null,
+    })
   })
 })

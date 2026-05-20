@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import { practiceOverrideLastReviewResultRequestSchema } from './messaging'
+import { practiceOverrideLastReviewResultRequestSchema } from './practice-contracts'
 
-describe('extension messaging contracts', () => {
+describe('practice runtime contracts', () => {
   it('rejects reviewedAt on override requests', () => {
     expect(() =>
       practiceOverrideLastReviewResultRequestSchema.parse({

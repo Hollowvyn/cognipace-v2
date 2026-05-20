@@ -60,6 +60,16 @@ export interface OverrideLastReviewResultInput {
   targetRetention?: number | undefined
 }
 
+export interface SetPracticeSuspendedInput {
+  problemId: string
+  suspended: boolean
+}
+
+export interface ResetPracticeScheduleInput {
+  problemId: string
+  keepLog?: boolean | undefined
+}
+
 export interface ReviewResult {
   problemId: string
   cardId: string

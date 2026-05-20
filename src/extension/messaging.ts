@@ -9,13 +9,17 @@ import {
   type SerializedLeetCodeSubmissionResultRemoteResponse,
 } from '@/features/leetcode-capture/api/leetcode-capture-contracts'
 import {
-  practicePhases,
-  practiceStatuses,
-  reviewModes,
-} from '@/features/practice/domain'
+  practiceSummarySchema,
+  type PracticeDetailsRequest,
+  type PracticeOverrideLastReviewResultRequest,
+  type PracticeResetScheduleRequest,
+  type PracticeSaveReviewResultRequest,
+  type PracticeSetSuspendedRequest,
+  type SerializedPracticeDetails,
+  type SerializedReviewResult,
+} from '@/features/practice/api/practice-contracts'
 import { problemDifficulties } from '@/features/problems'
 import { type UserSettings, userSettingsPatchSchema } from '@/features/settings'
-import { fsrsCardStates, reviewRatings } from '@/lib/fsrs'
 
 export const extensionSurfaceSchema = z.enum([
   'background',
@@ -79,98 +83,6 @@ export const problemContextSchema = z
   .nullable()
 
 export type SerializedProblemContext = z.infer<typeof problemContextSchema>
-
-export const practiceLogSnapshotSchema = z.object({
-  interviewPattern: z.string().nullable(),
-  timeComplexity: z.string().nullable(),
-  spaceComplexity: z.string().nullable(),
-  languages: z.string().nullable(),
-  notes: z.string().nullable(),
-})
-
-export const reviewLogFieldsSchema = practiceLogSnapshotSchema.partial()
-
-export const practiceSummarySchema = z.object({
-  phase: z.enum(practicePhases),
-  nextReviewAt: z.string().nullable(),
-  lastReviewedAt: z.string().nullable(),
-  reviewCount: z.number().int().min(0),
-  lapses: z.number().int().min(0),
-  difficulty: z.number().nullable(),
-  stability: z.number().nullable(),
-  scheduledDays: z.number().int().min(0).nullable(),
-  suspended: z.boolean(),
-  isStarted: z.boolean(),
-  isDue: z.boolean(),
-  isOverdue: z.boolean(),
-  overdueDays: z.number().int().min(0),
-  retrievability: z.number().nullable(),
-})
-
-export const fsrsCardSnapshotSchema = z.object({
-  dueAt: z.string(),
-  stability: z.number(),
-  difficulty: z.number(),
-  elapsedDays: z.number().int(),
-  scheduledDays: z.number().int(),
-  learningSteps: z.number().int(),
-  reps: z.number().int().min(0),
-  lapses: z.number().int().min(0),
-  state: z.enum(fsrsCardStates),
-  lastReviewAt: z.string().nullable(),
-})
-
-export const practiceStateSnapshotSchema = z.object({
-  status: z.enum(practiceStatuses),
-  lastReviewedAt: z.string().nullable(),
-  attemptCount: z.number().int().min(0),
-  solvedCount: z.number().int().min(0),
-  isSuspended: z.boolean(),
-  lastRating: z.enum(reviewRatings).nullable(),
-  lastElapsedSeconds: z.number().int().positive().nullable(),
-  bestElapsedSeconds: z.number().int().positive().nullable(),
-  log: practiceLogSnapshotSchema,
-})
-
-export const practiceReviewAttemptSchema = z.object({
-  id: z.string(),
-  problemId: z.string(),
-  cardId: z.string(),
-  rating: z.enum(reviewRatings),
-  reviewMode: z.enum(reviewModes),
-  reviewedAt: z.string(),
-  elapsedSeconds: z.number().int().positive().nullable(),
-  isCorrect: z.boolean().nullable(),
-  log: practiceLogSnapshotSchema,
-  createdAt: z.string(),
-  updatedAt: z.string(),
-})
-
-export const practiceDetailsSchema = z.object({
-  problemId: z.string(),
-  cardId: z.string(),
-  practice: practiceStateSnapshotSchema.nullable(),
-  card: fsrsCardSnapshotSchema.nullable(),
-  summary: practiceSummarySchema,
-  currentLog: practiceLogSnapshotSchema,
-  recentAttempts: z.array(practiceReviewAttemptSchema),
-  latestAttempt: practiceReviewAttemptSchema.nullable(),
-  canOverrideLatestReview: z.boolean(),
-})
-
-export type SerializedPracticeDetails = z.infer<typeof practiceDetailsSchema>
-
-export const reviewResultSchema = z.object({
-  problemId: z.string(),
-  cardId: z.string(),
-  rating: z.enum(reviewRatings),
-  status: z.enum(practiceStatuses),
-  dueAt: z.string(),
-  reviewedAt: z.string(),
-  summary: practiceSummarySchema,
-})
-
-export type SerializedReviewResult = z.infer<typeof reviewResultSchema>
 
 export const queueItemSchema = z.object({
   category: z.enum(['due', 'new', 'reinforcement']),
@@ -257,47 +169,6 @@ export const problemContextRequestSchema = z.object({
 
 export type ProblemContextRequest = z.infer<typeof problemContextRequestSchema>
 
-export const practiceDetailsRequestSchema = z.object({
-  surface: uiSurfaceSchema,
-  problemId: z.string(),
-  at: z.string().optional(),
-})
-
-export type PracticeDetailsRequest = z.infer<
-  typeof practiceDetailsRequestSchema
->
-
-export const practiceSaveReviewResultRequestSchema = z.object({
-  surface: uiSurfaceSchema,
-  problemId: z.string(),
-  rating: z.enum(reviewRatings),
-  reviewedAt: z.string().optional(),
-  reviewMode: z.enum(['manual', 'leetcode']).optional(),
-  elapsedSeconds: z.number().int().positive().nullish(),
-  isCorrect: z.boolean().nullish(),
-  notes: z.string().nullish(),
-  log: reviewLogFieldsSchema.optional(),
-})
-
-export type PracticeSaveReviewResultRequest = z.infer<
-  typeof practiceSaveReviewResultRequestSchema
->
-
-export const practiceOverrideLastReviewResultRequestSchema = z
-  .object({
-    surface: uiSurfaceSchema,
-    problemId: z.string(),
-    rating: z.enum(reviewRatings),
-    elapsedSeconds: z.number().int().positive().nullish(),
-    isCorrect: z.boolean().nullish(),
-    log: reviewLogFieldsSchema.optional(),
-  })
-  .strict()
-
-export type PracticeOverrideLastReviewResultRequest = z.infer<
-  typeof practiceOverrideLastReviewResultRequestSchema
->
-
 export const queueRequestSchema = z.object({
   surface: z.enum(['popup', 'dashboard']),
   at: z.string().optional(),
@@ -360,6 +231,12 @@ export interface ProtocolMap {
   'practice.overrideLastReviewResult'(
     request: PracticeOverrideLastReviewResultRequest,
   ): SerializedReviewResult
+  'practice.setSuspended'(
+    request: PracticeSetSuspendedRequest,
+  ): SerializedPracticeDetails
+  'practice.resetSchedule'(
+    request: PracticeResetScheduleRequest,
+  ): SerializedPracticeDetails
   'queue.getTodayQueue'(request: QueueRequest): SerializedTodayQueue
   'tracks.getActiveTrack'(request: TracksRequest): SerializedActiveTrack
   'settings.getSettings'(request: SettingsRequest): UserSettings

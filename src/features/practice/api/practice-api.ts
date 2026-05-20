@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import {
-  sendMessage,
-  type PracticeDetailsRequest,
-  type PracticeOverrideLastReviewResultRequest,
-  type PracticeSaveReviewResultRequest,
-} from '@/extension/messaging'
+import { sendMessage } from '@/extension/messaging'
+
+import type {
+  PracticeDetailsRequest,
+  PracticeOverrideLastReviewResultRequest,
+  PracticeResetScheduleRequest,
+  PracticeSaveReviewResultRequest,
+  PracticeSetSuspendedRequest,
+} from './practice-contracts'
 
 const practiceRelatedQueryKeys = [
   ['practice-details'],
@@ -28,6 +31,18 @@ export function overrideLastReviewResultViaRuntime(
   request: PracticeOverrideLastReviewResultRequest,
 ) {
   return sendMessage('practice.overrideLastReviewResult', request)
+}
+
+export function setPracticeSuspendedViaRuntime(
+  request: PracticeSetSuspendedRequest,
+) {
+  return sendMessage('practice.setSuspended', request)
+}
+
+export function resetPracticeScheduleViaRuntime(
+  request: PracticeResetScheduleRequest,
+) {
+  return sendMessage('practice.resetSchedule', request)
 }
 
 export type RuntimePracticeDetails = Awaited<
@@ -57,6 +72,28 @@ export function useOverrideLastReviewResult() {
 
   return useMutation({
     mutationFn: overrideLastReviewResultViaRuntime,
+    onSuccess: () => {
+      invalidatePracticeRelatedQueries(queryClient)
+    },
+  })
+}
+
+export function useSetPracticeSuspended() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: setPracticeSuspendedViaRuntime,
+    onSuccess: () => {
+      invalidatePracticeRelatedQueries(queryClient)
+    },
+  })
+}
+
+export function useResetPracticeSchedule() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: resetPracticeScheduleViaRuntime,
     onSuccess: () => {
       invalidatePracticeRelatedQueries(queryClient)
     },
