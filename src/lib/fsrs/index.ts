@@ -1,23 +1,45 @@
 export {
   defaultFsrsCardKind,
-  fromFsrsCard,
-  fsrsCardKinds,
-  fsrsCardStates,
-  toFsrsCard,
+  isFsrsCardKind,
+  isFsrsCardState,
+  parseFsrsCardKind,
+  parseFsrsCardState,
   type FsrsCardKind,
   type FsrsCardSnapshot,
   type FsrsCardState,
-} from './card'
+} from './domain/card-snapshot'
 export {
-  ratingToScore,
+  isReviewRating,
+  parseReviewRating,
+  reviewRatingToScore,
   reviewRatings,
-  toFsrsRating,
   type ReviewRating,
-} from './rating'
+} from './domain/review-rating'
+export {
+  defaultFsrsSchedulingOptions,
+  isFsrsStepUnit,
+  normalizeFsrsSchedulingOptions,
+  parseFsrsStepUnit,
+  type FsrsSchedulingOptions,
+  type FsrsStepUnit,
+  type NormalizedFsrsSchedulingOptions,
+} from './domain/scheduling-options'
+export {
+  isFsrsReviewLogSnapshot,
+  parseFsrsReviewLogSnapshot,
+  parseSerializedFsrsReviewLogSnapshot,
+  serializeFsrsReviewLogSnapshot,
+  type FsrsReviewLogSnapshot,
+} from './domain/review-log-snapshot'
 export {
   createInitialFsrsCard,
   getRetrievability,
+  projectReviewSchedule,
+  replayReviewHistory,
+  replayReviewHistorySequence,
   scheduleReview,
-  type FsrsSchedulerOptions,
-  type ScheduledReview,
-} from './scheduler'
+  type FsrsProjectedReview,
+  type FsrsReviewHistoryEntry,
+  type FsrsReviewScheduleProjectionOptions,
+  type FsrsScheduledReview,
+} from './scheduler/review-scheduler'
