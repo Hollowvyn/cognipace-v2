@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query'
 
 import { sendMessage } from '@/extension/messaging'
 
@@ -11,11 +16,10 @@ import type {
   PracticeUpdateCurrentLogRequest,
 } from './practice-contracts'
 
-const practiceRelatedQueryKeys = [
+export const practiceRelatedQueryKeys = [
   ['practice-details'],
   ['today-queue'],
   ['app-shell-data'],
-  ['problem-context'],
 ] as const
 
 export function saveReviewResultViaRuntime(
@@ -118,9 +122,7 @@ export function useUpdateCurrentPracticeLog() {
   })
 }
 
-function invalidatePracticeRelatedQueries(
-  queryClient: ReturnType<typeof useQueryClient>,
-) {
+export function invalidatePracticeRelatedQueries(queryClient: QueryClient) {
   for (const queryKey of practiceRelatedQueryKeys) {
     void queryClient.invalidateQueries({ queryKey })
   }

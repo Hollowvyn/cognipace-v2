@@ -1,6 +1,8 @@
 export {
   getPracticeDetailsViaRuntime,
+  invalidatePracticeRelatedQueries,
   overrideLastReviewResultViaRuntime,
+  practiceRelatedQueryKeys,
   resetPracticeScheduleViaRuntime,
   saveReviewResultViaRuntime,
   setPracticeSuspendedViaRuntime,
@@ -38,6 +40,11 @@ export {
   type SerializedPracticeDetails,
   type SerializedReviewResult,
 } from './api/practice-contracts'
+export {
+  serializePracticeDetails,
+  serializePracticeSummary,
+  serializeReviewResult,
+} from './api/practice-serializers'
 export {
   derivePracticeSummary,
   normalizeReviewLogFields,

@@ -2,6 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { sendMessage, type SettingsUpdateRequest } from '@/extension/messaging'
 
+const settingsRelatedQueryKeys = [
+  ['settings'],
+  ['today-queue'],
+  ['practice-details'],
+  ['app-shell-data'],
+] as const
+
 export function useSettings() {
   return useQuery({
     queryKey: ['settings'],
@@ -17,7 +24,9 @@ export function useUpdateSettings() {
     mutationFn: (request: SettingsUpdateRequest) =>
       sendMessage('settings.updateSettings', request),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['settings'] })
+      for (const queryKey of settingsRelatedQueryKeys) {
+        void queryClient.invalidateQueries({ queryKey })
+      }
     },
   })
 }
