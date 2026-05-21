@@ -38,12 +38,10 @@
 
   [data-cp-surface='overlay'] {
     position: fixed;
-    top: 88px;
     right: 16px;
+    bottom: 16px;
     z-index: var(--cp-z-overlay);
-    width: 320px;
-    max-height: calc(100vh - 112px);
-    overflow-y: auto;
+    overflow: hidden;
     overscroll-behavior: contain;
     border: 1px solid var(--cp-color-border);
     border-radius: var(--cp-radius-lg);
@@ -59,6 +57,31 @@
     --cp-copy-font-size: 0.75rem;
     --cp-timer-font-size: 1.375rem;
     --cp-timer-min-width: 5ch;
+  }
+
+  [data-cp-surface='overlay'][data-cp-overlay-mode='collapsed'] {
+    width: min(392px, calc(100vw - 32px));
+    height: 56px;
+    overflow: visible;
+  }
+
+  [data-cp-surface='overlay'][data-cp-overlay-mode='expanded'] {
+    display: flex;
+    width: min(420px, calc(100vw - 32px));
+    height: clamp(560px, 75vh, calc(100vh - 32px));
+    max-height: calc(100vh - 32px);
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  [data-cp-surface='overlay'][data-cp-overlay-mode='docked'] {
+    right: 0;
+    bottom: 24px;
+    width: 42px;
+    height: 92px;
+    border-right: 0;
+    border-radius: var(--cp-radius-lg) 0 0 var(--cp-radius-lg);
+    overflow: hidden;
   }
 
   [data-cp-surface='dashboard'] {

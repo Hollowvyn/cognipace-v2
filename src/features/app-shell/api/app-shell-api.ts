@@ -5,9 +5,6 @@ import { sendMessage } from '@/extension/messaging'
 import {
   type AppShellData,
   type AppShellRequest,
-  type DashboardAppShellData,
-  type OverlayAppShellData,
-  type PopupAppShellData,
 } from './app-shell-contracts'
 
 export const appShellQueryKeys = {
@@ -81,7 +78,9 @@ function hasAppShellSurface<TSurface extends AppShellData['surface']>(
 }
 
 export type {
+  AppShellProblemSummary,
   DashboardAppShellData,
+  OverlayNextStep,
   OverlayAppShellData,
   PopupAppShellData,
-}
+} from './app-shell-contracts'

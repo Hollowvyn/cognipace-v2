@@ -1,0 +1,181 @@
+import { AlertCircle, Info } from 'lucide-react'
+
+import { InlineStatus } from '@/components/ui/inline-status'
+import { SurfaceRoot } from '@/components/ui/surface'
+import type { OverlayAppShellData } from '@/features/app-shell'
+import type { ReviewRating } from '@/lib/fsrs'
+
+import type { OverlayDraftField } from '../../../domain'
+import {
+  hasSubmittedSessionChanges,
+  type OverlaySessionState,
+} from '../../../domain'
+import type { OverlayTimerStatus } from '../../../hooks/use-overlay-timer'
+import { OverlayActions } from './overlay-actions'
+import { OverlayAssessmentRail } from './overlay-assessment-rail'
+import {
+  OverlayContextStrip,
+  OverlaySubmissionSummary,
+} from './overlay-context-strip'
+import { OverlayHeader } from './overlay-header'
+import { OverlayLogFields } from './overlay-log-fields'
+import { OverlayNextCard } from './overlay-next-card'
+import { OverlayTimerCard } from './overlay-timer-card'
+
+type ExpandedOverlayViewModel = {
+  context: OverlayAppShellData['overlay'] | null
+  draft: {
+    clearField: (field: OverlayDraftField) => void
+    hasUnpersistedChanges: boolean
+    setField: (field: OverlayDraftField, value: string) => void
+  }
+  elapsedSeconds: number
+  isOverTarget: boolean
+  overlay: OverlaySessionState
+  problemTitle: string
+  syncFeedback: string | null
+  syncStatus: string
+  targetSeconds: number
+  timerStatus: OverlayTimerStatus
+}
+
+type ExpandedOverlayCommands = {
+  onCollapse: () => void
+  onDock: () => void
+  onFail: () => void
+  onPauseTimer: () => void
+  onResetTimer: () => void
+  onRestart: () => void
+  onSelectRating: (rating: ReviewRating) => void
+  onSettings: () => void
+  onStartTimer: () => void
+  onSubmit: () => void
+  onUpdate: () => void
+}
+
+type ExpandedOverlayProps = {
+  commands: ExpandedOverlayCommands
+  view: ExpandedOverlayViewModel
+}
+
+export function ExpandedOverlay({
+  commands,
+  view,
+}: ExpandedOverlayProps) {
+  const {
+    context,
+    draft,
+    elapsedSeconds,
+    isOverTarget,
+    overlay,
+    problemTitle,
+    syncFeedback,
+    syncStatus,
+    targetSeconds,
+    timerStatus,
+  } = view
+  const {
+    onCollapse,
+    onDock,
+    onFail,
+    onPauseTimer,
+    onResetTimer,
+    onRestart,
+    onSelectRating,
+    onSettings,
+    onStartTimer,
+    onSubmit,
+    onUpdate,
+  } = commands
+  const submitted = Boolean(overlay.submittedSession)
+  const isMutating =
+    overlay.reviewStatus === 'saving' || overlay.reviewStatus === 'updating'
+  const isSubmittedLocked = submitted && Boolean(overlay.ratingLockReason)
+  const showUntimedWarning =
+    !submitted &&
+    context?.timing.requireSolveTime === true &&
+    elapsedSeconds === 0 &&
+    timerStatus !== 'running'
+
+  return (
+    <SurfaceRoot
+      asChild
+      data-cp-overlay-mode="expanded"
+      surface="overlay"
+      theme="dark"
+    >
+      <aside aria-label="CogniPace review overlay">
+        <OverlayHeader
+          onCollapse={onCollapse}
+          onDock={onDock}
+          onSettings={onSettings}
+          problem={context?.problem ?? null}
+          title={problemTitle}
+        />
+        <OverlayContextStrip
+          context={context}
+          isSubmitted={submitted}
+        />
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
+          <div className="grid gap-4">
+            {syncStatus === 'error' && syncFeedback ? (
+              <InlineStatus tone="danger">
+                <AlertCircle aria-hidden="true" />
+                <span>{syncFeedback}</span>
+              </InlineStatus>
+            ) : null}
+
+            <OverlaySubmissionSummary context={context} />
+
+            <OverlayTimerCard
+              elapsedSeconds={elapsedSeconds}
+              isOverTarget={isOverTarget}
+              onPause={onPauseTimer}
+              onReset={onResetTimer}
+              onStart={onStartTimer}
+              targetSeconds={targetSeconds}
+              timerStatus={timerStatus}
+            />
+
+            <OverlayAssessmentRail
+              isDisabled={isMutating}
+              lockReason={overlay.ratingLockReason}
+              onSelectRating={onSelectRating}
+              selectedRating={overlay.selectedRating}
+            />
+
+            {showUntimedWarning ? (
+              <InlineStatus tone="neutral">
+                <Info aria-hidden="true" />
+                <span>No timer used; this review will save without solve time.</span>
+              </InlineStatus>
+            ) : null}
+
+            <OverlayLogFields
+              disabled={isMutating || isSubmittedLocked}
+              draft={overlay.draft}
+              hasUnpersistedChanges={draft.hasUnpersistedChanges}
+              onClearField={draft.clearField}
+              onFieldChange={draft.setField}
+            />
+          </div>
+        </div>
+
+        <div className="grid shrink-0 gap-3 border-t border-border bg-card p-3">
+          <OverlayActions
+            feedback={overlay.feedback}
+            hasSubmittedChanges={hasSubmittedSessionChanges(overlay)}
+            isSubmitted={submitted}
+            onFail={onFail}
+            onRestart={onRestart}
+            onSubmit={onSubmit}
+            onUpdate={onUpdate}
+            reviewStatus={overlay.reviewStatus}
+          />
+          <OverlayNextCard nextStep={overlay.nextStep} />
+        </div>
+      </aside>
+    </SurfaceRoot>
+  )
+}

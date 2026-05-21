@@ -54,6 +54,15 @@ const appShellActiveTrackSchema = z.object({
   nextProblem: appShellProblemSummarySchema.nullable(),
 })
 
+const overlayNextStepSchema = z.object({
+  kind: z.enum(['track', 'recommendation', 'empty']),
+  title: z.string(),
+  detail: z.string(),
+  problem: appShellProblemSummarySchema.nullable(),
+  category: z.enum(['due', 'new', 'reinforcement']).nullable(),
+  dueAt: z.string().nullable(),
+})
+
 const appShellTimingSettingsSchema = userSettingsSchema.shape.timing
 
 const appShellSettingsSummarySchema = z.object({
@@ -102,6 +111,7 @@ export const overlayAppShellDataSchema = z.object({
     problem: appShellProblemSummarySchema.nullable(),
     practice: practiceDetailsSchema.nullable(),
     timing: appShellTimingSettingsSchema,
+    nextStep: overlayNextStepSchema.nullable(),
   }),
 })
 
@@ -117,3 +127,4 @@ export type DashboardAppShellData = z.infer<typeof dashboardAppShellDataSchema>
 export type OverlayAppShellData = z.infer<typeof overlayAppShellDataSchema>
 export type AppShellQueueItem = z.infer<typeof appShellQueueItemSchema>
 export type AppShellProblemSummary = z.infer<typeof appShellProblemSummarySchema>
+export type OverlayNextStep = z.infer<typeof overlayNextStepSchema>

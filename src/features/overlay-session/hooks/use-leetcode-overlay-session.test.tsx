@@ -2,10 +2,13 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { OverlayAppShellData } from '@/features/app-shell'
+import { getOverlayAppShellDataViaRuntime } from '@/features/app-shell'
 import {
-  getOverlayAppShellDataViaRuntime,
-} from '@/features/app-shell'
-import { saveReviewResultViaRuntime } from '@/features/practice'
+  overrideLastReviewResultViaRuntime,
+  saveReviewResultViaRuntime,
+  type SerializedPracticeDetails,
+  updateCurrentPracticeLogViaRuntime,
+} from '@/features/practice'
 import { upsertProblemFromPageViaRuntime } from '@/features/problems'
 import type {
   LeetCodePageEvent,
@@ -16,8 +19,13 @@ import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import { useLeetCodeOverlaySession } from './use-leetcode-overlay-session'
 
-const leetcodeMockState = vi.hoisted(() => ({
-  onEvent: null as ((event: LeetCodePageEvent) => void) | null,
+type LeetCodeMockState = {
+  onEvent: ((event: LeetCodePageEvent) => void) | null
+  problemLocation: LeetCodeProblemLocation
+}
+
+const leetcodeMockState = vi.hoisted<LeetCodeMockState>(() => ({
+  onEvent: null,
   problemLocation: {
     slug: 'two-sum',
     url: 'https://leetcode.com/problems/two-sum/',
@@ -62,7 +70,9 @@ vi.mock('@/features/practice', () => ({
       void queryClient.invalidateQueries({ queryKey: ['app-shell-data'] })
     },
   ),
+  overrideLastReviewResultViaRuntime: vi.fn(),
   saveReviewResultViaRuntime: vi.fn(),
+  updateCurrentPracticeLogViaRuntime: vi.fn(),
 }))
 
 vi.mock('@/features/app-shell', () => ({
@@ -92,130 +102,269 @@ const defaultTiming = {
   hardMinutes: 50,
 }
 
+const overlayProblem = {
+  difficulty: 'easy',
+  id: 'leetcode:two-sum',
+  isPremium: false,
+  slug: 'two-sum',
+  title: 'Two Sum',
+  url: 'https://leetcode.com/problems/two-sum/',
+} satisfies NonNullable<OverlayAppShellData['overlay']['problem']>
+
+const nextStep = {
+  category: null,
+  detail: 'Next in track · easy',
+  dueAt: null,
+  kind: 'track',
+  problem: {
+    difficulty: 'easy',
+    id: 'leetcode:valid-parentheses',
+    isPremium: false,
+    slug: 'valid-parentheses',
+    title: 'Valid Parentheses',
+    url: 'https://leetcode.com/problems/valid-parentheses/',
+  },
+  title: 'Valid Parentheses',
+} satisfies NonNullable<OverlayAppShellData['overlay']['nextStep']>
+
 describe('useLeetCodeOverlaySession', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     vi.clearAllMocks()
     leetcodeMockState.onEvent = null
     vi.mocked(upsertProblemFromPageViaRuntime).mockResolvedValue(problemRecord)
     vi.mocked(saveReviewResultViaRuntime).mockResolvedValue(reviewResult)
+    vi.mocked(overrideLastReviewResultViaRuntime).mockResolvedValue(
+      reviewResult,
+    )
+    vi.mocked(updateCurrentPracticeLogViaRuntime).mockResolvedValue(
+      createPracticeDetails(),
+    )
     vi.mocked(getOverlayAppShellDataViaRuntime).mockResolvedValue(
       createOverlayData(),
     )
   })
 
-  it.each([
-    {
-      name: 'selected rating with current solve time',
-      ready: {},
+  it('quick submits from collapsed using the assessment policy', async () => {
+    const { result } = await renderReadySession()
+
+    await runOverlayAction(result.current.actions.prepareQuickSubmit)
+
+    expect(latestSavedReviewRequest()).toMatchObject({
       rating: 'good',
-      expectedSave: {
-        rating: 'good',
-        reviewMode: 'leetcode',
-        isCorrect: true,
-      },
-      assert: ({ invalidateQueries }: RenderedOverlaySession) => {
-        const request = readSaveReviewRequest()
+      elapsedSeconds: null,
+      isCorrect: true,
+    })
+    expect(result.current.overlay.visualMode).toBe('expanded')
+    expect(result.current.overlay.selectedRating).toBe('good')
+    expect(result.current.overlay.reviewStatus).toBe('submitted-clean')
+  })
 
-        expect(request.elapsedSeconds).toBeGreaterThanOrEqual(95)
-        expect(invalidateQueries).toHaveBeenCalledWith({
-          queryKey: ['app-shell-data'],
-        })
-      },
-    },
-    {
-      name: 'overtime hard-mode review as Again',
-      ready: {
-        elapsedSeconds: 21 * 60,
-        timing: { hardMode: true },
-      },
-      rating: 'good',
-      expectedSave: {
-        rating: 'again',
-        isCorrect: false,
-      },
-      assert: ({ result }: RenderedOverlaySession) => {
-        expect(result.current.feedback).toBe(
-          'Over the solve-time target. Saved as Again.',
-        )
-      },
-    },
-    {
-      name: 'Again as fail semantics when solve time is required and missing',
-      ready: {
-        elapsedSeconds: 0,
-        timing: { requireSolveTime: true },
-      },
-      rating: 'again',
-      expectedSave: {
-        rating: 'again',
-        elapsedSeconds: null,
-        isCorrect: false,
-      },
-    },
-  ] as const)(
-    'saves $name',
-    async ({ ready, rating, expectedSave, assert }) => {
-      const session = await renderReadySession(ready)
-
-      await saveReview(session.result, rating)
-
-      expect(readSaveReviewRequest()).toMatchObject({
-        surface: 'content-script',
-        problemId: 'leetcode:two-sum',
-        ...expectedSave,
-      })
-      assert?.(session)
-    },
-  )
-
-  it('blocks non-Again saves when solve time is required and missing', async () => {
+  it('submits selected rating without requiring timer usage', async () => {
     const { result } = await renderReadySession({
-      elapsedSeconds: 0,
       timing: { requireSolveTime: true },
     })
 
-    await saveReview(result, 'good')
+    await runOverlayAction(result.current.actions.submitReview)
 
-    expect(saveReviewResultViaRuntime).not.toHaveBeenCalled()
-    expect(result.current.status).toBe('error')
-    expect(result.current.feedback).toBe(
-      'Solve time is required before saving this review.',
+    expect(latestSavedReviewRequest()).toMatchObject({
+      surface: 'content-script',
+      problemId: 'leetcode:two-sum',
+      rating: 'good',
+      elapsedSeconds: null,
+      isCorrect: true,
+      log: {
+        interviewPattern: null,
+      },
+    })
+    expect(result.current.overlay.reviewStatus).toBe('submitted-clean')
+  })
+
+  it('keeps a saved review submitted when the next-step refresh fails', async () => {
+    vi.mocked(getOverlayAppShellDataViaRuntime)
+      .mockResolvedValueOnce(createOverlayData())
+      .mockRejectedValueOnce(new Error('Next problem unavailable.'))
+    const { result } = await renderReadySession()
+
+    await runOverlayAction(result.current.actions.submitReview)
+
+    expect(result.current.overlay.reviewStatus).toBe('submitted-clean')
+    expect(result.current.overlay.submittedSession?.rating).toBe('good')
+    expect(result.current.overlay.nextStep.status).toBe('error')
+    expect(result.current.overlay.nextStep.message).toBe(
+      'Review saved. Next problem unavailable.',
     )
   })
 
+  it('forces Hard Mode overtime submissions to Again', async () => {
+    const startTime = Date.now()
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(startTime)
+    const { result } = await renderReadySession({
+      timing: { hardMode: true },
+    })
+
+    act(() => {
+      result.current.actions.startTimer()
+    })
+    nowSpy.mockReturnValue(startTime + 21 * 60 * 1000)
+
+    await runOverlayAction(result.current.actions.submitReview)
+
+    expect(latestSavedReviewRequest()).toMatchObject({
+      rating: 'again',
+      elapsedSeconds: 21 * 60,
+      isCorrect: false,
+    })
+    expect(result.current.overlay.ratingLockReason).toBe('hard-mode-overtime')
+  })
+
+  it('saves failed attempts immediately as Again and locks assessment', async () => {
+    const { result } = await renderReadySession()
+
+    await runOverlayAction(result.current.actions.failReview)
+
+    expect(latestSavedReviewRequest()).toMatchObject({
+      rating: 'again',
+      isCorrect: false,
+    })
+    expect(result.current.overlay.visualMode).toBe('expanded')
+    expect(result.current.overlay.ratingLockReason).toBe('failed')
+  })
+
+  it('updates the latest submitted review instead of appending another attempt', async () => {
+    const { result } = await renderReadySession()
+
+    await runOverlayAction(result.current.actions.submitReview)
+    act(() => {
+      result.current.actions.selectRating('hard')
+    })
+    act(() => {
+      result.current.draft.setField('notes', 'Need to revisit overflow cases.')
+    })
+    await runOverlayAction(result.current.actions.updateReview)
+
+    expect(saveReviewResultViaRuntime).toHaveBeenCalledOnce()
+    expect(overrideLastReviewResultViaRuntime).toHaveBeenCalledOnce()
+    expect(
+      vi.mocked(overrideLastReviewResultViaRuntime).mock.calls[0]?.[0],
+    ).toMatchObject({
+      problemId: 'leetcode:two-sum',
+      rating: 'hard',
+      log: {
+        notes: 'Need to revisit overflow cases.',
+      },
+    })
+  })
+
+  it('persists dirty drafts when collapsing without creating a review attempt', async () => {
+    const { result } = await renderReadySession()
+
+    act(() => {
+      result.current.draft.setField('notes', 'Carry this draft.')
+    })
+    act(() => {
+      result.current.actions.collapse()
+    })
+
+    await waitFor(() => {
+      expect(updateCurrentPracticeLogViaRuntime).toHaveBeenCalled()
+    })
+
+    expect(latestPracticeLogUpdateRequest()).toMatchObject({
+      surface: 'content-script',
+      problemId: 'leetcode:two-sum',
+      log: {
+        notes: 'Carry this draft.',
+      },
+    })
+    expect(saveReviewResultViaRuntime).not.toHaveBeenCalled()
+  })
+
   it.each([
-    ['result', (deferred: DeferredReviewResult) => deferred.resolve(reviewResult)],
-    ['error', (deferred: DeferredReviewResult) =>
-      deferred.reject(new Error('Old save failed.'))],
+    {
+      outcome: 'result',
+      finishDraftPersist: (deferred: DeferredPracticeDetails) =>
+        deferred.resolve(createPracticeDetails()),
+    },
+    {
+      outcome: 'error',
+      finishDraftPersist: (deferred: DeferredPracticeDetails) =>
+        deferred.reject(new Error('Old draft failed.')),
+    },
   ] as const)(
-    'ignores an in-flight save %s after page navigation',
-    async (_, finishSave) => {
-      const deferredSave = createDeferred()
+    'ignores an in-flight draft persist $outcome after page navigation',
+    async ({ finishDraftPersist }) => {
+      const deferredDraftPersist = createDeferred<SerializedPracticeDetails>()
+      vi.mocked(updateCurrentPracticeLogViaRuntime).mockReturnValueOnce(
+        deferredDraftPersist.promise,
+      )
+      const { invalidateQueries, result } = await renderReadySession()
+
+      act(() => {
+        result.current.draft.setField('notes', 'Old page draft.')
+      })
+      act(() => {
+        result.current.actions.collapse()
+      })
+      await waitFor(() =>
+        expect(updateCurrentPracticeLogViaRuntime).toHaveBeenCalledOnce(),
+      )
+
+      emitNextPage()
+      await act(async () => {
+        finishDraftPersist(deferredDraftPersist)
+        await deferredDraftPersist.promise.catch(() => undefined)
+      })
+
+      expect(result.current.status).toBe('reading-page')
+      expect(result.current.overlay.persistedDraft.notes).toBe('')
+      expect(result.current.overlay.feedback).toBeNull()
+      expect(invalidateQueries).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    {
+      outcome: 'result',
+      finishSave: (deferred: DeferredReviewResult) =>
+        deferred.resolve(reviewResult),
+    },
+    {
+      outcome: 'error',
+      finishSave: (deferred: DeferredReviewResult) =>
+        deferred.reject(new Error('Old save failed.')),
+    },
+  ] as const)(
+    'ignores an in-flight submit $outcome after page navigation',
+    async ({ finishSave }) => {
+      const deferredSave = createDeferred<typeof reviewResult>()
       vi.mocked(saveReviewResultViaRuntime).mockReturnValueOnce(
         deferredSave.promise,
       )
       const { result } = await renderReadySession()
 
-      const savePromise = saveReview(result, 'good')
+      const savePromise = runOverlayAction(result.current.actions.submitReview)
 
       emitNextPage()
       finishSave(deferredSave)
       await savePromise
 
       expect(result.current.status).toBe('reading-page')
-      expect(result.current.feedback).toBeNull()
+      expect(result.current.overlay.submittedSession).toBeNull()
       expect(getOverlayAppShellDataViaRuntime).toHaveBeenCalledTimes(1)
     },
   )
 })
 
 type RenderedOverlaySession = ReturnType<typeof renderOverlaySession>
-type DeferredReviewResult = ReturnType<typeof createDeferred>
-type SaveReview =
-  ReturnType<typeof renderOverlaySession>['result']['current']['saveReview']
+type DeferredReviewResult = ReturnType<
+  typeof createDeferred<typeof reviewResult>
+>
+type DeferredPracticeDetails = ReturnType<
+  typeof createDeferred<SerializedPracticeDetails>
+>
 
 async function renderReadySession(options?: {
-  elapsedSeconds?: number
   timing?: Partial<OverlayAppShellData['overlay']['timing']>
 }): Promise<RenderedOverlaySession> {
   if (options?.timing) {
@@ -226,28 +375,44 @@ async function renderReadySession(options?: {
 
   const session = renderOverlaySession()
 
-  emitPageReady(options?.elapsedSeconds ?? 95)
-  await waitFor(() => expect(session.result.current.status).toBe('ready'))
+  emitPageReady()
+  await waitFor(() =>
+    expect(session.result.current).toMatchObject({
+      status: 'ready',
+      overlay: { activeProblemId: 'leetcode:two-sum' },
+    }),
+  )
 
   return session
 }
 
-function saveReview(
-  result: RenderedOverlaySession['result'],
-  rating: Parameters<SaveReview>[0],
-) {
+function runOverlayAction(action: () => Promise<void>) {
   return act(async () => {
-    await result.current.saveReview(rating)
+    await action()
   })
 }
 
-function readSaveReviewRequest() {
-  expect(saveReviewResultViaRuntime).toHaveBeenCalledOnce()
+function latestSavedReviewRequest() {
+  expect(saveReviewResultViaRuntime).toHaveBeenCalled()
 
-  const request = vi.mocked(saveReviewResultViaRuntime).mock.calls[0]?.[0]
+  const request = vi.mocked(saveReviewResultViaRuntime).mock.calls.at(-1)?.[0]
 
   if (!request) {
     throw new Error('Expected a saved review request.')
+  }
+
+  return request
+}
+
+function latestPracticeLogUpdateRequest() {
+  expect(updateCurrentPracticeLogViaRuntime).toHaveBeenCalled()
+
+  const request = vi
+    .mocked(updateCurrentPracticeLogViaRuntime)
+    .mock.calls.at(-1)?.[0]
+
+  if (!request) {
+    throw new Error('Expected a practice log update request.')
   }
 
   return request
@@ -274,7 +439,7 @@ function renderOverlaySession() {
   }
 }
 
-function emitPageReady(elapsedSeconds: number) {
+function emitPageReady() {
   act(() => {
     leetcodeMockState.onEvent?.({
       type: 'page-ready',
@@ -290,7 +455,7 @@ function emitPageReady(elapsedSeconds: number) {
         capturedAt: problemMetadata.capturedAt,
       },
       metadata: problemMetadata,
-      pageReadyAt: Date.now() - elapsedSeconds * 1000,
+      pageReadyAt: Date.now(),
     })
   })
 }
@@ -313,27 +478,41 @@ function createOverlayData(options?: {
     generatedAt: '2026-01-01T10:00:00.000Z',
     surface: 'overlay',
     overlay: {
-      problem: {
-        id: 'leetcode:two-sum',
-        slug: 'two-sum',
-        title: 'Two Sum',
-        difficulty: 'easy',
-        url: 'https://leetcode.com/problems/two-sum/',
-        isPremium: false,
-      },
+      problem: overlayProblem,
       practice: null,
       timing: {
         ...defaultTiming,
         ...options?.timing,
       },
+      nextStep,
     },
   }
 }
 
-function createDeferred() {
-  let resolve!: (value: typeof reviewResult) => void
+function createPracticeDetails(): SerializedPracticeDetails {
+  return {
+    problemId: 'leetcode:two-sum',
+    cardId: 'fsrs:leetcode:two-sum',
+    practice: null,
+    card: null,
+    summary: createSummary(),
+    currentLog: {
+      interviewPattern: null,
+      timeComplexity: null,
+      spaceComplexity: null,
+      languages: null,
+      notes: null,
+    },
+    recentAttempts: [],
+    latestAttempt: null,
+    canOverrideLatestReview: false,
+  }
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
   let reject!: (reason: Error) => void
-  const promise = new Promise<typeof reviewResult>((resolver, rejecter) => {
+  const promise = new Promise<T>((resolver, rejecter) => {
     resolve = resolver
     reject = rejecter
   })
@@ -345,15 +524,37 @@ function createDeferred() {
   }
 }
 
+function createSummary(
+  overrides: Partial<SerializedPracticeDetails['summary']> = {},
+): SerializedPracticeDetails['summary'] {
+  return {
+    phase: 'new',
+    nextReviewAt: null,
+    lastReviewedAt: null,
+    reviewCount: 0,
+    lapses: 0,
+    difficulty: null,
+    stability: null,
+    scheduledDays: null,
+    suspended: false,
+    isStarted: false,
+    isDue: false,
+    isOverdue: false,
+    overdueDays: 0,
+    retrievability: null,
+    ...overrides,
+  }
+}
+
 const problemRecord = {
-  id: 'leetcode:two-sum',
+  id: overlayProblem.id,
   source: 'leetcode',
   externalId: '1',
-  slug: 'two-sum',
-  title: 'Two Sum',
-  difficulty: 'easy',
-  url: 'https://leetcode.com/problems/two-sum/',
-  isPremium: false,
+  slug: overlayProblem.slug,
+  title: overlayProblem.title,
+  difficulty: overlayProblem.difficulty,
+  url: overlayProblem.url,
+  isPremium: overlayProblem.isPremium,
   acceptanceRate: null,
   createdAt: '2026-01-01T10:00:00.000Z',
   updatedAt: '2026-01-01T10:00:00.000Z',
@@ -366,20 +567,15 @@ const reviewResult = {
   status: 'learning',
   dueAt: '2026-01-02T10:00:00.000Z',
   reviewedAt: '2026-01-01T10:00:00.000Z',
-  summary: {
+  summary: createSummary({
     phase: 'learning',
     nextReviewAt: '2026-01-02T10:00:00.000Z',
     lastReviewedAt: '2026-01-01T10:00:00.000Z',
     reviewCount: 1,
-    lapses: 0,
     difficulty: 5,
     stability: 1,
     scheduledDays: 1,
-    suspended: false,
     isStarted: true,
-    isDue: false,
-    isOverdue: false,
-    overdueDays: 0,
     retrievability: 1,
-  },
+  }),
 } as const

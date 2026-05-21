@@ -37,38 +37,30 @@ describe('assessment policy', () => {
     {
       name: 'quick-submit without elapsed time defaults to Good when optional',
       input: quickSubmit(null),
-      expected: {
+      expected: acceptedDecision({
         rating: 'good',
         elapsedSeconds: null,
-        isCorrect: true,
-        isOverTarget: false,
-        lockReason: null,
         reason: 'quick-good',
-      },
+      }),
     },
     {
       name: 'quick-submit within target returns Good',
       input: quickSubmit(30 * secondsPerMinute),
-      expected: {
+      expected: acceptedDecision({
         rating: 'good',
         elapsedSeconds: 30 * secondsPerMinute,
-        isCorrect: true,
-        isOverTarget: false,
-        lockReason: null,
         reason: 'quick-good',
-      },
+      }),
     },
     {
       name: 'quick-submit overtime returns Hard when Hard Mode is off',
       input: quickSubmit(36 * secondsPerMinute),
-      expected: {
+      expected: acceptedDecision({
         rating: 'hard',
         elapsedSeconds: 36 * secondsPerMinute,
-        isCorrect: true,
         isOverTarget: true,
-        lockReason: null,
         reason: 'quick-hard-overtime',
-      },
+      }),
     },
     {
       name: 'quick-submit overtime returns Again when Hard Mode is on',
@@ -84,14 +76,11 @@ describe('assessment policy', () => {
         elapsedSeconds: 45 * secondsPerMinute,
         timing,
       },
-      expected: {
+      expected: acceptedDecision({
         rating: 'easy',
         elapsedSeconds: 45 * secondsPerMinute,
-        isCorrect: true,
-        isOverTarget: false,
-        lockReason: null,
         reason: 'selected-rating',
-      },
+      }),
     },
     {
       name: 'selected rating is forced to Again during Hard Mode overtime',
@@ -121,6 +110,15 @@ describe('assessment policy', () => {
         reason: 'failed',
       },
     },
+    {
+      name: 'solve-time-required is warning-only for quick submit',
+      input: quickSubmit(null, { requireSolveTime: true }),
+      expected: acceptedDecision({
+        rating: 'good',
+        elapsedSeconds: null,
+        reason: 'quick-good',
+      }),
+    },
   ] satisfies Array<{
     name: string
     input: LeetCodeAssessmentInput
@@ -133,19 +131,6 @@ describe('assessment policy', () => {
         input.timing,
       ),
       ...expected,
-    })
-  })
-
-  it('blocks non-fail submissions when solve time is required and missing', () => {
-    expect(
-      evaluateLeetCodeAssessment(
-        quickSubmit(null, { requireSolveTime: true }),
-      ),
-    ).toEqual({
-      status: 'blocked',
-      reason: 'solve-time-required',
-      targetSeconds: 35 * secondsPerMinute,
-      elapsedSeconds: null,
     })
   })
 
@@ -203,4 +188,15 @@ function hardModeOvertime(elapsedSeconds: number) {
     lockReason: 'hard-mode-overtime',
     reason: 'hard-mode-overtime',
   } satisfies Partial<AcceptedAssessment>
+}
+
+function acceptedDecision(
+  overrides: Partial<AcceptedAssessment>,
+): Partial<AcceptedAssessment> {
+  return {
+    isCorrect: true,
+    isOverTarget: false,
+    lockReason: null,
+    ...overrides,
+  }
 }

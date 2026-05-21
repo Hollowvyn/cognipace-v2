@@ -97,6 +97,10 @@ describe('app-shell service', () => {
           requireSolveTime: false,
           hardMode: false,
         },
+        nextStep: {
+          kind: 'empty',
+          problem: null,
+        },
       },
     })
     expect('queue' in payload).toBe(false)
@@ -116,6 +120,21 @@ describe('app-shell service', () => {
           requireSolveTime: false,
           hardMode: false,
         },
+        nextStep: null,
+      },
+    })
+  })
+
+  it('uses the distinct active-track problem for overlay next step', async () => {
+    const handle = await createTestDb()
+
+    const payload = await getOverlayPayload(handle, 'valid-parentheses')
+
+    expect(payload.overlay.nextStep).toMatchObject({
+      kind: 'track',
+      title: 'Two Sum',
+      problem: {
+        slug: 'two-sum',
       },
     })
   })

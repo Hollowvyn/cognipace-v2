@@ -14,6 +14,7 @@ import type {
   AppShellProblemSummary,
   AppShellQueueItem,
   AppShellRequest,
+  OverlayNextStep,
   PopupAppShellData,
 } from '../api/app-shell-contracts'
 
@@ -134,6 +135,7 @@ async function getOverlayPayload(
       problem: null,
       practice: null,
       timing: settings.timing,
+      nextStep: null,
     }
   }
 
@@ -144,18 +146,76 @@ async function getOverlayPayload(
       problem: null,
       practice: null,
       timing: settings.timing,
+      nextStep: null,
     }
   }
 
-  const practice = await getPracticeDetails(db, context.problem.id, {
-    now,
-    targetRetention: settings.memoryReview.targetRetention,
-  })
+  const [practice, queue, activeTrack] = await Promise.all([
+    getPracticeDetails(db, context.problem.id, {
+      now,
+      targetRetention: settings.memoryReview.targetRetention,
+    }),
+    getTodayQueue(db, now),
+    getActiveTrack(db),
+  ])
+  const queueItems = queue.items.map(serializeQueueItem)
+  const currentProblem = serializeProblemSummary(context.problem)
 
   return {
-    problem: serializeProblemSummary(context.problem),
+    problem: currentProblem,
     practice: serializePracticeDetails(practice),
     timing: settings.timing,
+    nextStep: serializeOverlayNextStep({
+      activeTrackNextProblem: activeTrack?.nextProblem
+        ? serializeProblemSummary(activeTrack.nextProblem)
+        : null,
+      currentProblem,
+      queueItems,
+    }),
+  }
+}
+
+function serializeOverlayNextStep(input: {
+  activeTrackNextProblem: AppShellProblemSummary | null
+  currentProblem: AppShellProblemSummary
+  queueItems: AppShellQueueItem[]
+}): OverlayNextStep {
+  if (
+    input.activeTrackNextProblem &&
+    input.activeTrackNextProblem.slug !== input.currentProblem.slug
+  ) {
+    return {
+      kind: 'track',
+      title: input.activeTrackNextProblem.title,
+      detail: `Next in track · ${formatDifficulty(input.activeTrackNextProblem.difficulty)}`,
+      problem: input.activeTrackNextProblem,
+      category: null,
+      dueAt: null,
+    }
+  }
+
+  const recommendation = input.queueItems.find(
+    (item) => item.problem.slug !== input.currentProblem.slug,
+  )
+
+  if (recommendation) {
+    return {
+      kind: 'recommendation',
+      title: recommendation.problem.title,
+      detail: `${formatQueueCategory(recommendation.category)} · ${formatDifficulty(recommendation.problem.difficulty)}`,
+      problem: recommendation.problem,
+      category: recommendation.category,
+      dueAt: recommendation.dueAt,
+    }
+  }
+
+  return {
+    kind: 'empty',
+    title: 'No next problem queued',
+    detail: 'Review queue is clear for now.',
+    problem: null,
+    category: null,
+    dueAt: null,
   }
 }
 

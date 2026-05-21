@@ -109,15 +109,6 @@ export function evaluateLeetCodeAssessment(
     })
   }
 
-  if (input.timing.requireSolveTime && elapsedSeconds === null) {
-    return {
-      status: 'blocked',
-      reason: 'solve-time-required',
-      targetSeconds,
-      elapsedSeconds: null,
-    }
-  }
-
   if (isOverTarget && input.timing.hardMode) {
     return acceptAssessment({
       rating: 'again',
