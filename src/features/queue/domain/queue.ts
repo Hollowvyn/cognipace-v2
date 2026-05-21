@@ -22,6 +22,8 @@ export interface QueueItem {
   title: string
   slug: string
   difficulty: ProblemDifficulty
+  url: string
+  isPremium: boolean
   dueAt: Date | null
   activeTrackPosition: number | null
   summary: PracticeSummary
@@ -136,6 +138,8 @@ function mapQueueItem(
     title: candidate.problem.title,
     slug: candidate.problem.slug,
     difficulty: candidate.problem.difficulty,
+    url: candidate.problem.url,
+    isPremium: candidate.problem.isPremium,
     dueAt: summary.nextReviewAt,
     activeTrackPosition: candidate.activeTrackPosition,
     summary,

@@ -4,10 +4,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
 import { Surface, SurfaceRoot } from '@/components/ui/surface'
-import type { AppShellData } from '@/extension/messaging'
+import type { PopupAppShellData } from '@/features/app-shell'
 
 type PopupShellProps = {
-  data: AppShellData
+  data: PopupAppShellData
   pingLabel: string
 }
 

@@ -7,10 +7,29 @@ import {
   getMessageSenderSurface,
   isExtensionMethod,
 } from './runtime-policy'
+import { getAppShellRuntimeSurface } from './register-handlers'
 
 describe('runtime-policy', () => {
   it('allows popup shell data reads', () => {
     expect(canCallExtensionMethod('app.getShellData', 'popup')).toBe(true)
+  })
+
+  it('allows content scripts to read overlay app-shell data', () => {
+    expect(canCallExtensionMethod('app.getShellData', 'content-script')).toBe(
+      true,
+    )
+  })
+
+  it('maps overlay app-shell requests to the content-script runtime surface', () => {
+    expect(getAppShellRuntimeSurface({ surface: 'overlay' })).toBe(
+      'content-script',
+    )
+    expect(
+      getAppShellRuntimeSurface({
+        surface: 'overlay',
+        problemSlug: 'two-sum',
+      }),
+    ).toBe('content-script')
   })
 
   it('rejects unknown methods', () => {

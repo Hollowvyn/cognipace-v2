@@ -1,9 +1,9 @@
 import { Surface } from '@/components/ui/surface'
-import { useAppShellData } from '@/features/app-shell'
+import { useDashboardAppShellData } from '@/features/app-shell'
 import { useExtensionPing } from '@/hooks/use-extension-ping'
 
 export function OverviewPage() {
-  const shell = useAppShellData('dashboard')
+  const shell = useDashboardAppShellData()
   const ping = useExtensionPing('dashboard')
   const data = shell.data
 

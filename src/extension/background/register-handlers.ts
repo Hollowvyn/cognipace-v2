@@ -1,13 +1,9 @@
 import {
   activeTrackSchema,
-  appShellDataSchema,
-  appShellRequestSchema,
   leetcodeProblemRemoteRuntimeRequestSchema,
   leetcodeSubmissionResultRemoteRuntimeRequestSchema,
   onMessage,
   pingRequestSchema,
-  problemContextSchema,
-  problemContextRequestSchema,
   problemsUpsertFromPageRequestSchema,
   queueRequestSchema,
   settingsRequestSchema,
@@ -16,10 +12,14 @@ import {
   tracksRequestSchema,
   type SerializedActiveTrack,
   type SerializedProblem,
-  type SerializedProblemContext,
   type SerializedTodayQueue,
 } from '@/extension/messaging'
-import { getAppShellData } from '@/features/app-shell'
+import {
+  appShellDataSchema,
+  appShellRequestSchema,
+  type AppShellRequest,
+} from '@/features/app-shell/api/app-shell-contracts'
+import { getAppShellData } from '@/features/app-shell/server/app-shell-service'
 import {
   readLeetCodeProblemContentInBackground,
   readLeetCodeProblemMetadataInBackground,
@@ -27,30 +27,24 @@ import {
 } from '@/features/leetcode-capture'
 import {
   practiceDetailsRequestSchema,
-  practiceDetailsSchema,
   practiceOverrideLastReviewResultRequestSchema,
   practiceResetScheduleRequestSchema,
-  practiceReviewResultSchema,
   practiceSaveReviewResultRequestSchema,
   practiceSetSuspendedRequestSchema,
   practiceUpdateCurrentLogRequestSchema,
-  type SerializedPracticeDetails,
-  type SerializedReviewResult,
-} from '@/features/practice/api/practice-contracts'
-import {
   getPracticeDetails,
   overrideLastReviewResult,
   resetPracticeSchedule,
   saveReviewResult,
+  serializePracticeDetails,
+  serializePracticeSummary,
+  serializeReviewResult,
   setPracticeSuspended,
   updateCurrentPracticeLog,
-  type PracticeDetails,
 } from '@/features/practice'
 import {
-  getProblemContext,
   upsertProblemFromPage,
   type Problem,
-  type ProblemContext,
 } from '@/features/problems'
 import { getTodayQueue, type TodayQueue } from '@/features/queue'
 import {
@@ -80,7 +74,7 @@ export function registerBackgroundHandlers() {
 
     assertCanSenderCallExtensionMethod(
       'app.getShellData',
-      request.surface,
+      getAppShellRuntimeSurface(request),
       sender,
     )
     return getAppDb().then(async ({ db }) =>
@@ -100,19 +94,6 @@ export function registerBackgroundHandlers() {
       const problem = await upsertProblemFromPage(db, request)
       return serializeProblem(problem)
     })
-  })
-
-  onMessage('problems.getContext', ({ data, sender }) => {
-    const request = problemContextRequestSchema.parse(data)
-
-    assertCanSenderCallExtensionMethod(
-      'problems.getContext',
-      request.surface,
-      sender,
-    )
-    return getAppDb().then(async ({ db }) =>
-      serializeProblemContext(await getProblemContext(db, request.slug)),
-    )
   })
 
   onMessage('practice.getDetails', ({ data, sender }) => {
@@ -341,20 +322,6 @@ function serializeProblem(problem: Problem): SerializedProblem {
   }
 }
 
-function serializeProblemContext(
-  context: ProblemContext | null,
-): SerializedProblemContext {
-  return problemContextSchema.parse(
-    context
-      ? {
-          ...context,
-          problem: serializeProblem(context.problem),
-          dueAt: context.dueAt?.toISOString() ?? null,
-        }
-      : null,
-  )
-}
-
 function readReviewLogRequest(request: {
   log?:
     | {
@@ -374,77 +341,6 @@ function readReviewLogRequest(request: {
   return request.notes === undefined ? undefined : { notes: request.notes }
 }
 
-function serializePracticeDetails(
-  details: PracticeDetails,
-): SerializedPracticeDetails {
-  return practiceDetailsSchema.parse({
-    problemId: details.problemId,
-    cardId: details.cardId,
-    practice: details.practice
-      ? {
-          ...details.practice,
-          lastReviewedAt:
-            details.practice.lastReviewedAt?.toISOString() ?? null,
-        }
-      : null,
-    card: details.card ? serializeFsrsCard(details.card) : null,
-    summary: serializePracticeSummary(details.summary),
-    currentLog: details.currentLog,
-    recentAttempts: details.recentAttempts.map(serializePracticeAttempt),
-    latestAttempt: details.latestAttempt
-      ? serializePracticeAttempt(details.latestAttempt)
-      : null,
-    canOverrideLatestReview: details.canOverrideLatestReview,
-  })
-}
-
-function serializeFsrsCard(card: NonNullable<PracticeDetails['card']>) {
-  return {
-    ...card,
-    dueAt: card.dueAt.toISOString(),
-    lastReviewAt: card.lastReviewAt?.toISOString() ?? null,
-  }
-}
-
-function serializePracticeAttempt(
-  attempt: PracticeDetails['recentAttempts'][number],
-) {
-  return {
-    ...attempt,
-    reviewedAt: attempt.reviewedAt.toISOString(),
-    createdAt: attempt.createdAt.toISOString(),
-    updatedAt: attempt.updatedAt.toISOString(),
-  }
-}
-
-function serializeReviewResult(result: {
-  problemId: string
-  cardId: string
-  rating: SerializedReviewResult['rating']
-  status: SerializedReviewResult['status']
-  dueAt: Date
-  reviewedAt: Date
-  summary: PracticeDetails['summary']
-}): SerializedReviewResult {
-  return practiceReviewResultSchema.parse({
-    problemId: result.problemId,
-    cardId: result.cardId,
-    rating: result.rating,
-    status: result.status,
-    dueAt: result.dueAt.toISOString(),
-    reviewedAt: result.reviewedAt.toISOString(),
-    summary: serializePracticeSummary(result.summary),
-  })
-}
-
-function serializePracticeSummary(summary: PracticeDetails['summary']) {
-  return {
-    ...summary,
-    nextReviewAt: summary.nextReviewAt?.toISOString() ?? null,
-    lastReviewedAt: summary.lastReviewedAt?.toISOString() ?? null,
-  }
-}
-
 function serializeTodayQueue(queue: TodayQueue): SerializedTodayQueue {
   return todayQueueSchema.parse({
     generatedAt: queue.generatedAt.toISOString(),
@@ -458,6 +354,12 @@ function serializeTodayQueue(queue: TodayQueue): SerializedTodayQueue {
       summary: serializePracticeSummary(item.summary),
     })),
   })
+}
+
+export function getAppShellRuntimeSurface(
+  request: AppShellRequest,
+): 'popup' | 'dashboard' | 'content-script' {
+  return request.surface === 'overlay' ? 'content-script' : request.surface
 }
 
 function serializeActiveTrack(

@@ -1,6 +1,10 @@
 import { defineExtensionMessaging } from '@webext-core/messaging'
 import { z } from 'zod'
 
+import type {
+  AppShellData,
+  AppShellRequest,
+} from '@/features/app-shell/api/app-shell-contracts'
 import {
   leetcodeProblemRemoteRequestSchema,
   leetcodeSubmissionResultRemoteRequestSchema,
@@ -35,29 +39,6 @@ export const uiSurfaceSchema = z.enum(['popup', 'dashboard', 'content-script'])
 
 export type UiSurface = z.infer<typeof uiSurfaceSchema>
 
-export const appShellDataSchema = z.object({
-  status: z.object({
-    label: z.string(),
-    detail: z.string(),
-  }),
-  metrics: z.array(
-    z.object({
-      label: z.string(),
-      value: z.string(),
-    }),
-  ),
-  recommendation: z.object({
-    title: z.string(),
-    detail: z.string(),
-  }),
-  activeTrack: z.object({
-    title: z.string(),
-    detail: z.string(),
-  }),
-})
-
-export type AppShellData = z.infer<typeof appShellDataSchema>
-
 const serializedProblemSchema = z.object({
   id: z.string(),
   source: z.literal('leetcode'),
@@ -74,23 +55,14 @@ const serializedProblemSchema = z.object({
 
 export type SerializedProblem = z.infer<typeof serializedProblemSchema>
 
-export const problemContextSchema = z
-  .object({
-    problem: serializedProblemSchema,
-    isTracked: z.boolean(),
-    practiceStatus: z.string().nullable(),
-    dueAt: z.string().nullable(),
-  })
-  .nullable()
-
-export type SerializedProblemContext = z.infer<typeof problemContextSchema>
-
 export const queueItemSchema = z.object({
   category: z.enum(['due', 'new', 'reinforcement']),
   problemId: z.string(),
   title: z.string(),
   slug: z.string(),
   difficulty: z.enum(problemDifficulties),
+  url: z.string(),
+  isPremium: z.boolean(),
   dueAt: z.string().nullable(),
   activeTrackPosition: z.number().nullable(),
   summary: practiceSummarySchema,
@@ -142,12 +114,6 @@ export type PingResponse = {
   receivedAt: string
 }
 
-export const appShellRequestSchema = z.object({
-  surface: uiSurfaceSchema,
-})
-
-export type AppShellRequest = z.infer<typeof appShellRequestSchema>
-
 export const problemsUpsertFromPageRequestSchema = z.object({
   surface: uiSurfaceSchema,
   url: z.string(),
@@ -162,13 +128,6 @@ export const problemsUpsertFromPageRequestSchema = z.object({
 export type ProblemsUpsertFromPageRequest = z.infer<
   typeof problemsUpsertFromPageRequestSchema
 >
-
-export const problemContextRequestSchema = z.object({
-  surface: uiSurfaceSchema,
-  slug: z.string(),
-})
-
-export type ProblemContextRequest = z.infer<typeof problemContextRequestSchema>
 
 export const queueRequestSchema = z.object({
   surface: z.enum(['popup', 'dashboard']),
@@ -220,9 +179,6 @@ export interface ProtocolMap {
   'problems.upsertFromPage'(
     request: ProblemsUpsertFromPageRequest,
   ): SerializedProblem
-  'problems.getContext'(
-    request: ProblemContextRequest,
-  ): SerializedProblemContext
   'practice.saveReviewResult'(
     request: PracticeSaveReviewResultRequest,
   ): SerializedReviewResult

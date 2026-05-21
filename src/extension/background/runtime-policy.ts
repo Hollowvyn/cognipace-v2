@@ -4,7 +4,6 @@ const methodSurfaceAccess = {
   'runtime.ping': ['background', 'popup', 'dashboard', 'content-script'],
   'app.getShellData': ['popup', 'dashboard', 'content-script'],
   'problems.upsertFromPage': ['content-script', 'dashboard'],
-  'problems.getContext': ['popup', 'dashboard', 'content-script'],
   'practice.getDetails': ['popup', 'dashboard', 'content-script'],
   'practice.saveReviewResult': ['popup', 'dashboard', 'content-script'],
   'practice.overrideLastReviewResult': ['popup', 'dashboard', 'content-script'],

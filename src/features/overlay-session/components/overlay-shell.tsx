@@ -35,10 +35,10 @@ export function OverlayShell({
   const canSave = Boolean(context?.problem) && !isSaving
   const problemTitle =
     metadata?.title ??
-    context?.problem.title ??
+    context?.problem?.title ??
     location?.slug ??
     'Reading page'
-  const difficulty = metadata?.difficulty ?? context?.problem.difficulty
+  const difficulty = metadata?.difficulty ?? context?.problem?.difficulty
   const statusTone = status === 'error' ? 'danger' : 'neutral'
   const feedbackTone = status === 'error' ? 'danger' : 'success'
 

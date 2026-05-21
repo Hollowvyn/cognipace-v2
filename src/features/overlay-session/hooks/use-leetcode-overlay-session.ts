@@ -1,12 +1,17 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { createLeetCodeCaptureRemoteClient } from '@/features/leetcode-capture'
-import { saveReviewResultViaRuntime } from '@/features/practice'
+import { evaluateLeetCodeAssessment } from '@/features/assessment'
 import {
-  getProblemContextViaRuntime,
-  upsertProblemFromPageViaRuntime,
-  type RuntimeProblemContext,
-} from '@/features/problems'
+  getOverlayAppShellDataViaRuntime,
+  type OverlayAppShellData,
+} from '@/features/app-shell'
+import { createLeetCodeCaptureRemoteClient } from '@/features/leetcode-capture'
+import {
+  invalidatePracticeRelatedQueries,
+  saveReviewResultViaRuntime,
+} from '@/features/practice'
+import { upsertProblemFromPageViaRuntime } from '@/features/problems'
 import type { ReviewRating } from '@/lib/fsrs'
 import {
   createEmptyLeetCodeCaptureState,
@@ -28,10 +33,12 @@ export type OverlaySyncStatus =
   | 'saved-review'
   | 'error'
 
+type LeetCodeOverlayContext = OverlayAppShellData['overlay']
+
 export type LeetCodeOverlaySession = {
   location: LeetCodeProblemLocation | null
   metadata: LeetCodeProblemMetadata | null
-  context: RuntimeProblemContext
+  context: LeetCodeOverlayContext | null
   status: OverlaySyncStatus
   feedback: string | null
   elapsedSeconds: number
@@ -39,11 +46,12 @@ export type LeetCodeOverlaySession = {
 }
 
 export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
+  const queryClient = useQueryClient()
   const initialLocation = parseLeetCodeProblemLocation(window.location.href)
   const [captureState, setCaptureState] = useState(() =>
     createEmptyLeetCodeCaptureState(initialLocation),
   )
-  const [context, setContext] = useState<RuntimeProblemContext>(null)
+  const [context, setContext] = useState<LeetCodeOverlayContext | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [status, setStatus] = useState<OverlaySyncStatus>(
     initialLocation ? 'booting' : 'error',
@@ -54,7 +62,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
   const syncTokenRef = useRef(0)
   const requestedMetadataFingerprintRef = useRef<string | null>(null)
   const syncedMetadataFingerprintRef = useRef<string | null>(null)
-  const latestContextRef = useRef<RuntimeProblemContext>(null)
+  const latestContextRef = useRef<LeetCodeOverlayContext | null>(null)
   const latestElapsedSecondsRef = useRef(0)
 
   useEffect(() => {
@@ -102,16 +110,15 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
           isPremium: nextMetadata.isPremium,
           externalId: nextMetadata.frontendId,
         })
-        const nextContext = await getProblemContextViaRuntime({
-          surface: 'content-script',
-          slug: nextMetadata.location.slug,
-        })
+        const nextShellData = await getOverlayAppShellDataViaRuntime(
+          nextMetadata.location.slug,
+        )
 
         if (syncTokenRef.current !== syncToken) {
           return
         }
 
-        setContext(nextContext)
+        setContext(nextShellData.overlay)
         syncedMetadataFingerprintRef.current = fingerprint
         setStatus('ready')
         setFeedback(null)
@@ -196,12 +203,37 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
   }, [syncProblemIfNeeded])
 
   async function saveReview(rating: ReviewRating) {
+    const saveToken = syncTokenRef.current
     const currentContext = latestContextRef.current
-    const problemId = currentContext?.problem.id
+    const problem = currentContext?.problem
 
-    if (!problemId) {
+    if (!currentContext || !problem) {
       setStatus('error')
       setFeedback('CogniPace is still syncing this problem.')
+      return
+    }
+
+    const elapsedSeconds = latestElapsedSecondsRef.current
+    const decision = evaluateLeetCodeAssessment(
+      rating === 'again'
+        ? {
+            intent: 'fail',
+            difficulty: problem.difficulty,
+            timing: currentContext.timing,
+            elapsedSeconds,
+          }
+        : {
+            intent: 'selected-rating',
+            difficulty: problem.difficulty,
+            timing: currentContext.timing,
+            selectedRating: rating,
+            elapsedSeconds,
+          },
+    )
+
+    if (decision.status === 'blocked') {
+      setStatus('error')
+      setFeedback('Solve time is required before saving this review.')
       return
     }
 
@@ -211,24 +243,33 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
     try {
       await saveReviewResultViaRuntime({
         surface: 'content-script',
-        problemId,
-        rating,
+        problemId: problem.id,
+        rating: decision.rating,
         reviewMode: 'leetcode',
-        elapsedSeconds:
-          latestElapsedSecondsRef.current > 0
-            ? latestElapsedSecondsRef.current
-            : null,
-        isCorrect: rating !== 'again',
-      })
-      const nextContext = await getProblemContextViaRuntime({
-        surface: 'content-script',
-        slug: currentContext.problem.slug,
+        elapsedSeconds: decision.elapsedSeconds,
+        isCorrect: decision.isCorrect,
       })
 
-      setContext(nextContext)
+      if (syncTokenRef.current !== saveToken) {
+        return
+      }
+
+      invalidatePracticeRelatedQueries(queryClient)
+
+      const nextShellData = await getOverlayAppShellDataViaRuntime(problem.slug)
+
+      if (syncTokenRef.current !== saveToken) {
+        return
+      }
+
+      setContext(nextShellData.overlay)
       setStatus('saved-review')
-      setFeedback('Review saved. FSRS schedule updated.')
+      setFeedback(formatAssessmentFeedback(decision.lockReason))
     } catch (error) {
+      if (syncTokenRef.current !== saveToken) {
+        return
+      }
+
       setStatus('error')
       setFeedback(error instanceof Error ? error.message : String(error))
     }
@@ -243,4 +284,17 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
     elapsedSeconds,
     saveReview,
   }
+}
+
+function formatAssessmentFeedback(
+  lockReason: Extract<
+    ReturnType<typeof evaluateLeetCodeAssessment>,
+    { status: 'accepted' }
+  >['lockReason'],
+) {
+  if (lockReason === 'hard-mode-overtime') {
+    return 'Over the solve-time target. Saved as Again.'
+  }
+
+  return 'Review saved. FSRS schedule updated.'
 }
