@@ -150,18 +150,17 @@ function TimingTargetsControl({
 
         return (
           <NumberControl
-            ariaLabel={`${field.label} timing target`}
             className="w-20 md:w-20"
             error={error}
             errorMessageId={errorId}
             id={field.id}
             key={field.id}
+            label={`${field.label} goal`}
             max={60}
             min={10}
             onChange={(value) => {
               actions.setNumberInput(field.errorKey, value)
             }}
-            placeholder={field.label}
             value={numberInputs[field.errorKey]}
           />
         )

@@ -15,6 +15,7 @@ interface NumberControlProps {
   error?: string | null
   errorMessageId?: string
   id: string
+  label?: string
   max?: number
   min?: number
   name?: string
@@ -29,6 +30,7 @@ export function NumberControl({
   error,
   errorMessageId,
   id,
+  label,
   max,
   min,
   name,
@@ -60,14 +62,23 @@ export function NumberControl({
         setIsHovered(false)
       }}
     >
+      {label ? (
+        <label
+          className="pointer-events-none absolute left-2 top-0 z-10 -translate-y-1/2 bg-card px-1 text-[0.75rem] font-semibold leading-none text-muted-foreground"
+          htmlFor={id}
+        >
+          {label}
+        </label>
+      ) : null}
       <input
         aria-describedby={error ? resolvedErrorId : undefined}
         aria-invalid={Boolean(error)}
-        aria-label={ariaLabel}
+        aria-label={label ? undefined : ariaLabel}
         autoComplete="off"
         className={cn(
           'w-24',
           inputClassName,
+          label && 'pb-1 pt-4',
           error &&
             'border-[color:var(--cp-tone-danger-fg)] focus-visible:ring-[color:var(--cp-tone-danger-fg)]',
           className,
