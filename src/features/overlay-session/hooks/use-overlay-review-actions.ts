@@ -5,6 +5,7 @@ import {
 import {
   overrideLastReviewResultViaRuntime,
   saveReviewResultViaRuntime,
+  type SerializedPracticeDetails,
   updateCurrentPracticeLogViaRuntime,
 } from '@/features/practice'
 import type { ReviewRating } from '@/lib/fsrs'
@@ -117,7 +118,7 @@ export function useOverlayReviewActions({
     }
 
     try {
-      await updateCurrentPracticeLogViaRuntime({
+      const details = await updateCurrentPracticeLogViaRuntime({
         surface: 'content-script',
         problemId: problem.id,
         log: toPracticeLogPatch(currentOverlay.draft),
@@ -127,7 +128,10 @@ export function useOverlayReviewActions({
         return
       }
 
-      dispatch({ type: 'draft-persisted', draft: currentOverlay.draft })
+      dispatch({
+        type: 'draft-persisted',
+        draft: createOverlayDraftFromLog(details.currentLog),
+      })
     } catch (error) {
       if (syncTokenRef.current !== draftToken) {
         return
@@ -282,7 +286,7 @@ export function useOverlayReviewActions({
     dispatch({ type: 'save-started' })
 
     try {
-      await saveReviewResultViaRuntime({
+      const details = await saveReviewResultViaRuntime({
         surface: 'content-script',
         problemId: problem.id,
         rating: decision.rating,
@@ -296,12 +300,15 @@ export function useOverlayReviewActions({
         return false
       }
 
-      const snapshot = createSubmittedSnapshot(decision, currentOverlay.draft)
-      timer.lockAt(decision.elapsedSeconds)
+      const snapshot = createSubmittedSnapshotFromPracticeDetails(
+        details,
+        decision.lockReason,
+      )
+      timer.lockAt(snapshot.elapsedSeconds)
       dispatch({
         type: 'submit-succeeded',
         snapshot,
-        nextStep: currentContext.nextStep,
+        nextStep: null,
         feedback: formatAssessmentFeedback(decision),
       })
       await refreshNextStep(problem.slug, saveToken)
@@ -342,7 +349,7 @@ export function useOverlayReviewActions({
     dispatch({ type: 'update-started' })
 
     try {
-      await overrideLastReviewResultViaRuntime({
+      const details = await overrideLastReviewResultViaRuntime({
         surface: 'content-script',
         problemId: problem.id,
         rating,
@@ -355,15 +362,14 @@ export function useOverlayReviewActions({
         return
       }
 
+      const snapshot = createSubmittedSnapshotFromPracticeDetails(
+        details,
+        submittedSession.lockReason,
+      )
       dispatch({
         type: 'update-succeeded',
-        snapshot: {
-          ...submittedSession,
-          rating,
-          draft: currentOverlay.draft,
-          isCorrect: rating !== 'again',
-        },
-        nextStep: currentOverlay.nextStep.value,
+        snapshot,
+        nextStep: null,
         feedback: {
           tone: 'success',
           message: 'Latest review updated.',
@@ -441,16 +447,22 @@ export function useOverlayReviewActions({
   }
 }
 
-function createSubmittedSnapshot(
-  decision: AcceptedAssessmentDecision,
-  draft: OverlaySubmittedSession['draft'],
+function createSubmittedSnapshotFromPracticeDetails(
+  details: SerializedPracticeDetails,
+  lockReason: OverlaySubmittedSession['lockReason'],
 ): OverlaySubmittedSession {
+  const latestAttempt = details.latestAttempt
+
+  if (!latestAttempt) {
+    throw new Error('Saved review did not include the latest attempt.')
+  }
+
   return {
-    rating: decision.rating,
-    draft,
-    elapsedSeconds: decision.elapsedSeconds,
-    isCorrect: decision.isCorrect,
-    lockReason: decision.lockReason,
+    rating: latestAttempt.rating,
+    draft: createOverlayDraftFromLog(latestAttempt.log),
+    elapsedSeconds: latestAttempt.elapsedSeconds,
+    isCorrect: latestAttempt.isCorrect ?? latestAttempt.rating !== 'again',
+    lockReason,
   }
 }
 
@@ -460,7 +472,7 @@ function formatAssessmentFeedback(
   if (decision.lockReason === 'hard-mode-overtime') {
     return {
       tone: 'warning',
-      message: 'Hard Mode overtime saved this attempt as Again.',
+      message: 'Strict timing saved this overtime attempt as Again.',
     }
   }
 

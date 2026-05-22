@@ -91,20 +91,25 @@ const shellData = {
     ],
   },
   settings: {
-    studyMode: 'studyPlan',
-    timing: {
-      requireSolveTime: false,
-      hardMode: false,
-      easyMinutes: 20,
-      mediumMinutes: 35,
-      hardMinutes: 50,
+    practice: {
+      dailyGoal: 4,
+      mode: 'studyPlan',
+      problemFilters: {
+        skipPremium: false,
+      },
     },
-    memoryReview: {
+    review: {
       targetRetention: 0.9,
-      reviewOrder: 'dueFirst',
+      order: 'dueFirst',
     },
-    questionFilters: {
-      skipPremium: false,
+    assessment: {
+      requireSolveTime: false,
+      strictTiming: false,
+      timeTargetsMinutes: {
+        easy: 20,
+        medium: 35,
+        hard: 50,
+      },
     },
   },
   popup: {
@@ -115,7 +120,7 @@ const shellData = {
 describe('PopupShell', () => {
   it('renders real popup data and routes user actions through callbacks', async () => {
     const user = userEvent.setup()
-    const controller = createController()
+    const controller = createController({ canShuffleRecommendation: true })
 
     render(<PopupShell controller={controller} />)
 
@@ -151,6 +156,9 @@ describe('PopupShell', () => {
     await user.click(screen.getByRole('button', { name: 'Open Problem' }))
     await user.click(screen.getByRole('button', { name: 'Continue Track' }))
     await user.click(
+      screen.getByRole('button', { name: 'Shuffle recommendation' }),
+    )
+    await user.click(
       screen.getByRole('button', { name: 'Start freestyle mode' }),
     )
 
@@ -166,29 +174,23 @@ describe('PopupShell', () => {
       twoSum,
       'track',
     )
+    expect(controller.actions.shuffleRecommendation).toHaveBeenCalledTimes(1)
     expect(controller.actions.toggleStudyMode).toHaveBeenCalledTimes(1)
   })
 
-  it('shows the shuffle affordance when another recommendation is available', async () => {
-    const user = userEvent.setup()
-    const controller = createController({ canShuffleRecommendation: true })
-
-    render(<PopupShell controller={controller} />)
-
-    await user.click(
-      screen.getByRole('button', { name: 'Shuffle recommendation' }),
-    )
-
-    expect(controller.actions.shuffleRecommendation).toHaveBeenCalledTimes(1)
-  })
-
-  it('keeps the active-track preview visible in freestyle mode', () => {
+  it('renders the freestyle card without active-track affordances in freestyle mode', () => {
     render(
       <PopupShell
         controller={createController({
           data: {
             ...shellData,
-            settings: { ...shellData.settings, studyMode: 'freePractice' },
+            settings: {
+              ...shellData.settings,
+              practice: {
+                ...shellData.settings.practice,
+                mode: 'freePractice',
+              },
+            },
           },
           studyMode: 'freePractice',
         })}
@@ -196,15 +198,20 @@ describe('PopupShell', () => {
     )
 
     expect(
-      screen.getByRole('heading', { name: 'LeetCode 75' }),
+      screen.getByRole('heading', { name: 'Free Practice' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Freestyle Mode')).toBeInTheDocument()
+    expect(
+      screen.getByText('Queue-first practice without track guidance.'),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Start study mode' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Up Next')).toBeInTheDocument()
-    expect(screen.getByText('Two Sum')).toBeInTheDocument()
-    expect(screen.queryByText('Next in track')).not.toBeInTheDocument()
-    expect(screen.getByText('Arrays and Hashing')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Open Tracks' })).toBeNull()
+    expect(screen.queryByText('Active Track')).toBeNull()
+    expect(screen.queryByText('Up Next')).toBeNull()
+    expect(screen.queryByText('Two Sum')).toBeNull()
+    expect(screen.queryByText('Arrays and Hashing')).toBeNull()
   })
 
   it('disables the mode action while study mode is saving', () => {
@@ -296,8 +303,8 @@ function createController(
   overrides: Partial<PopupAppShellController> = {},
 ): PopupAppShellController {
   const data = overrides.data ?? shellData
-  const studyMode = overrides.studyMode ?? data.settings.studyMode
-  const view = overrides.view ?? createPopupAppShellView(data, studyMode)
+  const studyMode = overrides.studyMode ?? data.settings.practice.mode
+  const view = overrides.view ?? createPopupAppShellView(data)
 
   return {
     data,

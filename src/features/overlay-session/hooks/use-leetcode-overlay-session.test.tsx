@@ -108,10 +108,12 @@ const problemMetadata = {
 
 const defaultTiming = {
   requireSolveTime: false,
-  hardMode: false,
-  easyMinutes: 20,
-  mediumMinutes: 35,
-  hardMinutes: 50,
+  strictTiming: false,
+  timeTargetsMinutes: {
+    easy: 20,
+    medium: 35,
+    hard: 50,
+  },
 }
 
 const overlayProblem = {
@@ -145,9 +147,11 @@ describe('useLeetCodeOverlaySession', () => {
     vi.clearAllMocks()
     leetcodeMockState.onEvent = null
     vi.mocked(upsertProblemFromPageViaRuntime).mockResolvedValue(problemRecord)
-    vi.mocked(saveReviewResultViaRuntime).mockResolvedValue(reviewResult)
+    vi.mocked(saveReviewResultViaRuntime).mockResolvedValue(
+      createSavedPracticeDetails(),
+    )
     vi.mocked(overrideLastReviewResultViaRuntime).mockResolvedValue(
-      reviewResult,
+      createSavedPracticeDetails(),
     )
     vi.mocked(updateCurrentPracticeLogViaRuntime).mockResolvedValue(
       createPracticeDetails(),
@@ -192,6 +196,30 @@ describe('useLeetCodeOverlaySession', () => {
     expect(result.current.overlay.reviewStatus).toBe('submitted-clean')
   })
 
+  it('hydrates submitted review state from saved practice details', async () => {
+    vi.mocked(saveReviewResultViaRuntime).mockResolvedValueOnce(
+      createSavedPracticeDetails({
+        latestAttempt: {
+          log: {
+            ...emptyPracticeLog,
+            notes: 'Trimmed note.',
+          },
+        },
+      }),
+    )
+    const { result } = await renderReadySession()
+
+    act(() => {
+      result.current.draft.setField('notes', '  Trimmed note.  ')
+    })
+    await runOverlayAction(result.current.actions.submitReview)
+
+    expect(result.current.overlay.submittedSession?.draft.notes).toBe(
+      'Trimmed note.',
+    )
+    expect(result.current.overlay.persistedDraft.notes).toBe('Trimmed note.')
+  })
+
   it('keeps a saved review submitted when the next-step refresh fails', async () => {
     vi.mocked(getOverlayAppShellDataViaRuntime)
       .mockResolvedValueOnce(createOverlayData())
@@ -208,11 +236,11 @@ describe('useLeetCodeOverlaySession', () => {
     )
   })
 
-  it('forces Hard Mode overtime submissions to Again', async () => {
+  it('forces strict timing overtime submissions to Again', async () => {
     const startTime = Date.now()
     const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(startTime)
     const { result } = await renderReadySession({
-      timing: { hardMode: true },
+      timing: { strictTiming: true },
     })
 
     act(() => {
@@ -319,7 +347,7 @@ describe('useLeetCodeOverlaySession', () => {
   it('can retry the same terminal result after an auto-save failure', async () => {
     vi.mocked(saveReviewResultViaRuntime)
       .mockRejectedValueOnce(new Error('Review save failed.'))
-      .mockResolvedValueOnce(reviewResult)
+      .mockResolvedValueOnce(createSavedPracticeDetails())
     const { result } = await renderReadySession({ autoDetectSolved: true })
     const submissionResult = createSubmissionResult({
       submissionId: 'retry-result',
@@ -404,7 +432,7 @@ describe('useLeetCodeOverlaySession', () => {
   it('refreshes live overlay context after cross-surface cache invalidation', async () => {
     const { queryClient, result } = await renderReadySession()
     vi.mocked(getOverlayAppShellDataViaRuntime).mockResolvedValueOnce(
-      createOverlayData({ timing: { hardMode: true } }),
+      createOverlayData({ timing: { strictTiming: true } }),
     )
 
     await act(async () => {
@@ -414,9 +442,36 @@ describe('useLeetCodeOverlaySession', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.context?.timing.hardMode).toBe(true)
+      expect(result.current.context?.timing.strictTiming).toBe(true)
     })
     expect(getOverlayAppShellDataViaRuntime).toHaveBeenLastCalledWith('two-sum')
+  })
+
+  it('rehydrates a clean overlay draft from same-problem DB refreshes', async () => {
+    const { queryClient, result } = await renderReadySession()
+    vi.mocked(getOverlayAppShellDataViaRuntime).mockResolvedValueOnce(
+      createOverlayData({
+        practice: createPracticeDetails({
+          currentLog: {
+            ...emptyPracticeLog,
+            notes: 'Server-saved note.',
+          },
+        }),
+      }),
+    )
+
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.appShell.all,
+      })
+    })
+
+    await waitFor(() => {
+      expect(result.current.overlay.draft.notes).toBe('Server-saved note.')
+    })
+    expect(result.current.overlay.persistedDraft.notes).toBe(
+      'Server-saved note.',
+    )
   })
 
   it.each([
@@ -466,7 +521,7 @@ describe('useLeetCodeOverlaySession', () => {
     {
       outcome: 'result',
       finishSave: (deferred: DeferredReviewResult) =>
-        deferred.resolve(reviewResult),
+        deferred.resolve(createSavedPracticeDetails()),
     },
     {
       outcome: 'error',
@@ -476,7 +531,7 @@ describe('useLeetCodeOverlaySession', () => {
   ] as const)(
     'ignores an in-flight submit $outcome after page navigation',
     async ({ finishSave }) => {
-      const deferredSave = createDeferred<typeof reviewResult>()
+      const deferredSave = createDeferred<SerializedPracticeDetails>()
       vi.mocked(saveReviewResultViaRuntime).mockReturnValueOnce(
         deferredSave.promise,
       )
@@ -497,7 +552,7 @@ describe('useLeetCodeOverlaySession', () => {
 
 type RenderedOverlaySession = ReturnType<typeof renderOverlaySession>
 type DeferredReviewResult = ReturnType<
-  typeof createDeferred<typeof reviewResult>
+  typeof createDeferred<SerializedPracticeDetails>
 >
 type DeferredPracticeDetails = ReturnType<
   typeof createDeferred<SerializedPracticeDetails>
@@ -632,7 +687,10 @@ function emitSubmissionResult(result = createSubmissionResult()) {
     const event = {
       type: 'submission-result-updated',
       result,
-    } satisfies Extract<LeetCodePageEvent, { type: 'submission-result-updated' }>
+    } satisfies Extract<
+      LeetCodePageEvent,
+      { type: 'submission-result-updated' }
+    >
 
     leetcodeMockState.onEvent?.(event)
   })
@@ -640,6 +698,7 @@ function emitSubmissionResult(result = createSubmissionResult()) {
 
 function createOverlayData(options?: {
   autoDetectSolved?: boolean
+  practice?: OverlayAppShellData['overlay']['practice']
   timing?: Partial<OverlayAppShellData['overlay']['timing']>
 }): OverlayAppShellData {
   return {
@@ -650,7 +709,7 @@ function createOverlayData(options?: {
         autoDetectSolved: options?.autoDetectSolved ?? false,
       },
       problem: overlayProblem,
-      practice: null,
+      practice: options?.practice ?? null,
       timing: {
         ...defaultTiming,
         ...options?.timing,
@@ -692,23 +751,76 @@ function createSubmissionResult(
   } satisfies LeetCodeSubmissionResult
 }
 
-function createPracticeDetails(): SerializedPracticeDetails {
+type PracticeAttempt = NonNullable<SerializedPracticeDetails['latestAttempt']>
+
+function createPracticeDetails(
+  overrides: Partial<SerializedPracticeDetails> = {},
+): SerializedPracticeDetails {
   return {
     problemId: 'leetcode:two-sum',
     cardId: 'fsrs:leetcode:two-sum',
     practice: null,
     card: null,
     summary: createSummary(),
-    currentLog: {
-      interviewPattern: null,
-      timeComplexity: null,
-      spaceComplexity: null,
-      languages: null,
-      notes: null,
-    },
+    currentLog: emptyPracticeLog,
     recentAttempts: [],
     latestAttempt: null,
     canOverrideLatestReview: false,
+    ...overrides,
+  }
+}
+
+function createSavedPracticeDetails(options?: {
+  latestAttempt?: Partial<PracticeAttempt>
+}): SerializedPracticeDetails {
+  const latestAttempt = createPracticeAttempt(options?.latestAttempt)
+
+  return createPracticeDetails({
+    practice: {
+      status: 'learning',
+      lastReviewedAt: latestAttempt.reviewedAt,
+      attemptCount: 1,
+      solvedCount: latestAttempt.isCorrect ? 1 : 0,
+      isSuspended: false,
+      lastRating: latestAttempt.rating,
+      lastElapsedSeconds: latestAttempt.elapsedSeconds,
+      bestElapsedSeconds: latestAttempt.elapsedSeconds,
+      log: latestAttempt.log,
+    },
+    summary: createSummary({
+      phase: 'learning',
+      nextReviewAt: '2026-01-02T10:00:00.000Z',
+      lastReviewedAt: latestAttempt.reviewedAt,
+      reviewCount: 1,
+      difficulty: 5,
+      stability: 1,
+      scheduledDays: 1,
+      isStarted: true,
+      retrievability: 1,
+    }),
+    currentLog: latestAttempt.log,
+    recentAttempts: [latestAttempt],
+    latestAttempt,
+    canOverrideLatestReview: true,
+  })
+}
+
+function createPracticeAttempt(
+  overrides: Partial<PracticeAttempt> = {},
+): PracticeAttempt {
+  return {
+    id: 'attempt-1',
+    problemId: 'leetcode:two-sum',
+    cardId: 'fsrs:leetcode:two-sum',
+    rating: 'good',
+    reviewMode: 'leetcode',
+    reviewedAt: '2026-01-01T10:00:00.000Z',
+    elapsedSeconds: null,
+    isCorrect: true,
+    log: emptyPracticeLog,
+    createdAt: '2026-01-01T10:00:00.000Z',
+    updatedAt: '2026-01-01T10:00:00.000Z',
+    ...overrides,
   }
 }
 
@@ -763,22 +875,10 @@ const problemRecord = {
   updatedAt: '2026-01-01T10:00:00.000Z',
 } as const
 
-const reviewResult = {
-  problemId: 'leetcode:two-sum',
-  cardId: 'fsrs:leetcode:two-sum',
-  rating: 'good',
-  status: 'learning',
-  dueAt: '2026-01-02T10:00:00.000Z',
-  reviewedAt: '2026-01-01T10:00:00.000Z',
-  summary: createSummary({
-    phase: 'learning',
-    nextReviewAt: '2026-01-02T10:00:00.000Z',
-    lastReviewedAt: '2026-01-01T10:00:00.000Z',
-    reviewCount: 1,
-    difficulty: 5,
-    stability: 1,
-    scheduledDays: 1,
-    isStarted: true,
-    retrievability: 1,
-  }),
-} as const
+const emptyPracticeLog = {
+  interviewPattern: null,
+  timeComplexity: null,
+  spaceComplexity: null,
+  languages: null,
+  notes: null,
+} satisfies SerializedPracticeDetails['currentLog']

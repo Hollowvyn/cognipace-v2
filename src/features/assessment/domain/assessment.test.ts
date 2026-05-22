@@ -15,10 +15,12 @@ type AcceptedAssessment = Extract<
 const secondsPerMinute = 60
 const timing = {
   requireSolveTime: false,
-  hardMode: false,
-  easyMinutes: 20,
-  mediumMinutes: 35,
-  hardMinutes: 50,
+  strictTiming: false,
+  timeTargetsMinutes: {
+    easy: 20,
+    medium: 35,
+    hard: 50,
+  },
 } as const satisfies AssessmentTimingSettings
 
 describe('assessment policy', () => {
@@ -53,7 +55,7 @@ describe('assessment policy', () => {
       }),
     },
     {
-      name: 'quick-submit overtime returns Hard when Hard Mode is off',
+      name: 'quick-submit overtime returns Hard when strict timing is off',
       input: quickSubmit(36 * secondsPerMinute),
       expected: acceptedDecision({
         rating: 'hard',
@@ -63,9 +65,9 @@ describe('assessment policy', () => {
       }),
     },
     {
-      name: 'quick-submit overtime returns Again when Hard Mode is on',
-      input: quickSubmit(36 * secondsPerMinute, { hardMode: true }),
-      expected: hardModeOvertime(36 * secondsPerMinute),
+      name: 'quick-submit overtime returns Again when strict timing is on',
+      input: quickSubmit(36 * secondsPerMinute, { strictTiming: true }),
+      expected: strictTimingOvertime(36 * secondsPerMinute),
     },
     {
       name: 'LeetCode accepted under target returns Good',
@@ -77,7 +79,7 @@ describe('assessment policy', () => {
       }),
     },
     {
-      name: 'LeetCode accepted overtime returns Hard when Hard Mode is off',
+      name: 'LeetCode accepted overtime returns Hard when strict timing is off',
       input: leetcodeAccepted(36 * secondsPerMinute),
       expected: acceptedDecision({
         rating: 'hard',
@@ -87,12 +89,12 @@ describe('assessment policy', () => {
       }),
     },
     {
-      name: 'LeetCode accepted overtime returns Again when Hard Mode is on',
-      input: leetcodeAccepted(36 * secondsPerMinute, { hardMode: true }),
-      expected: hardModeOvertime(36 * secondsPerMinute),
+      name: 'LeetCode accepted overtime returns Again when strict timing is on',
+      input: leetcodeAccepted(36 * secondsPerMinute, { strictTiming: true }),
+      expected: strictTimingOvertime(36 * secondsPerMinute),
     },
     {
-      name: 'selected rating is preserved outside Hard Mode overtime',
+      name: 'selected rating is preserved outside strict timing overtime',
       input: {
         intent: 'selected-rating',
         difficulty: 'hard',
@@ -107,15 +109,15 @@ describe('assessment policy', () => {
       }),
     },
     {
-      name: 'selected rating is forced to Again during Hard Mode overtime',
+      name: 'selected rating is forced to Again during strict timing overtime',
       input: {
         intent: 'selected-rating',
         difficulty: 'hard',
         selectedRating: 'easy',
         elapsedSeconds: 51 * secondsPerMinute,
-        timing: { ...timing, hardMode: true },
+        timing: { ...timing, strictTiming: true },
       },
-      expected: hardModeOvertime(51 * secondsPerMinute),
+      expected: strictTimingOvertime(51 * secondsPerMinute),
     },
     {
       name: 'fail always saves Again and bypasses solve-time-required blocking',
@@ -215,7 +217,7 @@ function quickSubmitDecision(elapsedSeconds: number | null | undefined) {
   })
 }
 
-function hardModeOvertime(elapsedSeconds: number) {
+function strictTimingOvertime(elapsedSeconds: number) {
   return {
     rating: 'again',
     elapsedSeconds,

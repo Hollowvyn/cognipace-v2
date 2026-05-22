@@ -32,7 +32,7 @@ export type AssessmentLockReason = (typeof assessmentLockReasons)[number]
 export type AssessmentAcceptedReason =
   (typeof assessmentAcceptedReasons)[number]
 
-export type AssessmentTimingSettings = UserSettings['timing']
+export type AssessmentTimingSettings = UserSettings['assessment']
 
 export type LeetCodeAssessmentInput =
   | {
@@ -79,20 +79,21 @@ export type LeetCodeAssessmentDecision =
       elapsedSeconds: null
     }
 
-type TimingGoalKey = 'easyMinutes' | 'mediumMinutes' | 'hardMinutes'
+type TimingGoalKey = 'easy' | 'medium' | 'hard'
 
 const timingGoalKeyByDifficulty = {
-  easy: 'easyMinutes',
-  medium: 'mediumMinutes',
-  hard: 'hardMinutes',
-  unknown: 'hardMinutes',
+  easy: 'easy',
+  medium: 'medium',
+  hard: 'hard',
+  unknown: 'hard',
 } as const satisfies Record<ProblemDifficulty, TimingGoalKey>
 
 export function getLeetCodeSolveTimeTargetSeconds(
   difficulty: ProblemDifficulty,
   timing: AssessmentTimingSettings,
 ): number {
-  const minutes = timing[timingGoalKeyByDifficulty[difficulty]]
+  const minutes =
+    timing.timeTargetsMinutes[timingGoalKeyByDifficulty[difficulty]]
 
   return normalizePositiveInteger(minutes) * secondsPerMinute
 }
@@ -118,7 +119,7 @@ export function evaluateLeetCodeAssessment(
     })
   }
 
-  if (isOverTarget && input.timing.hardMode) {
+  if (isOverTarget && input.timing.strictTiming) {
     return acceptAssessment({
       rating: 'again',
       elapsedSeconds,

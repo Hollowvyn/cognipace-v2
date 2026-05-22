@@ -4,10 +4,10 @@ import { IconButton } from '@/components/ui/icon-button'
 import { SurfaceRoot } from '@/components/ui/surface'
 import type { PopupAppShellController } from '@/features/app-shell'
 
-import { ActiveTrackCard } from './components/active-track-card'
 import { MetricTiles } from './components/metric-tiles'
 import { RecommendationCard } from './components/recommendation-card'
 import { ScopedStatus } from './components/scoped-status'
+import { StudyModeCard } from './components/study-mode-card'
 
 export function PopupShell({
   controller,
@@ -64,13 +64,13 @@ export function PopupShell({
         view={view.recommendation}
       />
 
-      <ActiveTrackCard
+      <StudyModeCard
         isModeActionDisabled={!canToggleStudyMode || isUpdatingStudyMode}
         onOpenProblem={actions.openProblem}
         onOpenTracks={actions.openTracks}
         onToggleStudyMode={actions.toggleStudyMode}
         status={status?.scope === 'track' ? status : null}
-        view={view.activeTrack}
+        view={view.studyMode}
       />
     </SurfaceRoot>
   )

@@ -1,18 +1,18 @@
-import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { browser } from 'wxt/browser'
 
-import { useUpdateSettings, type StudyMode } from '@/features/settings'
+import { useToggleStudyMode, type StudyMode } from '@/features/settings'
 import {
   getDashboardUrl,
   type DashboardRoute,
 } from '@/platform/chrome/extension-pages'
+import { readErrorMessage } from '@/utils/errors'
 
 import type {
   AppShellProblemSummary,
   PopupAppShellData,
 } from '../api/app-shell-contracts'
-import { appShellQueryKeys, usePopupAppShellData } from '../api/app-shell-api'
+import { usePopupAppShellData } from '../api/app-shell-api'
 import {
   createPopupAppShellView,
   selectPopupRecommendation,
@@ -87,20 +87,25 @@ const fallbackData = {
     items: [],
   },
   settings: {
-    studyMode: 'studyPlan',
-    timing: {
-      requireSolveTime: false,
-      hardMode: false,
-      easyMinutes: 20,
-      mediumMinutes: 35,
-      hardMinutes: 50,
+    practice: {
+      dailyGoal: 4,
+      mode: 'studyPlan',
+      problemFilters: {
+        skipPremium: false,
+      },
     },
-    memoryReview: {
+    review: {
       targetRetention: 0.9,
-      reviewOrder: 'dueFirst',
+      order: 'dueFirst',
     },
-    questionFilters: {
-      skipPremium: false,
+    assessment: {
+      requireSolveTime: false,
+      strictTiming: false,
+      timeTargetsMinutes: {
+        easy: 20,
+        medium: 35,
+        hard: 50,
+      },
     },
   },
   popup: {
@@ -110,23 +115,19 @@ const fallbackData = {
 
 export function usePopupAppShellController(): PopupAppShellController {
   const shell = usePopupAppShellData()
-  const updateSettings = useUpdateSettings()
-  const queryClient = useQueryClient()
+  const toggleStudyModeMutation = useToggleStudyMode()
   const [recommendationIndex, setRecommendationIndex] = useState(0)
-  const [pendingStudyMode, setPendingStudyMode] = useState<StudyMode | null>(
-    null,
-  )
   const [status, setStatus] = useState<PopupControllerStatus>(null)
   const hasShellData = shell.data !== undefined
   const data = shell.data ?? fallbackData
-  const studyMode = pendingStudyMode ?? data.settings.studyMode
+  const studyMode = data.settings.practice.mode
   const displayData = useMemo(
     () => selectPopupRecommendation(data, recommendationIndex),
     [data, recommendationIndex],
   )
   const view = useMemo(
-    () => createPopupAppShellView(displayData, studyMode),
-    [displayData, studyMode],
+    () => createPopupAppShellView(displayData),
+    [displayData],
   )
   const queryStatus = readShellQueryStatus({
     error: shell.error,
@@ -135,7 +136,7 @@ export function usePopupAppShellController(): PopupAppShellController {
     isPending: shell.isPending,
   })
   const canToggleStudyMode =
-    hasShellData && !queryStatus?.isError && pendingStudyMode === null
+    hasShellData && !queryStatus?.isError && !toggleStudyModeMutation.isPending
 
   async function openDashboard(route: DashboardRoute) {
     try {
@@ -165,43 +166,16 @@ export function usePopupAppShellController(): PopupAppShellController {
   }
 
   async function toggleStudyMode() {
-    if (!canToggleStudyMode || updateSettings.isPending) {
+    if (!canToggleStudyMode || toggleStudyModeMutation.isPending) {
       return
     }
 
-    const nextMode: StudyMode =
-      studyMode === 'studyPlan' ? 'freePractice' : 'studyPlan'
-
-    setPendingStudyMode(nextMode)
-    setStatus({
-      scope: 'track',
-      message:
-        nextMode === 'freePractice'
-          ? 'Switching to freestyle mode...'
-          : 'Switching to study mode...',
-      isError: false,
-    })
+    setStatus(null)
 
     try {
-      const settings = await updateSettings.mutateAsync({
+      await toggleStudyModeMutation.mutateAsync({
         surface: 'popup',
-        patch: { studyMode: nextMode },
       })
-      queryClient.setQueryData<PopupAppShellData>(
-        appShellQueryKeys.popup(),
-        (currentData) =>
-          currentData
-            ? {
-                ...currentData,
-                settings: {
-                  studyMode: settings.studyMode,
-                  timing: settings.timing,
-                  memoryReview: settings.memoryReview,
-                  questionFilters: settings.questionFilters,
-                },
-              }
-            : currentData,
-      )
       setStatus(null)
     } catch (error) {
       setStatus({
@@ -209,8 +183,6 @@ export function usePopupAppShellController(): PopupAppShellController {
         message: readErrorMessage(error, 'Failed to update study mode.'),
         isError: true,
       })
-    } finally {
-      setPendingStudyMode(null)
     }
   }
 
@@ -219,7 +191,7 @@ export function usePopupAppShellController(): PopupAppShellController {
     view,
     studyMode,
     status: status ?? queryStatus,
-    isUpdatingStudyMode: pendingStudyMode !== null || updateSettings.isPending,
+    isUpdatingStudyMode: toggleStudyModeMutation.isPending,
     canToggleStudyMode,
     canShuffleRecommendation:
       hasShellData && data.popup.queuePreview.length > 1,
@@ -249,10 +221,6 @@ export function usePopupAppShellController(): PopupAppShellController {
       },
     },
   }
-}
-
-function readErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback
 }
 
 function readShellQueryStatus(input: {

@@ -4,8 +4,6 @@ import type {
   PopupAppShellData,
 } from '../api/app-shell-contracts'
 
-import type { StudyMode } from '@/features/settings'
-
 export type PopupRecommendationReason = {
   label: string
   tone: 'warning' | 'info' | 'success'
@@ -20,7 +18,8 @@ export type PopupRecommendationView = {
   isOverdue: boolean
 }
 
-export type PopupActiveTrackView = {
+type PopupStudyPlanView = {
+  kind: 'studyPlan'
   title: string
   body: string
   groupTitle: string | null
@@ -30,9 +29,18 @@ export type PopupActiveTrackView = {
   modeActionLabel: string
 }
 
+type PopupFreePracticeView = {
+  kind: 'freePractice'
+  title: string
+  body: string
+  modeActionLabel: string
+}
+
+export type PopupStudyModeView = PopupStudyPlanView | PopupFreePracticeView
+
 export type PopupAppShellView = {
   recommendation: PopupRecommendationView
-  activeTrack: PopupActiveTrackView
+  studyMode: PopupStudyModeView
 }
 
 export function buildAppShellRecommendation(
@@ -81,11 +89,10 @@ export function selectPopupRecommendation(
 
 export function createPopupAppShellView(
   data: PopupAppShellData,
-  studyMode: StudyMode,
 ): PopupAppShellView {
   return {
     recommendation: createPopupRecommendationView(data),
-    activeTrack: createPopupActiveTrackView(data, studyMode),
+    studyMode: createPopupStudyModeView(data),
   }
 }
 
@@ -107,24 +114,28 @@ function createPopupRecommendationView(
   }
 }
 
-function createPopupActiveTrackView(
-  data: PopupAppShellData,
-  studyMode: StudyMode,
-): PopupActiveTrackView {
+function createPopupStudyModeView(data: PopupAppShellData): PopupStudyModeView {
+  if (data.settings.practice.mode === 'freePractice') {
+    return {
+      kind: 'freePractice',
+      title: 'Free Practice',
+      body: 'Queue-first practice without track guidance.',
+      modeActionLabel: 'Start study mode',
+    }
+  }
+
   const activeTrack = data.activeTrack
   const hasActiveTrack = activeTrack.trackId !== null
-  const isFreePractice = studyMode === 'freePractice'
 
   return {
+    kind: 'studyPlan',
     title: readActiveTrackTitle(data),
     body: readActiveTrackBody(data),
     groupTitle: hasActiveTrack ? activeTrack.groupTitle : null,
     dueAt: hasActiveTrack ? activeTrack.dueAt : null,
     progressPercent: hasActiveTrack ? activeTrack.progress.percent : null,
     nextProblem: activeTrack.nextProblem,
-    modeActionLabel: isFreePractice
-      ? 'Start study mode'
-      : 'Start freestyle mode',
+    modeActionLabel: 'Start freestyle mode',
   }
 }
 

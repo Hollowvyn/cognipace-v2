@@ -122,7 +122,7 @@ function formatAssessmentHelper(
   lockReason: AssessmentLockReason | null,
 ) {
   if (lockReason === 'hard-mode-overtime') {
-    return 'Hard Mode: overtime forces Again for this attempt.'
+    return 'Strict timing: overtime forces Again for this attempt.'
   }
 
   if (lockReason === 'failed') {

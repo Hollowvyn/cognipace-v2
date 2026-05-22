@@ -96,16 +96,15 @@ const overlayNextStepSchema = z.object({
   dueAt: z.iso.datetime().nullable(),
 })
 
-const appShellTimingSettingsSchema = userSettingsSchema.shape.timing
+const appShellAssessmentSettingsSchema = userSettingsSchema.shape.assessment
 const overlayAutomationSettingsSchema = z.object({
-  autoDetectSolved: userSettingsSchema.shape.experimental.shape.autoDetectSolved,
+  autoDetectSolved: userSettingsSchema.shape.overlay.shape.autoDetectSolved,
 })
 
 const appShellSettingsSummarySchema = z.object({
-  studyMode: userSettingsSchema.shape.studyMode,
-  timing: appShellTimingSettingsSchema,
-  memoryReview: userSettingsSchema.shape.memoryReview,
-  questionFilters: userSettingsSchema.shape.questionFilters,
+  practice: userSettingsSchema.shape.practice,
+  review: userSettingsSchema.shape.review,
+  assessment: appShellAssessmentSettingsSchema,
 })
 
 const appShellBaseDataSchema = z.object({
@@ -148,7 +147,7 @@ export const overlayAppShellDataSchema = z.object({
     automation: overlayAutomationSettingsSchema,
     problem: appShellProblemSummarySchema.nullable(),
     practice: practiceDetailsSchema.nullable(),
-    timing: appShellTimingSettingsSchema,
+    timing: appShellAssessmentSettingsSchema,
     nextStep: overlayNextStepSchema.nullable(),
   }),
 })

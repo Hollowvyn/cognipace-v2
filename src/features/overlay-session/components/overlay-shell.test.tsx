@@ -76,11 +76,13 @@ function createSession(
         url: 'https://leetcode.com/problems/two-sum/',
       },
       timing: {
-        easyMinutes: 20,
-        hardMinutes: 50,
-        hardMode: false,
-        mediumMinutes: 35,
         requireSolveTime: false,
+        strictTiming: false,
+        timeTargetsMinutes: {
+          easy: 20,
+          medium: 35,
+          hard: 50,
+        },
       },
     },
     draft: {

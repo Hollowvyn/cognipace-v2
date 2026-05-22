@@ -205,10 +205,12 @@ function createOverlayContext(): ExpandedOverlayProps['view']['context'] {
     practice: null,
     timing: {
       requireSolveTime: false,
-      hardMode: false,
-      easyMinutes: 20,
-      mediumMinutes: 35,
-      hardMinutes: 50,
+      strictTiming: false,
+      timeTargetsMinutes: {
+        easy: 20,
+        medium: 35,
+        hard: 50,
+      },
     },
     nextStep: null,
   }

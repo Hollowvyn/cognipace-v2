@@ -61,11 +61,11 @@ async function getDashboardAppShellData(db: Db, now: Date) {
 }
 
 async function getMainAppShellData(db: Db, now: Date) {
-  const [settings, queue, activeTrack] = await Promise.all([
+  const [settings, queue] = await Promise.all([
     getSettings(db),
     getTodayQueue(db, now),
-    getActiveTrack(db),
   ])
+  const activeTrack = await getActiveTrack(db)
   const queueItems = queue.items.map(serializeQueueItem)
   const baseData = {
     generatedAt: now.toISOString(),
@@ -87,10 +87,9 @@ async function getMainAppShellData(db: Db, now: Date) {
       items: queueItems,
     },
     settings: {
-      studyMode: settings.studyMode,
-      timing: settings.timing,
-      memoryReview: settings.memoryReview,
-      questionFilters: settings.questionFilters,
+      practice: settings.practice,
+      review: settings.review,
+      assessment: settings.assessment,
     },
   } satisfies Omit<PopupAppShellData, 'surface' | 'popup'>
 
@@ -125,7 +124,7 @@ async function getOverlayPayload(
       automation: serializeOverlayAutomation(settings),
       problem: null,
       practice: null,
-      timing: settings.timing,
+      timing: settings.assessment,
       nextStep: null,
     }
   }
@@ -137,7 +136,7 @@ async function getOverlayPayload(
       automation: serializeOverlayAutomation(settings),
       problem: null,
       practice: null,
-      timing: settings.timing,
+      timing: settings.assessment,
       nextStep: null,
     }
   }
@@ -145,23 +144,22 @@ async function getOverlayPayload(
   const [practice, queue, activeTrack] = await Promise.all([
     getPracticeDetails(db, context.problem.id, {
       now,
-      targetRetention: settings.memoryReview.targetRetention,
+      targetRetention: settings.review.targetRetention,
     }),
     getTodayQueue(db, now),
     getActiveTrack(db),
   ])
   const queueItems = queue.items.map(serializeQueueItem)
   const currentProblem = serializeProblemSummary(context.problem)
-  const activeTrackNextProblem =
-    settings.studyMode === 'studyPlan' && activeTrack?.nextProblem
-      ? serializeProblemSummary(activeTrack.nextProblem)
-      : null
+  const activeTrackNextProblem = activeTrack?.nextProblem
+    ? serializeProblemSummary(activeTrack.nextProblem)
+    : null
 
   return {
     automation: serializeOverlayAutomation(settings),
     problem: currentProblem,
     practice: serializePracticeDetails(practice),
-    timing: settings.timing,
+    timing: settings.assessment,
     nextStep: serializeOverlayNextStep({
       activeTrackNextProblem,
       currentProblem,
@@ -172,7 +170,7 @@ async function getOverlayPayload(
 
 function serializeOverlayAutomation(settings: UserSettings) {
   return {
-    autoDetectSolved: settings.experimental.autoDetectSolved,
+    autoDetectSolved: settings.overlay.autoDetectSolved,
   }
 }
 

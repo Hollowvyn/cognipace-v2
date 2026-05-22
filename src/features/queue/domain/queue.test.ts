@@ -46,7 +46,13 @@ describe('buildTodayQueue', () => {
           practice: practice({ lastRating: 'again' }),
         }),
       ],
-      { ...defaultUserSettings, dailyQuestionGoal: 3 },
+      {
+        ...defaultUserSettings,
+        practice: {
+          ...defaultUserSettings.practice,
+          dailyGoal: 3,
+        },
+      },
       generatedAt,
     )
 
@@ -75,7 +81,13 @@ describe('buildTodayQueue', () => {
           practice: practice({ lastRating: 'hard' }),
         }),
       ],
-      { ...defaultUserSettings, dailyQuestionGoal: 1 },
+      {
+        ...defaultUserSettings,
+        practice: {
+          ...defaultUserSettings.practice,
+          dailyGoal: 1,
+        },
+      },
       generatedAt,
     )
 
@@ -97,7 +109,10 @@ describe('buildTodayQueue', () => {
       ],
       {
         ...defaultUserSettings,
-        questionFilters: { skipPremium: true },
+        practice: {
+          ...defaultUserSettings.practice,
+          problemFilters: { skipPremium: true },
+        },
       },
       generatedAt,
     )
@@ -148,9 +163,9 @@ describe('buildTodayQueue', () => {
       ],
       {
         ...defaultUserSettings,
-        memoryReview: {
-          ...defaultUserSettings.memoryReview,
-          reviewOrder: 'weakestFirst',
+        review: {
+          ...defaultUserSettings.review,
+          order: 'weakestFirst',
         },
       },
       generatedAt,

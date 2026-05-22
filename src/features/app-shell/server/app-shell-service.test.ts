@@ -54,10 +54,12 @@ describe('app-shell service', () => {
         },
       },
       settings: {
-        studyMode: 'studyPlan',
-        timing: {
+        practice: {
+          mode: 'studyPlan',
+        },
+        assessment: {
           requireSolveTime: false,
-          hardMode: false,
+          strictTiming: false,
         },
       },
     })
@@ -84,20 +86,24 @@ describe('app-shell service', () => {
     expect(payload.activeTrack.dueAt).toBe(dueAt.toISOString())
   })
 
-  it('does not use the active track as the popup recommendation during free practice', async () => {
+  it('does not include active-track state in popup free practice mode', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
 
     await createSettingsRepository(handle.db).updateSettings({
-      studyMode: 'freePractice',
+      practice: { mode: 'freePractice' },
     })
 
     const payload = await getPopupPayload(handle)
 
     expect(payload.recommendation.problem).toBeNull()
-    expect(payload.activeTrack.nextProblem?.slug).toBe('two-sum')
-    expect(payload.settings.studyMode).toBe('freePractice')
+    expect(payload.activeTrack).toMatchObject({
+      trackId: null,
+      title: 'No active track',
+      nextProblem: null,
+    })
+    expect(payload.settings.practice.mode).toBe('freePractice')
   })
 
   it('composes dashboard payload with a larger queue preview', async () => {
@@ -149,7 +155,7 @@ describe('app-shell service', () => {
         },
         timing: {
           requireSolveTime: false,
-          hardMode: false,
+          strictTiming: false,
         },
         nextStep: {
           kind: 'empty',
@@ -175,7 +181,7 @@ describe('app-shell service', () => {
         practice: null,
         timing: {
           requireSolveTime: false,
-          hardMode: false,
+          strictTiming: false,
         },
         nextStep: null,
       },
@@ -200,7 +206,7 @@ describe('app-shell service', () => {
     const handle = await createTestDb()
 
     await createSettingsRepository(handle.db).updateSettings({
-      studyMode: 'freePractice',
+      practice: { mode: 'freePractice' },
     })
 
     const payload = await getOverlayPayload(handle, 'valid-parentheses')
@@ -211,11 +217,11 @@ describe('app-shell service', () => {
     })
   })
 
-  it('exposes disabled overlay auto-detect from experimental settings', async () => {
+  it('exposes disabled overlay auto-detect from overlay settings', async () => {
     const handle = await createTestDb()
 
     await createSettingsRepository(handle.db).updateSettings({
-      experimental: {
+      overlay: {
         autoDetectSolved: false,
       },
     })

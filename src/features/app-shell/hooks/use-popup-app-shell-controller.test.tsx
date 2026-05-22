@@ -2,9 +2,9 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
-import type {
-  AppShellProblemSummary,
-  PopupAppShellData,
+import {
+  type AppShellProblemSummary,
+  type PopupAppShellData,
 } from '@/features/app-shell'
 import { defaultUserSettings } from '@/features/settings/domain'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
@@ -85,10 +85,9 @@ const popupData = {
     items: [],
   },
   settings: {
-    studyMode: 'studyPlan',
-    timing: defaultUserSettings.timing,
-    memoryReview: defaultUserSettings.memoryReview,
-    questionFilters: defaultUserSettings.questionFilters,
+    practice: defaultUserSettings.practice,
+    review: defaultUserSettings.review,
+    assessment: defaultUserSettings.assessment,
   },
   popup: {
     queuePreview: [
@@ -173,26 +172,21 @@ describe('usePopupAppShellController', () => {
     expect(browserMocks.tabsCreate).toHaveBeenCalledWith({ url: twoSum.url })
   })
 
-  it('updates study mode optimistically and patches the popup cache after save', async () => {
+  it('keeps study mode derived from app-shell data while toggling', async () => {
     const updateDeferred = createDeferred()
+    let nextPopupData: PopupAppShellData = popupData
     vi.mocked(sendMessage).mockImplementation((method, request) => {
       if (method === 'app.getShellData') {
         expect(request).toEqual({ surface: 'popup' })
-        return Promise.resolve(popupData)
+        return Promise.resolve(nextPopupData)
       }
 
-      if (method === 'settings.updateSettings') {
+      if (method === 'settings.toggleStudyMode') {
         expect(request).toEqual({
           surface: 'popup',
-          patch: { studyMode: 'freePractice' },
         })
 
-        return updateDeferred.promise.then(() => {
-          return {
-            ...defaultUserSettings,
-            studyMode: 'freePractice' as const,
-          }
-        })
+        return updateDeferred.promise
       }
 
       return Promise.reject(new Error(`Unexpected runtime method ${method}`))
@@ -213,32 +207,41 @@ describe('usePopupAppShellController', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.studyMode).toBe('freePractice')
+      expect(result.current.isUpdatingStudyMode).toBe(true)
     })
-    expect(result.current.status).toMatchObject({
-      scope: 'track',
-      message: 'Switching to freestyle mode...',
-      isError: false,
-    })
-    expect(result.current.isUpdatingStudyMode).toBe(true)
+    expect(result.current.studyMode).toBe('studyPlan')
+    expect(result.current.status).toBeNull()
     expect(result.current.canToggleStudyMode).toBe(false)
 
+    nextPopupData = {
+      ...popupData,
+      settings: {
+        ...popupData.settings,
+        practice: {
+          ...popupData.settings.practice,
+          mode: 'freePractice',
+        },
+      },
+      activeTrack: createEmptyActiveTrack(),
+    } satisfies PopupAppShellData
     act(() => {
       updateDeferred.resolve()
     })
 
     await waitFor(() => {
-      expect(result.current.status).toBeNull()
+      expect(result.current.studyMode).toBe('freePractice')
     })
-    expect(result.current.studyMode).toBe('freePractice')
+    expect(result.current.isUpdatingStudyMode).toBe(false)
+    expect(result.current.status).toBeNull()
+    expect(result.current.view.studyMode.kind).toBe('freePractice')
     expect(
       vi.mocked(sendMessage).mock.calls.filter(([method]) => {
         return method === 'app.getShellData'
       }).length,
-    ).toBe(1)
+    ).toBe(2)
   })
 
-  it('rolls study mode back when saving fails', async () => {
+  it('keeps saved study mode when toggling fails', async () => {
     const updateDeferred = createDeferred()
     vi.mocked(sendMessage).mockImplementation((method, request) => {
       if (method === 'app.getShellData') {
@@ -246,16 +249,12 @@ describe('usePopupAppShellController', () => {
         return Promise.resolve(popupData)
       }
 
-      if (method === 'settings.updateSettings') {
+      if (method === 'settings.toggleStudyMode') {
         expect(request).toEqual({
           surface: 'popup',
-          patch: { studyMode: 'freePractice' },
         })
 
-        return updateDeferred.promise.then(() => ({
-          ...defaultUserSettings,
-          studyMode: 'freePractice' as const,
-        }))
+        return updateDeferred.promise
       }
 
       return Promise.reject(new Error(`Unexpected runtime method ${method}`))
@@ -276,8 +275,9 @@ describe('usePopupAppShellController', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.studyMode).toBe('freePractice')
+      expect(result.current.isUpdatingStudyMode).toBe(true)
     })
+    expect(result.current.studyMode).toBe('studyPlan')
 
     act(() => {
       updateDeferred.reject(new Error('Settings write failed'))
@@ -323,16 +323,12 @@ function readRuntimeResponse(method: string, request: unknown) {
     return Promise.resolve(popupData)
   }
 
-  if (method === 'settings.updateSettings') {
+  if (method === 'settings.toggleStudyMode') {
     expect(request).toEqual({
       surface: 'popup',
-      patch: { studyMode: 'freePractice' },
     })
 
-    return Promise.resolve({
-      ...defaultUserSettings,
-      studyMode: 'freePractice' as const,
-    })
+    return Promise.resolve(null)
   }
 
   return Promise.reject(new Error(`Unexpected runtime method ${method}`))
@@ -341,11 +337,9 @@ function readRuntimeResponse(method: string, request: unknown) {
 function createDeferred() {
   let resolve!: () => void
   let reject!: (error: Error) => void
-  const promise = new Promise<{
-    studyMode: 'freePractice'
-  }>((innerResolve, innerReject) => {
+  const promise = new Promise<null>((innerResolve, innerReject) => {
     resolve = () => {
-      innerResolve({ studyMode: 'freePractice' })
+      innerResolve(null)
     }
     reject = innerReject
   })
@@ -354,6 +348,23 @@ function createDeferred() {
     promise,
     resolve,
     reject,
+  }
+}
+
+function createEmptyActiveTrack(): PopupAppShellData['activeTrack'] {
+  return {
+    trackId: null,
+    title: 'No active track',
+    description: null,
+    groupTitle: null,
+    dueAt: null,
+    progress: {
+      completedCount: 0,
+      totalCount: 0,
+      percent: 0,
+    },
+    detail: 'Choose a track to restore guided progression.',
+    nextProblem: null,
   }
 }
 

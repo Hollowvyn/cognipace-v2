@@ -17,6 +17,7 @@ import {
   reduceLeetCodeCaptureState,
   type LeetCodePageEvent,
 } from '@/lib/leetcode'
+import { readErrorMessage } from '@/utils/errors'
 
 export type OverlaySyncStatus =
   | 'booting'
@@ -30,12 +31,14 @@ export type LeetCodeOverlayContext = OverlayAppShellData['overlay']
 type UseLeetCodePageSyncOptions = {
   activeProblemId: string | null
   onPageChanged: () => void
+  onProblemContextRefreshed: (context: LeetCodeOverlayContext) => void
   onProblemLoaded: (context: LeetCodeOverlayContext) => void
 }
 
 export function useLeetCodePageSync({
   activeProblemId,
   onPageChanged,
+  onProblemContextRefreshed,
   onProblemLoaded,
 }: UseLeetCodePageSyncOptions) {
   const initialLocation = parseLeetCodeProblemLocation(window.location.href)
@@ -66,7 +69,7 @@ export function useLeetCodePageSync({
       ? 'ready'
       : status
   const resolvedFeedback = overlayShell.isError
-    ? readErrorMessage(overlayShell.error)
+    ? readErrorMessage(overlayShell.error, 'Failed to load overlay data.')
     : context
       ? null
       : feedback
@@ -89,12 +92,17 @@ export function useLeetCodePageSync({
     }
 
     const problem = context.problem
-    if (!problem || activeProblemIdRef.current === problem.id) {
+    if (!problem) {
+      return
+    }
+
+    if (activeProblemIdRef.current === problem.id) {
+      onProblemContextRefreshed(context)
       return
     }
 
     onProblemLoaded(context)
-  }, [context, onProblemLoaded])
+  }, [context, onProblemContextRefreshed, onProblemLoaded])
 
   const syncProblem = useCallback(
     async (
@@ -225,8 +233,4 @@ export function useLeetCodePageSync({
     status: resolvedStatus,
     syncTokenRef,
   }
-}
-
-function readErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error)
 }

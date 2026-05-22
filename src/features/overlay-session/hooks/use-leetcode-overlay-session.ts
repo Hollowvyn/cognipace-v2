@@ -10,6 +10,7 @@ import {
   createOverlayDraftFromLog,
   initialOverlaySessionState,
   overlaySessionReducer,
+  type OverlaySubmittedSession,
   type OverlaySessionState,
 } from '../domain'
 import {
@@ -82,6 +83,33 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
     },
     [],
   )
+  const handleProblemContextRefreshed = useCallback(
+    (nextContext: LeetCodeOverlayContext) => {
+      const problem = nextContext.problem
+      if (!problem) {
+        return
+      }
+
+      const submittedSession = latestOverlayRef.current.submittedSession
+
+      dispatch({
+        type: 'problem-context-refreshed',
+        problemId: problem.id,
+        draft: createOverlayDraftFromLog(nextContext.practice?.currentLog),
+        selectedRating:
+          nextContext.practice?.latestAttempt?.rating ??
+          nextContext.practice?.practice?.lastRating ??
+          'good',
+        submittedSession: submittedSession
+          ? createSubmittedSessionFromContext(
+              nextContext,
+              submittedSession.lockReason,
+            )
+          : null,
+      })
+    },
+    [],
+  )
 
   const handlePageChanged = useCallback(() => {
     timerResetRef.current()
@@ -91,6 +119,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
   const pageSync = useLeetCodePageSync({
     activeProblemId: overlay.activeProblemId,
     onPageChanged: handlePageChanged,
+    onProblemContextRefreshed: handleProblemContextRefreshed,
     onProblemLoaded: handleProblemLoaded,
   })
   const actions = useOverlayReviewActions({
@@ -142,6 +171,25 @@ function getTargetSeconds(context: LeetCodeOverlayContext | null) {
   }
 
   return getLeetCodeSolveTimeTargetSeconds(problem.difficulty, context.timing)
+}
+
+function createSubmittedSessionFromContext(
+  context: LeetCodeOverlayContext,
+  lockReason: OverlaySubmittedSession['lockReason'],
+): OverlaySubmittedSession | null {
+  const latestAttempt = context.practice?.latestAttempt
+
+  if (!latestAttempt) {
+    return null
+  }
+
+  return {
+    rating: latestAttempt.rating,
+    draft: createOverlayDraftFromLog(latestAttempt.log),
+    elapsedSeconds: latestAttempt.elapsedSeconds,
+    isCorrect: latestAttempt.isCorrect ?? latestAttempt.rating !== 'again',
+    lockReason,
+  }
 }
 
 export type { OverlaySyncStatus } from './use-leetcode-page-sync'

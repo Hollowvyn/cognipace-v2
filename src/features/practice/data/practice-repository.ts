@@ -55,13 +55,6 @@ export class PracticeRepository {
     const reviewedAt = input.reviewedAt ?? new Date()
     const cardKind = input.cardKind ?? defaultFsrsCardKind
     const cardId = createFsrsCardId(input.problemId, cardKind)
-    const currentCard =
-      (await this.getCard(input.problemId, cardKind)) ??
-      createInitialFsrsCard(reviewedAt)
-    const scheduled = scheduleReview(currentCard, input.rating, reviewedAt, {
-      targetRetention: input.targetRetention,
-    })
-    const status = statusFromReview(input.rating, scheduled.card)
     const timestamp = reviewedAt.getTime()
     const createdAt = new Date()
     const createdAtTimestamp = createdAt.getTime()
@@ -69,6 +62,13 @@ export class PracticeRepository {
       input.reviewAttemptId ?? createReviewAttemptId(input.problemId, timestamp)
 
     return this.db.transaction(async (transactionDb) => {
+      const currentCard =
+        (await this.getCard(input.problemId, cardKind, transactionDb)) ??
+        createInitialFsrsCard(reviewedAt)
+      const scheduled = scheduleReview(currentCard, input.rating, reviewedAt, {
+        targetRetention: input.targetRetention,
+      })
+      const status = statusFromReview(input.rating, scheduled.card)
       const previousPractice = await this.getPracticeState(
         input.problemId,
         transactionDb,
@@ -375,8 +375,9 @@ export class PracticeRepository {
   async getCard(
     problemId: string,
     cardKind: FsrsCardKind = defaultFsrsCardKind,
+    db: PracticeReadDb = this.db,
   ): Promise<FsrsCardSnapshot | null> {
-    const rows = await this.db
+    const rows = await db
       .select()
       .from(fsrsCards)
       .where(

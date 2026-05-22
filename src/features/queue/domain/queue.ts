@@ -41,23 +41,17 @@ export function buildTodayQueue(
   settings: UserSettings,
   generatedAt = new Date(),
 ): TodayQueue {
-  const dailyGoal = Math.max(0, Math.round(settings.dailyQuestionGoal))
+  const dailyGoal = Math.max(0, Math.round(settings.practice.dailyGoal))
   const partitioned = partitionQueueCandidates(
     candidates,
     settings,
     generatedAt,
   )
-  const dueItems = orderQueueItems(
-    partitioned.due,
-    settings.memoryReview.reviewOrder,
-  )
-  const newItems = orderQueueItems(
-    partitioned.new,
-    settings.memoryReview.reviewOrder,
-  )
+  const dueItems = orderQueueItems(partitioned.due, settings.review.order)
+  const newItems = orderQueueItems(partitioned.new, settings.review.order)
   const reinforcementItems = orderQueueItems(
     partitioned.reinforcement,
-    settings.memoryReview.reviewOrder,
+    settings.review.order,
   )
   const dueForQueue = dueItems.slice(0, dailyGoal)
   const slotsAfterDue = Math.max(0, dailyGoal - dueForQueue.length)
@@ -95,7 +89,7 @@ function partitionQueueCandidates(
       practice: candidate.practice,
       card: candidate.card,
       now: generatedAt,
-      targetRetention: settings.memoryReview.targetRetention,
+      targetRetention: settings.review.targetRetention,
     })
 
     if (summary.isDue) {
@@ -123,7 +117,8 @@ function isEffectivelySuspended(
     candidate.practice?.isSuspended === true ||
     candidate.practice?.status === 'mastered' ||
     candidate.practice?.status === 'suspended' ||
-    (settings.questionFilters.skipPremium && candidate.problem.isPremium)
+    (settings.practice.problemFilters.skipPremium &&
+      candidate.problem.isPremium)
   )
 }
 
@@ -147,7 +142,7 @@ function mapQueueItem(
 
 function orderQueueItems(
   items: QueueItem[],
-  strategy: UserSettings['memoryReview']['reviewOrder'],
+  strategy: UserSettings['review']['order'],
 ): QueueItem[] {
   if (strategy === 'weakestFirst') {
     return sortByWeakest(items)

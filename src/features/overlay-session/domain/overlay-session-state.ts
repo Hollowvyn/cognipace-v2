@@ -62,6 +62,13 @@ export type OverlaySessionAction =
       draft: OverlayDraftLog
       selectedRating: ReviewRating
     }
+  | {
+      type: 'problem-context-refreshed'
+      problemId: string
+      draft: OverlayDraftLog
+      selectedRating: ReviewRating
+      submittedSession: OverlaySubmittedSession | null
+    }
   | { type: 'page-changed' }
   | { type: 'set-visual-mode'; visualMode: OverlayVisualMode }
   | { type: 'set-draft-field'; field: OverlayDraftField; value: string }
@@ -117,6 +124,30 @@ export function overlaySessionReducer(
         draft: action.draft,
         persistedDraft: action.draft,
         selectedRating: action.selectedRating,
+      }
+    case 'problem-context-refreshed':
+      if (
+        state.activeProblemId !== action.problemId ||
+        state.reviewStatus === 'saving' ||
+        state.reviewStatus === 'updating' ||
+        hasUnpersistedDraftChanges(state) ||
+        hasSubmittedSessionChanges(state)
+      ) {
+        return state
+      }
+
+      return {
+        ...state,
+        draft: action.draft,
+        persistedDraft: action.draft,
+        selectedRating:
+          action.submittedSession?.rating ?? action.selectedRating,
+        submittedSession:
+          state.submittedSession && action.submittedSession
+            ? action.submittedSession
+            : state.submittedSession,
+        ratingLockReason:
+          action.submittedSession?.lockReason ?? state.ratingLockReason,
       }
     case 'page-changed':
       return initialOverlaySessionState

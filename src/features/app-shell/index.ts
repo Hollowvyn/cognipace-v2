@@ -13,9 +13,9 @@ export {
   type PopupAppShellData,
 } from './api/app-shell-api'
 export type {
-  PopupActiveTrackView,
   PopupAppShellView,
   PopupRecommendationView,
+  PopupStudyModeView,
 } from './domain/popup-app-shell'
 export { createPopupAppShellView } from './domain/popup-app-shell'
 export {
