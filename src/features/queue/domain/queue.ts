@@ -11,7 +11,6 @@ export type QueueItemCategory = 'due' | 'new' | 'reinforcement'
 
 export interface QueueCandidate {
   problem: Problem
-  activeTrackPosition: number | null
   practice: PracticeStateSnapshot | null
   card: FsrsCardSnapshot | null
 }
@@ -25,7 +24,6 @@ export interface QueueItem {
   url: string
   isPremium: boolean
   dueAt: Date | null
-  activeTrackPosition: number | null
   summary: PracticeSummary
 }
 
@@ -106,9 +104,6 @@ function partitionQueueCandidates(
     }
 
     if (!summary.isStarted) {
-      if (candidate.activeTrackPosition !== null) {
-        partitions.new.push(mapQueueItem(candidate, 'new', summary))
-      }
       continue
     }
 
@@ -146,7 +141,6 @@ function mapQueueItem(
     url: candidate.problem.url,
     isPremium: candidate.problem.isPremium,
     dueAt: summary.nextReviewAt,
-    activeTrackPosition: candidate.activeTrackPosition,
     summary,
   }
 }
@@ -174,7 +168,7 @@ function sortByDueThenPosition(items: QueueItem[]) {
       return dueComparison
     }
 
-    return comparePositions(left.activeTrackPosition, right.activeTrackPosition)
+    return left.slug.localeCompare(right.slug)
   })
 }
 
@@ -234,8 +228,4 @@ function compareDates(left: Date | null, right: Date | null) {
     (left?.getTime() ?? Number.MAX_SAFE_INTEGER) -
     (right?.getTime() ?? Number.MAX_SAFE_INTEGER)
   )
-}
-
-function comparePositions(left: number | null, right: number | null) {
-  return (left ?? Number.MAX_SAFE_INTEGER) - (right ?? Number.MAX_SAFE_INTEGER)
 }

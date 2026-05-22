@@ -1,11 +1,8 @@
-import { useQueryClient } from '@tanstack/react-query'
-
 import {
   evaluateLeetCodeAssessment,
   type LeetCodeAssessmentDecision,
 } from '@/features/assessment'
 import {
-  invalidatePracticeRelatedQueries,
   overrideLastReviewResultViaRuntime,
   saveReviewResultViaRuntime,
   updateCurrentPracticeLogViaRuntime,
@@ -71,8 +68,6 @@ export function useOverlayReviewActions({
   syncTokenRef,
   timer,
 }: UseOverlayReviewActionsOptions): OverlayReviewActions {
-  const queryClient = useQueryClient()
-
   async function refreshNextStep(problemSlug: string, saveToken: number) {
     dispatch({ type: 'next-step-loading' })
 
@@ -129,7 +124,6 @@ export function useOverlayReviewActions({
       }
 
       dispatch({ type: 'draft-persisted', draft: currentOverlay.draft })
-      invalidatePracticeRelatedQueries(queryClient)
     } catch (error) {
       if (syncTokenRef.current !== draftToken) {
         return
@@ -265,7 +259,6 @@ export function useOverlayReviewActions({
 
       const snapshot = createSubmittedSnapshot(decision, currentOverlay.draft)
       timer.lockAt(decision.elapsedSeconds)
-      invalidatePracticeRelatedQueries(queryClient)
       dispatch({
         type: 'submit-succeeded',
         snapshot,
@@ -321,7 +314,6 @@ export function useOverlayReviewActions({
         return
       }
 
-      invalidatePracticeRelatedQueries(queryClient)
       dispatch({
         type: 'update-succeeded',
         snapshot: {

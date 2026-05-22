@@ -151,15 +151,17 @@ async function getOverlayPayload(
   ])
   const queueItems = queue.items.map(serializeQueueItem)
   const currentProblem = serializeProblemSummary(context.problem)
+  const activeTrackNextProblem =
+    settings.studyMode === 'studyPlan' && activeTrack?.nextProblem
+      ? serializeProblemSummary(activeTrack.nextProblem)
+      : null
 
   return {
     problem: currentProblem,
     practice: serializePracticeDetails(practice),
     timing: settings.timing,
     nextStep: serializeOverlayNextStep({
-      activeTrackNextProblem: activeTrack?.nextProblem
-        ? serializeProblemSummary(activeTrack.nextProblem)
-        : null,
+      activeTrackNextProblem,
       currentProblem,
       queueItems,
     }),
@@ -269,7 +271,6 @@ function serializeQueueItem(item: QueueItem): AppShellQueueItem {
       isPremium: item.isPremium,
     },
     dueAt: item.dueAt?.toISOString() ?? null,
-    activeTrackPosition: item.activeTrackPosition,
     summary: serializePracticeSummary(item.summary),
   }
 }

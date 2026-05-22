@@ -72,7 +72,6 @@ const shellData = {
         category: 'due',
         problem: validParentheses,
         dueAt: '2025-12-31T00:00:00.000Z',
-        activeTrackPosition: null,
         summary: {
           phase: 'review',
           nextReviewAt: '2025-12-31T00:00:00.000Z',

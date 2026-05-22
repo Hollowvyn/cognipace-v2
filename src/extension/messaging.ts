@@ -25,6 +25,7 @@ import {
 } from '@/features/practice/api/practice-contracts'
 import { problemDifficulties } from '@/features/problems'
 import { type UserSettings, userSettingsPatchSchema } from '@/features/settings'
+import { cacheInvalidationTags } from '@/platform/query/cache-invalidation'
 
 export const extensionSurfaceSchema = z.enum([
   'background',
@@ -38,6 +39,26 @@ export type ExtensionSurface = z.infer<typeof extensionSurfaceSchema>
 export const uiSurfaceSchema = z.enum(['popup', 'dashboard', 'content-script'])
 
 export type UiSurface = z.infer<typeof uiSurfaceSchema>
+
+export const cacheInvalidationReasonSchema = z.enum([
+  'practice-updated',
+  'problem-catalog-updated',
+  'settings-updated',
+  'tracks-updated',
+])
+
+export const cacheInvalidationEventSchema = z.object({
+  emittedAt: z.iso.datetime(),
+  problemId: z.string().optional(),
+  problemSlug: z.string().optional(),
+  reason: cacheInvalidationReasonSchema,
+  source: uiSurfaceSchema,
+  tags: z.array(z.enum(cacheInvalidationTags)).min(1),
+})
+
+export type CacheInvalidationEvent = z.infer<
+  typeof cacheInvalidationEventSchema
+>
 
 const serializedProblemSchema = z.object({
   id: z.string(),
@@ -64,7 +85,6 @@ export const queueItemSchema = z.object({
   url: z.string(),
   isPremium: z.boolean(),
   dueAt: z.iso.datetime().nullable(),
-  activeTrackPosition: z.number().nullable(),
   summary: practiceSummarySchema,
 })
 
@@ -203,6 +223,7 @@ export type LeetCodeSubmissionResultRemoteRuntimeRequest = z.infer<
 >
 
 export interface ProtocolMap {
+  'cache.invalidate'(request: CacheInvalidationEvent): null
   'runtime.ping'(request: PingRequest): PingResponse
   'app.getShellData'(request: AppShellRequest): AppShellData
   'problems.upsertFromPage'(

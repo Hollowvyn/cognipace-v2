@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
@@ -12,7 +12,7 @@ vi.mock('@/extension/messaging', () => ({
 }))
 
 describe('practice API hooks', () => {
-  it('invalidates practice, queue, and app-shell data after saving a review', async () => {
+  it('sends saved reviews through the runtime mutation boundary', async () => {
     const { queryClient, wrapper } = createQueryTestHarness()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     vi.mocked(sendMessage).mockResolvedValue(reviewResult)
@@ -28,15 +28,12 @@ describe('practice API hooks', () => {
       })
     })
 
-    await waitFor(() => {
-      for (const queryKey of [
-        ['practice-details'],
-        ['today-queue'],
-        ['app-shell-data'],
-      ]) {
-        expect(invalidateQueries).toHaveBeenCalledWith({ queryKey })
-      }
+    expect(sendMessage).toHaveBeenCalledWith('practice.saveReviewResult', {
+      surface: 'content-script',
+      problemId: 'leetcode:two-sum',
+      rating: 'good',
     })
+    expect(invalidateQueries).not.toHaveBeenCalled()
   })
 })
 

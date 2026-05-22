@@ -1,7 +1,10 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
+  appShellQueryKeys,
   getOverlayAppShellDataViaRuntime,
+  useOverlayAppShellData,
   type OverlayAppShellData,
 } from '@/features/app-shell'
 import { createLeetCodeCaptureRemoteClient } from '@/features/leetcode-capture'
@@ -39,7 +42,9 @@ export function useLeetCodePageSync({
   const [captureState, setCaptureState] = useState(() =>
     createEmptyLeetCodeCaptureState(initialLocation),
   )
-  const [context, setContext] = useState<LeetCodeOverlayContext | null>(null)
+  const [syncedProblemSlug, setSyncedProblemSlug] = useState<string | null>(
+    null,
+  )
   const [status, setStatus] = useState<OverlaySyncStatus>(
     initialLocation ? 'booting' : 'error',
   )
@@ -52,6 +57,19 @@ export function useLeetCodePageSync({
   const latestContextRef = useRef<LeetCodeOverlayContext | null>(null)
   const activeProblemIdRef = useRef(activeProblemId)
   const onPageChangedRef = useRef(onPageChanged)
+  const queryClient = useQueryClient()
+  const overlayShell = useOverlayAppShellData(syncedProblemSlug)
+  const context = overlayShell.data?.overlay ?? null
+  const resolvedStatus = overlayShell.isError
+    ? 'error'
+    : context
+      ? 'ready'
+      : status
+  const resolvedFeedback = overlayShell.isError
+    ? readErrorMessage(overlayShell.error)
+    : context
+      ? null
+      : feedback
 
   useEffect(() => {
     activeProblemIdRef.current = activeProblemId
@@ -65,19 +83,18 @@ export function useLeetCodePageSync({
     onPageChangedRef.current = onPageChanged
   }, [onPageChanged])
 
-  const applySyncedContext = useCallback(
-    (nextContext: LeetCodeOverlayContext) => {
-      setContext(nextContext)
+  useEffect(() => {
+    if (!context) {
+      return
+    }
 
-      const problem = nextContext.problem
-      if (!problem || activeProblemIdRef.current === problem.id) {
-        return
-      }
+    const problem = context.problem
+    if (!problem || activeProblemIdRef.current === problem.id) {
+      return
+    }
 
-      onProblemLoaded(nextContext)
-    },
-    [onProblemLoaded],
-  )
+    onProblemLoaded(context)
+  }, [context, onProblemLoaded])
 
   const syncProblem = useCallback(
     async (
@@ -107,18 +124,12 @@ export function useLeetCodePageSync({
           isPremium: nextMetadata.isPremium,
           externalId: nextMetadata.frontendId,
         })
-        const nextShellData = await getOverlayAppShellDataViaRuntime(
-          nextMetadata.location.slug,
-        )
-
         if (syncTokenRef.current !== syncToken) {
           return
         }
 
-        applySyncedContext(nextShellData.overlay)
         syncedMetadataFingerprintRef.current = fingerprint
-        setStatus('ready')
-        setFeedback(null)
+        setSyncedProblemSlug(nextMetadata.location.slug)
       } catch (error) {
         if (syncTokenRef.current !== syncToken) {
           return
@@ -132,7 +143,7 @@ export function useLeetCodePageSync({
         setFeedback(error instanceof Error ? error.message : String(error))
       }
     },
-    [applySyncedContext],
+    [],
   )
 
   useEffect(() => {
@@ -153,7 +164,7 @@ export function useLeetCodePageSync({
       switch (event.type) {
         case 'page-changed':
           syncTokenRef.current += 1
-          setContext(null)
+          setSyncedProblemSlug(null)
           onPageChangedRef.current()
           requestedMetadataFingerprintRef.current = null
           syncedMetadataFingerprintRef.current = null
@@ -184,27 +195,35 @@ export function useLeetCodePageSync({
 
   const refreshContext = useCallback(
     async (problemSlug: string, expectedSyncToken: number) => {
-      const nextShellData = await getOverlayAppShellDataViaRuntime(problemSlug)
+      setSyncedProblemSlug(problemSlug)
+
+      const nextShellData = await queryClient.fetchQuery({
+        queryKey: appShellQueryKeys.overlay(problemSlug),
+        queryFn: () => getOverlayAppShellDataViaRuntime(problemSlug),
+        staleTime: 0,
+      })
 
       if (syncTokenRef.current !== expectedSyncToken) {
         return null
       }
 
-      applySyncedContext(nextShellData.overlay)
-
       return nextShellData.overlay
     },
-    [applySyncedContext],
+    [queryClient],
   )
 
   return {
     context,
-    feedback,
+    feedback: resolvedFeedback,
     latestContextRef,
     location: captureState.location,
     metadata: captureState.metadata,
     refreshContext,
-    status,
+    status: resolvedStatus,
     syncTokenRef,
   }
+}
+
+function readErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
 }

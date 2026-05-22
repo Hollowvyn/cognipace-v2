@@ -21,7 +21,7 @@ const baseProblem = {
 }
 
 describe('buildTodayQueue', () => {
-  it('fills due, active-track new, and reinforcement categories in priority order', () => {
+  it('fills due and reinforcement categories while ignoring unstarted problems', () => {
     const queue = buildTodayQueue(
       [
         candidate({
@@ -34,8 +34,7 @@ describe('buildTodayQueue', () => {
           practice: practice({ lastRating: 'good' }),
         }),
         candidate({
-          slug: 'new',
-          activeTrackPosition: 1,
+          slug: 'unstarted',
         }),
         candidate({
           slug: 'due',
@@ -52,11 +51,10 @@ describe('buildTodayQueue', () => {
     )
 
     expect(queue.dueCount).toBe(1)
-    expect(queue.newCount).toBe(1)
+    expect(queue.newCount).toBe(0)
     expect(queue.reinforcementCount).toBe(1)
     expect(queue.items.map((item) => item.category)).toEqual([
       'due',
-      'new',
       'reinforcement',
     ])
   })
@@ -65,8 +63,7 @@ describe('buildTodayQueue', () => {
     const queue = buildTodayQueue(
       [
         candidate({
-          slug: 'new',
-          activeTrackPosition: 1,
+          slug: 'unstarted',
         }),
         candidate({
           slug: 'due',
@@ -91,12 +88,10 @@ describe('buildTodayQueue', () => {
       [
         candidate({
           slug: 'suspended',
-          activeTrackPosition: 1,
           practice: practice({ isSuspended: true }),
         }),
         candidate({
           slug: 'premium',
-          activeTrackPosition: 2,
           isPremium: true,
         }),
       ],
@@ -115,7 +110,6 @@ describe('buildTodayQueue', () => {
       [
         candidate({
           slug: 'mastered',
-          activeTrackPosition: 1,
           practice: practice({ status: 'mastered' }),
         }),
       ],
@@ -171,7 +165,6 @@ describe('buildTodayQueue', () => {
 
 function candidate(input: {
   slug: string
-  activeTrackPosition?: number | null
   isPremium?: boolean
   practice?: QueueCandidate['practice']
   card?: FsrsCardSnapshot | null
@@ -184,7 +177,6 @@ function candidate(input: {
       title: titleFromSlug(input.slug),
       isPremium: input.isPremium ?? false,
     },
-    activeTrackPosition: input.activeTrackPosition ?? null,
     practice: input.practice ?? null,
     card: input.card ?? null,
   }

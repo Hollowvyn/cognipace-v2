@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
@@ -12,7 +12,7 @@ vi.mock('@/extension/messaging', () => ({
 }))
 
 describe('settings API hooks', () => {
-  it('invalidates settings and app-shell data after settings updates', async () => {
+  it('sends settings updates through the runtime mutation boundary', async () => {
     const { queryClient, wrapper } = createQueryTestHarness()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
@@ -27,15 +27,10 @@ describe('settings API hooks', () => {
       })
     })
 
-    await waitFor(() => {
-      for (const queryKey of [
-        ['settings'],
-        ['today-queue'],
-        ['practice-details'],
-        ['app-shell-data'],
-      ]) {
-        expect(invalidateQueries).toHaveBeenCalledWith({ queryKey })
-      }
+    expect(sendMessage).toHaveBeenCalledWith('settings.updateSettings', {
+      surface: 'dashboard',
+      patch: { timing: { hardMode: true } },
     })
+    expect(invalidateQueries).not.toHaveBeenCalled()
   })
 })

@@ -1,16 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { sendMessage } from '@/extension/messaging'
+import { queryKeys } from '@/platform/query/query-keys'
 
 import { type AppShellData, type AppShellRequest } from './app-shell-contracts'
 
-export const appShellQueryKeys = {
-  all: ['app-shell-data'] as const,
-  popup: () => [...appShellQueryKeys.all, 'popup'] as const,
-  dashboard: () => [...appShellQueryKeys.all, 'dashboard'] as const,
-  overlay: (problemSlug?: string | null) =>
-    [...appShellQueryKeys.all, 'overlay', problemSlug ?? null] as const,
-}
+export const appShellQueryKeys = queryKeys.appShell
 
 async function getAppShellDataViaRuntime(request: AppShellRequest) {
   return sendMessage('app.getShellData', request)
@@ -53,6 +48,14 @@ export function useDashboardAppShellData() {
   return useQuery({
     queryKey: appShellQueryKeys.dashboard(),
     queryFn: getDashboardAppShellDataViaRuntime,
+  })
+}
+
+export function useOverlayAppShellData(problemSlug?: string | null) {
+  return useQuery({
+    enabled: problemSlug !== null && problemSlug !== undefined,
+    queryKey: appShellQueryKeys.overlay(problemSlug),
+    queryFn: () => getOverlayAppShellDataViaRuntime(problemSlug),
   })
 }
 

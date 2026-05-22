@@ -4,6 +4,9 @@ import {
   sendMessage,
   type ProblemsUpsertFromPageRequest,
 } from '@/extension/messaging'
+import { queryKeys } from '@/platform/query/query-keys'
+
+export const problemsQueryKeys = queryKeys.problems
 
 export function upsertProblemFromPageViaRuntime(
   request: ProblemsUpsertFromPageRequest,

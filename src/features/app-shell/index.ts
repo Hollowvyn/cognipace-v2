@@ -4,6 +4,7 @@ export {
   getOverlayAppShellDataViaRuntime,
   getPopupAppShellDataViaRuntime,
   useDashboardAppShellData,
+  useOverlayAppShellData,
   usePopupAppShellData,
   type AppShellProblemSummary,
   type DashboardAppShellData,

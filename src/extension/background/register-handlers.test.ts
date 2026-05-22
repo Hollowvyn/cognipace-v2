@@ -25,9 +25,11 @@ const backgroundMocks = vi.hoisted(() => {
     db,
     handlers,
     assertCanSenderCallExtensionMethod: vi.fn(),
+    broadcastCacheInvalidation: vi.fn(),
     getActiveTrack: vi.fn(),
     getAppDb: vi.fn(),
     getAppShellData: vi.fn(),
+    getSettings: vi.fn(),
     onMessage: vi.fn(
       (
         method: string,
@@ -38,6 +40,7 @@ const backgroundMocks = vi.hoisted(() => {
         return () => undefined
       },
     ),
+    updateSettings: vi.fn(),
   }
 })
 
@@ -58,8 +61,22 @@ vi.mock('@/features/tracks', () => ({
   getActiveTrack: backgroundMocks.getActiveTrack,
 }))
 
+vi.mock('@/features/settings', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/settings')>()
+
+  return {
+    ...actual,
+    getSettings: backgroundMocks.getSettings,
+    updateSettings: backgroundMocks.updateSettings,
+  }
+})
+
 vi.mock('@/platform/db', () => ({
   getAppDb: backgroundMocks.getAppDb,
+}))
+
+vi.mock('./cache-invalidation-broadcaster', () => ({
+  broadcastCacheInvalidation: backgroundMocks.broadcastCacheInvalidation,
 }))
 
 vi.mock('./runtime-policy', () => ({
@@ -71,7 +88,10 @@ describe('background handler registration', () => {
   beforeEach(() => {
     backgroundMocks.handlers.clear()
     vi.clearAllMocks()
+    backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
     backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
+    backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
+    backgroundMocks.updateSettings.mockResolvedValue(defaultUserSettings)
   })
 
   it('registers app-shell payload handling with policy and schema parsing', async () => {
@@ -135,6 +155,41 @@ describe('background handler registration', () => {
         slug: 'two-sum',
       },
     })
+  })
+
+  it('broadcasts cross-surface invalidation after settings updates', async () => {
+    const sender = { id: 'extension-id' }
+    const updatedSettings = {
+      ...defaultUserSettings,
+      timing: {
+        ...defaultUserSettings.timing,
+        hardMode: true,
+      },
+    }
+    backgroundMocks.updateSettings.mockResolvedValue(updatedSettings)
+
+    const handler = readRegisteredHandler('settings.updateSettings')
+    const response = await handler({
+      data: {
+        surface: 'popup',
+        patch: { timing: { hardMode: true } },
+      },
+      sender,
+    })
+
+    expect(
+      backgroundMocks.assertCanSenderCallExtensionMethod,
+    ).toHaveBeenCalledWith('settings.updateSettings', 'popup', sender)
+    expect(backgroundMocks.updateSettings).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      { timing: { hardMode: true } },
+    )
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      reason: 'settings-updated',
+      source: 'popup',
+      tags: ['settings'],
+    })
+    expect(response).toBe(updatedSettings)
   })
 })
 

@@ -1,8 +1,6 @@
 export {
   getPracticeDetailsViaRuntime,
-  invalidatePracticeRelatedQueries,
   overrideLastReviewResultViaRuntime,
-  practiceRelatedQueryKeys,
   resetPracticeScheduleViaRuntime,
   saveReviewResultViaRuntime,
   setPracticeSuspendedViaRuntime,

@@ -36,7 +36,7 @@ describe('app-shell service', () => {
       queue: {
         dailyGoal: 4,
         dueCount: 0,
-        newCount: 1,
+        newCount: 0,
         reinforcementCount: 0,
       },
       activeTrack: {
@@ -61,9 +61,12 @@ describe('app-shell service', () => {
         },
       },
     })
-    expect(payload.recommendation.problem?.slug).toBe('two-sum')
-    expect(payload.recommendation.alsoNextInTrack).toBe(true)
-    expect(payload.popup.queuePreview).toHaveLength(1)
+    expect(payload.recommendation).toMatchObject({
+      category: null,
+      problem: null,
+      alsoNextInTrack: false,
+    })
+    expect(payload.popup.queuePreview).toHaveLength(0)
   })
 
   it('serializes the active track due date when present', async () => {
@@ -82,7 +85,7 @@ describe('app-shell service', () => {
     expect(payload.activeTrack.dueAt).toBe(dueAt.toISOString())
   })
 
-  it('does not mark recommendations as next in track during free practice', async () => {
+  it('does not use the active track as the popup recommendation during free practice', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
@@ -93,7 +96,7 @@ describe('app-shell service', () => {
 
     const payload = await getPopupPayload(handle)
 
-    expect(payload.recommendation.problem?.slug).toBe('two-sum')
+    expect(payload.recommendation.problem).toBeNull()
     expect(payload.recommendation.alsoNextInTrack).toBe(false)
     expect(payload.settings.studyMode).toBe('freePractice')
   })
@@ -106,7 +109,7 @@ describe('app-shell service', () => {
     expect(payload.surface).toBe('dashboard')
     expect(
       payload.dashboard.queuePreview.map((item) => item.problem.slug),
-    ).toEqual(['two-sum'])
+    ).toEqual([])
   })
 
   it('composes overlay payload with current problem practice details', async () => {
@@ -185,6 +188,21 @@ describe('app-shell service', () => {
       problem: {
         slug: 'two-sum',
       },
+    })
+  })
+
+  it('ignores active-track next step in overlay free practice mode', async () => {
+    const handle = await createTestDb()
+
+    await createSettingsRepository(handle.db).updateSettings({
+      studyMode: 'freePractice',
+    })
+
+    const payload = await getOverlayPayload(handle, 'valid-parentheses')
+
+    expect(payload.overlay.nextStep).toMatchObject({
+      kind: 'empty',
+      problem: null,
     })
   })
 

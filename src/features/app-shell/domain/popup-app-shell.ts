@@ -43,7 +43,7 @@ export function buildAppShellRecommendation(
   if (!item) {
     return {
       title: 'Queue is clear',
-      detail: 'No due or new problems are available for the active group.',
+      detail: 'No due reviews or extra practice are queued right now.',
       category: null,
       problem: null,
       dueAt: null,

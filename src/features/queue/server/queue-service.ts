@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 
 import { normalizeProblemDifficulty, type Problem } from '@/features/problems'
 import {
@@ -13,108 +13,20 @@ import {
   type FsrsCardSnapshot,
 } from '@/lib/fsrs'
 import type { Db } from '@/platform/db'
-import {
-  fsrsCards,
-  problemPractice,
-  problems,
-  trackGroupProblems,
-  trackGroups,
-  tracks,
-  trackSession,
-} from '@/platform/db/schema'
+import { fsrsCards, problemPractice, problems } from '@/platform/db/schema'
 
 import { buildTodayQueue, type QueueCandidate } from '../domain'
 
 export async function getTodayQueue(db: Db, generatedAt = new Date()) {
   const settings = await createSettingsRepository(db).getSettings()
-  const activeGroupId = await readActiveGroupId(db)
-  const candidates = await readQueueCandidates(db, activeGroupId)
+  const candidates = await readQueueCandidates(db)
 
   return buildTodayQueue(candidates, settings, generatedAt)
 }
 
-async function readActiveGroupId(db: Db) {
-  const [session] = await db
-    .select({
-      activeTrackId: trackSession.activeTrackId,
-      activeGroupId: trackSession.activeGroupId,
-    })
-    .from(trackSession)
-    .where(eq(trackSession.id, 'active'))
-    .limit(1)
-
-  if (session?.activeGroupId) {
-    return session.activeGroupId
-  }
-
-  const activeTrackId =
-    session?.activeTrackId ?? (await readFirstActiveTrackId(db))
-
-  if (!activeTrackId) {
-    return null
-  }
-
-  return readFirstTrackGroupId(db, activeTrackId)
-}
-
-async function readFirstActiveTrackId(db: Db) {
-  const [track] = await db
-    .select({ id: tracks.id })
-    .from(tracks)
-    .where(eq(tracks.isActive, true))
-    .orderBy(asc(tracks.createdAt))
-    .limit(1)
-
-  return track?.id ?? null
-}
-
-async function readFirstTrackGroupId(db: Db, trackId: string) {
-  const [group] = await db
-    .select({ id: trackGroups.id })
-    .from(trackGroups)
-    .where(eq(trackGroups.trackId, trackId))
-    .orderBy(asc(trackGroups.position))
-    .limit(1)
-
-  return group?.id ?? null
-}
-
-async function readQueueCandidates(
-  db: Db,
-  activeGroupId: string | null,
-): Promise<QueueCandidate[]> {
-  if (activeGroupId) {
-    const rows = await db
-      .select({
-        ...queueCandidateSelection,
-        activeTrackPosition: trackGroupProblems.position,
-      })
-      .from(problems)
-      .leftJoin(problemPractice, eq(problemPractice.problemId, problems.id))
-      .leftJoin(
-        fsrsCards,
-        and(
-          eq(fsrsCards.problemId, problems.id),
-          eq(fsrsCards.cardKind, defaultFsrsCardKind),
-        ),
-      )
-      .leftJoin(
-        trackGroupProblems,
-        and(
-          eq(trackGroupProblems.problemId, problems.id),
-          eq(trackGroupProblems.trackGroupId, activeGroupId),
-        ),
-      )
-      .orderBy(asc(problems.slug))
-
-    return rows.map(mapQueueCandidate)
-  }
-
+async function readQueueCandidates(db: Db): Promise<QueueCandidate[]> {
   const rows = await db
-    .select({
-      ...queueCandidateSelection,
-      activeTrackPosition: sql<number | null>`null`,
-    })
+    .select(queueCandidateSelection)
     .from(problems)
     .leftJoin(problemPractice, eq(problemPractice.problemId, problems.id))
     .leftJoin(
@@ -176,11 +88,9 @@ function mapQueueCandidate(row: {
   problem: QueueProblemRow
   practice: QueuePracticeRow | null
   card: QueueCardRow | null
-  activeTrackPosition: number | null
 }): QueueCandidate {
   return {
     problem: mapProblem(row.problem),
-    activeTrackPosition: row.activeTrackPosition,
     practice: mapPractice(row.practice),
     card: mapCard(row.card),
   }

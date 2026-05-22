@@ -1,11 +1,7 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type QueryClient,
-} from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { sendMessage } from '@/extension/messaging'
+import { queryKeys } from '@/platform/query/query-keys'
 
 import type {
   PracticeDetailsRequest,
@@ -16,11 +12,7 @@ import type {
   PracticeUpdateCurrentLogRequest,
 } from './practice-contracts'
 
-export const practiceRelatedQueryKeys = [
-  ['practice-details'],
-  ['today-queue'],
-  ['app-shell-data'],
-] as const
+export const practiceQueryKeys = queryKeys.practice
 
 export function saveReviewResultViaRuntime(
   request: PracticeSaveReviewResultRequest,
@@ -62,68 +54,37 @@ export type RuntimePracticeDetails = Awaited<
 
 export function usePracticeDetails(request: PracticeDetailsRequest) {
   return useQuery({
-    queryKey: ['practice-details', request.problemId, request.at ?? null],
+    queryKey: practiceQueryKeys.details(request.problemId, request.at),
     queryFn: () => getPracticeDetailsViaRuntime(request),
   })
 }
 
 export function useSaveReviewResult() {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: saveReviewResultViaRuntime,
-    onSuccess: () => {
-      invalidatePracticeRelatedQueries(queryClient)
-    },
   })
 }
 
 export function useOverrideLastReviewResult() {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: overrideLastReviewResultViaRuntime,
-    onSuccess: () => {
-      invalidatePracticeRelatedQueries(queryClient)
-    },
   })
 }
 
 export function useSetPracticeSuspended() {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: setPracticeSuspendedViaRuntime,
-    onSuccess: () => {
-      invalidatePracticeRelatedQueries(queryClient)
-    },
   })
 }
 
 export function useResetPracticeSchedule() {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: resetPracticeScheduleViaRuntime,
-    onSuccess: () => {
-      invalidatePracticeRelatedQueries(queryClient)
-    },
   })
 }
 
 export function useUpdateCurrentPracticeLog() {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: updateCurrentPracticeLogViaRuntime,
-    onSuccess: () => {
-      invalidatePracticeRelatedQueries(queryClient)
-    },
   })
-}
-
-export function invalidatePracticeRelatedQueries(queryClient: QueryClient) {
-  for (const queryKey of practiceRelatedQueryKeys) {
-    void queryClient.invalidateQueries({ queryKey })
-  }
 }

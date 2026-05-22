@@ -36,7 +36,6 @@ const appShellQueueItemSchema = z.object({
   category: z.enum(['due', 'new', 'reinforcement']),
   problem: appShellProblemSummarySchema,
   dueAt: z.iso.datetime().nullable(),
-  activeTrackPosition: z.number().nullable(),
   summary: practiceSummarySchema,
 })
 

@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { browser } from 'wxt/browser'
 
@@ -11,7 +12,7 @@ import type {
   AppShellProblemSummary,
   PopupAppShellData,
 } from '../api/app-shell-contracts'
-import { usePopupAppShellData } from '../api/app-shell-api'
+import { appShellQueryKeys, usePopupAppShellData } from '../api/app-shell-api'
 import {
   createPopupAppShellView,
   selectPopupRecommendation,
@@ -111,6 +112,7 @@ const fallbackData = {
 export function usePopupAppShellController(): PopupAppShellController {
   const shell = usePopupAppShellData()
   const updateSettings = useUpdateSettings()
+  const queryClient = useQueryClient()
   const [recommendationIndex, setRecommendationIndex] = useState(0)
   const [pendingStudyMode, setPendingStudyMode] = useState<StudyMode | null>(
     null,
@@ -182,11 +184,25 @@ export function usePopupAppShellController(): PopupAppShellController {
     })
 
     try {
-      await updateSettings.mutateAsync({
+      const settings = await updateSettings.mutateAsync({
         surface: 'popup',
         patch: { studyMode: nextMode },
       })
-      await shell.refetch()
+      queryClient.setQueryData<PopupAppShellData>(
+        appShellQueryKeys.popup(),
+        (currentData) =>
+          currentData
+            ? {
+                ...currentData,
+                settings: {
+                  studyMode: settings.studyMode,
+                  timing: settings.timing,
+                  memoryReview: settings.memoryReview,
+                  questionFilters: settings.questionFilters,
+                },
+              }
+            : currentData,
+      )
       setStatus(null)
     } catch (error) {
       setStatus({

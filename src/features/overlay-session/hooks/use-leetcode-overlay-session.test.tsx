@@ -15,6 +15,7 @@ import type {
   LeetCodeProblemLocation,
   LeetCodeProblemMetadata,
 } from '@/lib/leetcode'
+import { queryKeys } from '@/platform/query/query-keys'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import { useLeetCodeOverlaySession } from './use-leetcode-overlay-session'
@@ -63,21 +64,31 @@ vi.mock('@/features/problems', () => ({
 }))
 
 vi.mock('@/features/practice', () => ({
-  invalidatePracticeRelatedQueries: vi.fn(
-    (queryClient: {
-      invalidateQueries: (filters: { queryKey: readonly unknown[] }) => unknown
-    }) => {
-      void queryClient.invalidateQueries({ queryKey: ['app-shell-data'] })
-    },
-  ),
   overrideLastReviewResultViaRuntime: vi.fn(),
   saveReviewResultViaRuntime: vi.fn(),
   updateCurrentPracticeLogViaRuntime: vi.fn(),
 }))
 
-vi.mock('@/features/app-shell', () => ({
-  getOverlayAppShellDataViaRuntime: vi.fn(),
-}))
+vi.mock('@/features/app-shell', async () => {
+  const { useQuery } = await import('@tanstack/react-query')
+  const appShellQueryKeys = {
+    overlay: (problemSlug?: string | null) =>
+      ['app-shell-data', 'overlay', problemSlug ?? null] as const,
+  }
+  const getOverlayAppShellDataViaRuntime =
+    vi.fn<(problemSlug?: string | null) => Promise<OverlayAppShellData>>()
+
+  return {
+    appShellQueryKeys,
+    getOverlayAppShellDataViaRuntime,
+    useOverlayAppShellData: (problemSlug?: string | null) =>
+      useQuery({
+        enabled: problemSlug !== null && problemSlug !== undefined,
+        queryKey: appShellQueryKeys.overlay(problemSlug),
+        queryFn: () => getOverlayAppShellDataViaRuntime(problemSlug),
+      }),
+  }
+})
 
 const problemLocation =
   leetcodeMockState.problemLocation satisfies LeetCodeProblemLocation
@@ -278,6 +289,24 @@ describe('useLeetCodeOverlaySession', () => {
       },
     })
     expect(saveReviewResultViaRuntime).not.toHaveBeenCalled()
+  })
+
+  it('refreshes live overlay context after cross-surface cache invalidation', async () => {
+    const { queryClient, result } = await renderReadySession()
+    vi.mocked(getOverlayAppShellDataViaRuntime).mockResolvedValueOnce(
+      createOverlayData({ timing: { hardMode: true } }),
+    )
+
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.appShell.all,
+      })
+    })
+
+    await waitFor(() => {
+      expect(result.current.context?.timing.hardMode).toBe(true)
+    })
+    expect(getOverlayAppShellDataViaRuntime).toHaveBeenLastCalledWith('two-sum')
   })
 
   it.each([

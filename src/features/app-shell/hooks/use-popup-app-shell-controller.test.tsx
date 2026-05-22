@@ -97,14 +97,12 @@ const popupData = {
         category: 'new',
         problem: twoSum,
         dueAt: null,
-        activeTrackPosition: 1,
         summary: createNewSummary(),
       },
       {
         category: 'new',
         problem: validParentheses,
         dueAt: null,
-        activeTrackPosition: 2,
         summary: createNewSummary(),
       },
     ],
@@ -176,13 +174,12 @@ describe('usePopupAppShellController', () => {
     expect(browserMocks.tabsCreate).toHaveBeenCalledWith({ url: twoSum.url })
   })
 
-  it('updates study mode optimistically and refetches after save', async () => {
-    let popupResponse: PopupAppShellData = popupData
+  it('updates study mode optimistically and patches the popup cache after save', async () => {
     const updateDeferred = createDeferred()
     vi.mocked(sendMessage).mockImplementation((method, request) => {
       if (method === 'app.getShellData') {
         expect(request).toEqual({ surface: 'popup' })
-        return Promise.resolve(popupResponse)
+        return Promise.resolve(popupData)
       }
 
       if (method === 'settings.updateSettings') {
@@ -192,8 +189,6 @@ describe('usePopupAppShellController', () => {
         })
 
         return updateDeferred.promise.then(() => {
-          popupResponse = createPopupData({ studyMode: 'freePractice' })
-
           return {
             ...defaultUserSettings,
             studyMode: 'freePractice' as const,
@@ -241,7 +236,7 @@ describe('usePopupAppShellController', () => {
       vi.mocked(sendMessage).mock.calls.filter(([method]) => {
         return method === 'app.getShellData'
       }).length,
-    ).toBeGreaterThanOrEqual(2)
+    ).toBe(1)
   })
 
   it('rolls study mode back when saving fails', async () => {
@@ -342,18 +337,6 @@ function readRuntimeResponse(method: string, request: unknown) {
   }
 
   return Promise.reject(new Error(`Unexpected runtime method ${method}`))
-}
-
-function createPopupData(input: {
-  studyMode: PopupAppShellData['settings']['studyMode']
-}): PopupAppShellData {
-  return {
-    ...popupData,
-    settings: {
-      ...popupData.settings,
-      studyMode: input.studyMode,
-    },
-  }
 }
 
 function createDeferred() {
