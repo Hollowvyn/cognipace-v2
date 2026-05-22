@@ -7,6 +7,7 @@ import {
   problemsUpsertFromPageRequestSchema,
   queueRequestSchema,
   settingsRequestSchema,
+  settingsToggleStudyModeRequestSchema,
   settingsUpdateRequestSchema,
   todayQueueSchema,
   tracksRequestSchema,
@@ -36,7 +37,6 @@ import {
 import {
   serializePracticeDetails,
   serializePracticeSummary,
-  serializeReviewResult,
 } from '@/features/practice/api/practice-serializers'
 import {
   getPracticeDetails,
@@ -53,11 +53,12 @@ import { getTodayQueue } from '@/features/queue/server/queue-service'
 import type { UserSettings } from '@/features/settings/domain'
 import {
   getSettings,
+  toggleStudyMode,
   updateSettings,
 } from '@/features/settings/server/settings-service'
 import type { ActiveTrack } from '@/features/tracks/domain'
 import { getActiveTrack } from '@/features/tracks/server/tracks-service'
-import { getAppDb } from '@/platform/db'
+import { flushDbSnapshot, getAppDb, type Db } from '@/platform/db'
 
 import { broadcastCacheInvalidation } from './cache-invalidation-broadcaster'
 import { assertCanSenderCallExtensionMethod } from './runtime-policy'
@@ -95,18 +96,21 @@ export function registerBackgroundHandlers() {
       request.surface,
       sender,
     )
-    return getAppDb().then(async ({ db }) => {
-      const problem = await upsertProblemFromPage(db, request)
-      await broadcastCacheInvalidation({
-        problemId: problem.id,
-        problemSlug: problem.slug,
-        reason: 'problem-catalog-updated',
-        source: request.surface,
-        tags: ['problems'],
-      })
+    return runDbMutation(
+      async (db) => {
+        const problem = await upsertProblemFromPage(db, request)
 
-      return serializeProblem(problem)
-    })
+        return serializeProblem(problem)
+      },
+      (problem) =>
+        broadcastCacheInvalidation({
+          problemId: problem.id,
+          problemSlug: problem.slug,
+          reason: 'problem-catalog-updated',
+          source: request.surface,
+          tags: ['problems'],
+        }),
+    )
   })
 
   onMessage('practice.getDetails', ({ data, sender }) => {
@@ -120,7 +124,7 @@ export function registerBackgroundHandlers() {
     return getAppDb().then(async ({ db }) => {
       const settings = await getSettings(db)
       const details = await getPracticeDetails(db, request.problemId, {
-        targetRetention: settings.memoryReview.targetRetention,
+        targetRetention: settings.review.targetRetention,
         ...(request.at ? { now: new Date(request.at) } : {}),
       })
 
@@ -136,34 +140,39 @@ export function registerBackgroundHandlers() {
       request.surface,
       sender,
     )
-    return getAppDb().then(async ({ db }) => {
-      const settings = await getSettings(db)
-      const reviewInput = {
-        problemId: request.problemId,
-        rating: request.rating,
-        elapsedSeconds: request.elapsedSeconds,
-        isCorrect: request.isCorrect,
-        log: readReviewLogRequest(request),
-        targetRetention: settings.memoryReview.targetRetention,
-      }
+    return runDbMutation(
+      async (db) => {
+        const settings = await getSettings(db)
+        const reviewInput = {
+          problemId: request.problemId,
+          rating: request.rating,
+          elapsedSeconds: request.elapsedSeconds,
+          isCorrect: request.isCorrect,
+          log: readReviewLogRequest(request),
+          targetRetention: settings.review.targetRetention,
+        }
 
-      const result = await saveReviewResult(db, {
-        ...reviewInput,
-        ...(request.reviewedAt
-          ? { reviewedAt: new Date(request.reviewedAt) }
-          : {}),
-        ...(request.reviewMode ? { reviewMode: request.reviewMode } : {}),
-      })
+        await saveReviewResult(db, {
+          ...reviewInput,
+          ...(request.reviewedAt
+            ? { reviewedAt: new Date(request.reviewedAt) }
+            : {}),
+          ...(request.reviewMode ? { reviewMode: request.reviewMode } : {}),
+        })
+        const details = await getPracticeDetails(db, request.problemId, {
+          targetRetention: settings.review.targetRetention,
+        })
 
-      await broadcastCacheInvalidation({
-        problemId: request.problemId,
-        reason: 'practice-updated',
-        source: request.surface,
-        tags: ['practice', 'queue', 'app-shell'],
-      })
-
-      return serializeReviewResult(result)
-    })
+        return serializePracticeDetails(details)
+      },
+      () =>
+        broadcastCacheInvalidation({
+          problemId: request.problemId,
+          reason: 'practice-updated',
+          source: request.surface,
+          tags: ['practice', 'queue', 'app-shell'],
+        }),
+    )
   })
 
   onMessage('practice.overrideLastReviewResult', ({ data, sender }) => {
@@ -174,26 +183,31 @@ export function registerBackgroundHandlers() {
       request.surface,
       sender,
     )
-    return getAppDb().then(async ({ db }) => {
-      const settings = await getSettings(db)
-      const result = await overrideLastReviewResult(db, {
-        problemId: request.problemId,
-        rating: request.rating,
-        elapsedSeconds: request.elapsedSeconds,
-        isCorrect: request.isCorrect,
-        log: readReviewLogRequest(request),
-        targetRetention: settings.memoryReview.targetRetention,
-      })
+    return runDbMutation(
+      async (db) => {
+        const settings = await getSettings(db)
+        await overrideLastReviewResult(db, {
+          problemId: request.problemId,
+          rating: request.rating,
+          elapsedSeconds: request.elapsedSeconds,
+          isCorrect: request.isCorrect,
+          log: readReviewLogRequest(request),
+          targetRetention: settings.review.targetRetention,
+        })
+        const details = await getPracticeDetails(db, request.problemId, {
+          targetRetention: settings.review.targetRetention,
+        })
 
-      await broadcastCacheInvalidation({
-        problemId: request.problemId,
-        reason: 'practice-updated',
-        source: request.surface,
-        tags: ['practice', 'queue', 'app-shell'],
-      })
-
-      return serializeReviewResult(result)
-    })
+        return serializePracticeDetails(details)
+      },
+      () =>
+        broadcastCacheInvalidation({
+          problemId: request.problemId,
+          reason: 'practice-updated',
+          source: request.surface,
+          tags: ['practice', 'queue', 'app-shell'],
+        }),
+    )
   })
 
   onMessage('practice.setSuspended', ({ data, sender }) => {
@@ -204,21 +218,23 @@ export function registerBackgroundHandlers() {
       request.surface,
       sender,
     )
-    return getAppDb().then(async ({ db }) => {
-      const details = await setPracticeSuspended(db, {
-        problemId: request.problemId,
-        suspended: request.suspended,
-      })
+    return runDbMutation(
+      async (db) => {
+        const details = await setPracticeSuspended(db, {
+          problemId: request.problemId,
+          suspended: request.suspended,
+        })
 
-      await broadcastCacheInvalidation({
-        problemId: request.problemId,
-        reason: 'practice-updated',
-        source: request.surface,
-        tags: ['practice', 'queue', 'app-shell'],
-      })
-
-      return serializePracticeDetails(details)
-    })
+        return serializePracticeDetails(details)
+      },
+      () =>
+        broadcastCacheInvalidation({
+          problemId: request.problemId,
+          reason: 'practice-updated',
+          source: request.surface,
+          tags: ['practice', 'queue', 'app-shell'],
+        }),
+    )
   })
 
   onMessage('practice.resetSchedule', ({ data, sender }) => {
@@ -229,21 +245,23 @@ export function registerBackgroundHandlers() {
       request.surface,
       sender,
     )
-    return getAppDb().then(async ({ db }) => {
-      const details = await resetPracticeSchedule(db, {
-        problemId: request.problemId,
-        keepLog: request.keepLog,
-      })
+    return runDbMutation(
+      async (db) => {
+        const details = await resetPracticeSchedule(db, {
+          problemId: request.problemId,
+          keepLog: request.keepLog,
+        })
 
-      await broadcastCacheInvalidation({
-        problemId: request.problemId,
-        reason: 'practice-updated',
-        source: request.surface,
-        tags: ['practice', 'queue', 'app-shell'],
-      })
-
-      return serializePracticeDetails(details)
-    })
+        return serializePracticeDetails(details)
+      },
+      () =>
+        broadcastCacheInvalidation({
+          problemId: request.problemId,
+          reason: 'practice-updated',
+          source: request.surface,
+          tags: ['practice', 'queue', 'app-shell'],
+        }),
+    )
   })
 
   onMessage('practice.updateCurrentLog', ({ data, sender }) => {
@@ -254,24 +272,26 @@ export function registerBackgroundHandlers() {
       request.surface,
       sender,
     )
-    return getAppDb().then(async ({ db }) => {
-      const settings = await getSettings(db)
+    return runDbMutation(
+      async (db) => {
+        const settings = await getSettings(db)
 
-      const details = await updateCurrentPracticeLog(db, {
-        problemId: request.problemId,
-        log: request.log,
-        targetRetention: settings.memoryReview.targetRetention,
-      })
+        const details = await updateCurrentPracticeLog(db, {
+          problemId: request.problemId,
+          log: request.log,
+          targetRetention: settings.review.targetRetention,
+        })
 
-      await broadcastCacheInvalidation({
-        problemId: request.problemId,
-        reason: 'practice-updated',
-        source: request.surface,
-        tags: ['practice', 'app-shell'],
-      })
-
-      return serializePracticeDetails(details)
-    })
+        return serializePracticeDetails(details)
+      },
+      () =>
+        broadcastCacheInvalidation({
+          problemId: request.problemId,
+          reason: 'practice-updated',
+          source: request.surface,
+          tags: ['practice', 'app-shell'],
+        }),
+    )
   })
 
   onMessage('queue.getTodayQueue', ({ data, sender }) => {
@@ -324,17 +344,22 @@ export function registerBackgroundHandlers() {
       request.surface,
       sender,
     )
-    return getAppDb().then(async ({ db }) => {
-      const settings = await updateSettings(db, request.patch)
+    return runSettingsMutation(request.surface, (db) =>
+      updateSettings(db, request.patch),
+    )
+  })
 
-      await broadcastCacheInvalidation({
-        reason: 'settings-updated',
-        source: request.surface,
-        tags: ['settings'],
-      })
+  onMessage('settings.toggleStudyMode', ({ data, sender }) => {
+    const request = settingsToggleStudyModeRequestSchema.parse(data)
 
-      return settings
-    })
+    assertCanSenderCallExtensionMethod(
+      'settings.toggleStudyMode',
+      request.surface,
+      sender,
+    )
+    return runSettingsMutation(request.surface, (db) =>
+      toggleStudyMode(db),
+    ).then(() => null)
   })
 
   onMessage('leetcode.readProblemMetadata', ({ data, sender }) => {
@@ -370,6 +395,43 @@ export function registerBackgroundHandlers() {
     )
     return readLeetCodeSubmissionResultInBackground(request)
   })
+}
+
+async function runSettingsMutation(
+  source: 'popup' | 'dashboard',
+  writeSettings: (db: Db) => Promise<UserSettings>,
+) {
+  return runDbMutation(writeSettings, () =>
+    broadcastCacheInvalidation({
+      reason: 'settings-updated',
+      source,
+      tags: ['settings'],
+    }),
+  )
+}
+
+let dbMutationQueue: Promise<void> = Promise.resolve()
+
+function runDbMutation<T>(
+  write: (db: Db) => Promise<T>,
+  afterFlush?: (result: T) => unknown,
+) {
+  const queued = dbMutationQueue.then(async () => {
+    const { db } = await getAppDb()
+    const result = await write(db)
+
+    await flushDbSnapshot()
+    await afterFlush?.(result)
+
+    return result
+  })
+
+  dbMutationQueue = queued.then(
+    () => undefined,
+    () => undefined,
+  )
+
+  return queued
 }
 
 function serializeProblem(problem: Problem): SerializedProblem {

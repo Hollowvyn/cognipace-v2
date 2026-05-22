@@ -96,6 +96,27 @@ describe('runtime-policy', () => {
     ).not.toThrow()
   })
 
+  it('allows popup and dashboard senders to update study mode', () => {
+    expect(canCallExtensionMethod('settings.toggleStudyMode', 'popup')).toBe(
+      true,
+    )
+    expect(
+      canCallExtensionMethod('settings.toggleStudyMode', 'dashboard'),
+    ).toBe(true)
+  })
+
+  it('rejects content scripts for settings reads and writes', () => {
+    expect(
+      canCallExtensionMethod('settings.getSettings', 'content-script'),
+    ).toBe(false)
+    expect(
+      canCallExtensionMethod('settings.updateSettings', 'content-script'),
+    ).toBe(false)
+    expect(
+      canCallExtensionMethod('settings.toggleStudyMode', 'content-script'),
+    ).toBe(false)
+  })
+
   it('allows content scripts to use practice controls for the current problem', () => {
     expect(() =>
       assertCanSenderCallExtensionMethod(

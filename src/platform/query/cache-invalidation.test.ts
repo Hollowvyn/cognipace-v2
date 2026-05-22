@@ -16,6 +16,7 @@ describe('cache invalidation query-key mapping', () => {
       ['app-shell-data'],
       ['practice-details'],
       ['today-queue'],
+      ['tracks'],
     ])
     expect(readQueryKeysForInvalidation(['tracks'])).toEqual([
       ['tracks'],
@@ -38,6 +39,7 @@ describe('cache invalidation query-key mapping', () => {
       ['app-shell-data'],
       ['practice-details'],
       ['today-queue'],
+      ['tracks'],
     ])
   })
 })

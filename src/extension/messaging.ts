@@ -21,10 +21,19 @@ import {
   type PracticeSetSuspendedRequest,
   type PracticeUpdateCurrentLogRequest,
   type SerializedPracticeDetails,
-  type SerializedReviewResult,
 } from '@/features/practice/api/practice-contracts'
 import { problemDifficulties } from '@/features/problems'
-import { type UserSettings, userSettingsPatchSchema } from '@/features/settings'
+import type { UserSettings } from '@/features/settings'
+export {
+  settingsRequestSchema,
+  settingsToggleStudyModeRequestSchema,
+  settingsUpdateRequestSchema,
+} from '@/features/settings/api/settings-contracts'
+import {
+  type SettingsRequest,
+  type SettingsToggleStudyModeRequest,
+  type SettingsUpdateRequest,
+} from '@/features/settings/api/settings-contracts'
 import { cacheInvalidationTags } from '@/platform/query/cache-invalidation'
 
 export const extensionSurfaceSchema = z.enum([
@@ -191,19 +200,6 @@ export const tracksRequestSchema = z.object({
 
 export type TracksRequest = z.infer<typeof tracksRequestSchema>
 
-export const settingsRequestSchema = z.object({
-  surface: z.enum(['popup', 'dashboard']),
-})
-
-export type SettingsRequest = z.infer<typeof settingsRequestSchema>
-
-export const settingsUpdateRequestSchema = z.object({
-  surface: z.enum(['popup', 'dashboard']),
-  patch: userSettingsPatchSchema,
-})
-
-export type SettingsUpdateRequest = z.infer<typeof settingsUpdateRequestSchema>
-
 export const leetcodeProblemRemoteRuntimeRequestSchema =
   leetcodeProblemRemoteRequestSchema.extend({
     surface: z.literal('content-script'),
@@ -231,13 +227,13 @@ export interface ProtocolMap {
   ): SerializedProblem
   'practice.saveReviewResult'(
     request: PracticeSaveReviewResultRequest,
-  ): SerializedReviewResult
+  ): SerializedPracticeDetails
   'practice.getDetails'(
     request: PracticeDetailsRequest,
   ): SerializedPracticeDetails
   'practice.overrideLastReviewResult'(
     request: PracticeOverrideLastReviewResultRequest,
-  ): SerializedReviewResult
+  ): SerializedPracticeDetails
   'practice.setSuspended'(
     request: PracticeSetSuspendedRequest,
   ): SerializedPracticeDetails
@@ -251,6 +247,7 @@ export interface ProtocolMap {
   'tracks.getActiveTrack'(request: TracksRequest): SerializedActiveTrack
   'settings.getSettings'(request: SettingsRequest): UserSettings
   'settings.updateSettings'(request: SettingsUpdateRequest): UserSettings
+  'settings.toggleStudyMode'(request: SettingsToggleStudyModeRequest): null
   'leetcode.readProblemMetadata'(
     request: LeetCodeProblemRemoteRuntimeRequest,
   ): SerializedLeetCodeMetadataResult

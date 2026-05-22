@@ -26,10 +26,12 @@ const backgroundMocks = vi.hoisted(() => {
     handlers,
     assertCanSenderCallExtensionMethod: vi.fn(),
     broadcastCacheInvalidation: vi.fn(),
+    flushDbSnapshot: vi.fn(),
     getActiveTrack: vi.fn(),
     getAppDb: vi.fn(),
     getAppShellData: vi.fn(),
     getSettings: vi.fn(),
+    toggleStudyMode: vi.fn(),
     onMessage: vi.fn(
       (
         method: string,
@@ -63,10 +65,12 @@ vi.mock('@/features/tracks/server/tracks-service', () => ({
 
 vi.mock('@/features/settings/server/settings-service', () => ({
   getSettings: backgroundMocks.getSettings,
+  toggleStudyMode: backgroundMocks.toggleStudyMode,
   updateSettings: backgroundMocks.updateSettings,
 }))
 
 vi.mock('@/platform/db', () => ({
+  flushDbSnapshot: backgroundMocks.flushDbSnapshot,
   getAppDb: backgroundMocks.getAppDb,
 }))
 
@@ -84,8 +88,10 @@ describe('background handler registration', () => {
     backgroundMocks.handlers.clear()
     vi.clearAllMocks()
     backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
+    backgroundMocks.flushDbSnapshot.mockResolvedValue(undefined)
     backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
     backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
+    backgroundMocks.toggleStudyMode.mockResolvedValue(defaultUserSettings)
     backgroundMocks.updateSettings.mockResolvedValue(defaultUserSettings)
   })
 
@@ -152,13 +158,13 @@ describe('background handler registration', () => {
     })
   })
 
-  it('broadcasts cross-surface invalidation after settings updates', async () => {
+  it('broadcasts cross-surface invalidation after settings writes', async () => {
     const sender = { id: 'extension-id' }
     const updatedSettings = {
       ...defaultUserSettings,
-      timing: {
-        ...defaultUserSettings.timing,
-        hardMode: true,
+      assessment: {
+        ...defaultUserSettings.assessment,
+        strictTiming: true,
       },
     }
     backgroundMocks.updateSettings.mockResolvedValue(updatedSettings)
@@ -167,7 +173,7 @@ describe('background handler registration', () => {
     const response = await handler({
       data: {
         surface: 'popup',
-        patch: { timing: { hardMode: true } },
+        patch: { assessment: { strictTiming: true } },
       },
       sender,
     })
@@ -177,40 +183,74 @@ describe('background handler registration', () => {
     ).toHaveBeenCalledWith('settings.updateSettings', 'popup', sender)
     expect(backgroundMocks.updateSettings).toHaveBeenCalledWith(
       backgroundMocks.db,
-      { timing: { hardMode: true } },
+      { assessment: { strictTiming: true } },
     )
     expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
       reason: 'settings-updated',
       source: 'popup',
       tags: ['settings'],
     })
+    expectFlushBeforeBroadcast()
     expect(response).toBe(updatedSettings)
+
+    vi.clearAllMocks()
+    const toggleHandler = readRegisteredHandler('settings.toggleStudyMode')
+    const toggleResponse = await toggleHandler({
+      data: {
+        surface: 'popup',
+      },
+      sender,
+    })
+
+    expect(
+      backgroundMocks.assertCanSenderCallExtensionMethod,
+    ).toHaveBeenCalledWith('settings.toggleStudyMode', 'popup', sender)
+    expect(backgroundMocks.toggleStudyMode).toHaveBeenCalledWith(
+      backgroundMocks.db,
+    )
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      reason: 'settings-updated',
+      source: 'popup',
+      tags: ['settings'],
+    })
+    expectFlushBeforeBroadcast()
+    expect(toggleResponse).toBeNull()
+  })
+
+  it('reads settings through the runtime policy and DB boundary', async () => {
+    const sender = { id: 'extension-id' }
+    const handler = readRegisteredHandler('settings.getSettings')
+    const response = await handler({
+      data: { surface: 'dashboard' },
+      sender,
+    })
+
+    expect(
+      backgroundMocks.assertCanSenderCallExtensionMethod,
+    ).toHaveBeenCalledWith('settings.getSettings', 'dashboard', sender)
+    expect(backgroundMocks.getSettings).toHaveBeenCalledWith(backgroundMocks.db)
+    expect(response).toBe(defaultUserSettings)
+  })
+
+  it('rejects invalid settings patches before writing or broadcasting', () => {
+    const handler = readRegisteredHandler('settings.updateSettings')
+
+    expect(() =>
+      handler({
+        data: {
+          surface: 'dashboard',
+          patch: { practice: { dailyGoal: 0 } },
+        },
+        sender: { id: 'extension-id' },
+      }),
+    ).toThrow()
+    expect(backgroundMocks.updateSettings).not.toHaveBeenCalled()
+    expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
   })
 })
 
 describe('background handler serializers', () => {
-  it('serializes active track due date and progress for runtime responses', () => {
-    const dueAt = new Date('2026-03-01T00:00:00.000Z')
-
-    expect(serializeActiveTrack(createActiveTrack(dueAt))).toMatchObject({
-      track: {
-        id: 'leetcode-75',
-        dueAt: dueAt.toISOString(),
-      },
-      activeGroup: {
-        title: 'Arrays and Hashing',
-      },
-      progress: {
-        completedCount: 1,
-        totalCount: 2,
-        percent: 50,
-      },
-      nextProblem: {
-        slug: 'two-sum',
-      },
-    })
-  })
-
   it('validates queue request timestamps at the runtime boundary', () => {
     expect(() =>
       queueRequestSchema.parse({
@@ -257,6 +297,19 @@ function readRegisteredHandler(method: string) {
   expect(handler).toBeDefined()
 
   return handler!
+}
+
+function expectFlushBeforeBroadcast() {
+  expect(backgroundMocks.flushDbSnapshot).toHaveBeenCalledTimes(1)
+  expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledTimes(1)
+
+  const flushOrder =
+    backgroundMocks.flushDbSnapshot.mock.invocationCallOrder[0] ?? 0
+  const broadcastOrder =
+    backgroundMocks.broadcastCacheInvalidation.mock.invocationCallOrder[0] ?? 0
+
+  expect(flushOrder).toBeGreaterThan(0)
+  expect(flushOrder).toBeLessThan(broadcastOrder)
 }
 
 function createPopupShellData(): PopupAppShellData {
@@ -314,10 +367,9 @@ function createPopupShellData(): PopupAppShellData {
       items: [],
     },
     settings: {
-      studyMode: defaultUserSettings.studyMode,
-      timing: defaultUserSettings.timing,
-      memoryReview: defaultUserSettings.memoryReview,
-      questionFilters: defaultUserSettings.questionFilters,
+      practice: defaultUserSettings.practice,
+      review: defaultUserSettings.review,
+      assessment: defaultUserSettings.assessment,
     },
     popup: {
       queuePreview: [],

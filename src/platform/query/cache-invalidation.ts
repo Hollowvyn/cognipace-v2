@@ -29,6 +29,7 @@ const queryKeysByInvalidationTag = {
     queryKeys.appShell.all,
     queryKeys.practice.all,
     queryKeys.queue.all,
+    queryKeys.tracks.all,
   ],
   tracks: [queryKeys.tracks.all, queryKeys.appShell.all],
 } satisfies Record<CacheInvalidationTag, readonly QueryKey[]>

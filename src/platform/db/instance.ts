@@ -29,11 +29,7 @@ export async function flushDbSnapshot() {
     snapshotTimer = null
   }
 
-  await persistSnapshot()
-
-  if (snapshotWritePromise) {
-    await snapshotWritePromise
-  }
+  await writeSnapshotAfterPending()
 }
 
 export function resetAppDbForTesting() {
@@ -90,8 +86,25 @@ function scheduleSnapshot() {
 
   snapshotTimer = setTimeout(() => {
     snapshotTimer = null
-    snapshotWritePromise = persistSnapshot()
+    void writeSnapshotAfterPending()
   }, snapshotDebounceMs)
+}
+
+async function writeSnapshotAfterPending() {
+  if (snapshotWritePromise) {
+    await snapshotWritePromise
+  }
+
+  const writePromise = persistSnapshot()
+  snapshotWritePromise = writePromise
+
+  try {
+    await writePromise
+  } finally {
+    if (snapshotWritePromise === writePromise) {
+      snapshotWritePromise = null
+    }
+  }
 }
 
 async function persistSnapshot() {
