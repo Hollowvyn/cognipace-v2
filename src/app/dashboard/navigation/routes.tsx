@@ -1,0 +1,131 @@
+import {
+  RouterProvider,
+  createHashHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  type RouterHistory,
+} from '@tanstack/react-router'
+
+import { DashboardShell } from '../dashboard-shell'
+import {
+  dashboardModalRouteMeta,
+  dashboardRouteMeta,
+} from './route-manifest'
+import { AnalyticsPage } from '../screens/analytics-page'
+import { LibraryPage } from '../screens/library-page'
+import {
+  EditProblemModalPage,
+  EditTrackModalPage,
+  NewProblemModalPage,
+  NewTrackModalPage,
+} from '../screens/modal-placeholders'
+import { OverviewPage } from '../screens/overview-page'
+import { SettingsPage } from '../screens/settings-page'
+import { TracksPage } from '../screens/tracks-page'
+export { dashboardPaths } from './route-manifest'
+
+const rootRoute = createRootRoute({
+  component: DashboardShell,
+})
+
+const overviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  component: OverviewPage,
+  staticData: dashboardRouteMeta.overview.staticData,
+})
+
+const tracksRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tracks',
+  component: TracksPage,
+  staticData: dashboardRouteMeta.tracks.staticData,
+})
+
+const trackNewRoute = createRoute({
+  getParentRoute: () => tracksRoute,
+  path: dashboardModalRouteMeta.trackNew.relativePath,
+  component: NewTrackModalPage,
+  staticData: dashboardModalRouteMeta.trackNew.staticData,
+})
+
+const trackEditRoute = createRoute({
+  getParentRoute: () => tracksRoute,
+  path: dashboardModalRouteMeta.trackEdit.relativePath,
+  component: EditTrackModalPage,
+  staticData: dashboardModalRouteMeta.trackEdit.staticData,
+})
+
+const libraryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/library',
+  component: LibraryPage,
+  staticData: dashboardRouteMeta.library.staticData,
+})
+
+const problemNewRoute = createRoute({
+  getParentRoute: () => libraryRoute,
+  path: dashboardModalRouteMeta.problemNew.relativePath,
+  component: NewProblemModalPage,
+  staticData: dashboardModalRouteMeta.problemNew.staticData,
+})
+
+const problemEditRoute = createRoute({
+  getParentRoute: () => libraryRoute,
+  path: dashboardModalRouteMeta.problemEdit.relativePath,
+  component: EditProblemModalPage,
+  staticData: dashboardModalRouteMeta.problemEdit.staticData,
+})
+
+const analyticsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/analytics',
+  component: AnalyticsPage,
+  staticData: dashboardRouteMeta.analytics.staticData,
+})
+
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings',
+  component: SettingsPage,
+  staticData: dashboardRouteMeta.settings.staticData,
+})
+
+const routeTree = rootRoute.addChildren([
+  overviewRoute,
+  tracksRoute.addChildren([trackNewRoute, trackEditRoute]),
+  libraryRoute.addChildren([problemNewRoute, problemEditRoute]),
+  analyticsRoute,
+  settingsRoute,
+])
+
+interface CreateDashboardRouterOptions {
+  history?: RouterHistory
+}
+
+export function createDashboardRouter(
+  options: CreateDashboardRouterOptions = {},
+) {
+  return createRouter({
+    history: options.history ?? createHashHistory(),
+    routeTree,
+  })
+}
+
+export const dashboardRouter = createDashboardRouter()
+export type DashboardRouter = typeof dashboardRouter
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof dashboardRouter
+  }
+}
+
+export function DashboardApp({
+  router = dashboardRouter,
+}: {
+  router?: DashboardRouter
+}) {
+  return <RouterProvider router={router} />
+}

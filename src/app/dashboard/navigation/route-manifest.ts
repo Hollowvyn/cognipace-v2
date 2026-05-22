@@ -1,0 +1,165 @@
+export type DashboardSection =
+  | 'overview'
+  | 'tracks'
+  | 'library'
+  | 'analytics'
+  | 'settings'
+
+export type DashboardRoutePresentation = 'page' | 'modal-placeholder'
+
+export interface DashboardRouteStaticData {
+  navLabel?: string
+  presentation: DashboardRoutePresentation
+  section: DashboardSection
+  title: string
+}
+
+declare module '@tanstack/router-core' {
+  interface StaticDataRouteOption {
+    navLabel?: string
+    presentation?: DashboardRoutePresentation
+    section?: DashboardSection
+    title?: string
+  }
+}
+
+export const dashboardPaths = {
+  overview: '/',
+  tracks: '/tracks',
+  library: '/library',
+  analytics: '/analytics',
+  settings: '/settings',
+  trackNew: '/tracks/new',
+  trackEdit: '/tracks/$trackId/edit',
+  problemNew: '/library/problems/new',
+  problemEdit: '/library/problems/$problemId/edit',
+} as const satisfies Record<string, string>
+
+export type DashboardTopLevelPath =
+  | typeof dashboardPaths.overview
+  | typeof dashboardPaths.tracks
+  | typeof dashboardPaths.library
+  | typeof dashboardPaths.analytics
+  | typeof dashboardPaths.settings
+
+export type DashboardModalClosePath =
+  | typeof dashboardPaths.tracks
+  | typeof dashboardPaths.library
+
+export interface DashboardTopLevelRoute {
+  activeExact?: boolean
+  path: DashboardTopLevelPath
+  staticData: DashboardRouteStaticData & {
+    navLabel: string
+    presentation: 'page'
+  }
+}
+
+interface DashboardModalRoute {
+  closeTo: DashboardModalClosePath
+  description: string
+  relativePath: string
+  staticData: DashboardRouteStaticData & {
+    presentation: 'modal-placeholder'
+  }
+}
+
+export const dashboardRouteMeta = {
+  overview: {
+    activeExact: true,
+    path: dashboardPaths.overview,
+    staticData: {
+      navLabel: 'Overview',
+      presentation: 'page',
+      section: 'overview',
+      title: 'Overview',
+    },
+  },
+  tracks: {
+    path: dashboardPaths.tracks,
+    staticData: {
+      navLabel: 'Tracks',
+      presentation: 'page',
+      section: 'tracks',
+      title: 'Tracks',
+    },
+  },
+  library: {
+    path: dashboardPaths.library,
+    staticData: {
+      navLabel: 'Library',
+      presentation: 'page',
+      section: 'library',
+      title: 'Library',
+    },
+  },
+  analytics: {
+    path: dashboardPaths.analytics,
+    staticData: {
+      navLabel: 'Analytics',
+      presentation: 'page',
+      section: 'analytics',
+      title: 'Analytics',
+    },
+  },
+  settings: {
+    path: dashboardPaths.settings,
+    staticData: {
+      navLabel: 'Settings',
+      presentation: 'page',
+      section: 'settings',
+      title: 'Settings',
+    },
+  },
+} as const satisfies Record<DashboardSection, DashboardTopLevelRoute>
+
+export const dashboardTopLevelRoutes = [
+  dashboardRouteMeta.overview,
+  dashboardRouteMeta.tracks,
+  dashboardRouteMeta.library,
+  dashboardRouteMeta.analytics,
+  dashboardRouteMeta.settings,
+] as const satisfies readonly DashboardTopLevelRoute[]
+
+export const dashboardModalRouteMeta = {
+  trackNew: {
+    closeTo: dashboardPaths.tracks,
+    description: 'Custom track creation will be implemented in a later phase.',
+    relativePath: 'new',
+    staticData: {
+      presentation: 'modal-placeholder',
+      section: 'tracks',
+      title: 'New Track',
+    },
+  },
+  trackEdit: {
+    closeTo: dashboardPaths.tracks,
+    description: 'Custom track editing will be implemented in a later phase.',
+    relativePath: '$trackId/edit',
+    staticData: {
+      presentation: 'modal-placeholder',
+      section: 'tracks',
+      title: 'Edit Track',
+    },
+  },
+  problemNew: {
+    closeTo: dashboardPaths.library,
+    description: 'Problem creation will be implemented in a later phase.',
+    relativePath: 'problems/new',
+    staticData: {
+      presentation: 'modal-placeholder',
+      section: 'library',
+      title: 'New Problem',
+    },
+  },
+  problemEdit: {
+    closeTo: dashboardPaths.library,
+    description: 'Problem editing will be implemented in a later phase.',
+    relativePath: 'problems/$problemId/edit',
+    staticData: {
+      presentation: 'modal-placeholder',
+      section: 'library',
+      title: 'Edit Problem',
+    },
+  },
+} as const satisfies Record<string, DashboardModalRoute>
