@@ -61,13 +61,13 @@ describe('SettingsScreen', () => {
     expect(
       screen.getByRole('button', { name: 'Timing targets details' }),
     ).toBeVisible()
-    expect(screen.getByRole('spinbutton', { name: 'Easy goal' })).toHaveValue(
+    expect(screen.getByRole('spinbutton', { name: 'Easy' })).toHaveValue(
       defaultUserSettings.assessment.timeTargetsMinutes.easy,
     )
-    expect(screen.getByRole('spinbutton', { name: 'Medium goal' })).toHaveValue(
+    expect(screen.getByRole('spinbutton', { name: 'Medium' })).toHaveValue(
       defaultUserSettings.assessment.timeTargetsMinutes.medium,
     )
-    expect(screen.getByRole('spinbutton', { name: 'Hard goal' })).toHaveValue(
+    expect(screen.getByRole('spinbutton', { name: 'Hard' })).toHaveValue(
       defaultUserSettings.assessment.timeTargetsMinutes.hard,
     )
     expect(

@@ -155,7 +155,7 @@ function TimingTargetsControl({
             errorMessageId={errorId}
             id={field.id}
             key={field.id}
-            label={`${field.label} goal`}
+            label={field.label}
             max={60}
             min={10}
             onChange={(value) => {

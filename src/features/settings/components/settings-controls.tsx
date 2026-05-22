@@ -64,7 +64,7 @@ export function NumberControl({
     >
       {label ? (
         <label
-          className="pointer-events-none absolute left-2 top-0 z-10 -translate-y-1/2 bg-card px-1 text-[0.75rem] font-semibold leading-none text-muted-foreground"
+          className="pointer-events-none absolute left-2 top-0 z-10 -translate-y-1/2 bg-card px-1 text-[0.6875rem] font-semibold leading-none text-muted-foreground"
           htmlFor={id}
         >
           {label}
