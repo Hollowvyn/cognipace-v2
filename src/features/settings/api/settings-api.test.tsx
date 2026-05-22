@@ -1,18 +1,43 @@
-import { act, renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
 import { defaultUserSettings } from '@/features/settings/domain'
+import { queryKeys } from '@/platform/query/query-keys'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
-import { useUpdateSettings } from './settings-api'
+import {
+  settingsQueryKeys,
+  useSettings,
+  useToggleStudyMode,
+  useUpdateSettings,
+} from './settings-api'
 
 vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
 }))
 
 describe('settings API hooks', () => {
-  it('sends settings updates through the runtime mutation boundary', async () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('uses the settings query key and reads settings through the dashboard surface', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
+    const { wrapper } = createQueryTestHarness()
+
+    const { result } = renderHook(() => useSettings(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual(defaultUserSettings)
+    })
+    expect(settingsQueryKeys.all).toEqual(['settings'])
+    expect(sendMessage).toHaveBeenCalledWith('settings.getSettings', {
+      surface: 'dashboard',
+    })
+  })
+
+  it('sends settings updates and invalidates DB-backed settings state', async () => {
     const { queryClient, wrapper } = createQueryTestHarness()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
@@ -23,14 +48,59 @@ describe('settings API hooks', () => {
     await act(async () => {
       await result.current.mutateAsync({
         surface: 'dashboard',
-        patch: { timing: { hardMode: true } },
+        patch: { assessment: { strictTiming: true } },
       })
     })
 
     expect(sendMessage).toHaveBeenCalledWith('settings.updateSettings', {
       surface: 'dashboard',
-      patch: { timing: { hardMode: true } },
+      patch: { assessment: { strictTiming: true } },
     })
-    expect(invalidateQueries).not.toHaveBeenCalled()
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.settings.all,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.appShell.all,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.practice.all,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.queue.all,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.tracks.all,
+    })
+  })
+
+  it('sends study-mode toggles and invalidates DB-backed settings state', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(null)
+    const { queryClient, wrapper } = createQueryTestHarness()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useToggleStudyMode(), {
+      wrapper,
+    })
+
+    let response: unknown
+
+    await act(async () => {
+      response = await result.current.mutateAsync({
+        surface: 'popup',
+      })
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('settings.toggleStudyMode', {
+      surface: 'popup',
+    })
+    expect(response).toBeNull()
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.settings.all,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.appShell.all,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.tracks.all,
+    })
   })
 })

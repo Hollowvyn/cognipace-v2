@@ -1,12 +1,20 @@
-import { DashboardPlaceholderPage } from '@/app/dashboard/layout/dashboard-placeholder-page'
+import {
+  DashboardPage,
+  DashboardPageBody,
+  DashboardPageHeader,
+} from '@/app/dashboard/layout/dashboard-page'
 import { dashboardRouteMeta } from '@/app/dashboard/navigation/route-manifest'
+import { SettingsScreen } from '@/features/settings'
 
 export function SettingsPage() {
   return (
-    <DashboardPlaceholderPage
-      description="MVP preferences will land here later."
-      panelCopy="This route is reserved for preference controls only in the MVP shell."
-      title={dashboardRouteMeta.settings.staticData.title}
-    />
+    <DashboardPage className="mx-auto w-full max-w-[64rem]">
+      <DashboardPageHeader title={dashboardRouteMeta.settings.staticData.title}>
+        Configure practice, overlay, review, and timing.
+      </DashboardPageHeader>
+      <DashboardPageBody>
+        <SettingsScreen />
+      </DashboardPageBody>
+    </DashboardPage>
   )
 }

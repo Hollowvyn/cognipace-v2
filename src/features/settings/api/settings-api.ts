@@ -1,7 +1,13 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { sendMessage, type SettingsUpdateRequest } from '@/extension/messaging'
+import { sendMessage } from '@/extension/messaging'
+import { invalidateTaggedQueries } from '@/platform/query/cache-invalidation'
 import { queryKeys } from '@/platform/query/query-keys'
+
+import type {
+  SettingsToggleStudyModeRequest,
+  SettingsUpdateRequest,
+} from './settings-contracts'
 
 export const settingsQueryKeys = queryKeys.settings
 
@@ -14,8 +20,25 @@ export function useSettings() {
 }
 
 export function useUpdateSettings() {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: (request: SettingsUpdateRequest) =>
       sendMessage('settings.updateSettings', request),
+    onSuccess: () => {
+      invalidateTaggedQueries(queryClient, ['settings'])
+    },
+  })
+}
+
+export function useToggleStudyMode() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (request: SettingsToggleStudyModeRequest) =>
+      sendMessage('settings.toggleStudyMode', request),
+    onSuccess: () => {
+      invalidateTaggedQueries(queryClient, ['settings'])
+    },
   })
 }

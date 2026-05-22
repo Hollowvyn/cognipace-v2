@@ -10,3 +10,7 @@ export function getSettings(db: Db) {
 export function updateSettings(db: Db, patch: UserSettingsPatch) {
   return createSettingsRepository(db).updateSettings(patch)
 }
+
+export function toggleStudyMode(db: Db) {
+  return createSettingsRepository(db).toggleStudyMode()
+}

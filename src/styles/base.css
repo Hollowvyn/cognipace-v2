@@ -73,3 +73,44 @@
     }
   }
 }
+
+@layer components {
+  @keyframes cp-tooltip-enter {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes cp-tooltip-exit {
+    from {
+      opacity: 1;
+    }
+
+    to {
+      opacity: 0;
+    }
+  }
+
+  [data-cp-tooltip-motion][data-state='open'],
+  [data-cp-tooltip-motion][data-state='delayed-open'],
+  [data-cp-tooltip-motion][data-state='instant-open'] {
+    animation: cp-tooltip-enter var(--cp-motion-duration-fast)
+      var(--cp-motion-ease);
+  }
+
+  [data-cp-tooltip-motion][data-state='closed'] {
+    pointer-events: none;
+    animation: cp-tooltip-exit var(--cp-motion-duration-fast)
+      var(--cp-motion-ease) forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-cp-tooltip-motion][data-state] {
+      animation-duration: 0.01ms;
+    }
+  }
+}

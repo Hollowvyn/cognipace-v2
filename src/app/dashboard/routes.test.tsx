@@ -1,7 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryHistory } from '@tanstack/react-router'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { sendMessage } from '@/extension/messaging'
+import { defaultUserSettings } from '@/features/settings/domain'
+import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import {
   DashboardApp,
@@ -9,12 +13,17 @@ import {
   dashboardPaths,
 } from './navigation/routes'
 
+vi.mock('@/extension/messaging', () => ({
+  sendMessage: vi.fn(),
+}))
+
 function renderDashboard(initialEntry = '/') {
   const router = createDashboardRouter({
     history: createMemoryHistory({ initialEntries: [initialEntry] }),
   })
+  const { wrapper } = createQueryTestHarness()
 
-  render(<DashboardApp router={router} />)
+  render(<DashboardApp router={router} />, { wrapper })
 
   return {
     router,
@@ -23,6 +32,11 @@ function renderDashboard(initialEntry = '/') {
 }
 
 describe('dashboard routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
+  })
+
   it('renders all top-level navigation links', async () => {
     renderDashboard()
 
@@ -38,18 +52,13 @@ describe('dashboard routes', () => {
     ['/tracks', 'Tracks', 'Track catalog'],
     ['/library', 'Library', 'all-problem table'],
     ['/analytics', 'Analytics', 'Queue, FSRS, and Analytics'],
-    ['/settings', 'Settings', 'MVP preferences'],
-  ])(
-    'renders the %s placeholder route',
-    async (path, heading, expectedCopy) => {
-      renderDashboard(path)
+    ['/settings', 'Settings', 'Daily goal'],
+  ])('renders the %s route', async (path, heading, expectedCopy) => {
+    renderDashboard(path)
 
-      expect(
-        await screen.findByRole('heading', { name: heading }),
-      ).toBeVisible()
-      expect(screen.getByText(new RegExp(expectedCopy, 'i'))).toBeVisible()
-    },
-  )
+    expect(await screen.findByRole('heading', { name: heading })).toBeVisible()
+    expect(await screen.findByText(new RegExp(expectedCopy, 'i'))).toBeVisible()
+  })
 
   it.each([
     ['/tracks/new', 'Tracks', 'New Track'],
@@ -64,9 +73,7 @@ describe('dashboard routes', () => {
       expect(
         await screen.findByRole('heading', { name: parentHeading }),
       ).toBeVisible()
-      expect(
-        screen.getByRole('dialog', { name: modalHeading }),
-      ).toBeVisible()
+      expect(screen.getByRole('dialog', { name: modalHeading })).toBeVisible()
     },
   )
 
@@ -102,10 +109,9 @@ describe('dashboard routes', () => {
   it('keeps parent nav active for modal child routes', async () => {
     renderDashboard('/library/problems/two-sum/edit')
 
-    expect(await screen.findByRole('link', { name: 'Library' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    expect(
+      await screen.findByRole('link', { name: 'Library' }),
+    ).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute(
       'aria-current',
     )
@@ -122,9 +128,7 @@ describe('dashboard routes', () => {
 
     expect(routePaths).not.toEqual(
       expect.arrayContaining([
-        expect.stringMatching(
-          /delete|reset|backup|import|data-management/i,
-        ),
+        expect.stringMatching(/delete|reset|backup|import|data-management/i),
       ]),
     )
   })

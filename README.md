@@ -106,6 +106,63 @@ their domain and may expose narrow public surfaces. Background runtime handlers
 may call server/data surfaces; UI and content scripts communicate through typed
 runtime messages.
 
+## State And Data Flow
+
+CogniPace is local-first, and the local SQLite database is the source of truth
+for persisted application facts. Settings, practice state, queue inputs, track
+state, and app-shell read models should be derived from the database through
+feature services and typed runtime messages.
+
+The UI follows unidirectional data flow:
+
+```txt
+user action -> runtime command -> DB write -> invalidation -> query refetch -> render
+```
+
+Mutation calls should express intent, such as `settings.toggleStudyMode` or
+`practice.saveReviewResult`. They should not create long-lived client-side
+copies of DB-owned state. After a write succeeds, the app invalidates the
+affected query families and lets TanStack Query refetch DB-backed read models.
+This reactive path is what powers cross-surface updates between the popup,
+dashboard, overlay, and background service worker.
+
+Treat TanStack Query as server-cache state, not as an application store. Do not
+patch query data with `setQueryData` for persisted facts just to make the UI
+look updated. Prefer invalidation and refetch. If a mutation returns a DB
+snapshot, it may be used for local workflow state, such as a form baseline or
+overlay submission snapshot, but the shared app state still comes from the
+DB-backed query path.
+
+Local React state is still appropriate for non-persisted UI concerns:
+
+- Component state: open/closed UI, selected tabs, transient action errors.
+- Form state: local drafts, validation messages, dirty tracking.
+- Workflow state: overlay timer, visual mode, saving/error states.
+- URL state: dashboard route and route parameters.
+
+Do not move DB-owned state into Redux, Zustand, context, or another global
+store unless the ownership rule changes. A global store is only appropriate for
+true application UI state, such as a shared toast or modal controller.
+
+## Surface UX Model
+
+CogniPace is a Chrome extension, so each surface should be optimized for its
+actual runtime context rather than treated as one generic responsive website.
+
+- Dashboard: desktop-first extension management pages. Use compact app chrome,
+  constrained content widths, predictable rows/tables, keyboard accessibility,
+  and adaptive fallback for reduced browser widths. Do not design dashboard
+  screens as mobile-first landing pages.
+- Popup: constrained extension popup workflows. Prioritize immediate action,
+  short copy, stable card height, and DB-backed read models.
+- LeetCode overlay: embedded page UI. Prioritize non-disruptive placement,
+  fast controls, and compatibility with the host page.
+
+Dashboard screens should remain usable when the browser window is narrowed, but
+the primary target is desktop Chrome. Settings establishes the baseline pattern:
+one bounded working surface, compact setting rows, optional hint icons,
+visible validation, and a dirty-state action dock.
+
 ## Feature Ownership
 
 - `app-shell`: popup, dashboard, and overlay read models plus popup controller

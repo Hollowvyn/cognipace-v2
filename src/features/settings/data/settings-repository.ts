@@ -12,6 +12,9 @@ import {
 } from '../domain'
 
 const settingsKey = 'user-settings'
+type UserSettingsPatchInput =
+  | UserSettingsPatch
+  | ((currentSettings: UserSettings) => UserSettingsPatch)
 
 export function createSettingsRepository(db: Db) {
   return new SettingsRepository(db)
@@ -21,7 +24,54 @@ export class SettingsRepository {
   constructor(private readonly db: Db) {}
 
   async getSettings(): Promise<UserSettings> {
-    const rows = await this.db
+    return this.readSettings(this.db)
+  }
+
+  async updateSettings(patchInput: UserSettingsPatchInput, now = new Date()) {
+    return this.db.transaction(async (transactionDb) => {
+      const currentSettings = await this.readSettings(transactionDb)
+      const patch =
+        typeof patchInput === 'function'
+          ? patchInput(currentSettings)
+          : patchInput
+      const nextSettings = mergeUserSettings(currentSettings, patch)
+      const timestamp = now.getTime()
+
+      await transactionDb
+        .insert(settingsKv)
+        .values({
+          key: settingsKey,
+          value: JSON.stringify(nextSettings),
+          updatedAt: timestamp,
+        })
+        .onConflictDoUpdate({
+          target: settingsKv.key,
+          set: {
+            value: JSON.stringify(nextSettings),
+            updatedAt: timestamp,
+          },
+        })
+
+      return nextSettings
+    })
+  }
+
+  async toggleStudyMode(now = new Date()) {
+    return this.updateSettings(
+      (currentSettings) => ({
+        practice: {
+          mode:
+            currentSettings.practice.mode === 'studyPlan'
+              ? 'freePractice'
+              : 'studyPlan',
+        },
+      }),
+      now,
+    )
+  }
+
+  private async readSettings(db: SettingsReadDb): Promise<UserSettings> {
+    const rows = await db
       .select()
       .from(settingsKv)
       .where(eq(settingsKv.key, settingsKey))
@@ -37,25 +87,6 @@ export class SettingsRepository {
       return defaultUserSettings
     }
   }
-
-  async updateSettings(patch: UserSettingsPatch, now = new Date()) {
-    const nextSettings = mergeUserSettings(await this.getSettings(), patch)
-
-    await this.db
-      .insert(settingsKv)
-      .values({
-        key: settingsKey,
-        value: JSON.stringify(nextSettings),
-        updatedAt: now.getTime(),
-      })
-      .onConflictDoUpdate({
-        target: settingsKv.key,
-        set: {
-          value: JSON.stringify(nextSettings),
-          updatedAt: now.getTime(),
-        },
-      })
-
-    return nextSettings
-  }
 }
+
+type SettingsReadDb = Pick<Db, 'select'>

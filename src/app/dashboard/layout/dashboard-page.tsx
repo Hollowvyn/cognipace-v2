@@ -1,8 +1,21 @@
 import type { ReactNode } from 'react'
 
-export function DashboardPage({ children }: { children: ReactNode }) {
+import { cn } from '@/utils/cn'
+
+export function DashboardPage({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return (
-    <div className="flex min-w-0 flex-col gap-[var(--cp-surface-gap)]">
+    <div
+      className={cn(
+        'flex min-w-0 flex-col gap-[var(--cp-surface-gap)]',
+        className,
+      )}
+    >
       {children}
     </div>
   )
