@@ -97,6 +97,9 @@ const overlayNextStepSchema = z.object({
 })
 
 const appShellTimingSettingsSchema = userSettingsSchema.shape.timing
+const overlayAutomationSettingsSchema = z.object({
+  autoDetectSolved: userSettingsSchema.shape.experimental.shape.autoDetectSolved,
+})
 
 const appShellSettingsSummarySchema = z.object({
   studyMode: userSettingsSchema.shape.studyMode,
@@ -142,6 +145,7 @@ export const overlayAppShellDataSchema = z.object({
   generatedAt: z.iso.datetime(),
   surface: z.literal('overlay'),
   overlay: z.object({
+    automation: overlayAutomationSettingsSchema,
     problem: appShellProblemSummarySchema.nullable(),
     practice: practiceDetailsSchema.nullable(),
     timing: appShellTimingSettingsSchema,

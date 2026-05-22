@@ -191,6 +191,9 @@ function createFailedSubmittedOverlay(): ExpandedOverlayProps['view']['overlay']
 
 function createOverlayContext(): ExpandedOverlayProps['view']['context'] {
   return {
+    automation: {
+      autoDetectSolved: false,
+    },
     problem: {
       id: 'leetcode:two-sum',
       slug: 'two-sum',

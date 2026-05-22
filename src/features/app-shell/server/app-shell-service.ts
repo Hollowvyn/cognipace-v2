@@ -122,6 +122,7 @@ async function getOverlayPayload(
 ) {
   if (!request.problemSlug) {
     return {
+      automation: serializeOverlayAutomation(settings),
       problem: null,
       practice: null,
       timing: settings.timing,
@@ -133,6 +134,7 @@ async function getOverlayPayload(
 
   if (!context) {
     return {
+      automation: serializeOverlayAutomation(settings),
       problem: null,
       practice: null,
       timing: settings.timing,
@@ -156,6 +158,7 @@ async function getOverlayPayload(
       : null
 
   return {
+    automation: serializeOverlayAutomation(settings),
     problem: currentProblem,
     practice: serializePracticeDetails(practice),
     timing: settings.timing,
@@ -164,6 +167,12 @@ async function getOverlayPayload(
       currentProblem,
       queueItems,
     }),
+  }
+}
+
+function serializeOverlayAutomation(settings: UserSettings) {
+  return {
+    autoDetectSolved: settings.experimental.autoDetectSolved,
   }
 }
 

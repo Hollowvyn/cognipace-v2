@@ -68,6 +68,30 @@ describe('assessment policy', () => {
       expected: hardModeOvertime(36 * secondsPerMinute),
     },
     {
+      name: 'LeetCode accepted under target returns Good',
+      input: leetcodeAccepted(30 * secondsPerMinute),
+      expected: acceptedDecision({
+        rating: 'good',
+        elapsedSeconds: 30 * secondsPerMinute,
+        reason: 'leetcode-good',
+      }),
+    },
+    {
+      name: 'LeetCode accepted overtime returns Hard when Hard Mode is off',
+      input: leetcodeAccepted(36 * secondsPerMinute),
+      expected: acceptedDecision({
+        rating: 'hard',
+        elapsedSeconds: 36 * secondsPerMinute,
+        isOverTarget: true,
+        reason: 'leetcode-hard-overtime',
+      }),
+    },
+    {
+      name: 'LeetCode accepted overtime returns Again when Hard Mode is on',
+      input: leetcodeAccepted(36 * secondsPerMinute, { hardMode: true }),
+      expected: hardModeOvertime(36 * secondsPerMinute),
+    },
+    {
       name: 'selected rating is preserved outside Hard Mode overtime',
       input: {
         intent: 'selected-rating',
@@ -166,6 +190,18 @@ function quickSubmit(
 ): LeetCodeAssessmentInput {
   return {
     intent: 'quick-submit',
+    difficulty: 'medium',
+    elapsedSeconds,
+    timing: { ...timing, ...timingPatch },
+  }
+}
+
+function leetcodeAccepted(
+  elapsedSeconds: number | null | undefined,
+  timingPatch?: Partial<AssessmentTimingSettings>,
+): LeetCodeAssessmentInput {
+  return {
+    intent: 'leetcode-accepted',
     difficulty: 'medium',
     elapsedSeconds,
     timing: { ...timing, ...timingPatch },

@@ -29,7 +29,7 @@ export const userSettingsSchema = z.object({
     hardMinutes: z.number().int().min(1),
   }),
   experimental: z.object({
-    autoDetectSolved: z.boolean(),
+    autoDetectSolved: z.boolean().default(true),
   }),
 })
 
@@ -72,13 +72,22 @@ export const defaultUserSettings: UserSettings = {
     hardMinutes: 50,
   },
   experimental: {
-    autoDetectSolved: false,
+    autoDetectSolved: true,
   },
 }
 
 export function parseStoredUserSettings(value: unknown): UserSettings {
   const parsed = userSettingsSchema.safeParse(value)
-  return parsed.success ? parsed.data : defaultUserSettings
+
+  if (parsed.success) {
+    return parsed.data
+  }
+
+  const patch = userSettingsPatchSchema.safeParse(value)
+
+  return patch.success
+    ? mergeUserSettings(defaultUserSettings, patch.data)
+    : defaultUserSettings
 }
 
 export function mergeUserSettings(

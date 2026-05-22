@@ -8,6 +8,7 @@ import {
   updateCurrentPracticeLogViaRuntime,
 } from '@/features/practice'
 import type { ReviewRating } from '@/lib/fsrs'
+import type { LeetCodeSubmissionResult } from '@/lib/leetcode'
 
 import {
   createOverlayDraftFromLog,
@@ -54,6 +55,9 @@ export type OverlayReviewActions = {
   prepareQuickSubmit: () => Promise<void>
   submitReview: () => Promise<void>
   failReview: () => Promise<void>
+  saveLeetCodeSubmissionResult: (
+    result: LeetCodeSubmissionResult,
+  ) => Promise<boolean>
   updateReview: () => Promise<void>
   restartLocalSession: () => void
   selectRating: (rating: ReviewRating) => void
@@ -230,6 +234,41 @@ export function useOverlayReviewActions({
     await saveAcceptedReview(decision)
   }
 
+  async function saveLeetCodeSubmissionResult(
+    result: LeetCodeSubmissionResult,
+  ) {
+    const currentContext = contextRef.current
+    const problem = currentContext?.problem
+
+    if (!currentContext || !problem) {
+      setOverlayError('CogniPace is still syncing this problem.')
+      return false
+    }
+
+    const decision = evaluateLeetCodeAssessment(
+      result.status === 'accepted'
+        ? {
+            intent: 'leetcode-accepted',
+            difficulty: problem.difficulty,
+            timing: currentContext.timing,
+            elapsedSeconds: timer.readElapsedSeconds(),
+          }
+        : {
+            intent: 'fail',
+            difficulty: problem.difficulty,
+            timing: currentContext.timing,
+            elapsedSeconds: timer.readElapsedSeconds(),
+          },
+    )
+
+    if (decision.status === 'blocked') {
+      setOverlayError('Review can be submitted without solve time.')
+      return false
+    }
+
+    return saveAcceptedReview(decision)
+  }
+
   async function saveAcceptedReview(decision: AcceptedAssessmentDecision) {
     const saveToken = syncTokenRef.current
     const currentContext = contextRef.current
@@ -237,7 +276,7 @@ export function useOverlayReviewActions({
     const currentOverlay = overlayRef.current
 
     if (!currentContext || !problem || currentOverlay.submittedSession) {
-      return
+      return false
     }
 
     dispatch({ type: 'save-started' })
@@ -254,7 +293,7 @@ export function useOverlayReviewActions({
       })
 
       if (syncTokenRef.current !== saveToken) {
-        return
+        return false
       }
 
       const snapshot = createSubmittedSnapshot(decision, currentOverlay.draft)
@@ -266,15 +305,17 @@ export function useOverlayReviewActions({
         feedback: formatAssessmentFeedback(decision),
       })
       await refreshNextStep(problem.slug, saveToken)
+      return true
     } catch (error) {
       if (syncTokenRef.current !== saveToken) {
-        return
+        return false
       }
 
       dispatch({
         type: 'mutation-failed',
         message: error instanceof Error ? error.message : String(error),
       })
+      return false
     }
   }
 
@@ -392,6 +433,7 @@ export function useOverlayReviewActions({
     resetTimer: timer.reset,
     restartLocalSession,
     restore,
+    saveLeetCodeSubmissionResult,
     selectRating,
     startTimer: timer.start,
     submitReview,

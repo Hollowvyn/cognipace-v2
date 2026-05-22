@@ -219,6 +219,9 @@ export function useLeetCodePageSync({
     location: captureState.location,
     metadata: captureState.metadata,
     refreshContext,
+    submission: {
+      result: captureState.submissionResult,
+    },
     status: resolvedStatus,
     syncTokenRef,
   }

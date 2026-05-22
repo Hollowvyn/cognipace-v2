@@ -55,12 +55,16 @@ function createSession(
       resetTimer: vi.fn(),
       restartLocalSession: vi.fn(),
       restore: vi.fn(),
+      saveLeetCodeSubmissionResult: vi.fn(),
       selectRating: vi.fn(),
       startTimer: vi.fn(),
       submitReview: vi.fn(),
       updateReview: vi.fn(),
     },
     context: {
+      automation: {
+        autoDetectSolved: false,
+      },
       nextStep: null,
       practice: null,
       problem: {

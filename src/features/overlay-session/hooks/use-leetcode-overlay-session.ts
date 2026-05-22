@@ -25,6 +25,7 @@ import {
   useOverlayReviewActions,
   type OverlayReviewActions,
 } from './use-overlay-review-actions'
+import { useLeetCodeSubmissionAutomation } from './use-leetcode-submission-automation'
 import { useOverlayTimer, type OverlayTimerStatus } from './use-overlay-timer'
 
 export type LeetCodeOverlaySession = {
@@ -100,6 +101,18 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
     syncTokenRef: pageSync.syncTokenRef,
     timer,
   })
+
+  useLeetCodeSubmissionAutomation({
+    activeProblemId: overlay.activeProblemId,
+    autoDetectSolved: pageSync.context?.automation.autoDetectSolved ?? false,
+    problemSlug: pageSync.context?.problem?.slug ?? null,
+    reviewStatus: overlay.reviewStatus,
+    saveLeetCodeSubmissionResult: actions.saveLeetCodeSubmissionResult,
+    startTimer: timer.start,
+    submittedSession: overlay.submittedSession,
+    submissionResult: pageSync.submission.result,
+  })
+
   const targetSeconds = getTargetSeconds(pageSync.context)
   const elapsedSeconds = timer.elapsedSeconds
 

@@ -4,6 +4,7 @@ import type { ReviewRating } from '@/lib/fsrs'
 
 export const assessmentSubmissionIntents = [
   'quick-submit',
+  'leetcode-accepted',
   'selected-rating',
   'fail',
 ] as const
@@ -15,6 +16,8 @@ export const assessmentLockReasons = ['failed', 'hard-mode-overtime'] as const
 export const assessmentAcceptedReasons = [
   'quick-good',
   'quick-hard-overtime',
+  'leetcode-good',
+  'leetcode-hard-overtime',
   'selected-rating',
   'failed',
   'hard-mode-overtime',
@@ -34,6 +37,12 @@ export type AssessmentTimingSettings = UserSettings['timing']
 export type LeetCodeAssessmentInput =
   | {
       intent: 'quick-submit'
+      difficulty: ProblemDifficulty
+      timing: AssessmentTimingSettings
+      elapsedSeconds?: number | null | undefined
+    }
+  | {
+      intent: 'leetcode-accepted'
       difficulty: ProblemDifficulty
       timing: AssessmentTimingSettings
       elapsedSeconds?: number | null | undefined
@@ -129,6 +138,15 @@ export function evaluateLeetCodeAssessment(
         isOverTarget,
         lockReason: null,
         reason: isOverTarget ? 'quick-hard-overtime' : 'quick-good',
+      })
+    case 'leetcode-accepted':
+      return acceptAssessment({
+        rating: isOverTarget ? 'hard' : 'good',
+        elapsedSeconds,
+        targetSeconds,
+        isOverTarget,
+        lockReason: null,
+        reason: isOverTarget ? 'leetcode-hard-overtime' : 'leetcode-good',
       })
     case 'selected-rating':
       return acceptAssessment({

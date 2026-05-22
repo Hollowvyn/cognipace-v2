@@ -14,6 +14,7 @@ import type {
   LeetCodePageEvent,
   LeetCodeProblemLocation,
   LeetCodeProblemMetadata,
+  LeetCodeSubmissionResult,
 } from '@/lib/leetcode'
 import { queryKeys } from '@/platform/query/query-keys'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
@@ -242,6 +243,115 @@ describe('useLeetCodeOverlaySession', () => {
     expect(result.current.overlay.ratingLockReason).toBe('failed')
   })
 
+  it('ignores LeetCode submission results when auto-detect is disabled', async () => {
+    await renderReadySession()
+
+    emitSubmissionResult()
+    await flushEffects()
+
+    expect(saveReviewResultViaRuntime).not.toHaveBeenCalled()
+  })
+
+  it('starts the timer once the current problem is ready when auto-detect is enabled', async () => {
+    const { result } = await renderReadySession({ autoDetectSolved: true })
+
+    await waitFor(() => {
+      expect(result.current.timer.status).toBe('running')
+    })
+  })
+
+  it('auto-saves accepted LeetCode submission results through the review path', async () => {
+    const { result } = await renderReadySession({ autoDetectSolved: true })
+
+    emitSubmissionResult()
+
+    await waitFor(() => {
+      expect(saveReviewResultViaRuntime).toHaveBeenCalledOnce()
+      expect(result.current.overlay.reviewStatus).toBe('submitted-clean')
+    })
+    expect(latestSavedReviewRequest()).toMatchObject({
+      rating: 'good',
+      elapsedSeconds: null,
+      isCorrect: true,
+    })
+  })
+
+  it('auto-saves failed LeetCode submission results as Again', async () => {
+    const { result } = await renderReadySession({ autoDetectSolved: true })
+
+    emitSubmissionResult(
+      createSubmissionResult({
+        status: 'wrong-answer',
+        statusText: 'Wrong Answer',
+        passedTestCount: 10,
+        totalTestCount: 11,
+        failingTestcase: '[2,7,11,15]\\n9',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(saveReviewResultViaRuntime).toHaveBeenCalledOnce()
+      expect(result.current.overlay.ratingLockReason).toBe('failed')
+    })
+    expect(latestSavedReviewRequest()).toMatchObject({
+      rating: 'again',
+      isCorrect: false,
+    })
+  })
+
+  it('does not append a duplicate auto-detected terminal result', async () => {
+    await renderReadySession({ autoDetectSolved: true })
+    const submissionResult = createSubmissionResult({
+      submissionId: 'duplicate-result',
+    })
+
+    emitSubmissionResult(submissionResult)
+    await waitFor(() => {
+      expect(saveReviewResultViaRuntime).toHaveBeenCalledOnce()
+    })
+
+    emitSubmissionResult(submissionResult)
+    await flushEffects()
+
+    expect(saveReviewResultViaRuntime).toHaveBeenCalledOnce()
+  })
+
+  it('can retry the same terminal result after an auto-save failure', async () => {
+    vi.mocked(saveReviewResultViaRuntime)
+      .mockRejectedValueOnce(new Error('Review save failed.'))
+      .mockResolvedValueOnce(reviewResult)
+    const { result } = await renderReadySession({ autoDetectSolved: true })
+    const submissionResult = createSubmissionResult({
+      submissionId: 'retry-result',
+    })
+
+    emitSubmissionResult(submissionResult)
+
+    await waitFor(() => {
+      expect(saveReviewResultViaRuntime).toHaveBeenCalledOnce()
+      expect(result.current.overlay.feedback?.message).toBe(
+        'Review save failed.',
+      )
+    })
+
+    emitSubmissionResult({ ...submissionResult })
+
+    await waitFor(() => {
+      expect(saveReviewResultViaRuntime).toHaveBeenCalledTimes(2)
+      expect(result.current.overlay.reviewStatus).toBe('submitted-clean')
+    })
+  })
+
+  it('ignores stale LeetCode submission results after SPA navigation', async () => {
+    await renderReadySession({ autoDetectSolved: true })
+
+    emitNextPage()
+    emitSubmissionResult()
+    await flushEffects()
+
+    expect(saveReviewResultViaRuntime).not.toHaveBeenCalled()
+  })
+
   it('updates the latest submitted review instead of appending another attempt', async () => {
     const { result } = await renderReadySession()
 
@@ -394,11 +504,22 @@ type DeferredPracticeDetails = ReturnType<
 >
 
 async function renderReadySession(options?: {
+  autoDetectSolved?: boolean
   timing?: Partial<OverlayAppShellData['overlay']['timing']>
 }): Promise<RenderedOverlaySession> {
-  if (options?.timing) {
+  if (options?.autoDetectSolved || options?.timing) {
+    const overlayDataOptions: Parameters<typeof createOverlayData>[0] = {}
+
+    if (options.autoDetectSolved !== undefined) {
+      overlayDataOptions.autoDetectSolved = options.autoDetectSolved
+    }
+
+    if (options.timing) {
+      overlayDataOptions.timing = options.timing
+    }
+
     vi.mocked(getOverlayAppShellDataViaRuntime).mockResolvedValue(
-      createOverlayData({ timing: options.timing }),
+      createOverlayData(overlayDataOptions),
     )
   }
 
@@ -418,6 +539,12 @@ async function renderReadySession(options?: {
 function runOverlayAction(action: () => Promise<void>) {
   return act(async () => {
     await action()
+  })
+}
+
+function flushEffects() {
+  return act(async () => {
+    await Promise.resolve()
   })
 }
 
@@ -500,13 +627,28 @@ function emitPageChanged(location: LeetCodeProblemLocation) {
   })
 }
 
+function emitSubmissionResult(result = createSubmissionResult()) {
+  act(() => {
+    const event = {
+      type: 'submission-result-updated',
+      result,
+    } satisfies Extract<LeetCodePageEvent, { type: 'submission-result-updated' }>
+
+    leetcodeMockState.onEvent?.(event)
+  })
+}
+
 function createOverlayData(options?: {
+  autoDetectSolved?: boolean
   timing?: Partial<OverlayAppShellData['overlay']['timing']>
 }): OverlayAppShellData {
   return {
     generatedAt: '2026-01-01T10:00:00.000Z',
     surface: 'overlay',
     overlay: {
+      automation: {
+        autoDetectSolved: options?.autoDetectSolved ?? false,
+      },
       problem: overlayProblem,
       practice: null,
       timing: {
@@ -516,6 +658,38 @@ function createOverlayData(options?: {
       nextStep,
     },
   }
+}
+
+function createSubmissionResult(
+  overrides: Partial<LeetCodeSubmissionResult> = {},
+): LeetCodeSubmissionResult {
+  return {
+    location: problemLocation,
+    submissionId: '1234567890',
+    source: 'api',
+    status: 'accepted',
+    statusText: 'Accepted',
+    checkedAt: Date.now(),
+    runtime: '42 ms',
+    memory: '18 MB',
+    passedTestCount: 57,
+    totalTestCount: 57,
+    failingTestcase: null,
+    errorMessage: null,
+    compileError: null,
+    runtimeError: null,
+    lastTestcase: null,
+    codeOutput: null,
+    expectedOutput: null,
+    stdOutput: null,
+    resultCodeSnapshot: {
+      code: 'return nums;',
+      language: 'TypeScript',
+      source: 'api',
+      capturedAt: Date.now(),
+    },
+    ...overrides,
+  } satisfies LeetCodeSubmissionResult
 }
 
 function createPracticeDetails(): SerializedPracticeDetails {

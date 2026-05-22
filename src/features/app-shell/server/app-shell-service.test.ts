@@ -128,6 +128,9 @@ describe('app-shell service', () => {
     expect(payload).toMatchObject({
       surface: 'overlay',
       overlay: {
+        automation: {
+          autoDetectSolved: true,
+        },
         problem: {
           id: 'leetcode:two-sum',
           slug: 'two-sum',
@@ -165,6 +168,9 @@ describe('app-shell service', () => {
     expect(payload).toMatchObject({
       surface: 'overlay',
       overlay: {
+        automation: {
+          autoDetectSolved: true,
+        },
         problem: null,
         practice: null,
         timing: {
@@ -203,6 +209,20 @@ describe('app-shell service', () => {
       kind: 'empty',
       problem: null,
     })
+  })
+
+  it('exposes disabled overlay auto-detect from experimental settings', async () => {
+    const handle = await createTestDb()
+
+    await createSettingsRepository(handle.db).updateSettings({
+      experimental: {
+        autoDetectSolved: false,
+      },
+    })
+
+    const payload = await getOverlayPayload(handle, 'two-sum')
+
+    expect(payload.overlay.automation.autoDetectSolved).toBe(false)
   })
 
   it('reflects saved reviews in overlay practice details and queue categories', async () => {
