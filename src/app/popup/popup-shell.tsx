@@ -1,115 +1,77 @@
-import { ExternalLink, RefreshCw, Settings } from 'lucide-react'
+import { Settings } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
-import { Surface, SurfaceRoot } from '@/components/ui/surface'
-import type { PopupAppShellData } from '@/features/app-shell'
+import { SurfaceRoot } from '@/components/ui/surface'
+import type { PopupAppShellController } from '@/features/app-shell'
 
-type PopupShellProps = {
-  data: PopupAppShellData
-  pingLabel: string
-}
+import { ActiveTrackCard } from './components/active-track-card'
+import { MetricTiles } from './components/metric-tiles'
+import { RecommendationCard } from './components/recommendation-card'
+import { ScopedStatus } from './components/scoped-status'
 
-export function PopupShell({ data, pingLabel }: PopupShellProps) {
+export function PopupShell({
+  controller,
+}: {
+  controller: PopupAppShellController
+}) {
+  const {
+    actions,
+    canShuffleRecommendation,
+    canToggleStudyMode,
+    data,
+    isUpdatingStudyMode,
+    status,
+    view,
+  } = controller
+  const surfaceStatus = status?.scope === 'surface' ? status : null
+
   return (
     <SurfaceRoot
       className="flex flex-col gap-[var(--cp-surface-gap)] p-[var(--cp-surface-padding)]"
       surface="popup"
     >
       <header className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="m-0 text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="grid size-7 shrink-0 place-items-center rounded-[var(--cp-radius-md)] bg-primary text-[0.8125rem] font-extrabold leading-none text-primary-foreground"
+          >
+            C
+          </span>
+          <h1 className="m-0 truncate text-[length:var(--cp-title-font-size)] font-extrabold leading-tight text-foreground">
             CogniPace
-          </p>
-          <h1 className="mt-1 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
-            Study Loop
           </h1>
         </div>
-        <div className="flex items-center gap-2">
-          <IconButton
-            disabled
-            label="Refresh Queue"
-            tooltip="Refresh Queue"
-            variant="ghost"
-          >
-            <RefreshCw aria-hidden="true" />
-          </IconButton>
-          <IconButton
-            disabled
-            label="Open Settings"
-            tooltip="Open Settings"
-            variant="ghost"
-          >
-            <Settings aria-hidden="true" />
-          </IconButton>
-        </div>
+        <IconButton
+          label="Open Settings"
+          onClick={actions.openSettings}
+          tooltip="Open Settings"
+          variant="ghost"
+        >
+          <Settings aria-hidden="true" />
+        </IconButton>
       </header>
 
-      <Surface>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="m-0 text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
-              Status
-            </p>
-            <h2 className="mt-1 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
-              {data.status.label}
-            </h2>
-            <p className="mt-1 text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
-              {data.status.detail}
-            </p>
-          </div>
-          <Badge tone={pingLabel === 'Connected' ? 'success' : 'warning'}>
-            {pingLabel}
-          </Badge>
-        </div>
-      </Surface>
+      <ScopedStatus status={surfaceStatus} />
 
-      <section
-        aria-label="Practice Metrics"
-        className="grid grid-cols-2 gap-[var(--cp-space-2)]"
-      >
-        {data.metrics.map((metric) => (
-          <Surface key={metric.label}>
-            <p className="m-0 text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
-              {metric.label}
-            </p>
-            <strong className="mt-2 block text-[1.375rem] font-extrabold leading-none text-foreground tabular-nums">
-              {metric.value}
-            </strong>
-          </Surface>
-        ))}
-      </section>
+      <MetricTiles metrics={data.metrics} />
 
-      <Surface>
-        <p className="m-0 text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
-          Recommended Now
-        </p>
-        <h2 className="mt-1 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
-          {data.recommendation.title}
-        </h2>
-        <p className="mt-1 text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
-          {data.recommendation.detail}
-        </p>
-        <div className="mt-4">
-          <Button disabled variant="outline">
-            <ExternalLink aria-hidden="true" data-icon="inline-start" />
-            Open Problem
-          </Button>
-        </div>
-      </Surface>
+      <RecommendationCard
+        canShuffle={canShuffleRecommendation}
+        onOpenProblem={actions.openProblem}
+        onShuffle={actions.shuffleRecommendation}
+        status={status?.scope === 'recommendation' ? status : null}
+        view={view.recommendation}
+      />
 
-      <Surface>
-        <p className="m-0 text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
-          Active Track
-        </p>
-        <h2 className="mt-1 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
-          {data.activeTrack.title}
-        </h2>
-        <p className="mt-1 text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
-          {data.activeTrack.detail}
-        </p>
-      </Surface>
+      <ActiveTrackCard
+        isModeActionDisabled={!canToggleStudyMode || isUpdatingStudyMode}
+        onOpenProblem={actions.openProblem}
+        onOpenTracks={actions.openTracks}
+        onToggleStudyMode={actions.toggleStudyMode}
+        status={status?.scope === 'track' ? status : null}
+        view={view.activeTrack}
+      />
     </SurfaceRoot>
   )
 }

@@ -52,9 +52,7 @@ describe('CollapsedOverlay', () => {
   })
 })
 
-function renderCollapsed(
-  overrides?: Parameters<typeof createProps>[0],
-) {
+function renderCollapsed(overrides?: Parameters<typeof createProps>[0]) {
   render(<CollapsedOverlay {...createProps(overrides)} />)
 }
 

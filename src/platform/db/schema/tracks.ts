@@ -11,6 +11,7 @@ export const tracks = sqliteTable(
     slug: text('slug').notNull().unique(),
     title: text('title').notNull(),
     description: text('description'),
+    dueAt: integer('due_at'),
     isActive: integer('is_active', { mode: 'boolean' })
       .notNull()
       .default(false),

@@ -11,7 +11,10 @@ import {
 import { SurfaceRoot } from '@/components/ui/surface'
 import { cn } from '@/utils/cn'
 
-import { formatOverlayDuration, type OverlaySessionState } from '../../../domain'
+import {
+  formatOverlayDuration,
+  type OverlaySessionState,
+} from '../../../domain'
 import type { OverlayTimerStatus } from '../../../hooks/use-overlay-timer'
 import { OverlayControlButton } from '../../shared/overlay-control-button'
 
@@ -39,17 +42,9 @@ type CollapsedOverlayProps = {
   view: CollapsedOverlayViewModel
 }
 
-export function CollapsedOverlay({
-  commands,
-  view,
-}: CollapsedOverlayProps) {
-  const {
-    canUseProblem,
-    elapsedSeconds,
-    isOverTarget,
-    overlay,
-    timerStatus,
-  } = view
+export function CollapsedOverlay({ commands, view }: CollapsedOverlayProps) {
+  const { canUseProblem, elapsedSeconds, isOverTarget, overlay, timerStatus } =
+    view
   const {
     onDock,
     onExpand,
@@ -119,7 +114,11 @@ export function CollapsedOverlay({
             stopClickPropagation
             tone="primary"
           >
-            {isRunning ? <Pause className="size-4" /> : <Play className="size-4" />}
+            {isRunning ? (
+              <Pause className="size-4" />
+            ) : (
+              <Play className="size-4" />
+            )}
           </OverlayControlButton>
 
           <OverlayControlButton

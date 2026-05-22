@@ -80,7 +80,9 @@ export function useLeetCodePageSync({
   )
 
   const syncProblem = useCallback(
-    async (event: LeetCodePageEvent & { type: 'page-ready' | 'metadata-updated' }) => {
+    async (
+      event: LeetCodePageEvent & { type: 'page-ready' | 'metadata-updated' },
+    ) => {
       const nextMetadata = event.metadata
       const fingerprint = createLeetCodeProblemMetadataFingerprint(nextMetadata)
 

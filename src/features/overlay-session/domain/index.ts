@@ -1,7 +1,4 @@
-export {
-  formatOverlayDateTime,
-  formatOverlayDuration,
-} from './overlay-format'
+export { formatOverlayDateTime, formatOverlayDuration } from './overlay-format'
 export {
   createOverlayDraftFromLog,
   toPracticeLogPatch,

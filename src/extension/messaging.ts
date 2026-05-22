@@ -63,13 +63,13 @@ export const queueItemSchema = z.object({
   difficulty: z.enum(problemDifficulties),
   url: z.string(),
   isPremium: z.boolean(),
-  dueAt: z.string().nullable(),
+  dueAt: z.iso.datetime().nullable(),
   activeTrackPosition: z.number().nullable(),
   summary: practiceSummarySchema,
 })
 
 export const todayQueueSchema = z.object({
-  generatedAt: z.string(),
+  generatedAt: z.iso.datetime(),
   dailyGoal: z.number(),
   dueCount: z.number().int().min(0),
   newCount: z.number().int().min(0),
@@ -86,6 +86,7 @@ export const activeTrackSchema = z
       slug: z.string(),
       title: z.string(),
       description: z.string().nullable(),
+      dueAt: z.iso.datetime().nullable(),
       isActive: z.boolean(),
     }),
     activeGroup: z
@@ -96,6 +97,34 @@ export const activeTrackSchema = z
         position: z.number(),
       })
       .nullable(),
+    progress: z
+      .object({
+        completedCount: z.number().int().min(0),
+        totalCount: z.number().int().min(0),
+        percent: z.number().int().min(0).max(100),
+      })
+      .superRefine((progress, context) => {
+        if (progress.completedCount > progress.totalCount) {
+          context.addIssue({
+            code: 'custom',
+            message: 'completedCount cannot exceed totalCount',
+            path: ['completedCount'],
+          })
+        }
+
+        const expectedPercent =
+          progress.totalCount === 0
+            ? 0
+            : Math.round((progress.completedCount / progress.totalCount) * 100)
+
+        if (progress.percent !== expectedPercent) {
+          context.addIssue({
+            code: 'custom',
+            message: 'percent must match completedCount and totalCount',
+            path: ['percent'],
+          })
+        }
+      }),
     nextProblem: serializedProblemSchema.nullable(),
   })
   .nullable()
@@ -131,7 +160,7 @@ export type ProblemsUpsertFromPageRequest = z.infer<
 
 export const queueRequestSchema = z.object({
   surface: z.enum(['popup', 'dashboard']),
-  at: z.string().optional(),
+  at: z.iso.datetime().optional(),
 })
 
 export type QueueRequest = z.infer<typeof queueRequestSchema>

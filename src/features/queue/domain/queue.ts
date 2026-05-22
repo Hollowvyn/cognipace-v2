@@ -44,7 +44,11 @@ export function buildTodayQueue(
   generatedAt = new Date(),
 ): TodayQueue {
   const dailyGoal = Math.max(0, Math.round(settings.dailyQuestionGoal))
-  const partitioned = partitionQueueCandidates(candidates, settings, generatedAt)
+  const partitioned = partitionQueueCandidates(
+    candidates,
+    settings,
+    generatedAt,
+  )
   const dueItems = orderQueueItems(
     partitioned.due,
     settings.memoryReview.reviewOrder,
@@ -122,6 +126,7 @@ function isEffectivelySuspended(
 ) {
   return (
     candidate.practice?.isSuspended === true ||
+    candidate.practice?.status === 'mastered' ||
     candidate.practice?.status === 'suspended' ||
     (settings.questionFilters.skipPremium && candidate.problem.isPremium)
   )
@@ -225,8 +230,9 @@ function interleaveByDifficulty(items: QueueItem[]) {
 }
 
 function compareDates(left: Date | null, right: Date | null) {
-  return (left?.getTime() ?? Number.MAX_SAFE_INTEGER) - (
-    right?.getTime() ?? Number.MAX_SAFE_INTEGER
+  return (
+    (left?.getTime() ?? Number.MAX_SAFE_INTEGER) -
+    (right?.getTime() ?? Number.MAX_SAFE_INTEGER)
   )
 }
 

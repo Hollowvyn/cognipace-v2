@@ -6,7 +6,7 @@ import {
 import { getProblemContext, type Problem } from '@/features/problems'
 import { getTodayQueue, type QueueItem } from '@/features/queue'
 import { getSettings, type UserSettings } from '@/features/settings'
-import { getActiveTrack } from '@/features/tracks'
+import { getActiveTrack, type ActiveTrack } from '@/features/tracks'
 import type { Db } from '@/platform/db'
 
 import type {
@@ -17,6 +17,7 @@ import type {
   OverlayNextStep,
   PopupAppShellData,
 } from '../api/app-shell-contracts'
+import { buildAppShellRecommendation } from '../domain/popup-app-shell'
 
 export async function getAppShellData(
   db: Db,
@@ -69,27 +70,16 @@ async function getMainAppShellData(db: Db, now: Date) {
       detail: `${queue.dueCount} due, ${queue.newCount} new, ${queue.reinforcementCount} reinforcement available.`,
     },
     metrics: [
-      { label: 'Due', value: String(queue.dueCount) },
-      { label: 'New', value: String(queue.newCount) },
-      { label: 'Reinforce', value: String(queue.reinforcementCount) },
-      { label: 'Goal', value: String(settings.dailyQuestionGoal) },
+      { label: 'Due Today', value: String(queue.dueCount) },
+      { label: 'Streak', value: '0 days' },
     ],
-    recommendation: serializeRecommendation(queueItems[0] ?? null),
-    activeTrack: activeTrack
-      ? {
-          title: activeTrack.track.title,
-          detail: activeTrack.nextProblem
-            ? `Next: ${activeTrack.nextProblem.title}`
-            : 'All problems in the active group are complete.',
-          nextProblem: activeTrack.nextProblem
-            ? serializeProblemSummary(activeTrack.nextProblem)
-            : null,
-        }
-      : {
-          title: 'No active track',
-          detail: 'Choose a track to start queue generation.',
-          nextProblem: null,
-        },
+    recommendation: buildAppShellRecommendation(
+      queueItems[0] ?? null,
+      settings.studyMode === 'studyPlan'
+        ? (activeTrack?.nextProblem?.slug ?? null)
+        : null,
+    ),
+    activeTrack: serializeActiveTrack(activeTrack),
     queue: {
       dailyGoal: queue.dailyGoal,
       dueCount: queue.dueCount,
@@ -98,6 +88,7 @@ async function getMainAppShellData(db: Db, now: Date) {
       items: queueItems,
     },
     settings: {
+      studyMode: settings.studyMode,
       timing: settings.timing,
       memoryReview: settings.memoryReview,
       questionFilters: settings.questionFilters,
@@ -219,29 +210,54 @@ function serializeOverlayNextStep(input: {
   }
 }
 
-function serializeRecommendation(item: AppShellQueueItem | null) {
-  if (!item) {
+function serializeActiveTrack(activeTrack: ActiveTrack | null) {
+  if (!activeTrack) {
     return {
-      title: 'Queue is clear',
-      detail: 'No due or new problems are available for the active group.',
-      category: null,
-      problem: null,
+      trackId: null,
+      title: 'No active track',
+      description: null,
+      groupTitle: null,
       dueAt: null,
+      progress: {
+        completedCount: 0,
+        totalCount: 0,
+        percent: 0,
+      },
+      detail: 'Choose a track to start queue generation.',
+      nextProblem: null,
     }
   }
 
   return {
-    title: item.problem.title,
-    detail: `${formatQueueCategory(item.category)} ${formatDifficulty(item.problem.difficulty)}.`,
-    category: item.category,
-    problem: item.problem,
-    dueAt: item.dueAt,
+    trackId: activeTrack.track.id,
+    title: activeTrack.track.title,
+    description: activeTrack.track.description,
+    groupTitle: activeTrack.activeGroup?.title ?? null,
+    dueAt: activeTrack.track.dueAt?.toISOString() ?? null,
+    progress: activeTrack.progress,
+    detail: readActiveTrackDetail(activeTrack),
+    nextProblem: activeTrack.nextProblem
+      ? serializeProblemSummary(activeTrack.nextProblem)
+      : null,
   }
 }
 
-function serializeQueueItem(
-  item: QueueItem,
-): AppShellQueueItem {
+function readActiveTrackDetail(activeTrack: ActiveTrack) {
+  if (activeTrack.nextProblem) {
+    return `Next: ${activeTrack.nextProblem.title}`
+  }
+
+  if (
+    activeTrack.progress.totalCount > 0 &&
+    activeTrack.progress.completedCount === activeTrack.progress.totalCount
+  ) {
+    return 'Track complete.'
+  }
+
+  return 'No available next problem in the active track.'
+}
+
+function serializeQueueItem(item: QueueItem): AppShellQueueItem {
   return {
     category: item.category,
     problem: {
@@ -272,7 +288,7 @@ function serializeProblemSummary(problem: Problem): AppShellProblemSummary {
 const queueCategoryLabelByCategory = {
   due: 'Review',
   new: 'Start',
-  reinforcement: 'Reinforce',
+  reinforcement: 'Extra Practice',
 } as const satisfies Record<AppShellQueueItem['category'], string>
 
 const difficultyLabelByDifficulty = {

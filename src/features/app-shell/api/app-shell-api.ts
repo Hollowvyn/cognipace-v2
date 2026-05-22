@@ -2,10 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { sendMessage } from '@/extension/messaging'
 
-import {
-  type AppShellData,
-  type AppShellRequest,
-} from './app-shell-contracts'
+import { type AppShellData, type AppShellRequest } from './app-shell-contracts'
 
 export const appShellQueryKeys = {
   all: ['app-shell-data'] as const,

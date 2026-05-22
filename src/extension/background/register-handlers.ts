@@ -42,10 +42,7 @@ import {
   setPracticeSuspended,
   updateCurrentPracticeLog,
 } from '@/features/practice'
-import {
-  upsertProblemFromPage,
-  type Problem,
-} from '@/features/problems'
+import { upsertProblemFromPage, type Problem } from '@/features/problems'
 import { getTodayQueue, type TodayQueue } from '@/features/queue'
 import {
   getSettings,
@@ -362,13 +359,17 @@ export function getAppShellRuntimeSurface(
   return request.surface === 'overlay' ? 'content-script' : request.surface
 }
 
-function serializeActiveTrack(
+export function serializeActiveTrack(
   activeTrack: ActiveTrack | null,
 ): SerializedActiveTrack {
   return activeTrackSchema.parse(
     activeTrack
       ? {
           ...activeTrack,
+          track: {
+            ...activeTrack.track,
+            dueAt: activeTrack.track.dueAt?.toISOString() ?? null,
+          },
           nextProblem: activeTrack.nextProblem
             ? serializeProblem(activeTrack.nextProblem)
             : null,

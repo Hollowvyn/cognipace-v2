@@ -47,7 +47,8 @@ async function readActiveGroupId(db: Db) {
     return session.activeGroupId
   }
 
-  const activeTrackId = session?.activeTrackId ?? (await readFirstActiveTrackId(db))
+  const activeTrackId =
+    session?.activeTrackId ?? (await readFirstActiveTrackId(db))
 
   if (!activeTrackId) {
     return null
@@ -244,7 +245,9 @@ function mapProblem(row: QueueProblemRow): Problem {
   }
 }
 
-function mapPractice(row: QueuePracticeRow | null): PracticeStateSnapshot | null {
+function mapPractice(
+  row: QueuePracticeRow | null,
+): PracticeStateSnapshot | null {
   if (!row || row.status === null) {
     return null
   }
@@ -256,7 +259,8 @@ function mapPractice(row: QueuePracticeRow | null): PracticeStateSnapshot | null
     attemptCount: row.attemptCount ?? 0,
     solvedCount: row.solvedCount ?? 0,
     isSuspended: row.isSuspended ?? false,
-    lastRating: row.lastRating === null ? null : parseReviewRating(row.lastRating),
+    lastRating:
+      row.lastRating === null ? null : parseReviewRating(row.lastRating),
     lastElapsedSeconds: row.lastElapsedSeconds,
     bestElapsedSeconds: row.bestElapsedSeconds,
     log: normalizeReviewLogFields({

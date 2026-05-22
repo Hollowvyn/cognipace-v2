@@ -17,7 +17,8 @@ type OverlayControlButtonProps = {
 const toneClassName = {
   neutral: 'text-muted-foreground hover:text-foreground',
   primary: 'text-primary hover:text-primary',
-  success: 'text-[color:var(--cp-tone-success-fg)] hover:text-[color:var(--cp-tone-success-fg)]',
+  success:
+    'text-[color:var(--cp-tone-success-fg)] hover:text-[color:var(--cp-tone-success-fg)]',
   danger: 'text-destructive hover:text-destructive',
 } as const
 

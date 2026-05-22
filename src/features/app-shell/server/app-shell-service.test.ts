@@ -1,6 +1,9 @@
+import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
 import { createPracticeRepository } from '@/features/practice'
+import { createSettingsRepository } from '@/features/settings'
+import { tracks } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
 
 import {
@@ -26,6 +29,10 @@ describe('app-shell service', () => {
       status: {
         label: 'Practice ready',
       },
+      metrics: [
+        { label: 'Due Today', value: '0' },
+        { label: 'Streak', value: '0 days' },
+      ],
       queue: {
         dailyGoal: 4,
         dueCount: 0,
@@ -33,12 +40,21 @@ describe('app-shell service', () => {
         reinforcementCount: 0,
       },
       activeTrack: {
+        trackId: 'leetcode-75',
         title: 'LeetCode 75',
+        groupTitle: 'Arrays and Hashing',
+        dueAt: null,
+        progress: {
+          completedCount: 0,
+          totalCount: 1,
+          percent: 0,
+        },
         nextProblem: {
           slug: 'two-sum',
         },
       },
       settings: {
+        studyMode: 'studyPlan',
         timing: {
           requireSolveTime: false,
           hardMode: false,
@@ -46,7 +62,40 @@ describe('app-shell service', () => {
       },
     })
     expect(payload.recommendation.problem?.slug).toBe('two-sum')
+    expect(payload.recommendation.alsoNextInTrack).toBe(true)
     expect(payload.popup.queuePreview).toHaveLength(1)
+  })
+
+  it('serializes the active track due date when present', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const dueAt = new Date('2026-02-14T00:00:00.000Z')
+
+    await handle.db
+      .update(tracks)
+      .set({ dueAt: dueAt.getTime() })
+      .where(eq(tracks.id, 'leetcode-75'))
+
+    const payload = await getPopupPayload(handle)
+
+    expect(payload.activeTrack.dueAt).toBe(dueAt.toISOString())
+  })
+
+  it('does not mark recommendations as next in track during free practice', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+
+    await createSettingsRepository(handle.db).updateSettings({
+      studyMode: 'freePractice',
+    })
+
+    const payload = await getPopupPayload(handle)
+
+    expect(payload.recommendation.problem?.slug).toBe('two-sum')
+    expect(payload.recommendation.alsoNextInTrack).toBe(false)
+    expect(payload.settings.studyMode).toBe('freePractice')
   })
 
   it('composes dashboard payload with a larger queue preview', async () => {
@@ -169,19 +218,13 @@ describe('app-shell service', () => {
 
 type TestDbHandle = Awaited<ReturnType<typeof createTestDb>>
 
-async function getPopupPayload(
-  handle: TestDbHandle,
-  readAt = generatedAt,
-) {
+async function getPopupPayload(handle: TestDbHandle, readAt = generatedAt) {
   return popupAppShellDataSchema.parse(
     await getAppShellData(handle.db, { surface: 'popup' }, new Date(readAt)),
   )
 }
 
-async function getDashboardPayload(
-  handle: TestDbHandle,
-  readAt = generatedAt,
-) {
+async function getDashboardPayload(handle: TestDbHandle, readAt = generatedAt) {
   return dashboardAppShellDataSchema.parse(
     await getAppShellData(
       handle.db,

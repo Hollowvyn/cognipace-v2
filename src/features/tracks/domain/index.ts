@@ -1,1 +1,1 @@
-export type { ActiveTrack, Track, TrackGroup } from './track'
+export type { ActiveTrack, Track, TrackGroup, TrackProgress } from './track'

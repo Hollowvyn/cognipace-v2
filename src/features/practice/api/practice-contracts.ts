@@ -22,8 +22,8 @@ export const practiceLogPatchSchema = practiceLogSnapshotSchema.partial()
 
 export const practiceSummarySchema = z.object({
   phase: z.enum(practicePhases),
-  nextReviewAt: z.string().nullable(),
-  lastReviewedAt: z.string().nullable(),
+  nextReviewAt: z.iso.datetime().nullable(),
+  lastReviewedAt: z.iso.datetime().nullable(),
   reviewCount: z.number().int().min(0),
   lapses: z.number().int().min(0),
   difficulty: z.number().nullable(),
@@ -38,7 +38,7 @@ export const practiceSummarySchema = z.object({
 })
 
 export const fsrsCardSnapshotSchema = z.object({
-  dueAt: z.string(),
+  dueAt: z.iso.datetime(),
   stability: z.number(),
   difficulty: z.number(),
   elapsedDays: z.number().int(),
@@ -47,12 +47,12 @@ export const fsrsCardSnapshotSchema = z.object({
   reps: z.number().int().min(0),
   lapses: z.number().int().min(0),
   state: z.enum(fsrsCardStates),
-  lastReviewAt: z.string().nullable(),
+  lastReviewAt: z.iso.datetime().nullable(),
 })
 
 export const practiceStateSnapshotSchema = z.object({
   status: z.enum(practiceStatuses),
-  lastReviewedAt: z.string().nullable(),
+  lastReviewedAt: z.iso.datetime().nullable(),
   attemptCount: z.number().int().min(0),
   solvedCount: z.number().int().min(0),
   isSuspended: z.boolean(),
@@ -68,12 +68,12 @@ export const practiceReviewAttemptSchema = z.object({
   cardId: z.string(),
   rating: z.enum(reviewRatings),
   reviewMode: z.enum(reviewModes),
-  reviewedAt: z.string(),
+  reviewedAt: z.iso.datetime(),
   elapsedSeconds: z.number().int().positive().nullable(),
   isCorrect: z.boolean().nullable(),
   log: practiceLogSnapshotSchema,
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
 })
 
 export const practiceDetailsSchema = z.object({
@@ -95,8 +95,8 @@ export const practiceReviewResultSchema = z.object({
   cardId: z.string(),
   rating: z.enum(reviewRatings),
   status: z.enum(practiceStatuses),
-  dueAt: z.string(),
-  reviewedAt: z.string(),
+  dueAt: z.iso.datetime(),
+  reviewedAt: z.iso.datetime(),
   summary: practiceSummarySchema,
 })
 
@@ -105,7 +105,7 @@ export type SerializedReviewResult = z.infer<typeof practiceReviewResultSchema>
 export const practiceDetailsRequestSchema = z.object({
   surface: practiceRuntimeSurfaceSchema,
   problemId: z.string(),
-  at: z.string().optional(),
+  at: z.iso.datetime().optional(),
 })
 
 export type PracticeDetailsRequest = z.infer<
@@ -116,7 +116,7 @@ export const practiceSaveReviewResultRequestSchema = z.object({
   surface: practiceRuntimeSurfaceSchema,
   problemId: z.string(),
   rating: z.enum(reviewRatings),
-  reviewedAt: z.string().optional(),
+  reviewedAt: z.iso.datetime().optional(),
   reviewMode: z.enum(reviewModes).optional(),
   elapsedSeconds: z.number().int().positive().nullish(),
   isCorrect: z.boolean().nullish(),

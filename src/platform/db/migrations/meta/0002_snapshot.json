@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "baea7bb7-0b0b-4d2a-b43f-df59c450c787",
-  "prevId": "bc39a88b-f269-456e-affa-410ca2097fb1",
+  "id": "71e9ba3f-0512-44d0-ac34-e9a15479ddf2",
+  "prevId": "baea7bb7-0b0b-4d2a-b43f-df59c450c787",
   "tables": {
     "companies": {
       "name": "companies",
@@ -655,7 +655,8 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": 0
         }
       },
       "indexes": {
@@ -980,6 +981,13 @@
         "description": {
           "name": "description",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "due_at": {
+          "name": "due_at",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

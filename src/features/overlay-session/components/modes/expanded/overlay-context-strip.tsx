@@ -71,7 +71,9 @@ export function OverlaySubmissionSummary({
       <SubmissionStatusCard
         label="Next due"
         value={formatOverlayDateTime(nextReviewAt)}
-        tone={summary?.isOverdue ? 'danger' : summary?.isDue ? 'warning' : 'neutral'}
+        tone={
+          summary?.isOverdue ? 'danger' : summary?.isDue ? 'warning' : 'neutral'
+        }
       />
     </section>
   )

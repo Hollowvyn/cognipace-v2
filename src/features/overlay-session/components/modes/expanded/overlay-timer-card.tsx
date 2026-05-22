@@ -60,7 +60,11 @@ export function OverlayTimerCard({
             onClick={isRunning ? onPause : onStart}
             tone={isRunning ? 'primary' : 'neutral'}
           >
-            {isRunning ? <Pause className="size-4" /> : <Play className="size-4" />}
+            {isRunning ? (
+              <Pause className="size-4" />
+            ) : (
+              <Play className="size-4" />
+            )}
           </OverlayControlButton>
           <OverlayControlButton
             disabled={!canReset}

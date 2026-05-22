@@ -1,4 +1,4 @@
-export type { ActiveTrack, Track, TrackGroup } from './domain'
+export type { ActiveTrack, Track, TrackGroup, TrackProgress } from './domain'
 export {
   createTracksRepository,
   TracksRepository,

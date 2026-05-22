@@ -13,7 +13,7 @@ import {
   type TrackRow,
 } from '@/platform/db/schema'
 
-import type { ActiveTrack, Track, TrackGroup } from '../domain'
+import type { ActiveTrack, Track, TrackGroup, TrackProgress } from '../domain'
 
 export function createTracksRepository(db: Db) {
   return new TracksRepository(db)
@@ -37,14 +37,16 @@ export class TracksRepository {
       return null
     }
 
-    const group = session?.activeGroupId
-      ? await this.getGroupById(session.activeGroupId)
+    const preferredGroup = session?.activeGroupId
+      ? await this.getGroupByIdForTrack(session.activeGroupId, track.id)
       : await this.getFirstGroup(track.id)
+    const next = await this.getNextProblemInTrack(track.id, preferredGroup)
 
     return {
       track,
-      activeGroup: group,
-      nextProblem: group ? await this.getNextProblem(group.id) : null,
+      activeGroup: next.group,
+      progress: await this.getTrackProgress(track.id),
+      nextProblem: next.problem,
     }
   }
 
@@ -63,16 +65,17 @@ export class TracksRepository {
       .select()
       .from(tracks)
       .where(eq(tracks.isActive, true))
+      .orderBy(asc(tracks.createdAt))
       .limit(1)
 
     return rows[0] ? mapTrack(rows[0]) : null
   }
 
-  private async getGroupById(id: string) {
+  private async getGroupByIdForTrack(id: string, trackId: string) {
     const rows = await this.db
       .select()
       .from(trackGroups)
-      .where(eq(trackGroups.id, id))
+      .where(and(eq(trackGroups.id, id), eq(trackGroups.trackId, trackId)))
       .limit(1)
 
     return rows[0] ? mapTrackGroup(rows[0]) : null
@@ -89,6 +92,49 @@ export class TracksRepository {
     return rows[0] ? mapTrackGroup(rows[0]) : null
   }
 
+  private async getTrackGroups(trackId: string) {
+    const rows = await this.db
+      .select()
+      .from(trackGroups)
+      .where(eq(trackGroups.trackId, trackId))
+      .orderBy(asc(trackGroups.position))
+
+    return rows.map(mapTrackGroup)
+  }
+
+  private async getNextProblemInTrack(
+    trackId: string,
+    preferredGroup: TrackGroup | null,
+  ): Promise<{
+    group: TrackGroup | null
+    problem: Problem | null
+  }> {
+    const groups = await this.getTrackGroups(trackId)
+
+    if (groups.length === 0) {
+      return { group: null, problem: null }
+    }
+
+    const preferredIndex = preferredGroup
+      ? groups.findIndex((group) => group.id === preferredGroup.id)
+      : -1
+    const startIndex = preferredIndex >= 0 ? preferredIndex : 0
+    const candidateGroups = groups.slice(startIndex)
+
+    for (const group of candidateGroups) {
+      const problem = await this.getNextProblem(group.id)
+
+      if (problem) {
+        return { group, problem }
+      }
+    }
+
+    return {
+      group: preferredGroup ?? groups[0] ?? null,
+      problem: null,
+    }
+  }
+
   private async getNextProblem(groupId: string) {
     const rows = await this.db
       .select({
@@ -101,8 +147,12 @@ export class TracksRepository {
         and(
           eq(trackGroupProblems.trackGroupId, groupId),
           or(
-            isNull(problemPractice.status),
-            ne(problemPractice.status, 'mastered'),
+            isNull(problemPractice.problemId),
+            and(
+              ne(problemPractice.status, 'mastered'),
+              ne(problemPractice.status, 'suspended'),
+              eq(problemPractice.isSuspended, false),
+            ),
           ),
         ),
       )
@@ -115,6 +165,46 @@ export class TracksRepository {
 
     return null
   }
+
+  private async getTrackProgress(trackId: string): Promise<TrackProgress> {
+    const rows = await this.db
+      .select({
+        status: problemPractice.status,
+      })
+      .from(trackGroupProblems)
+      .innerJoin(
+        trackGroups,
+        eq(trackGroups.id, trackGroupProblems.trackGroupId),
+      )
+      .leftJoin(
+        problemPractice,
+        eq(problemPractice.problemId, trackGroupProblems.problemId),
+      )
+      .where(eq(trackGroups.trackId, trackId))
+
+    const totalCount = rows.length
+    const completedCount = rows.filter(
+      (row) => row.status === 'mastered',
+    ).length
+
+    if (totalCount === 0) {
+      return emptyProgress()
+    }
+
+    return {
+      completedCount,
+      totalCount,
+      percent: Math.round((completedCount / totalCount) * 100),
+    }
+  }
+}
+
+function emptyProgress(): TrackProgress {
+  return {
+    completedCount: 0,
+    totalCount: 0,
+    percent: 0,
+  }
 }
 
 function mapTrack(row: TrackRow): Track {
@@ -123,6 +213,7 @@ function mapTrack(row: TrackRow): Track {
     slug: row.slug,
     title: row.title,
     description: row.description,
+    dueAt: row.dueAt === null ? null : new Date(row.dueAt),
     isActive: row.isActive,
   }
 }

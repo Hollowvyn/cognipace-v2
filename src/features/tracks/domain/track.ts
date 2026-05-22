@@ -5,6 +5,7 @@ export interface Track {
   slug: string
   title: string
   description: string | null
+  dueAt: Date | null
   isActive: boolean
 }
 
@@ -15,8 +16,15 @@ export interface TrackGroup {
   position: number
 }
 
+export interface TrackProgress {
+  completedCount: number
+  totalCount: number
+  percent: number
+}
+
 export interface ActiveTrack {
   track: Track
   activeGroup: TrackGroup | null
+  progress: TrackProgress
   nextProblem: Problem | null
 }

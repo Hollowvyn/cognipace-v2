@@ -1,8 +1,4 @@
 export {
-  upsertProblemFromPageViaRuntime,
-  useUpsertProblemFromPage,
-} from './api/problems-api'
-export {
   createLeetCodeProblemId,
   normalizeProblemDifficulty,
   problemDifficulties,
@@ -17,7 +13,16 @@ export {
   ProblemsRepository,
 } from './data/problems-repository'
 export {
+  formatProblemDifficulty,
+  getProblemDifficultyTone,
+  ProblemDifficultyBadge,
+} from './components/problem-difficulty-badge'
+export {
   getProblemContext,
   upsertProblemFromPage,
   type UpsertProblemFromPageInput,
 } from './server/problems-service'
+export {
+  upsertProblemFromPageViaRuntime,
+  useUpsertProblemFromPage,
+} from './api/problems-api'

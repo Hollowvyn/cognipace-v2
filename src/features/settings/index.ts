@@ -15,4 +15,5 @@ export {
   createSettingsRepository,
   SettingsRepository,
 } from './data/settings-repository'
+export { useSettings, useUpdateSettings } from './api/settings-api'
 export { getSettings, updateSettings } from './server/settings-service'

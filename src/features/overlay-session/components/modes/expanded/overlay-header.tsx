@@ -1,12 +1,7 @@
-import {
-  ChevronsDown,
-  PanelRightClose,
-  Settings,
-} from 'lucide-react'
+import { ChevronsDown, PanelRightClose, Settings } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
-import type { Tone } from '@/components/ui/types'
 import type { AppShellProblemSummary } from '@/features/app-shell'
+import { ProblemDifficultyBadge } from '@/features/problems'
 
 import { OverlayControlButton } from '../../shared/overlay-control-button'
 
@@ -26,10 +21,7 @@ export function OverlayHeader({
   onSettings,
 }: OverlayHeaderProps) {
   return (
-    <header
-      className="flex min-h-14 cursor-pointer items-center gap-2 border-b border-border px-3"
-      onClick={onCollapse}
-    >
+    <header className="flex min-h-14 items-center gap-2 border-b border-border px-3">
       <div className="flex shrink-0 items-center gap-1">
         <OverlayControlButton
           stopClickPropagation
@@ -58,30 +50,7 @@ export function OverlayHeader({
         {title}
       </h1>
 
-      <Badge tone={getDifficultyTone(problem?.difficulty)}>
-        {formatDifficulty(problem?.difficulty)}
-      </Badge>
+      <ProblemDifficultyBadge difficulty={problem?.difficulty} />
     </header>
   )
-}
-
-function formatDifficulty(difficulty: string | null | undefined) {
-  if (!difficulty) {
-    return 'Unknown'
-  }
-
-  return difficulty[0]?.toUpperCase() + difficulty.slice(1)
-}
-
-function getDifficultyTone(difficulty: string | null | undefined): Tone {
-  switch (difficulty) {
-    case 'easy':
-      return 'leetcode-easy'
-    case 'medium':
-      return 'leetcode-medium'
-    case 'hard':
-      return 'leetcode-hard'
-    default:
-      return 'neutral'
-  }
 }

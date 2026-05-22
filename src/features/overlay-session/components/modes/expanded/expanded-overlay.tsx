@@ -58,10 +58,7 @@ type ExpandedOverlayProps = {
   view: ExpandedOverlayViewModel
 }
 
-export function ExpandedOverlay({
-  commands,
-  view,
-}: ExpandedOverlayProps) {
+export function ExpandedOverlay({ commands, view }: ExpandedOverlayProps) {
   const {
     context,
     draft,
@@ -112,10 +109,7 @@ export function ExpandedOverlay({
           problem={context?.problem ?? null}
           title={problemTitle}
         />
-        <OverlayContextStrip
-          context={context}
-          isSubmitted={submitted}
-        />
+        <OverlayContextStrip context={context} isSubmitted={submitted} />
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
           <div className="grid gap-4">
@@ -148,7 +142,9 @@ export function ExpandedOverlay({
             {showUntimedWarning ? (
               <InlineStatus tone="neutral">
                 <Info aria-hidden="true" />
-                <span>No timer used; this review will save without solve time.</span>
+                <span>
+                  No timer used; this review will save without solve time.
+                </span>
               </InlineStatus>
             ) : null}
 

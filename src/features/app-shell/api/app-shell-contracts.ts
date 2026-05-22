@@ -35,7 +35,7 @@ const appShellProblemSummarySchema = z.object({
 const appShellQueueItemSchema = z.object({
   category: z.enum(['due', 'new', 'reinforcement']),
   problem: appShellProblemSummarySchema,
-  dueAt: z.string().nullable(),
+  dueAt: z.iso.datetime().nullable(),
   activeTrackPosition: z.number().nullable(),
   summary: practiceSummarySchema,
 })
@@ -45,11 +45,46 @@ const appShellRecommendationSchema = z.object({
   detail: z.string(),
   category: z.enum(['due', 'new', 'reinforcement']).nullable(),
   problem: appShellProblemSummarySchema.nullable(),
-  dueAt: z.string().nullable(),
+  dueAt: z.iso.datetime().nullable(),
+  alsoNextInTrack: z.boolean(),
 })
 
+const appShellTrackProgressSchema = z
+  .object({
+    completedCount: z.number().int().min(0),
+    totalCount: z.number().int().min(0),
+    percent: z.number().int().min(0).max(100),
+  })
+  .superRefine((progress, context) => {
+    if (progress.completedCount > progress.totalCount) {
+      context.addIssue({
+        code: 'custom',
+        message: 'completedCount cannot exceed totalCount',
+        path: ['completedCount'],
+      })
+    }
+
+    const expectedPercent =
+      progress.totalCount === 0
+        ? 0
+        : Math.round((progress.completedCount / progress.totalCount) * 100)
+
+    if (progress.percent !== expectedPercent) {
+      context.addIssue({
+        code: 'custom',
+        message: 'percent must match completedCount and totalCount',
+        path: ['percent'],
+      })
+    }
+  })
+
 const appShellActiveTrackSchema = z.object({
+  trackId: z.string().nullable(),
   title: z.string(),
+  description: z.string().nullable(),
+  groupTitle: z.string().nullable(),
+  dueAt: z.iso.datetime().nullable(),
+  progress: appShellTrackProgressSchema,
   detail: z.string(),
   nextProblem: appShellProblemSummarySchema.nullable(),
 })
@@ -60,12 +95,13 @@ const overlayNextStepSchema = z.object({
   detail: z.string(),
   problem: appShellProblemSummarySchema.nullable(),
   category: z.enum(['due', 'new', 'reinforcement']).nullable(),
-  dueAt: z.string().nullable(),
+  dueAt: z.iso.datetime().nullable(),
 })
 
 const appShellTimingSettingsSchema = userSettingsSchema.shape.timing
 
 const appShellSettingsSummarySchema = z.object({
+  studyMode: userSettingsSchema.shape.studyMode,
   timing: appShellTimingSettingsSchema,
   memoryReview: userSettingsSchema.shape.memoryReview,
   questionFilters: userSettingsSchema.shape.questionFilters,
@@ -126,5 +162,7 @@ export type PopupAppShellData = z.infer<typeof popupAppShellDataSchema>
 export type DashboardAppShellData = z.infer<typeof dashboardAppShellDataSchema>
 export type OverlayAppShellData = z.infer<typeof overlayAppShellDataSchema>
 export type AppShellQueueItem = z.infer<typeof appShellQueueItemSchema>
-export type AppShellProblemSummary = z.infer<typeof appShellProblemSummarySchema>
+export type AppShellProblemSummary = z.infer<
+  typeof appShellProblemSummarySchema
+>
 export type OverlayNextStep = z.infer<typeof overlayNextStepSchema>

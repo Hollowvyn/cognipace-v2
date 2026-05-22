@@ -110,6 +110,22 @@ describe('buildTodayQueue', () => {
     expect(queue.items).toEqual([])
   })
 
+  it('excludes mastered candidates from daily queue items', () => {
+    const queue = buildTodayQueue(
+      [
+        candidate({
+          slug: 'mastered',
+          activeTrackPosition: 1,
+          practice: practice({ status: 'mastered' }),
+        }),
+      ],
+      defaultUserSettings,
+      generatedAt,
+    )
+
+    expect(queue.items).toEqual([])
+  })
+
   it('honors weakest-first ordering for review items', () => {
     const queue = buildTodayQueue(
       [
@@ -177,11 +193,12 @@ function candidate(input: {
 function practice(input: {
   lastRating?: ReviewRating
   isSuspended?: boolean
+  status?: NonNullable<QueueCandidate['practice']>['status']
 }): NonNullable<QueueCandidate['practice']> {
   const lastRating = input.lastRating ?? 'good'
 
   return {
-    status: input.isSuspended ? 'suspended' : 'review',
+    status: input.status ?? (input.isSuspended ? 'suspended' : 'review'),
     lastReviewedAt: new Date('2026-01-01T08:00:00.000Z'),
     attemptCount: 1,
     solvedCount: lastRating === 'again' ? 0 : 1,
