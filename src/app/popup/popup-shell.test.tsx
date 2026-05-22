@@ -46,7 +46,6 @@ const shellData = {
     category: 'due',
     problem: validParentheses,
     dueAt: '2025-12-31T00:00:00.000Z',
-    alsoNextInTrack: false,
   },
   activeTrack: {
     trackId: 'leetcode-75',
@@ -183,7 +182,7 @@ describe('PopupShell', () => {
     expect(controller.actions.shuffleRecommendation).toHaveBeenCalledTimes(1)
   })
 
-  it('renders freestyle state without the up-next inset', () => {
+  it('keeps the active-track preview visible in freestyle mode', () => {
     render(
       <PopupShell
         controller={createController({
@@ -197,14 +196,15 @@ describe('PopupShell', () => {
     )
 
     expect(
-      screen.getByRole('heading', { name: 'You are in freestyle mode' }),
+      screen.getByRole('heading', { name: 'LeetCode 75' }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Start study mode' }),
     ).toBeInTheDocument()
-    expect(screen.queryByText('Up Next')).not.toBeInTheDocument()
+    expect(screen.getByText('Up Next')).toBeInTheDocument()
+    expect(screen.getByText('Two Sum')).toBeInTheDocument()
     expect(screen.queryByText('Next in track')).not.toBeInTheDocument()
-    expect(screen.queryByText('Arrays and Hashing')).not.toBeInTheDocument()
+    expect(screen.getByText('Arrays and Hashing')).toBeInTheDocument()
   })
 
   it('disables the mode action while study mode is saving', () => {
@@ -227,11 +227,10 @@ describe('PopupShell', () => {
             ...shellData,
             recommendation: {
               title: 'Queue is clear',
-              detail: 'No due or new problems are available.',
+              detail: 'No due reviews or extra practice are queued right now.',
               category: null,
               problem: null,
               dueAt: null,
-              alsoNextInTrack: false,
             },
             activeTrack: {
               trackId: null,
@@ -244,7 +243,7 @@ describe('PopupShell', () => {
                 totalCount: 0,
                 percent: 0,
               },
-              detail: 'Choose a track to start queue generation.',
+              detail: 'Choose a track to restore guided progression.',
               nextProblem: null,
             },
             queue: {
@@ -266,9 +265,7 @@ describe('PopupShell', () => {
     expect(
       screen.getByRole('heading', { name: 'No active track' }),
     ).toBeInTheDocument()
-    expect(
-      screen.getByText(/Start study mode when you want/i),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/Your review queue is clear/i)).toBeInTheDocument()
     expect(screen.queryByText('Up Next')).not.toBeInTheDocument()
   })
 

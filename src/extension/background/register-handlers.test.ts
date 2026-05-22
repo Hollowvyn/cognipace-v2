@@ -289,7 +289,6 @@ function createPopupShellData(): PopupAppShellData {
         isPremium: false,
       },
       dueAt: null,
-      alsoNextInTrack: true,
     },
     activeTrack: {
       trackId: 'leetcode-75',

@@ -154,7 +154,7 @@ describe('db foundation', () => {
     )
   })
 
-  it('does not recommend a next track problem when the active group is mastered', async () => {
+  it('keeps track preview catalog-backed when a problem is mastered', async () => {
     const handle = await createTestDb()
     const timestamp = new Date('2026-01-01T00:00:00.000Z').getTime()
 
@@ -173,7 +173,14 @@ describe('db foundation', () => {
 
     const activeTrack = await createTracksRepository(handle.db).getActiveTrack()
 
-    expect(activeTrack?.nextProblem).toBeNull()
+    expect(activeTrack?.nextProblem).toMatchObject({
+      slug: 'two-sum',
+    })
+    expect(activeTrack?.progress).toEqual({
+      completedCount: 0,
+      totalCount: 1,
+      percent: 0,
+    })
   })
 
   it('can create a new LeetCode problem from page data', async () => {

@@ -45,7 +45,6 @@ const appShellRecommendationSchema = z.object({
   category: z.enum(['due', 'new', 'reinforcement']).nullable(),
   problem: appShellProblemSummarySchema.nullable(),
   dueAt: z.iso.datetime().nullable(),
-  alsoNextInTrack: z.boolean(),
 })
 
 const appShellTrackProgressSchema = z

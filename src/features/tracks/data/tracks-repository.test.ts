@@ -57,7 +57,7 @@ describe('TracksRepository', () => {
     expect(activeTrack?.track.dueAt).toEqual(dueAt)
   })
 
-  it('summarizes progress across the whole active track and advances to the next group', async () => {
+  it('summarizes catalog progress without reading practice state', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
@@ -93,16 +93,16 @@ describe('TracksRepository', () => {
     const activeTrack = await createTracksRepository(handle.db).getActiveTrack()
 
     expect(activeTrack?.progress).toEqual({
-      completedCount: 1,
+      completedCount: 0,
       totalCount: 2,
-      percent: 50,
+      percent: 0,
     })
     expect(activeTrack?.activeGroup).toMatchObject({
-      id: 'leetcode-75:stack',
-      title: 'Stack',
+      id: 'leetcode-75:arrays-hashing',
+      title: 'Arrays and Hashing',
     })
     expect(activeTrack?.nextProblem).toMatchObject({
-      slug: 'valid-parentheses',
+      slug: 'two-sum',
     })
   })
 
@@ -136,7 +136,7 @@ describe('TracksRepository', () => {
     })
   })
 
-  it('does not return suspended active group problems as next problem', async () => {
+  it('does not let suspended practice state remove a catalog track problem', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
@@ -158,7 +158,9 @@ describe('TracksRepository', () => {
 
     const activeTrack = await createTracksRepository(handle.db).getActiveTrack()
 
-    expect(activeTrack?.nextProblem).toBeNull()
+    expect(activeTrack?.nextProblem).toMatchObject({
+      slug: 'two-sum',
+    })
     expect(activeTrack?.progress).toEqual({
       completedCount: 0,
       totalCount: 1,

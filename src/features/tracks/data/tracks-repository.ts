@@ -1,9 +1,8 @@
-import { and, asc, eq, isNull, ne, or } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 
 import { normalizeProblemDifficulty, type Problem } from '@/features/problems'
 import type { Db } from '@/platform/db'
 import {
-  problemPractice,
   problems,
   trackGroupProblems,
   trackGroups,
@@ -142,20 +141,7 @@ export class TracksRepository {
       })
       .from(trackGroupProblems)
       .innerJoin(problems, eq(problems.id, trackGroupProblems.problemId))
-      .leftJoin(problemPractice, eq(problemPractice.problemId, problems.id))
-      .where(
-        and(
-          eq(trackGroupProblems.trackGroupId, groupId),
-          or(
-            isNull(problemPractice.problemId),
-            and(
-              ne(problemPractice.status, 'mastered'),
-              ne(problemPractice.status, 'suspended'),
-              eq(problemPractice.isSuspended, false),
-            ),
-          ),
-        ),
-      )
+      .where(eq(trackGroupProblems.trackGroupId, groupId))
       .orderBy(asc(trackGroupProblems.position))
       .limit(1)
 
@@ -169,32 +155,25 @@ export class TracksRepository {
   private async getTrackProgress(trackId: string): Promise<TrackProgress> {
     const rows = await this.db
       .select({
-        status: problemPractice.status,
+        problemId: trackGroupProblems.problemId,
       })
       .from(trackGroupProblems)
       .innerJoin(
         trackGroups,
         eq(trackGroups.id, trackGroupProblems.trackGroupId),
       )
-      .leftJoin(
-        problemPractice,
-        eq(problemPractice.problemId, trackGroupProblems.problemId),
-      )
       .where(eq(trackGroups.trackId, trackId))
 
     const totalCount = rows.length
-    const completedCount = rows.filter(
-      (row) => row.status === 'mastered',
-    ).length
 
     if (totalCount === 0) {
       return emptyProgress()
     }
 
     return {
-      completedCount,
+      completedCount: 0,
       totalCount,
-      percent: Math.round((completedCount / totalCount) * 100),
+      percent: 0,
     }
   }
 }

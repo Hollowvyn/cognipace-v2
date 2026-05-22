@@ -80,11 +80,6 @@ export function RecommendationCard({
               Overdue
             </Badge>
           ) : null}
-          {view.isTrackNext ? (
-            <Badge className="shrink-0" tone="info">
-              Next in track
-            </Badge>
-          ) : null}
         </div>
       ) : (
         <p className="mt-2 text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">

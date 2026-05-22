@@ -64,7 +64,6 @@ const fallbackData = {
     category: null,
     problem: null,
     dueAt: null,
-    alsoNextInTrack: false,
   },
   activeTrack: {
     trackId: null,
@@ -122,8 +121,8 @@ export function usePopupAppShellController(): PopupAppShellController {
   const data = shell.data ?? fallbackData
   const studyMode = pendingStudyMode ?? data.settings.studyMode
   const displayData = useMemo(
-    () => selectPopupRecommendation(data, recommendationIndex, studyMode),
-    [data, recommendationIndex, studyMode],
+    () => selectPopupRecommendation(data, recommendationIndex),
+    [data, recommendationIndex],
   )
   const view = useMemo(
     () => createPopupAppShellView(displayData, studyMode),

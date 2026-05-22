@@ -18,7 +18,6 @@ export type PopupRecommendationView = {
   reason: PopupRecommendationReason | null
   difficulty: AppShellProblemSummary['difficulty'] | null
   isOverdue: boolean
-  isTrackNext: boolean
 }
 
 export type PopupActiveTrackView = {
@@ -38,7 +37,6 @@ export type PopupAppShellView = {
 
 export function buildAppShellRecommendation(
   item: AppShellQueueItem | null,
-  activeTrackNextSlug: string | null,
 ): PopupAppShellData['recommendation'] {
   if (!item) {
     return {
@@ -47,7 +45,6 @@ export function buildAppShellRecommendation(
       category: null,
       problem: null,
       dueAt: null,
-      alsoNextInTrack: false,
     }
   }
 
@@ -57,14 +54,12 @@ export function buildAppShellRecommendation(
     category: item.category,
     problem: item.problem,
     dueAt: item.dueAt,
-    alsoNextInTrack: item.problem.slug === activeTrackNextSlug,
   }
 }
 
 export function selectPopupRecommendation(
   data: PopupAppShellData,
   recommendationIndex: number,
-  studyMode: StudyMode,
 ): PopupAppShellData {
   const itemCount = data.popup.queuePreview.length
 
@@ -80,12 +75,7 @@ export function selectPopupRecommendation(
 
   return {
     ...data,
-    recommendation: buildAppShellRecommendation(
-      item,
-      studyMode === 'studyPlan'
-        ? (data.activeTrack.nextProblem?.slug ?? null)
-        : null,
-    ),
+    recommendation: buildAppShellRecommendation(item),
   }
 }
 
@@ -94,14 +84,13 @@ export function createPopupAppShellView(
   studyMode: StudyMode,
 ): PopupAppShellView {
   return {
-    recommendation: createPopupRecommendationView(data, studyMode),
+    recommendation: createPopupRecommendationView(data),
     activeTrack: createPopupActiveTrackView(data, studyMode),
   }
 }
 
 function createPopupRecommendationView(
   data: PopupAppShellData,
-  studyMode: StudyMode,
 ): PopupRecommendationView {
   const problem = data.recommendation.problem
   const queueItem = problem
@@ -110,15 +99,11 @@ function createPopupRecommendationView(
 
   return {
     title: problem ? problem.title : 'Queue Clear',
-    emptyCopy: problem
-      ? null
-      : readEmptyRecommendationCopy(data.activeTrack.trackId, studyMode),
+    emptyCopy: problem ? null : readEmptyRecommendationCopy(),
     problem,
     reason: readRecommendationReason(data.recommendation.category),
     difficulty: problem?.difficulty ?? null,
     isOverdue: queueItem?.summary.isOverdue ?? false,
-    isTrackNext:
-      studyMode === 'studyPlan' && data.recommendation.alsoNextInTrack,
   }
 }
 
@@ -131,29 +116,20 @@ function createPopupActiveTrackView(
   const isFreePractice = studyMode === 'freePractice'
 
   return {
-    title: readActiveTrackTitle(data, studyMode),
-    body: readActiveTrackBody(data, studyMode),
-    groupTitle:
-      hasActiveTrack && !isFreePractice ? activeTrack.groupTitle : null,
-    dueAt: hasActiveTrack && !isFreePractice ? activeTrack.dueAt : null,
-    progressPercent:
-      hasActiveTrack && !isFreePractice ? activeTrack.progress.percent : null,
-    nextProblem: isFreePractice ? null : activeTrack.nextProblem,
+    title: readActiveTrackTitle(data),
+    body: readActiveTrackBody(data),
+    groupTitle: hasActiveTrack ? activeTrack.groupTitle : null,
+    dueAt: hasActiveTrack ? activeTrack.dueAt : null,
+    progressPercent: hasActiveTrack ? activeTrack.progress.percent : null,
+    nextProblem: activeTrack.nextProblem,
     modeActionLabel: isFreePractice
       ? 'Start study mode'
       : 'Start freestyle mode',
   }
 }
 
-function readEmptyRecommendationCopy(
-  activeTrackId: string | null,
-  studyMode: StudyMode,
-) {
-  if (studyMode === 'freePractice' || activeTrackId === null) {
-    return 'No review pressure right now. Start study mode when you want guided track progression.'
-  }
-
-  return 'No review pressure right now. Continue the active track when you are ready.'
+function readEmptyRecommendationCopy() {
+  return 'No review pressure right now. Your review queue is clear.'
 }
 
 function readRecommendationReason(
@@ -171,29 +147,19 @@ function readRecommendationReason(
   }
 }
 
-function readActiveTrackTitle(data: PopupAppShellData, studyMode: StudyMode) {
-  if (studyMode === 'freePractice') {
-    return 'You are in freestyle mode'
-  }
-
+function readActiveTrackTitle(data: PopupAppShellData) {
   return data.activeTrack.title
 }
 
-function readActiveTrackBody(data: PopupAppShellData, studyMode: StudyMode) {
+function readActiveTrackBody(data: PopupAppShellData) {
   const activeTrack = data.activeTrack
-
-  if (studyMode === 'freePractice') {
-    return 'Queue review is primary. Start study mode when you are ready for guided track progression.'
-  }
 
   if (!activeTrack.trackId) {
     return 'Choose a track in the dashboard to restore guided progression.'
   }
 
   if (!activeTrack.nextProblem) {
-    return activeTrack.progress.percent === 100
-      ? 'Track complete. Switch tracks or use freestyle for due reviews.'
-      : 'No available next problem in this track right now.'
+    return 'No track preview problem is available yet.'
   }
 
   return activeTrack.description ?? activeTrack.detail

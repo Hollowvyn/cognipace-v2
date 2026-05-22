@@ -62,7 +62,6 @@ const popupData = {
     category: 'new',
     problem: twoSum,
     dueAt: null,
-    alsoNextInTrack: true,
   },
   activeTrack: {
     trackId: 'leetcode-75',

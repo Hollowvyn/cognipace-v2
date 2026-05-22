@@ -73,12 +73,7 @@ async function getMainAppShellData(db: Db, now: Date) {
       { label: 'Due Today', value: String(queue.dueCount) },
       { label: 'Streak', value: '0 days' },
     ],
-    recommendation: buildAppShellRecommendation(
-      queueItems[0] ?? null,
-      settings.studyMode === 'studyPlan'
-        ? (activeTrack?.nextProblem?.slug ?? null)
-        : null,
-    ),
+    recommendation: buildAppShellRecommendation(queueItems[0] ?? null),
     activeTrack: serializeActiveTrack(activeTrack),
     queue: {
       dailyGoal: queue.dailyGoal,
@@ -225,7 +220,7 @@ function serializeActiveTrack(activeTrack: ActiveTrack | null) {
         totalCount: 0,
         percent: 0,
       },
-      detail: 'Choose a track to start queue generation.',
+      detail: 'Choose a track to restore guided progression.',
       nextProblem: null,
     }
   }
@@ -249,14 +244,7 @@ function readActiveTrackDetail(activeTrack: ActiveTrack) {
     return `Next: ${activeTrack.nextProblem.title}`
   }
 
-  if (
-    activeTrack.progress.totalCount > 0 &&
-    activeTrack.progress.completedCount === activeTrack.progress.totalCount
-  ) {
-    return 'Track complete.'
-  }
-
-  return 'No available next problem in the active track.'
+  return 'No track preview problem is available yet.'
 }
 
 function serializeQueueItem(item: QueueItem): AppShellQueueItem {

@@ -64,7 +64,6 @@ describe('app-shell service', () => {
     expect(payload.recommendation).toMatchObject({
       category: null,
       problem: null,
-      alsoNextInTrack: false,
     })
     expect(payload.popup.queuePreview).toHaveLength(0)
   })
@@ -97,7 +96,7 @@ describe('app-shell service', () => {
     const payload = await getPopupPayload(handle)
 
     expect(payload.recommendation.problem).toBeNull()
-    expect(payload.recommendation.alsoNextInTrack).toBe(false)
+    expect(payload.activeTrack.nextProblem?.slug).toBe('two-sum')
     expect(payload.settings.studyMode).toBe('freePractice')
   })
 
