@@ -5,4 +5,3 @@ export {
   type QueueItem,
   type TodayQueue,
 } from './domain'
-export { getTodayQueue } from './server/queue-service'

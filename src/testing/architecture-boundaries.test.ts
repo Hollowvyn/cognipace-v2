@@ -8,6 +8,8 @@ const repoRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 const srcRoot = join(repoRoot, 'src')
 const featureDeepImportPattern =
   /(?:\bfrom\s+|\bimport\s+|\bimport\()\s*['"](@\/features\/([^/'"]+)\/(?!(?:domain|api\/[^'"]*(?:contracts|serializers)|server\/[^'"]*service|data\/[^'"]*repository)(?:['"]|\/))[^'"]+)['"]/g
+const featureIndexRuntimeExportPattern =
+  /export\s+(?:type\s+)?(?:\{[\s\S]*?\}|\*)\s+from\s+['"]\.\/(?:data|server)(?:\/|['"])/
 const reviewSchedulingWritePattern =
   /\.\s*(?:insert|update|delete)\s*\(\s*(?:reviewAttempts|problemPractice|fsrsCards)\b/
 
@@ -49,6 +51,15 @@ describe('architecture boundaries', () => {
     })
 
     expect(offenders).toEqual([])
+  })
+
+  it('keeps root feature barrels free of data and server exports', () => {
+    const offenders = featureRootIndexFiles().filter((file) => {
+      const content = readFileSync(file, 'utf8')
+      return featureIndexRuntimeExportPattern.test(content)
+    })
+
+    expect(offenders.map(toRepoPath)).toEqual([])
   })
 
   it('does not introduce a custom runtime-rpc library', () => {
@@ -104,6 +115,14 @@ function productionSourceFiles() {
       !file.endsWith('.test.tsx') &&
       !toRepoPath(file).startsWith('src/testing/'),
   )
+}
+
+function featureRootIndexFiles() {
+  return sourceFiles(['features']).filter((file) => {
+    const parts = relative(join(srcRoot, 'features'), file).split(/[\\/]/)
+
+    return parts.length === 2 && parts[1] === 'index.ts'
+  })
 }
 
 function findNestedFeatureImports(file: string) {

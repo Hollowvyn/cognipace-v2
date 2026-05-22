@@ -64,16 +64,3 @@ export {
   type SetPracticeSuspendedInput,
   type UpdatePracticeLogInput,
 } from './domain'
-export {
-  createFsrsCardId,
-  createPracticeRepository,
-  PracticeRepository,
-} from './data/practice-repository'
-export {
-  getPracticeDetails,
-  overrideLastReviewResult,
-  resetPracticeSchedule,
-  saveReviewResult,
-  setPracticeSuspended,
-  updateCurrentPracticeLog,
-} from './server/practice-service'

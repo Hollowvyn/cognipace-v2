@@ -9,19 +9,10 @@ export {
   type UpsertProblemInput,
 } from './domain'
 export {
-  createProblemsRepository,
-  ProblemsRepository,
-} from './data/problems-repository'
-export {
   formatProblemDifficulty,
   getProblemDifficultyTone,
   ProblemDifficultyBadge,
 } from './components/problem-difficulty-badge'
-export {
-  getProblemContext,
-  upsertProblemFromPage,
-  type UpsertProblemFromPageInput,
-} from './server/problems-service'
 export {
   upsertProblemFromPageViaRuntime,
   useUpsertProblemFromPage,
