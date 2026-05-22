@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 const repoRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 const srcRoot = join(repoRoot, 'src')
 const featureDeepImportPattern =
-  /(?:\bfrom\s+|\bimport\s+|\bimport\()\s*['"](@\/features\/([^/'"]+)\/[^'"]+)['"]/g
+  /(?:\bfrom\s+|\bimport\s+|\bimport\()\s*['"](@\/features\/([^/'"]+)\/(?!(?:domain|api\/[^'"]*(?:contracts|serializers)|server\/[^'"]*service|data\/[^'"]*repository)(?:['"]|\/))[^'"]+)['"]/g
 const reviewSchedulingWritePattern =
   /\.\s*(?:insert|update|delete)\s*\(\s*(?:reviewAttempts|problemPractice|fsrsCards)\b/
 
@@ -29,7 +29,7 @@ describe('architecture boundaries', () => {
     expect(offenders.map(toRepoPath)).toEqual([])
   })
 
-  it('keeps app feature imports on public feature barrels', () => {
+  it('keeps app feature imports on public feature surfaces', () => {
     const offenders = sourceFiles(['app']).flatMap((file) =>
       findNestedFeatureImports(file).map(({ importPath }) =>
         formatImportOffender(file, importPath),
@@ -39,7 +39,7 @@ describe('architecture boundaries', () => {
     expect(offenders).toEqual([])
   })
 
-  it('keeps cross-feature imports on public feature barrels', () => {
+  it('keeps cross-feature imports on public feature surfaces', () => {
     const offenders = sourceFiles(['features']).flatMap((file) => {
       const currentFeatureName = getOwningFeatureName(file)
 

@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it, vi } from 'vitest'
 
-import { createPracticeRepository } from '@/features/practice'
-import { getTodayQueue } from '@/features/queue'
+import { createPracticeRepository } from '@/features/practice/data/practice-repository'
+import { getTodayQueue } from '@/features/queue/server/queue-service'
 import { createTestDb } from '@/platform/db/test-db'
 import {
   fsrsCards,

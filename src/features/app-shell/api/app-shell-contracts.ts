@@ -3,9 +3,9 @@ import { z } from 'zod'
 import {
   practiceDetailsSchema,
   practiceSummarySchema,
-} from '@/features/practice'
-import { problemDifficulties } from '@/features/problems'
-import { userSettingsSchema } from '@/features/settings'
+} from '@/features/practice/api/practice-contracts'
+import { problemDifficulties } from '@/features/problems/domain'
+import { userSettingsSchema } from '@/features/settings/domain'
 
 export const appShellRequestSchema = z.discriminatedUnion('surface', [
   z.object({ surface: z.literal('popup') }),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { defaultUserSettings } from '@/features/settings'
+import { defaultUserSettings } from '@/features/settings/domain'
 import type { FsrsCardSnapshot, ReviewRating } from '@/lib/fsrs'
 
 import { buildTodayQueue, type QueueCandidate } from './queue'

@@ -6,9 +6,9 @@ import { getOverlayAppShellDataViaRuntime } from '@/features/app-shell'
 import {
   overrideLastReviewResultViaRuntime,
   saveReviewResultViaRuntime,
-  type SerializedPracticeDetails,
   updateCurrentPracticeLogViaRuntime,
 } from '@/features/practice'
+import type { SerializedPracticeDetails } from '@/features/practice/api/practice-contracts'
 import { upsertProblemFromPageViaRuntime } from '@/features/problems'
 import type {
   LeetCodePageEvent,

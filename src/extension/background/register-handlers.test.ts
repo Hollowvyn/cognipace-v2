@@ -5,9 +5,9 @@ import {
   queueRequestSchema,
   todayQueueSchema,
 } from '@/extension/messaging'
-import type { PopupAppShellData } from '@/features/app-shell'
-import { defaultUserSettings } from '@/features/settings'
-import type { ActiveTrack } from '@/features/tracks'
+import type { PopupAppShellData } from '@/features/app-shell/api/app-shell-contracts'
+import { defaultUserSettings } from '@/features/settings/domain'
+import type { ActiveTrack } from '@/features/tracks/domain'
 
 import {
   registerBackgroundHandlers,
@@ -57,19 +57,14 @@ vi.mock('@/features/app-shell/server/app-shell-service', () => ({
   getAppShellData: backgroundMocks.getAppShellData,
 }))
 
-vi.mock('@/features/tracks', () => ({
+vi.mock('@/features/tracks/server/tracks-service', () => ({
   getActiveTrack: backgroundMocks.getActiveTrack,
 }))
 
-vi.mock('@/features/settings', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/features/settings')>()
-
-  return {
-    ...actual,
-    getSettings: backgroundMocks.getSettings,
-    updateSettings: backgroundMocks.updateSettings,
-  }
-})
+vi.mock('@/features/settings/server/settings-service', () => ({
+  getSettings: backgroundMocks.getSettings,
+  updateSettings: backgroundMocks.updateSettings,
+}))
 
 vi.mock('@/platform/db', () => ({
   getAppDb: backgroundMocks.getAppDb,

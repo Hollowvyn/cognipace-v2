@@ -24,7 +24,7 @@ import {
   readLeetCodeProblemContentInBackground,
   readLeetCodeProblemMetadataInBackground,
   readLeetCodeSubmissionResultInBackground,
-} from '@/features/leetcode-capture'
+} from '@/features/leetcode-capture/server/leetcode-capture-service'
 import {
   practiceDetailsRequestSchema,
   practiceOverrideLastReviewResultRequestSchema,
@@ -32,24 +32,31 @@ import {
   practiceSaveReviewResultRequestSchema,
   practiceSetSuspendedRequestSchema,
   practiceUpdateCurrentLogRequestSchema,
+} from '@/features/practice/api/practice-contracts'
+import {
+  serializePracticeDetails,
+  serializePracticeSummary,
+  serializeReviewResult,
+} from '@/features/practice/api/practice-serializers'
+import {
   getPracticeDetails,
   overrideLastReviewResult,
   resetPracticeSchedule,
   saveReviewResult,
-  serializePracticeDetails,
-  serializePracticeSummary,
-  serializeReviewResult,
   setPracticeSuspended,
   updateCurrentPracticeLog,
-} from '@/features/practice'
-import { upsertProblemFromPage, type Problem } from '@/features/problems'
-import { getTodayQueue, type TodayQueue } from '@/features/queue'
+} from '@/features/practice/server/practice-service'
+import type { Problem } from '@/features/problems/domain'
+import { upsertProblemFromPage } from '@/features/problems/server/problems-service'
+import type { TodayQueue } from '@/features/queue/domain'
+import { getTodayQueue } from '@/features/queue/server/queue-service'
+import type { UserSettings } from '@/features/settings/domain'
 import {
   getSettings,
   updateSettings,
-  type UserSettings,
-} from '@/features/settings'
-import { getActiveTrack, type ActiveTrack } from '@/features/tracks'
+} from '@/features/settings/server/settings-service'
+import type { ActiveTrack } from '@/features/tracks/domain'
+import { getActiveTrack } from '@/features/tracks/server/tracks-service'
 import { getAppDb } from '@/platform/db'
 
 import { broadcastCacheInvalidation } from './cache-invalidation-broadcaster'

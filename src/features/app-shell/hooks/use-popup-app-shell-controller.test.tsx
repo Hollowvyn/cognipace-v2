@@ -6,7 +6,7 @@ import type {
   AppShellProblemSummary,
   PopupAppShellData,
 } from '@/features/app-shell'
-import { defaultUserSettings } from '@/features/settings'
+import { defaultUserSettings } from '@/features/settings/domain'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import { usePopupAppShellController } from './use-popup-app-shell-controller'

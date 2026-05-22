@@ -1,5 +1,6 @@
 import { and, eq } from 'drizzle-orm'
 
+import type { PracticeStatus } from '@/features/practice/domain'
 import { defaultFsrsCardKind } from '@/lib/fsrs'
 import { normalizeLeetCodeSlug } from '@/lib/leetcode'
 import type { Db } from '@/platform/db'
@@ -133,7 +134,7 @@ export class ProblemsRepository {
     return {
       problem: mapProblem(row.problem),
       isTracked: row.practiceStatus !== null,
-      practiceStatus: row.practiceStatus,
+      practiceStatus: row.practiceStatus as PracticeStatus | null,
       dueAt: row.cardDueAt === null ? null : new Date(row.cardDueAt),
     }
   }

@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
-import { createPracticeRepository } from '@/features/practice'
-import { createSettingsRepository } from '@/features/settings'
+import { createPracticeRepository } from '@/features/practice/data/practice-repository'
+import { createSettingsRepository } from '@/features/settings/data/settings-repository'
 import { tracks } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
 

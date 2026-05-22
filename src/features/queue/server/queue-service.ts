@@ -1,11 +1,15 @@
 import { and, asc, eq } from 'drizzle-orm'
 
-import { normalizeProblemDifficulty, type Problem } from '@/features/problems'
+import {
+  normalizeProblemDifficulty,
+  type Problem,
+} from '@/features/problems/domain'
 import {
   normalizeReviewLogFields,
+  parsePracticeStatus,
   type PracticeStateSnapshot,
-} from '@/features/practice'
-import { createSettingsRepository } from '@/features/settings'
+} from '@/features/practice/domain'
+import { createSettingsRepository } from '@/features/settings/data/settings-repository'
 import {
   defaultFsrsCardKind,
   parseFsrsCardState,
@@ -199,18 +203,5 @@ function mapCard(row: QueueCardRow | null): FsrsCardSnapshot | null {
     lapses: row.lapses ?? 0,
     state: parseFsrsCardState(row.state),
     lastReviewAt: row.lastReviewAt === null ? null : new Date(row.lastReviewAt),
-  }
-}
-
-function parsePracticeStatus(value: string): PracticeStateSnapshot['status'] {
-  switch (value) {
-    case 'new':
-    case 'learning':
-    case 'review':
-    case 'mastered':
-    case 'suspended':
-      return value
-    default:
-      throw new Error(`Invalid practice status "${value}".`)
   }
 }

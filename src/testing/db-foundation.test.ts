@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { createPracticeRepository } from '@/features/practice'
-import { createProblemsRepository } from '@/features/problems'
-import { getTodayQueue } from '@/features/queue'
-import { createTracksRepository } from '@/features/tracks'
+import { createPracticeRepository } from '@/features/practice/data/practice-repository'
+import { createProblemsRepository } from '@/features/problems/data/problems-repository'
+import { getTodayQueue } from '@/features/queue/server/queue-service'
+import { createTracksRepository } from '@/features/tracks/data/tracks-repository'
 import { createDb, createSqliteWasmLocator } from '@/platform/db'
 import { execProxy, isMutationStatement } from '@/platform/db/proxy'
 import { problemPractice, problems } from '@/platform/db/schema'

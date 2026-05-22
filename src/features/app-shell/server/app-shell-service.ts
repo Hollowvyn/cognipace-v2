@@ -1,12 +1,16 @@
 import {
-  getPracticeDetails,
   serializePracticeDetails,
   serializePracticeSummary,
-} from '@/features/practice'
-import { getProblemContext, type Problem } from '@/features/problems'
-import { getTodayQueue, type QueueItem } from '@/features/queue'
-import { getSettings, type UserSettings } from '@/features/settings'
-import { getActiveTrack, type ActiveTrack } from '@/features/tracks'
+} from '@/features/practice/api/practice-serializers'
+import { getPracticeDetails } from '@/features/practice/server/practice-service'
+import type { Problem } from '@/features/problems/domain'
+import { getProblemContext } from '@/features/problems/server/problems-service'
+import type { QueueItem } from '@/features/queue/domain'
+import { getTodayQueue } from '@/features/queue/server/queue-service'
+import type { UserSettings } from '@/features/settings/domain'
+import { getSettings } from '@/features/settings/server/settings-service'
+import type { ActiveTrack } from '@/features/tracks/domain'
+import { getActiveTrack } from '@/features/tracks/server/tracks-service'
 import type { Db } from '@/platform/db'
 
 import type {

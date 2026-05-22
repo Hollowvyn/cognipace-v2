@@ -1,8 +1,10 @@
+import type { PracticeStatus } from '@/features/practice/domain'
+
 import type { Problem } from './problem'
 
 export interface ProblemContext {
   problem: Problem
   isTracked: boolean
-  practiceStatus: string | null
+  practiceStatus: PracticeStatus | null
   dueAt: Date | null
 }

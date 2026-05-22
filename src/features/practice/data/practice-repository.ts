@@ -26,6 +26,7 @@ import {
 import {
   derivePracticeSummary,
   normalizeReviewLogFields,
+  parsePracticeStatus,
   reviewModes,
   statusFromReview,
   type OverrideLastReviewResultInput,
@@ -834,19 +835,6 @@ function parseReviewMode(value: string): ReviewMode {
   }
 
   throw new Error(`Invalid review mode "${value}".`)
-}
-
-function parsePracticeStatus(value: string): PracticeStateSnapshot['status'] {
-  switch (value) {
-    case 'new':
-    case 'learning':
-    case 'review':
-    case 'mastered':
-    case 'suspended':
-      return value
-    default:
-      throw new Error(`Invalid practice status "${value}".`)
-  }
 }
 
 function createReviewAttemptId(problemId: string, timestamp: number) {

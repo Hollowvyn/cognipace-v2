@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
-import { defaultUserSettings } from '@/features/settings'
+import { defaultUserSettings } from '@/features/settings/domain'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import { useUpdateSettings } from './settings-api'

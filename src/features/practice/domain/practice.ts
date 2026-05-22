@@ -19,6 +19,14 @@ export const reviewModes = ['manual', 'leetcode'] as const
 export type PracticeStatus = (typeof practiceStatuses)[number]
 export type ReviewMode = (typeof reviewModes)[number]
 
+export function parsePracticeStatus(value: string): PracticeStatus {
+  if (!practiceStatuses.includes(value as PracticeStatus)) {
+    throw new Error(`Invalid practice status "${value}".`)
+  }
+
+  return value as PracticeStatus
+}
+
 export const practicePhases = [
   'new',
   'learning',
