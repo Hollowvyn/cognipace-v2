@@ -21,6 +21,12 @@ import { ProblemStatusBadge } from './problem-status-badge'
 export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
   return [
     {
+      id: problemLibraryColumnIds.expander,
+      enableSorting: false,
+      header: () => <span className="sr-only">Expand row</span>,
+      cell: ({ row }) => <ProblemRowDisclosure row={row} />,
+    },
+    {
       id: problemLibraryColumnIds.selection,
       enableSorting: false,
       header: ({ table }) => (
@@ -40,12 +46,6 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
           onChange={(checked) => row.toggleSelected(checked)}
         />
       ),
-    },
-    {
-      id: problemLibraryColumnIds.expander,
-      enableSorting: false,
-      header: () => <span className="sr-only">Expand row</span>,
-      cell: ({ row }) => <ProblemRowDisclosure row={row} />,
     },
     {
       id: problemLibraryColumnIds.title,
