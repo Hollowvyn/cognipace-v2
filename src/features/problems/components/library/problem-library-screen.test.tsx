@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Plus } from 'lucide-react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -10,7 +10,10 @@ import {
   createProblemLibraryResponse,
   createSerializedProblem,
 } from '@/testing/problem-fixtures'
-import { createSerializedPracticeSummary } from '@/testing/practice-fixtures'
+import {
+  createSerializedPracticeDetails,
+  createSerializedPracticeSummary,
+} from '@/testing/practice-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import { ProblemLibraryScreen } from './problem-library-screen'
@@ -208,6 +211,135 @@ describe('ProblemLibraryScreen', () => {
       '01 Matrix',
     ])
   })
+
+  it('shows row actions and runs practice-owned suspend and reset writes', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.resolve(libraryResponse)
+      }
+
+      return Promise.resolve(createSerializedPracticeDetails())
+    })
+    renderProblemLibrary()
+
+    await user.click(await screen.findByRole('button', { name: 'Expand Two Sum' }))
+
+    expect(screen.getByRole('link', { name: 'Open LeetCode' })).toHaveAttribute(
+      'href',
+      'https://leetcode.com/problems/two-sum/',
+    )
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      '#/library/problems/two-sum/edit',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Suspend' }))
+    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      suspended: true,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Reset Schedule' }))
+    const resetDialog = screen.getByRole('dialog', { name: 'Reset schedule?' })
+    expect(resetDialog).toBeVisible()
+
+    await user.click(
+      within(resetDialog).getByRole('button', { name: 'Reset Schedule' }),
+    )
+    expect(sendMessage).toHaveBeenCalledWith('practice.resetSchedule', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+    })
+  })
+
+  it('shows resume for suspended rows', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.resolve(libraryResponse)
+      }
+
+      return Promise.resolve(createSerializedPracticeDetails())
+    })
+    renderProblemLibrary()
+
+    await user.click(await screen.findByRole('button', { name: 'Expand 01 Matrix' }))
+    await user.click(screen.getByRole('button', { name: 'Resume' }))
+
+    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
+      surface: 'dashboard',
+      problemSlug: '01-matrix',
+      suspended: false,
+    })
+  })
+
+  it('deletes user-created problems with confirmation and hides protected delete', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.resolve(libraryResponse)
+      }
+
+      return Promise.resolve({
+        deletedProblemSlugs: ['binary-search'],
+        protectedProblemSlugs: [],
+        missingProblemSlugs: [],
+      })
+    })
+    renderProblemLibrary()
+
+    await user.click(await screen.findByRole('button', { name: 'Expand Two Sum' }))
+    expect(
+      screen.queryByRole('button', { name: 'Delete Problem' }),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Expand Binary Search' }))
+    await user.click(screen.getByRole('button', { name: 'Delete Problem' }))
+    const deleteDialog = screen.getByRole('dialog', { name: 'Delete problem?' })
+    expect(deleteDialog).toBeVisible()
+
+    await user.click(
+      within(deleteDialog).getByRole('button', { name: 'Delete Problem' }),
+    )
+    expect(sendMessage).toHaveBeenCalledWith('problems.deleteProblem', {
+      surface: 'dashboard',
+      problemSlug: 'binary-search',
+    })
+  })
+
+  it('surfaces backend protected-delete refusal', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.resolve(libraryResponse)
+      }
+
+      return Promise.resolve({
+        deletedProblemSlugs: [],
+        protectedProblemSlugs: ['binary-search'],
+        missingProblemSlugs: [],
+      })
+    })
+    renderProblemLibrary()
+
+    await user.click(await screen.findByRole('button', { name: 'Expand Binary Search' }))
+    await user.click(screen.getByRole('button', { name: 'Delete Problem' }))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Delete problem?' })).getByRole(
+        'button',
+        { name: 'Delete Problem' },
+      ),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This problem is protected and cannot be deleted.',
+    )
+    expect(
+      screen.queryByRole('dialog', { name: 'Delete problem?' }),
+    ).not.toBeInTheDocument()
+  })
 })
 
 function renderProblemLibrary() {
@@ -223,6 +355,11 @@ function renderProblemLibrary() {
           </a>
         </Button>
       }
+      renderEditProblemAction={(problem) => (
+        <Button asChild size="sm" variant="ghost">
+          <a href={`#/library/problems/${problem.slug}/edit`}>Edit</a>
+        </Button>
+      )}
     />,
     { wrapper },
   )
@@ -303,6 +440,7 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
         slug: 'two-sum',
         title: 'Two Sum',
         difficulty: 'easy',
+        isUserCreated: false,
       }),
       status: 'due',
       summary: createSerializedPracticeSummary({
@@ -347,6 +485,7 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
         title: '01 Matrix',
         difficulty: 'medium',
         isPremium: true,
+        isUserCreated: false,
       }),
       status: 'suspended',
       summary: createSerializedPracticeSummary({

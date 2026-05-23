@@ -12,10 +12,13 @@ import { cn } from '@/utils/cn'
 import type { ProblemLibraryRow } from '../../api/problems-contracts'
 import { problemLibraryColumnIds } from './problem-library-filtering'
 import { ProblemLibraryRowDetails } from './problem-library-row-details'
+import type { RenderProblemEditAction } from './problem-row-actions'
 
 export function ProblemLibraryTable({
+  renderEditProblemAction,
   table,
 }: {
+  renderEditProblemAction: RenderProblemEditAction
   table: Table<ProblemLibraryRow>
 }) {
   return (
@@ -36,7 +39,11 @@ export function ProblemLibraryTable({
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row) => (
-              <ProblemLibraryTableRow key={row.id} row={row} />
+              <ProblemLibraryTableRow
+                key={row.id}
+                renderEditProblemAction={renderEditProblemAction}
+                row={row}
+              />
             ))}
           </tbody>
         </table>
@@ -89,8 +96,10 @@ function SortableHeader({
 }
 
 function ProblemLibraryTableRow({
+  renderEditProblemAction,
   row,
 }: {
+  renderEditProblemAction: RenderProblemEditAction
   row: Row<ProblemLibraryRow>
 }) {
   return (
@@ -123,7 +132,10 @@ function ProblemLibraryTableRow({
             className="px-6 py-5 md:px-8"
             colSpan={row.getVisibleCells().length}
           >
-            <ProblemLibraryRowDetails row={row.original} />
+            <ProblemLibraryRowDetails
+              renderEditProblemAction={renderEditProblemAction}
+              row={row.original}
+            />
           </td>
         </tr>
       ) : null}

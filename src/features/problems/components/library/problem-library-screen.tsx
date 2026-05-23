@@ -6,6 +6,7 @@ import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
 
 import { useProblemLibrary } from '../../api/problems-api'
+import type { SerializedProblem } from '../../api/problems-contracts'
 import { ProblemLibraryHeader } from './problem-library-header'
 import {
   getFilteredOriginalRows,
@@ -17,8 +18,10 @@ import { useProblemLibraryTable } from './use-problem-library-table'
 
 export function ProblemLibraryScreen({
   newProblemAction,
+  renderEditProblemAction,
 }: {
   newProblemAction: ReactNode
+  renderEditProblemAction: (problem: SerializedProblem) => ReactNode
 }) {
   const libraryQuery = useProblemLibrary({ surface: 'dashboard' })
   const library = libraryQuery.data
@@ -90,7 +93,10 @@ export function ProblemLibraryScreen({
             {filteredRows.length === 0 ? (
               <ProblemLibraryNoResults />
             ) : (
-              <ProblemLibraryTable table={table} />
+              <ProblemLibraryTable
+                renderEditProblemAction={renderEditProblemAction}
+                table={table}
+              />
             )}
           </>
         )}

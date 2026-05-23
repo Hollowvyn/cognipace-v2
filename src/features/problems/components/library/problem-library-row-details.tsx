@@ -10,10 +10,16 @@ import {
   formatMetric,
   formatPercentMetric,
 } from './problem-library-formatting'
+import {
+  ProblemRowActions,
+  type RenderProblemEditAction,
+} from './problem-row-actions'
 
 export function ProblemLibraryRowDetails({
+  renderEditProblemAction,
   row,
 }: {
+  renderEditProblemAction: RenderProblemEditAction
   row: ProblemLibraryRow
 }) {
   return (
@@ -70,6 +76,12 @@ export function ProblemLibraryRowDetails({
           </ProblemDetailLine>
         </dl>
       </section>
+      <div className="md:col-span-2">
+        <ProblemRowActions
+          renderEditProblemAction={renderEditProblemAction}
+          row={row}
+        />
+      </div>
     </div>
   )
 }

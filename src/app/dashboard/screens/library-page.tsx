@@ -30,6 +30,16 @@ export function LibraryPage() {
               </Link>
             </Button>
           }
+          renderEditProblemAction={(problem) => (
+            <Button asChild size="sm" variant="ghost">
+              <Link
+                params={{ problemSlug: problem.slug }}
+                to={dashboardPaths.problemEdit}
+              >
+                Edit
+              </Link>
+            </Button>
+          )}
         />
       </DashboardPageBody>
       <Outlet />
