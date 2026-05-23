@@ -200,7 +200,6 @@ export class ProblemsRepository {
 
     return {
       deletedProblemSlugs,
-      protectedProblemSlugs: [],
       missingProblemSlugs,
     } satisfies ProblemDeleteResult
   }
@@ -913,7 +912,6 @@ export interface BulkUpdateProblemsInput {
 
 export interface ProblemDeleteResult {
   deletedProblemSlugs: string[]
-  protectedProblemSlugs: string[]
   missingProblemSlugs: string[]
 }
 

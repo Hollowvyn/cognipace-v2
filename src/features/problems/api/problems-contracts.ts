@@ -256,7 +256,6 @@ export type ProblemsBulkDeleteRequest = z.infer<
 
 export const problemDeleteResponseSchema = z.object({
   deletedProblemSlugs: z.array(problemSlugSchema),
-  protectedProblemSlugs: z.array(problemSlugSchema),
   missingProblemSlugs: z.array(problemSlugSchema),
 })
 

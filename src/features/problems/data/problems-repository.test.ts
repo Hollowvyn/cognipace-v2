@@ -143,7 +143,6 @@ describe('ProblemsRepository library data', () => {
     })
     expect(deleteResult).toEqual({
       deletedProblemSlugs: ['binary-search', 'two-sum'],
-      protectedProblemSlugs: [],
       missingProblemSlugs: ['missing-problem'],
     })
     await expect(

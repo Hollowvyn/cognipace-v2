@@ -121,7 +121,6 @@ describe('problems API hooks', () => {
       method: 'problems.deleteProblem',
       response: {
         deletedProblemSlugs: ['binary-search'],
-        protectedProblemSlugs: [],
         missingProblemSlugs: [],
       },
       request: {
@@ -147,7 +146,6 @@ describe('problems API hooks', () => {
       method: 'problems.bulkDelete',
       response: {
         deletedProblemSlugs: ['binary-search'],
-        protectedProblemSlugs: [],
         missingProblemSlugs: [],
       },
       request: {

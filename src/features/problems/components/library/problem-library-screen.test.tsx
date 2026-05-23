@@ -373,7 +373,6 @@ describe('ProblemLibraryScreen', () => {
 
       return Promise.resolve({
         deletedProblemSlugs: problemSlug ? [problemSlug] : [],
-        protectedProblemSlugs: [],
         missingProblemSlugs: [],
       })
     })
@@ -405,7 +404,6 @@ describe('ProblemLibraryScreen', () => {
 
       return Promise.resolve({
         deletedProblemSlugs: [],
-        protectedProblemSlugs: [],
         missingProblemSlugs: ['binary-search'],
       })
     })
@@ -440,7 +438,6 @@ describe('ProblemLibraryScreen', () => {
       if (method === 'problems.bulkDelete') {
         return Promise.resolve({
           deletedProblemSlugs: ['01-matrix', 'binary-search', 'two-sum'],
-          protectedProblemSlugs: [],
           missingProblemSlugs: [],
         })
       }
