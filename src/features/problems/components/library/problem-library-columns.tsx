@@ -1,11 +1,16 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import type { ColumnDef, Row } from '@tanstack/react-table'
+import type { ColumnDef, Row, SortingFn } from '@tanstack/react-table'
 
 import { ProblemDifficultyBadge } from '@/features/problems/components/problem-difficulty-badge'
+import { createLeetCodeProblemUrl } from '@/lib/leetcode'
+import { cn } from '@/utils/cn'
 
 import type { ProblemLibraryRow } from '../../api/problems-contracts'
-import { formatDateCell, formatPercentMetric } from './problem-library-formatting'
+import {
+  formatDateCell,
+  formatPercentMetric,
+} from './problem-library-formatting'
 import {
   problemLibraryExcludeTrueFilter,
   problemLibraryColumnIds,
@@ -47,13 +52,15 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
       accessorFn: (row) => row.problem.title,
       header: 'Problem',
       cell: ({ row }) => <ProblemTitleCell row={row.original} />,
+      sortDescFirst: false,
     },
     {
       id: problemLibraryColumnIds.difficulty,
       accessorFn: (row) => row.problem.difficulty,
-      enableSorting: false,
       header: 'Difficulty',
       filterFn: problemLibraryIncludesAnyFilter,
+      sortingFn: problemDifficultySorting,
+      sortDescFirst: false,
       cell: ({ row }) => (
         <ProblemDifficultyBadge difficulty={row.original.problem.difficulty} />
       ),
@@ -61,16 +68,19 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
     {
       id: problemLibraryColumnIds.status,
       accessorFn: (row) => row.status,
-      enableSorting: false,
       header: 'Status',
       filterFn: problemLibraryIncludesAnyFilter,
+      sortingFn: problemStatusSorting,
+      sortDescFirst: false,
       cell: ({ row }) => <ProblemStatusBadge status={row.original.status} />,
     },
     {
       id: problemLibraryColumnIds.retention,
-      accessorFn: (row) => row.summary.retrievability,
-      enableSorting: false,
+      accessorFn: (row) => row.summary.retrievability ?? undefined,
       header: 'Retention',
+      sortDescFirst: false,
+      sortUndefined: 'last',
+      sortingFn: 'basic',
       cell: ({ row }) => (
         <span className="tabular-nums text-foreground">
           {formatPercentMetric(row.original.summary.retrievability)}
@@ -79,9 +89,11 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
     },
     {
       id: problemLibraryColumnIds.lastReviewedAt,
-      accessorFn: (row) => row.lastReviewedAt,
-      enableSorting: false,
+      accessorFn: (row) => row.lastReviewedAt ?? undefined,
       header: 'Last Review',
+      sortDescFirst: false,
+      sortUndefined: 'last',
+      sortingFn: problemIsoDateSorting,
       cell: ({ row }) => (
         <span className="tabular-nums text-muted-foreground">
           {formatDateCell(row.original.lastReviewedAt, 'Never reviewed')}
@@ -90,9 +102,11 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
     },
     {
       id: problemLibraryColumnIds.nextReviewAt,
-      accessorFn: (row) => row.nextReviewAt,
-      enableSorting: false,
+      accessorFn: (row) => row.nextReviewAt ?? undefined,
       header: 'Next Review',
+      sortDescFirst: false,
+      sortUndefined: 'last',
+      sortingFn: problemIsoDateSorting,
       cell: ({ row }) => (
         <span className="tabular-nums text-muted-foreground">
           {formatDateCell(row.original.nextReviewAt, 'Unscheduled')}
@@ -179,13 +193,48 @@ function ProblemRowDisclosure({ row }: { row: Row<ProblemLibraryRow> }) {
 
 function ProblemTitleCell({ row }: { row: ProblemLibraryRow }) {
   return (
-    <div className="min-w-0">
-      <div className="truncate font-semibold text-foreground">
-        {row.problem.title}
-      </div>
-      <div className="truncate text-[length:var(--cp-badge-font-size)] text-muted-foreground">
-        {row.problem.slug}
-      </div>
-    </div>
+    <a
+      className={cn(
+        'block min-w-0 truncate font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+        row.status === 'suspended' &&
+          'text-muted-foreground line-through decoration-muted-foreground/80 hover:text-foreground',
+      )}
+      href={createLeetCodeProblemUrl(row.problem.slug)}
+      onClick={(event) => event.stopPropagation()}
+      rel="noreferrer"
+      target="_blank"
+    >
+      <span className="truncate">{row.problem.title}</span>
+    </a>
   )
 }
+
+const difficultySortOrder = {
+  easy: 0,
+  medium: 1,
+  hard: 2,
+  unknown: 3,
+} as const
+
+const statusSortOrder = {
+  'not-started': 0,
+  due: 1,
+  scheduled: 2,
+  suspended: 3,
+} as const
+
+const problemDifficultySorting: SortingFn<ProblemLibraryRow> = (rowA, rowB) =>
+  difficultySortOrder[rowA.original.problem.difficulty] -
+  difficultySortOrder[rowB.original.problem.difficulty]
+
+const problemStatusSorting: SortingFn<ProblemLibraryRow> = (rowA, rowB) =>
+  statusSortOrder[rowA.original.status] - statusSortOrder[rowB.original.status]
+
+const problemIsoDateSorting: SortingFn<ProblemLibraryRow> = (
+  rowA,
+  rowB,
+  columnId,
+) =>
+  String(rowA.getValue<string | undefined>(columnId) ?? '').localeCompare(
+    String(rowB.getValue<string | undefined>(columnId) ?? ''),
+  )

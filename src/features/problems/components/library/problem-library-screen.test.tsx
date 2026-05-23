@@ -82,7 +82,7 @@ describe('ProblemLibraryScreen', () => {
 
     expect(screen.getByRole('button', { name: 'Expand filters' })).toBeVisible()
     expect(
-      screen.queryByRole('button', { name: /Difficulty/i }),
+      screen.queryByRole('button', { name: /All difficulties/i }),
     ).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Expand filters' }))
@@ -113,7 +113,12 @@ describe('ProblemLibraryScreen', () => {
 
     expect(await findProblemRow('Two Sum')).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Expand filters' }))
-    await user.click(screen.getByRole('button', { name: /Difficulty/i }))
+    await user.click(
+      within(screen.getByRole('region', { name: 'Library filters' })).getByRole(
+        'button',
+        { name: /Difficulty/i },
+      ),
+    )
     await user.click(screen.getByRole('option', { name: 'Easy' }))
     await user.click(screen.getByRole('option', { name: 'Medium' }))
 
@@ -162,6 +167,11 @@ describe('ProblemLibraryScreen', () => {
       screen.getByRole('checkbox', { name: 'Select Two Sum' }),
     ).toBeChecked()
     expect(screen.getByText('1 selected')).toBeVisible()
+    expect(screen.queryByText('two-sum')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Two Sum' })).toHaveAttribute(
+      'href',
+      'https://leetcode.com/problems/two-sum/',
+    )
 
     await user.click(
       screen.getByRole('checkbox', { name: 'Select visible problems' }),
@@ -221,6 +231,16 @@ describe('ProblemLibraryScreen', () => {
       screen.queryByText('LeetCode 75: Arrays and Hashing'),
     ).not.toBeInTheDocument()
 
+    await user.click(getProblemRow('Two Sum'))
+    expect(
+      screen.queryByRole('button', { name: 'Collapse Two Sum' }),
+    ).not.toBeInTheDocument()
+
+    await user.click(getProblemRow('Two Sum'))
+    expect(
+      screen.getByRole('button', { name: 'Collapse Two Sum' }),
+    ).toBeVisible()
+
     await user.click(screen.getByRole('button', { name: 'Expand 01 Matrix' }))
     expect(screen.queryByText('Retrievability')).toBeVisible()
     expect(
@@ -249,6 +269,29 @@ describe('ProblemLibraryScreen', () => {
       'Binary Search',
       '01 Matrix',
     ])
+
+    await user.click(screen.getByRole('button', { name: 'Difficulty' }))
+    expect(getProblemTitleOrder()).toEqual([
+      'Two Sum',
+      'Binary Search',
+      '01 Matrix',
+    ])
+
+    await user.click(screen.getByRole('button', { name: 'Difficulty' }))
+    expect(getProblemTitleOrder()[0]).toBe('01 Matrix')
+
+    await user.click(screen.getByRole('button', { name: 'Status' }))
+    expect(getProblemTitleOrder()).toEqual([
+      'Two Sum',
+      'Binary Search',
+      '01 Matrix',
+    ])
+
+    await user.click(screen.getByRole('button', { name: 'Next Review' }))
+    expect(getProblemTitleOrder()[0]).toBe('Two Sum')
+
+    await user.click(screen.getByRole('button', { name: 'Last Review' }))
+    expect(getProblemTitleOrder()[0]).toBe('Two Sum')
   })
 
   it('shows row actions and runs practice-owned suspend and reset writes', async () => {
@@ -266,7 +309,8 @@ describe('ProblemLibraryScreen', () => {
       await screen.findByRole('button', { name: 'Expand Two Sum' }),
     )
 
-    expect(screen.getByRole('link', { name: 'Open LeetCode' })).toHaveAttribute(
+    expect(screen.queryByRole('link', { name: 'Open LeetCode' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Two Sum' })).toHaveAttribute(
       'href',
       'https://leetcode.com/problems/two-sum/',
     )
@@ -337,13 +381,13 @@ describe('ProblemLibraryScreen', () => {
       await screen.findByRole('button', { name: 'Expand Two Sum' }),
     )
     expect(
-      screen.queryByRole('button', { name: 'Delete Problem' }),
+      screen.queryByRole('button', { name: 'Delete' }),
     ).not.toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', { name: 'Expand Binary Search' }),
     )
-    await user.click(screen.getByRole('button', { name: 'Delete Problem' }))
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
     const deleteDialog = screen.getByRole('dialog', { name: 'Delete problem?' })
     expect(deleteDialog).toBeVisible()
 
@@ -374,7 +418,7 @@ describe('ProblemLibraryScreen', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Expand Binary Search' }),
     )
-    await user.click(screen.getByRole('button', { name: 'Delete Problem' }))
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
     await user.click(
       within(screen.getByRole('dialog', { name: 'Delete problem?' })).getByRole(
         'button',
@@ -652,7 +696,12 @@ async function selectLibraryFacetOption(
   facetLabel: string,
   optionLabel: string,
 ) {
-  await user.click(screen.getByRole('button', { name: new RegExp(facetLabel) }))
+  await user.click(
+    within(screen.getByRole('region', { name: 'Library filters' })).getByRole(
+      'button',
+      { name: new RegExp(facetLabel) },
+    ),
+  )
   await user.click(screen.getByRole('option', { name: optionLabel }))
 }
 

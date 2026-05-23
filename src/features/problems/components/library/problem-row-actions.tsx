@@ -1,4 +1,4 @@
-import { ExternalLink } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,6 @@ import {
   useResetPracticeSchedule,
   useSetPracticeSuspended,
 } from '@/features/practice'
-import { createLeetCodeProblemUrl } from '@/lib/leetcode'
 
 import { ProblemConfirmationDialog } from './problem-confirmation-dialog'
 
@@ -36,9 +35,7 @@ export function ProblemRowActions({
   const [error, setError] = useState<string | null>(null)
   const isSuspended = row.summary.suspended || row.status === 'suspended'
   const isPending =
-    deleteProblem.isPending ||
-    resetSchedule.isPending ||
-    setSuspended.isPending
+    deleteProblem.isPending || resetSchedule.isPending || setSuspended.isPending
 
   async function runAction(action: () => Promise<unknown>) {
     setError(null)
@@ -95,16 +92,6 @@ export function ProblemRowActions({
         </InlineStatus>
       ) : null}
       <div className="flex flex-wrap justify-end gap-2">
-        <Button asChild size="sm" variant="ghost">
-          <a
-            href={createLeetCodeProblemUrl(row.problem.slug)}
-            rel="noreferrer"
-            target="_blank"
-          >
-            <ExternalLink aria-hidden="true" />
-            Open LeetCode
-          </a>
-        </Button>
         {renderEditProblemAction(row.problem)}
         <Button
           disabled={isPending}
@@ -135,9 +122,10 @@ export function ProblemRowActions({
             disabled={isPending}
             onClick={() => setConfirmation('delete')}
             size="sm"
-            variant="ghost"
+            variant="destructive"
           >
-            Delete Problem
+            <Trash2 aria-hidden="true" />
+            Delete
           </Button>
         ) : null}
       </div>
