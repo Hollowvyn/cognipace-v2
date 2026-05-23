@@ -86,6 +86,11 @@ describe('ProblemLibraryScreen', () => {
     ).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Expand filters' }))
+    expect(
+      within(screen.getByRole('region', { name: 'Library filters' })).queryByText(
+        '3 problems',
+      ),
+    ).not.toBeInTheDocument()
     await selectLibraryFacetOption(user, 'Difficulty', 'Medium')
     expect(getProblemRow('01 Matrix')).toBeVisible()
     expect(queryProblemRow('Binary Search')).not.toBeInTheDocument()

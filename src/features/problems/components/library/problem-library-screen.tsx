@@ -86,7 +86,6 @@ export function ProblemLibraryScreen({
               filters={tableModel.filters}
               library={library}
               onChange={tableModel.setFilters}
-              visibleCount={filteredRows.length}
             />
             {filteredRows.length === 0 ? (
               <ProblemLibraryNoResults />

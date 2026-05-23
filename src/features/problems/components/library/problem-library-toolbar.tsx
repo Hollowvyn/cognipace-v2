@@ -16,12 +16,10 @@ export function ProblemLibraryToolbar({
   filters,
   library,
   onChange,
-  visibleCount,
 }: {
   filters: ProblemLibraryFilters
   library: ProblemLibraryResponse
   onChange: (filters: ProblemLibraryFilters) => void
-  visibleCount: number
 }) {
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false)
   const hasFilters = hasProblemLibraryFilters(filters)
@@ -29,11 +27,6 @@ export function ProblemLibraryToolbar({
   function patchFilters(patch: Partial<ProblemLibraryFilters>) {
     onChange({ ...filters, ...patch })
   }
-
-  const visibleCountText =
-    visibleCount === library.summary.totalCount
-      ? `${visibleCount} ${visibleCount === 1 ? 'problem' : 'problems'}`
-      : `${visibleCount} of ${library.summary.totalCount} shown`
 
   return (
     <section
@@ -134,16 +127,13 @@ export function ProblemLibraryToolbar({
             />
           </div>
 
-          <div className="flex min-w-0 items-center justify-end gap-4 pt-1 text-[length:var(--cp-copy-font-size)]">
-            <span className="tabular-nums text-muted-foreground">
-              {visibleCountText}
-            </span>
+          <div className="flex min-w-0 items-center justify-end pt-1">
             <Button
-              className="px-0 uppercase"
+              className="px-3 uppercase tracking-[0.08em]"
               disabled={!hasFilters}
               onClick={() => onChange(defaultProblemLibraryFilters)}
               size="sm"
-              variant="ghost"
+              variant="outline"
             >
               <FilterX aria-hidden="true" />
               Clear Filters
