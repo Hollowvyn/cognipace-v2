@@ -8,6 +8,11 @@ import {
 import type { PopupAppShellData } from '@/features/app-shell/api/app-shell-contracts'
 import { defaultUserSettings } from '@/features/settings/domain'
 import type { ActiveTrack } from '@/features/tracks/domain'
+import { createSerializedPracticeDetails } from '@/testing/practice-fixtures'
+import {
+  createProblemForEditResponse,
+  createProblemLibraryResponse,
+} from '@/testing/problem-fixtures'
 
 import {
   registerBackgroundHandlers,
@@ -49,6 +54,7 @@ const backgroundMocks = vi.hoisted(() => {
     updateSettings: vi.fn(),
   }
 })
+const extensionSender = { id: 'extension-id' }
 
 vi.mock('@/extension/messaging', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/extension/messaging')>()
@@ -129,19 +135,14 @@ describe('background handler registration', () => {
   })
 
   it('registers app-shell payload handling with policy and schema parsing', async () => {
-    const sender = { id: 'extension-id' }
     const popupData = createPopupShellData()
     backgroundMocks.getAppShellData.mockResolvedValue(popupData)
 
-    const handler = readRegisteredHandler('app.getShellData')
-    const response = await handler({
-      data: { surface: 'popup' },
-      sender,
+    const response = await sendRuntimeMessage('app.getShellData', {
+      surface: 'popup',
     })
 
-    expect(
-      backgroundMocks.assertCanSenderCallExtensionMethod,
-    ).toHaveBeenCalledWith('app.getShellData', 'popup', sender)
+    expectRuntimePolicy('app.getShellData', 'popup')
     expect(backgroundMocks.getAppDb).toHaveBeenCalledTimes(1)
     expect(backgroundMocks.getAppShellData).toHaveBeenCalledWith(
       backgroundMocks.db,
@@ -156,19 +157,14 @@ describe('background handler registration', () => {
   })
 
   it('registers active-track handling with runtime serialization', async () => {
-    const sender = { id: 'extension-id' }
     const dueAt = new Date('2026-03-01T00:00:00.000Z')
     backgroundMocks.getActiveTrack.mockResolvedValue(createActiveTrack(dueAt))
 
-    const handler = readRegisteredHandler('tracks.getActiveTrack')
-    const response = await handler({
-      data: { surface: 'popup' },
-      sender,
+    const response = await sendRuntimeMessage('tracks.getActiveTrack', {
+      surface: 'popup',
     })
 
-    expect(
-      backgroundMocks.assertCanSenderCallExtensionMethod,
-    ).toHaveBeenCalledWith('tracks.getActiveTrack', 'popup', sender)
+    expectRuntimePolicy('tracks.getActiveTrack', 'popup')
     expect(backgroundMocks.getActiveTrack).toHaveBeenCalledWith(
       backgroundMocks.db,
     )
@@ -192,7 +188,6 @@ describe('background handler registration', () => {
   })
 
   it('broadcasts cross-surface invalidation after settings writes', async () => {
-    const sender = { id: 'extension-id' }
     const updatedSettings = {
       ...defaultUserSettings,
       assessment: {
@@ -202,18 +197,12 @@ describe('background handler registration', () => {
     }
     backgroundMocks.updateSettings.mockResolvedValue(updatedSettings)
 
-    const handler = readRegisteredHandler('settings.updateSettings')
-    const response = await handler({
-      data: {
-        surface: 'popup',
-        patch: { assessment: { strictTiming: true } },
-      },
-      sender,
+    const response = await sendRuntimeMessage('settings.updateSettings', {
+      surface: 'popup',
+      patch: { assessment: { strictTiming: true } },
     })
 
-    expect(
-      backgroundMocks.assertCanSenderCallExtensionMethod,
-    ).toHaveBeenCalledWith('settings.updateSettings', 'popup', sender)
+    expectRuntimePolicy('settings.updateSettings', 'popup')
     expect(backgroundMocks.updateSettings).toHaveBeenCalledWith(
       backgroundMocks.db,
       { assessment: { strictTiming: true } },
@@ -227,17 +216,14 @@ describe('background handler registration', () => {
     expect(response).toBe(updatedSettings)
 
     vi.clearAllMocks()
-    const toggleHandler = readRegisteredHandler('settings.toggleStudyMode')
-    const toggleResponse = await toggleHandler({
-      data: {
+    const toggleResponse = await sendRuntimeMessage(
+      'settings.toggleStudyMode',
+      {
         surface: 'popup',
       },
-      sender,
-    })
+    )
 
-    expect(
-      backgroundMocks.assertCanSenderCallExtensionMethod,
-    ).toHaveBeenCalledWith('settings.toggleStudyMode', 'popup', sender)
+    expectRuntimePolicy('settings.toggleStudyMode', 'popup')
     expect(backgroundMocks.toggleStudyMode).toHaveBeenCalledWith(
       backgroundMocks.db,
     )
@@ -251,30 +237,20 @@ describe('background handler registration', () => {
   })
 
   it('reads settings through the runtime policy and DB boundary', async () => {
-    const sender = { id: 'extension-id' }
-    const handler = readRegisteredHandler('settings.getSettings')
-    const response = await handler({
-      data: { surface: 'dashboard' },
-      sender,
+    const response = await sendRuntimeMessage('settings.getSettings', {
+      surface: 'dashboard',
     })
 
-    expect(
-      backgroundMocks.assertCanSenderCallExtensionMethod,
-    ).toHaveBeenCalledWith('settings.getSettings', 'dashboard', sender)
+    expectRuntimePolicy('settings.getSettings', 'dashboard')
     expect(backgroundMocks.getSettings).toHaveBeenCalledWith(backgroundMocks.db)
     expect(response).toBe(defaultUserSettings)
   })
 
   it('rejects invalid settings patches before writing or broadcasting', () => {
-    const handler = readRegisteredHandler('settings.updateSettings')
-
     expect(() =>
-      handler({
-        data: {
-          surface: 'dashboard',
-          patch: { practice: { dailyGoal: 0 } },
-        },
-        sender: { id: 'extension-id' },
+      sendRuntimeMessage('settings.updateSettings', {
+        surface: 'dashboard',
+        patch: { practice: { dailyGoal: 0 } },
       }),
     ).toThrow()
     expect(backgroundMocks.updateSettings).not.toHaveBeenCalled()
@@ -283,19 +259,15 @@ describe('background handler registration', () => {
   })
 
   it('reads the Library without flushing or broadcasting invalidation', async () => {
-    const sender = { id: 'extension-id' }
     const response = await sendRuntimeMessage(
       'problems.getLibrary',
       {
         surface: 'dashboard',
         at: '2026-01-01T10:00:00.000Z',
       },
-      sender,
     )
 
-    expect(
-      backgroundMocks.assertCanSenderCallExtensionMethod,
-    ).toHaveBeenCalledWith('problems.getLibrary', 'dashboard', sender)
+    expectRuntimePolicy('problems.getLibrary', 'dashboard')
     expect(backgroundMocks.getProblemLibrary).toHaveBeenCalledWith(
       backgroundMocks.db,
       {
@@ -309,17 +281,13 @@ describe('background handler registration', () => {
   })
 
   it('flushes and broadcasts problem invalidation after create writes', async () => {
-    const sender = { id: 'extension-id' }
     const request = binarySearchCreateRequest()
     const response = await sendRuntimeMessage(
       'problems.createProblem',
       request,
-      sender,
     )
 
-    expect(
-      backgroundMocks.assertCanSenderCallExtensionMethod,
-    ).toHaveBeenCalledWith('problems.createProblem', 'dashboard', sender)
+    expectRuntimePolicy('problems.createProblem', 'dashboard')
     expect(backgroundMocks.createProblem).toHaveBeenCalledWith(
       backgroundMocks.db,
       request,
@@ -337,9 +305,9 @@ describe('background handler registration', () => {
   it('rejects invalid problem writes before mutation side effects', () => {
     expect(() =>
       sendRuntimeMessage('problems.bulkUpdateProblems', {
-          surface: 'dashboard',
-          problemSlugs: ['two-sum'],
-          set: {},
+        surface: 'dashboard',
+        problemSlugs: ['two-sum'],
+        set: {},
       }),
     ).toThrow()
     expect(backgroundMocks.bulkUpdateProblems).not.toHaveBeenCalled()
@@ -348,7 +316,6 @@ describe('background handler registration', () => {
   })
 
   it('includes problem invalidation for practice state that changes Library rows', async () => {
-    const sender = { id: 'extension-id' }
     const response = await sendRuntimeMessage(
       'practice.setSuspended',
       {
@@ -356,12 +323,9 @@ describe('background handler registration', () => {
         problemSlug: 'two-sum',
         suspended: true,
       },
-      sender,
     )
 
-    expect(
-      backgroundMocks.assertCanSenderCallExtensionMethod,
-    ).toHaveBeenCalledWith('practice.setSuspended', 'dashboard', sender)
+    expectRuntimePolicy('practice.setSuspended', 'dashboard')
     expect(backgroundMocks.setPracticeSuspended).toHaveBeenCalledWith(
       backgroundMocks.db,
       {
@@ -437,9 +401,19 @@ function readRegisteredHandler(method: string) {
 function sendRuntimeMessage(
   method: string,
   data: unknown,
-  sender: unknown = { id: 'extension-id' },
+  sender: unknown = extensionSender,
 ) {
   return readRegisteredHandler(method)({ data, sender })
+}
+
+function expectRuntimePolicy(
+  method: string,
+  surface: 'popup' | 'dashboard' | 'content-script',
+  sender: unknown = extensionSender,
+) {
+  expect(
+    backgroundMocks.assertCanSenderCallExtensionMethod,
+  ).toHaveBeenCalledWith(method, surface, sender)
 }
 
 function binarySearchCreateRequest() {
@@ -561,98 +535,6 @@ function createActiveTrack(dueAt: Date | null): ActiveTrack {
   }
 }
 
-const problemForEditResponse = {
-  problem: {
-    slug: 'binary-search',
-    title: 'Binary Search',
-    difficulty: 'easy',
-    isPremium: false,
-    isUserCreated: true,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-  },
-  topics: [],
-  companies: [],
-  trackMemberships: [],
-  options: {
-    topics: [],
-    companies: [],
-    trackGroups: [],
-  },
-} as const
-
-const problemLibraryResponse = {
-  generatedAt: '2026-01-01T10:00:00.000Z',
-  summary: {
-    totalCount: 1,
-    filteredCount: 1,
-    dueCount: 0,
-    suspendedCount: 0,
-  },
-  options: {
-    topics: [],
-    companies: [],
-    trackGroups: [],
-  },
-  rows: [
-    {
-      problem: problemForEditResponse.problem,
-      status: 'not-started',
-      summary: {
-        phase: 'new',
-        nextReviewAt: null,
-        lastReviewedAt: null,
-        reviewCount: 0,
-        lapses: 0,
-        difficulty: null,
-        stability: null,
-        scheduledDays: null,
-        suspended: false,
-        isStarted: false,
-        isDue: false,
-        isOverdue: false,
-        overdueDays: 0,
-        retrievability: null,
-      },
-      nextReviewAt: null,
-      lastReviewedAt: null,
-      lastSolvedAt: null,
-      topics: [],
-      companies: [],
-      trackMemberships: [],
-    },
-  ],
-} as const
-
-const practiceDetails = {
-  problemSlug: 'two-sum',
-  cardId: 'two-sum:default',
-  practice: null,
-  card: null,
-  summary: {
-    phase: 'new',
-    nextReviewAt: null,
-    lastReviewedAt: null,
-    reviewCount: 0,
-    lapses: 0,
-    difficulty: null,
-    stability: null,
-    scheduledDays: null,
-    suspended: false,
-    isStarted: false,
-    isDue: false,
-    isOverdue: false,
-    overdueDays: 0,
-    retrievability: null,
-  },
-  currentLog: {
-    interviewPattern: null,
-    timeComplexity: null,
-    spaceComplexity: null,
-    languages: null,
-    notes: null,
-  },
-  recentAttempts: [],
-  latestAttempt: null,
-  canOverrideLatestReview: false,
-} as const
+const problemForEditResponse = createProblemForEditResponse()
+const problemLibraryResponse = createProblemLibraryResponse()
+const practiceDetails = createSerializedPracticeDetails()

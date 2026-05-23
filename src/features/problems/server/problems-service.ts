@@ -1,3 +1,4 @@
+import { getSettings } from '@/features/settings/server/settings-service'
 import {
   parseLeetCodeProblemInput,
   parseLeetCodeProblemLocation,
@@ -22,7 +23,6 @@ import {
   serializeProblemLibrary,
 } from '../api/problems-serializers'
 import type { UpsertProblemInput } from '../domain'
-import { getSettings } from '@/features/settings/server/settings-service'
 
 export interface UpsertProblemFromPageInput
   extends Omit<UpsertProblemInput, 'slug'> {
@@ -93,14 +93,7 @@ export async function createProblem(
   request: ProblemsCreateProblemRequest,
 ) {
   return serializeProblemForEdit(
-    await createProblemsRepository(db).createProblem({
-      slugOrUrl: request.slugOrUrl,
-      title: request.title,
-      difficulty: request.difficulty,
-      isPremium: request.isPremium,
-      topicLabels: request.topicLabels,
-      companyLabels: request.companyLabels,
-    }),
+    await createProblemsRepository(db).createProblem(request),
   )
 }
 
@@ -108,14 +101,9 @@ export async function updateProblem(
   db: Db,
   request: ProblemsUpdateProblemRequest,
 ) {
-  const problemForEdit = await createProblemsRepository(db).updateProblem({
-    problemSlug: request.problemSlug,
-    title: request.title,
-    difficulty: request.difficulty,
-    isPremium: request.isPremium,
-    topicLabels: request.topicLabels,
-    companyLabels: request.companyLabels,
-  })
+  const problemForEdit = await createProblemsRepository(db).updateProblem(
+    request,
+  )
 
   if (!problemForEdit) {
     throw new Error(`Problem "${request.problemSlug}" was not found.`)
@@ -147,10 +135,7 @@ export async function bulkUpdateProblems(
   request: ProblemsBulkUpdateProblemsRequest,
 ) {
   return serializeProblemBulkUpdate(
-    await createProblemsRepository(db).bulkUpdateProblems({
-      problemSlugs: request.problemSlugs,
-      set: request.set,
-    }),
+    await createProblemsRepository(db).bulkUpdateProblems(request),
   )
 }
 

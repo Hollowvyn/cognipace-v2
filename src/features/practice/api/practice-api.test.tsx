@@ -2,10 +2,10 @@ import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
+import { createSerializedPracticeDetails } from '@/testing/practice-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import { useSaveReviewResult } from './practice-api'
-import type { SerializedPracticeDetails } from './practice-contracts'
 
 vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
@@ -37,35 +37,6 @@ describe('practice API hooks', () => {
   })
 })
 
-const practiceDetails = {
-  problemSlug: 'two-sum',
+const practiceDetails = createSerializedPracticeDetails({
   cardId: 'fsrs:two-sum',
-  practice: null,
-  card: null,
-  summary: {
-    phase: 'new',
-    nextReviewAt: null,
-    lastReviewedAt: null,
-    reviewCount: 0,
-    lapses: 0,
-    difficulty: null,
-    stability: null,
-    scheduledDays: null,
-    suspended: false,
-    isStarted: false,
-    isDue: false,
-    isOverdue: false,
-    overdueDays: 0,
-    retrievability: null,
-  },
-  currentLog: {
-    interviewPattern: null,
-    timeComplexity: null,
-    spaceComplexity: null,
-    languages: null,
-    notes: null,
-  },
-  recentAttempts: [],
-  latestAttempt: null,
-  canOverrideLatestReview: false,
-} satisfies SerializedPracticeDetails
+})

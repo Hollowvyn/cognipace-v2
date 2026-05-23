@@ -42,13 +42,7 @@ describe('ProblemsRepository library data', () => {
       problemSlug: 'two-sum',
       companyId: 'netflix',
     })
-    await createPracticeRepository(handle.db).saveReviewResult({
-      problemSlug: 'two-sum',
-      rating: 'good',
-      reviewedAt: solvedAt,
-      isCorrect: true,
-      targetRetention: 0.9,
-    })
+    await saveSolvedReview(handle.db)
 
     const library = await getProblemLibrary(handle.db, {
       surface: 'dashboard',
@@ -174,13 +168,7 @@ describe('ProblemsRepository library data', () => {
       problemSlug: 'old-two-sum',
       topicId: 'array',
     })
-    await createPracticeRepository(handle.db).saveReviewResult({
-      problemSlug: 'old-two-sum',
-      rating: 'good',
-      reviewedAt: solvedAt,
-      isCorrect: true,
-      targetRetention: 0.9,
-    })
+    await saveSolvedReview(handle.db, 'old-two-sum')
 
     const saved = await upsertProblemFromPage(handle.db, {
       url: 'https://leetcode.com/problems/old-two-sum/',
@@ -189,18 +177,17 @@ describe('ProblemsRepository library data', () => {
       difficulty: 'Easy',
       isPremium: false,
     })
-    const oldRows = await handle.db
-      .select()
-      .from(problems)
-      .where(eq(problems.slug, 'old-two-sum'))
-    const practiceRows = await handle.db
-      .select()
-      .from(problemPractice)
-      .where(eq(problemPractice.problemSlug, 'two-sum'))
-    const attemptRows = await handle.db
-      .select()
-      .from(reviewAttempts)
-      .where(eq(reviewAttempts.problemSlug, 'two-sum'))
+    const [oldRows, practiceRows, attemptRows] = await Promise.all([
+      handle.db.select().from(problems).where(eq(problems.slug, 'old-two-sum')),
+      handle.db
+        .select()
+        .from(problemPractice)
+        .where(eq(problemPractice.problemSlug, 'two-sum')),
+      handle.db
+        .select()
+        .from(reviewAttempts)
+        .where(eq(reviewAttempts.problemSlug, 'two-sum')),
+    ])
     const edit = await getProblemForEdit(handle.db, {
       surface: 'dashboard',
       problemSlug: 'two-sum',
@@ -215,6 +202,19 @@ describe('ProblemsRepository library data', () => {
 })
 
 const solvedAt = new Date('2026-01-01T10:00:00.000Z')
+
+function saveSolvedReview(
+  db: Parameters<typeof createPracticeRepository>[0],
+  problemSlug = 'two-sum',
+) {
+  return createPracticeRepository(db).saveReviewResult({
+    problemSlug,
+    rating: 'good',
+    reviewedAt: solvedAt,
+    isCorrect: true,
+    targetRetention: 0.9,
+  })
+}
 
 function newProblemInput(
   overrides: Partial<Parameters<typeof createProblem>[1]> = {},

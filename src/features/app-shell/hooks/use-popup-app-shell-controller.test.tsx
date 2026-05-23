@@ -7,6 +7,7 @@ import {
   type PopupAppShellData,
 } from '@/features/app-shell'
 import { defaultUserSettings } from '@/features/settings/domain'
+import { createSerializedPracticeSummary } from '@/testing/practice-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import { usePopupAppShellController } from './use-popup-app-shell-controller'
@@ -91,13 +92,13 @@ const popupData = {
         category: 'new',
         problem: twoSum,
         dueAt: null,
-        summary: createNewSummary(),
+        summary: createSerializedPracticeSummary(),
       },
       {
         category: 'new',
         problem: validParentheses,
         dueAt: null,
-        summary: createNewSummary(),
+        summary: createSerializedPracticeSummary(),
       },
     ],
   },
@@ -367,24 +368,5 @@ function createEmptyActiveTrack(): PopupAppShellData['activeTrack'] {
     },
     detail: 'Choose a track to restore guided progression.',
     nextProblem: null,
-  }
-}
-
-function createNewSummary(): PopupAppShellData['queue']['items'][number]['summary'] {
-  return {
-    phase: 'new',
-    nextReviewAt: null,
-    lastReviewedAt: null,
-    reviewCount: 0,
-    lapses: 0,
-    difficulty: null,
-    stability: null,
-    scheduledDays: null,
-    suspended: false,
-    isStarted: false,
-    isDue: false,
-    isOverdue: false,
-    overdueDays: 0,
-    retrievability: null,
   }
 }

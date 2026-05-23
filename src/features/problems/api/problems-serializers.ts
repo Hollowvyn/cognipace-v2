@@ -32,19 +32,15 @@ export function serializeProblemLibrary(
   library: ProblemLibrary,
 ): ProblemLibraryResponse {
   return problemLibraryResponseSchema.parse({
+    ...library,
     generatedAt: library.generatedAt.toISOString(),
-    summary: library.summary,
-    options: library.options,
     rows: library.rows.map((row) => ({
+      ...row,
       problem: serializeProblem(row.problem),
-      status: row.status,
       summary: serializePracticeSummary(row.summary),
       nextReviewAt: row.nextReviewAt?.toISOString() ?? null,
       lastReviewedAt: row.lastReviewedAt?.toISOString() ?? null,
       lastSolvedAt: row.lastSolvedAt?.toISOString() ?? null,
-      topics: row.topics,
-      companies: row.companies,
-      trackMemberships: row.trackMemberships,
     })),
   })
 }
@@ -53,11 +49,8 @@ export function serializeProblemForEdit(
   problemForEdit: ProblemForEdit,
 ): ProblemForEditResponse {
   return problemForEditResponseSchema.parse({
+    ...problemForEdit,
     problem: serializeProblem(problemForEdit.problem),
-    topics: problemForEdit.topics,
-    companies: problemForEdit.companies,
-    trackMemberships: problemForEdit.trackMemberships,
-    options: problemForEdit.options,
   })
 }
 

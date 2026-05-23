@@ -146,13 +146,7 @@ export class ProblemsRepository {
           },
         })
 
-      await setProblemLabels(transactionDb, 'topic', slug, input.topicLabels)
-      await setProblemLabels(
-        transactionDb,
-        'company',
-        slug,
-        input.companyLabels,
-      )
+      await setProblemTaxonomyLabels(transactionDb, slug, input)
     })
 
     return this.readRequiredProblemForEdit(slug)
@@ -179,13 +173,7 @@ export class ProblemsRepository {
         })
         .where(eq(problems.slug, slug))
 
-      await setProblemLabels(transactionDb, 'topic', slug, input.topicLabels)
-      await setProblemLabels(
-        transactionDb,
-        'company',
-        slug,
-        input.companyLabels,
-      )
+      await setProblemTaxonomyLabels(transactionDb, slug, input)
 
       return true
     })
@@ -262,25 +250,12 @@ export class ProblemsRepository {
         .set(scalarUpdate)
         .where(inArray(problems.slug, existingSlugs))
 
-      if (input.set.topicLabels !== undefined) {
+      if (
+        input.set.topicLabels !== undefined ||
+        input.set.companyLabels !== undefined
+      ) {
         for (const slug of existingSlugs) {
-          await setProblemLabels(
-            transactionDb,
-            'topic',
-            slug,
-            input.set.topicLabels,
-          )
-        }
-      }
-
-      if (input.set.companyLabels !== undefined) {
-        for (const slug of existingSlugs) {
-          await setProblemLabels(
-            transactionDb,
-            'company',
-            slug,
-            input.set.companyLabels,
-          )
+          await setProblemTaxonomyLabels(transactionDb, slug, input.set)
         }
       }
     })
@@ -304,15 +279,7 @@ export class ProblemsRepository {
   async getContextBySlug(slug: string): Promise<ProblemContext | null> {
     const rows = await this.db
       .select({
-        problem: {
-          slug: problems.slug,
-          title: problems.title,
-          difficulty: problems.difficulty,
-          isPremium: problems.isPremium,
-          isUserCreated: problems.isUserCreated,
-          createdAt: problems.createdAt,
-          updatedAt: problems.updatedAt,
-        },
+        problem: problems,
         practiceStatus: problemPractice.status,
         cardDueAt: fsrsCards.dueAt,
       })
@@ -742,6 +709,23 @@ async function setProblemLabels(
   }
 }
 
+async function setProblemTaxonomyLabels(
+  db: ProblemWriteDb,
+  problemSlug: string,
+  labels: {
+    topicLabels?: readonly string[] | undefined
+    companyLabels?: readonly string[] | undefined
+  },
+) {
+  if (labels.topicLabels !== undefined) {
+    await setProblemLabels(db, 'topic', problemSlug, labels.topicLabels)
+  }
+
+  if (labels.companyLabels !== undefined) {
+    await setProblemLabels(db, 'company', problemSlug, labels.companyLabels)
+  }
+}
+
 async function ensureLabels(
   db: ProblemWriteDb,
   kind: TaxonomyKind,
@@ -791,40 +775,38 @@ function taxonomySource(kind: TaxonomyKind) {
 }
 
 function normalizeProblemSlugList(problemSlugs: readonly string[]) {
-  const seen = new Set<string>()
-  const normalizedSlugs: string[] = []
-
-  for (const problemSlug of problemSlugs) {
-    const normalizedSlug = normalizeLeetCodeSlug(problemSlug)
-
-    if (!normalizedSlug || seen.has(normalizedSlug)) {
-      continue
-    }
-
-    seen.add(normalizedSlug)
-    normalizedSlugs.push(normalizedSlug)
-  }
-
-  return normalizedSlugs
+  return uniqueNormalizedStrings(problemSlugs, normalizeLeetCodeSlug)
 }
 
 function normalizeLabelList(labels: readonly string[]) {
+  return uniqueNormalizedStrings(
+    labels,
+    (label) => label.trim().replace(/\s+/g, ' '),
+    (label) => label.toLowerCase(),
+  )
+}
+
+function uniqueNormalizedStrings(
+  values: readonly string[],
+  normalize: (value: string) => string,
+  keyForValue: (value: string) => string = (value) => value,
+) {
   const seen = new Set<string>()
-  const normalizedLabels: string[] = []
+  const normalizedValues: string[] = []
 
-  for (const label of labels) {
-    const normalizedLabel = label.trim().replace(/\s+/g, ' ')
-    const key = normalizedLabel.toLowerCase()
+  for (const value of values) {
+    const normalizedValue = normalize(value)
+    const key = keyForValue(normalizedValue)
 
-    if (!normalizedLabel || seen.has(key)) {
+    if (!normalizedValue || seen.has(key)) {
       continue
     }
 
     seen.add(key)
-    normalizedLabels.push(normalizedLabel)
+    normalizedValues.push(normalizedValue)
   }
 
-  return normalizedLabels
+  return normalizedValues
 }
 
 function createTaxonomyId(label: string) {

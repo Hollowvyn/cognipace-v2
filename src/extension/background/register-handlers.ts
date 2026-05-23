@@ -25,6 +25,7 @@ import {
   type SerializedActiveTrack,
   type SerializedProblem,
   type SerializedTodayQueue,
+  type UiSurface,
 } from '@/extension/messaging'
 import {
   appShellDataSchema,
@@ -65,7 +66,6 @@ import {
   deleteProblem,
   getProblemForEdit,
   getProblemLibrary,
-  readProblemSlugFromSlugOrUrl,
   updateProblem,
   upsertProblemFromPage,
 } from '@/features/problems/server/problems-service'
@@ -118,15 +118,11 @@ export function registerBackgroundHandlers() {
       sender,
     )
     return runDbMutation(
-      async (db) => {
-        return upsertProblemFromPage(db, request)
-      },
+      (db) => upsertProblemFromPage(db, request),
       (problem) =>
-        broadcastCacheInvalidation({
+        broadcastProblemCatalogInvalidation({
           problemSlug: problem.slug,
-          reason: 'problem-catalog-updated',
           source: request.surface,
-          tags: ['problems'],
         }),
     )
   })
@@ -159,7 +155,6 @@ export function registerBackgroundHandlers() {
 
   onMessage('problems.createProblem', ({ data, sender }) => {
     const request = problemsCreateProblemRequestSchema.parse(data)
-    const problemSlug = readProblemSlugFromSlugOrUrl(request.slugOrUrl)
 
     assertCanSenderCallExtensionMethod(
       'problems.createProblem',
@@ -167,13 +162,12 @@ export function registerBackgroundHandlers() {
       sender,
     )
     return runDbMutation(
-      async (db) => problemForEditResponseSchema.parse(await createProblem(db, request)),
+      async (db) =>
+        problemForEditResponseSchema.parse(await createProblem(db, request)),
       (problemForEdit) =>
-        broadcastCacheInvalidation({
-          problemSlug: problemForEdit.problem.slug ?? problemSlug ?? undefined,
-          reason: 'problem-catalog-updated',
+        broadcastProblemCatalogInvalidation({
+          problemSlug: problemForEdit.problem.slug,
           source: request.surface,
-          tags: ['problems'],
         }),
     )
   })
@@ -187,13 +181,12 @@ export function registerBackgroundHandlers() {
       sender,
     )
     return runDbMutation(
-      async (db) => problemForEditResponseSchema.parse(await updateProblem(db, request)),
+      async (db) =>
+        problemForEditResponseSchema.parse(await updateProblem(db, request)),
       (problemForEdit) =>
-        broadcastCacheInvalidation({
+        broadcastProblemCatalogInvalidation({
           problemSlug: problemForEdit.problem.slug,
-          reason: 'problem-catalog-updated',
           source: request.surface,
-          tags: ['problems'],
         }),
     )
   })
@@ -207,13 +200,12 @@ export function registerBackgroundHandlers() {
       sender,
     )
     return runDbMutation(
-      async (db) => problemDeleteResponseSchema.parse(await deleteProblem(db, request)),
+      async (db) =>
+        problemDeleteResponseSchema.parse(await deleteProblem(db, request)),
       () =>
-        broadcastCacheInvalidation({
+        broadcastProblemCatalogInvalidation({
           problemSlug: request.problemSlug,
-          reason: 'problem-catalog-updated',
           source: request.surface,
-          tags: ['problems'],
         }),
     )
   })
@@ -236,9 +228,7 @@ export function registerBackgroundHandlers() {
           problemSlug: readSingleChangedProblemSlug(
             result.updatedProblemSlugs,
           ),
-          reason: 'problem-catalog-updated',
           source: request.surface,
-          tags: ['problems'],
         }),
     )
   })
@@ -257,9 +247,7 @@ export function registerBackgroundHandlers() {
       (result) =>
         broadcastProblemCatalogInvalidation({
           problemSlug: readSingleChangedProblemSlug(result.deletedProblemSlugs),
-          reason: 'problem-catalog-updated',
           source: request.surface,
-          tags: ['problems'],
         }),
     )
   })
@@ -317,11 +305,9 @@ export function registerBackgroundHandlers() {
         return serializePracticeDetails(details)
       },
       () =>
-        broadcastCacheInvalidation({
+        broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
-          reason: 'practice-updated',
           source: request.surface,
-          tags: ['practice', 'problems', 'queue', 'app-shell'],
         }),
     )
   })
@@ -352,11 +338,9 @@ export function registerBackgroundHandlers() {
         return serializePracticeDetails(details)
       },
       () =>
-        broadcastCacheInvalidation({
+        broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
-          reason: 'practice-updated',
           source: request.surface,
-          tags: ['practice', 'problems', 'queue', 'app-shell'],
         }),
     )
   })
@@ -379,11 +363,9 @@ export function registerBackgroundHandlers() {
         return serializePracticeDetails(details)
       },
       () =>
-        broadcastCacheInvalidation({
+        broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
-          reason: 'practice-updated',
           source: request.surface,
-          tags: ['practice', 'problems', 'queue', 'app-shell'],
         }),
     )
   })
@@ -406,11 +388,9 @@ export function registerBackgroundHandlers() {
         return serializePracticeDetails(details)
       },
       () =>
-        broadcastCacheInvalidation({
+        broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
-          reason: 'practice-updated',
           source: request.surface,
-          tags: ['practice', 'problems', 'queue', 'app-shell'],
         }),
     )
   })
@@ -436,9 +416,8 @@ export function registerBackgroundHandlers() {
         return serializePracticeDetails(details)
       },
       () =>
-        broadcastCacheInvalidation({
+        broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
-          reason: 'practice-updated',
           source: request.surface,
           tags: ['practice', 'problems', 'app-shell'],
         }),
@@ -618,15 +597,26 @@ function readSingleChangedProblemSlug(problemSlugs: readonly string[]) {
 
 function broadcastProblemCatalogInvalidation(input: {
   problemSlug?: string | undefined
-  reason: 'problem-catalog-updated'
-  source: 'dashboard'
-  tags: ['problems']
+  source: UiSurface
 }) {
   return broadcastCacheInvalidation({
     ...(input.problemSlug ? { problemSlug: input.problemSlug } : {}),
-    reason: input.reason,
+    reason: 'problem-catalog-updated',
     source: input.source,
-    tags: input.tags,
+    tags: ['problems'],
+  })
+}
+
+function broadcastPracticeInvalidation(input: {
+  problemSlug: string
+  source: UiSurface
+  tags?: Parameters<typeof broadcastCacheInvalidation>[0]['tags']
+}) {
+  return broadcastCacheInvalidation({
+    problemSlug: input.problemSlug,
+    reason: 'practice-updated',
+    source: input.source,
+    tags: input.tags ?? ['practice', 'problems', 'queue', 'app-shell'],
   })
 }
 
