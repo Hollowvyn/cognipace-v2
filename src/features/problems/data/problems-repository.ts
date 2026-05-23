@@ -195,16 +195,9 @@ export class ProblemsRepository {
     const existingSlugs = requestedSlugs.filter((slug) =>
       existingRowSlugs.has(slug),
     )
-    const existingSet = new Set(existingSlugs)
-    const missingProblemSlugs = requestedSlugs.filter(
-      (slug) => !existingSet.has(slug),
-    )
 
     if (existingSlugs.length === 0) {
-      return {
-        updatedProblemSlugs: [],
-        missingProblemSlugs,
-      } satisfies ProblemBulkUpdate
+      return
     }
 
     const timestamp = now.getTime()
@@ -239,10 +232,6 @@ export class ProblemsRepository {
       }
     })
 
-    return {
-      updatedProblemSlugs: existingSlugs,
-      missingProblemSlugs,
-    } satisfies ProblemBulkUpdate
   }
 
   async getBySlug(slug: string) {
@@ -892,9 +881,4 @@ export interface BulkUpdateProblemsInput {
     topicLabels?: string[] | undefined
     companyLabels?: string[] | undefined
   }
-}
-
-export interface ProblemBulkUpdate {
-  updatedProblemSlugs: string[]
-  missingProblemSlugs: string[]
 }

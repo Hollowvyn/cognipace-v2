@@ -121,7 +121,7 @@ export function ProblemBulkActionBar({
 
   async function updateMetadata(set: ProblemsBulkUpdateProblemsRequest['set']) {
     await runAction(async () => {
-      const response = await bulkUpdate.mutateAsync({
+      await bulkUpdate.mutateAsync({
         surface: 'dashboard',
         problemSlugs: selectedProblemSlugs,
         set,
@@ -129,12 +129,7 @@ export function ProblemBulkActionBar({
 
       setIsMetadataDialogOpen(false)
       onClearSelection()
-      setMessage(
-        `Updated ${response.updatedProblemSlugs.length} ${pluralize(
-          'problem',
-          response.updatedProblemSlugs.length,
-        )}.`,
-      )
+      setMessage('Updated selected problems.')
     })
   }
 

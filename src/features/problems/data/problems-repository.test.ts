@@ -111,7 +111,7 @@ describe('ProblemsRepository library data', () => {
       companyLabels: ['Meta'],
     }))
 
-    const bulkUpdate = await bulkUpdateProblems(handle.db, {
+    await bulkUpdateProblems(handle.db, {
       surface: 'dashboard',
       problemSlugs: ['two-sum', 'binary-search', 'missing-problem'],
       set: {
@@ -131,10 +131,6 @@ describe('ProblemsRepository library data', () => {
       problemSlugs: ['binary-search', 'two-sum', 'missing-problem'],
     })
 
-    expect(bulkUpdate).toEqual({
-      updatedProblemSlugs: ['two-sum', 'binary-search'],
-      missingProblemSlugs: ['missing-problem'],
-    })
     expect(twoSum).toMatchObject({
       problem: { difficulty: 'hard', isPremium: true },
       topics: [{ label: 'Dynamic Programming' }],

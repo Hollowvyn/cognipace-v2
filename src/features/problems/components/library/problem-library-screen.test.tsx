@@ -497,10 +497,7 @@ describe('ProblemLibraryScreen', () => {
       }
 
       if (method === 'problems.bulkUpdateProblems') {
-        return Promise.resolve({
-          updatedProblemSlugs: ['binary-search', 'two-sum'],
-          missingProblemSlugs: [],
-        })
+        return Promise.resolve(undefined)
       }
 
       return Promise.resolve(createSerializedPracticeDetails())
@@ -565,7 +562,7 @@ describe('ProblemLibraryScreen', () => {
         companyLabels: [],
       },
     })
-    expect(await screen.findByText('Updated 2 problems.')).toBeVisible()
+    expect(await screen.findByText('Updated selected problems.')).toBeVisible()
   })
 
   it('bulk metadata omits disabled fields and clears enabled empty labels', async () => {
@@ -576,10 +573,7 @@ describe('ProblemLibraryScreen', () => {
       }
 
       if (method === 'problems.bulkUpdateProblems') {
-        return Promise.resolve({
-          updatedProblemSlugs: ['two-sum'],
-          missingProblemSlugs: [],
-        })
+        return Promise.resolve(undefined)
       }
 
       return Promise.resolve(createSerializedPracticeDetails())

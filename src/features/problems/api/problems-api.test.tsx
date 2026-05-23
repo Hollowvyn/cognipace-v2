@@ -128,10 +128,7 @@ describe('problems API hooks', () => {
     })
     await expectProblemMutation({
       method: 'problems.bulkUpdateProblems',
-      response: {
-        updatedProblemSlugs: ['binary-search'],
-        missingProblemSlugs: [],
-      },
+      response: undefined,
       request: {
         surface: 'dashboard',
         problemSlugs: ['binary-search'],

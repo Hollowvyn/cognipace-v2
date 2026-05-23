@@ -124,10 +124,7 @@ describe('background handler registration', () => {
     backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
     backgroundMocks.getProblemLibrary.mockResolvedValue(problemLibraryResponse)
     backgroundMocks.createProblem.mockResolvedValue(problemForEditResponse)
-    backgroundMocks.bulkUpdateProblems.mockResolvedValue({
-      updatedProblemSlugs: ['binary-search'],
-      missingProblemSlugs: [],
-    })
+    backgroundMocks.bulkUpdateProblems.mockResolvedValue(undefined)
     backgroundMocks.setPracticeSuspended.mockResolvedValue(practiceDetails)
     backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
     backgroundMocks.toggleStudyMode.mockResolvedValue(defaultUserSettings)

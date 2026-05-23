@@ -223,11 +223,9 @@ export function registerBackgroundHandlers() {
         problemBulkUpdateResponseSchema.parse(
           await bulkUpdateProblems(db, request),
         ),
-      (result) =>
+      () =>
         broadcastProblemCatalogInvalidation({
-          problemSlug: readSingleChangedProblemSlug(
-            result.updatedProblemSlugs,
-          ),
+          problemSlug: readSingleChangedProblemSlug(request.problemSlugs),
           source: request.surface,
         }),
     )

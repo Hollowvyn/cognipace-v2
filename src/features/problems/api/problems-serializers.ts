@@ -1,17 +1,11 @@
 import { serializePracticeSummary } from '@/features/practice/api/practice-serializers'
 
-import type {
-  ProblemBulkUpdate,
-  ProblemForEdit,
-  ProblemLibrary,
-} from '../data/problems-repository'
+import type { ProblemForEdit, ProblemLibrary } from '../data/problems-repository'
 import type { Problem } from '../domain'
 import {
-  problemBulkUpdateResponseSchema,
   problemForEditResponseSchema,
   problemLibraryResponseSchema,
   serializedProblemSchema,
-  type ProblemBulkUpdateResponse,
   type ProblemForEditResponse,
   type ProblemLibraryResponse,
   type SerializedProblem,
@@ -49,10 +43,4 @@ export function serializeProblemForEdit(
     ...problemForEdit,
     problem: serializeProblem(problemForEdit.problem),
   })
-}
-
-export function serializeProblemBulkUpdate(
-  result: ProblemBulkUpdate,
-): ProblemBulkUpdateResponse {
-  return problemBulkUpdateResponseSchema.parse(result)
 }

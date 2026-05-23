@@ -257,10 +257,7 @@ export const problemDeleteResponseSchema = z.void()
 
 export type ProblemDeleteResponse = z.infer<typeof problemDeleteResponseSchema>
 
-export const problemBulkUpdateResponseSchema = z.object({
-  updatedProblemSlugs: z.array(problemSlugSchema),
-  missingProblemSlugs: z.array(problemSlugSchema),
-})
+export const problemBulkUpdateResponseSchema = z.void()
 
 export type ProblemBulkUpdateResponse = z.infer<
   typeof problemBulkUpdateResponseSchema

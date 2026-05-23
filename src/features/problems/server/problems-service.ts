@@ -17,7 +17,6 @@ import type {
 } from '../api/problems-contracts'
 import {
   serializeProblem,
-  serializeProblemBulkUpdate,
   serializeProblemForEdit,
   serializeProblemLibrary,
 } from '../api/problems-serializers'
@@ -129,9 +128,7 @@ export async function bulkUpdateProblems(
   db: Db,
   request: ProblemsBulkUpdateProblemsRequest,
 ) {
-  return serializeProblemBulkUpdate(
-    await createProblemsRepository(db).bulkUpdateProblems(request),
-  )
+  await createProblemsRepository(db).bulkUpdateProblems(request)
 }
 
 export function readProblemSlugFromSlugOrUrl(slugOrUrl: string) {
