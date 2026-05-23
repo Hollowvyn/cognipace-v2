@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryHistory } from '@tanstack/react-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
 import { defaultUserSettings } from '@/features/settings/domain'
@@ -38,6 +38,11 @@ function renderDashboard(initialEntry = '/') {
 }
 
 describe('dashboard routes', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    window.history.replaceState(null, '', '/')
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(sendMessage).mockImplementation((method) => {
@@ -152,6 +157,31 @@ describe('dashboard routes', () => {
       expect(router.state.location.pathname).toBe('/tracks')
     })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('closes route modals when the backdrop is clicked', async () => {
+    const { router, user } = renderDashboard('/library/problems/new')
+
+    const dialog = await screen.findByRole('dialog', { name: 'Add problem' })
+    const backdrop = dialog.parentElement
+
+    expect(backdrop).not.toBeNull()
+    await user.click(backdrop as HTMLElement)
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/library')
+    })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('rewrites modal routes to the parent route before browser reload', async () => {
+    window.history.replaceState(null, '', '/#/library/problems/new')
+    renderDashboard('/library/problems/new')
+
+    await screen.findByRole('dialog', { name: 'Add problem' })
+    window.dispatchEvent(new Event('beforeunload'))
+
+    expect(window.location.hash).toBe('#/library')
   })
 
   it('keeps parent nav active for modal child routes', async () => {

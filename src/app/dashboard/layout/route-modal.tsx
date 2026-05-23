@@ -1,5 +1,12 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+} from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Surface } from '@/components/ui/surface'
@@ -40,6 +47,26 @@ export function RouteModal({
   const descriptionId = `${titleId}-description`
   const isFormVariant = variant === 'form'
 
+  const closeModal = useCallback(() => {
+    void navigate({ to: closeTo, replace: true })
+  }, [closeTo, navigate])
+
+  useEffect(() => {
+    function replaceModalRouteBeforeUnload() {
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `${window.location.pathname}${window.location.search}#${closeTo}`,
+      )
+    }
+
+    window.addEventListener('beforeunload', replaceModalRouteBeforeUnload)
+
+    return () => {
+      window.removeEventListener('beforeunload', replaceModalRouteBeforeUnload)
+    }
+  }, [closeTo])
+
   useEffect(() => {
     const previouslyFocused =
       document.activeElement instanceof HTMLElement
@@ -55,10 +82,6 @@ export function RouteModal({
       previouslyFocused?.focus()
     }
   }, [])
-
-  function closeModal() {
-    void navigate({ to: closeTo, replace: true })
-  }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === 'Escape') {
@@ -99,10 +122,19 @@ export function RouteModal({
     }
   }
 
+  function handleBackdropPointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) {
+      return
+    }
+
+    closeModal()
+  }
+
   return (
     <div
       className="fixed inset-0 z-[var(--cp-z-dialog)] flex items-start justify-center overflow-y-auto overscroll-contain bg-background/75 p-4 pt-16 backdrop-blur-sm sm:items-center sm:pt-4"
       onKeyDown={handleKeyDown}
+      onPointerDown={handleBackdropPointerDown}
     >
       <Surface
         asChild
