@@ -434,7 +434,7 @@ export class PracticeRepository {
       )
       .limit(1)
 
-    return rows[0] ? mapFsrsCard(rows[0]) : null
+    return rows[0] ? mapFsrsCardRow(rows[0]) : null
   }
 
   async getPracticeState(
@@ -447,7 +447,7 @@ export class PracticeRepository {
       .where(eq(problemPractice.problemSlug, problemSlug))
       .limit(1)
 
-    return rows[0] ? mapPracticeState(rows[0]) : null
+    return rows[0] ? mapProblemPracticeRow(rows[0]) : null
   }
 
   private async readReviewAttempts(
@@ -673,7 +673,7 @@ export function createFsrsCardId(problemSlug: string, cardKind: FsrsCardKind) {
   return `${problemSlug}:${cardKind}`
 }
 
-function mapFsrsCard(row: FsrsCardRow): FsrsCardSnapshot {
+export function mapFsrsCardRow(row: FsrsCardRow): FsrsCardSnapshot {
   return {
     dueAt: new Date(row.dueAt),
     stability: row.stability,
@@ -688,7 +688,9 @@ function mapFsrsCard(row: FsrsCardRow): FsrsCardSnapshot {
   }
 }
 
-function mapPracticeState(row: ProblemPracticeRow): PracticeStateSnapshot {
+export function mapProblemPracticeRow(
+  row: ProblemPracticeRow,
+): PracticeStateSnapshot {
   return {
     status: parsePracticeStatus(row.status),
     lastReviewedAt:

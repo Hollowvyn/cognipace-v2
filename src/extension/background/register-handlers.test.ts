@@ -284,14 +284,14 @@ describe('background handler registration', () => {
 
   it('reads the Library without flushing or broadcasting invalidation', async () => {
     const sender = { id: 'extension-id' }
-    const handler = readRegisteredHandler('problems.getLibrary')
-    const response = await handler({
-      data: {
+    const response = await sendRuntimeMessage(
+      'problems.getLibrary',
+      {
         surface: 'dashboard',
         at: '2026-01-01T10:00:00.000Z',
       },
       sender,
-    })
+    )
 
     expect(
       backgroundMocks.assertCanSenderCallExtensionMethod,
@@ -310,34 +310,19 @@ describe('background handler registration', () => {
 
   it('flushes and broadcasts problem invalidation after create writes', async () => {
     const sender = { id: 'extension-id' }
-    const handler = readRegisteredHandler('problems.createProblem')
-    const response = await handler({
-      data: {
-        surface: 'dashboard',
-        slugOrUrl: 'binary-search',
-        title: 'Binary Search',
-        difficulty: 'easy',
-        isPremium: false,
-        topicLabels: [],
-        companyLabels: [],
-      },
+    const request = binarySearchCreateRequest()
+    const response = await sendRuntimeMessage(
+      'problems.createProblem',
+      request,
       sender,
-    })
+    )
 
     expect(
       backgroundMocks.assertCanSenderCallExtensionMethod,
     ).toHaveBeenCalledWith('problems.createProblem', 'dashboard', sender)
     expect(backgroundMocks.createProblem).toHaveBeenCalledWith(
       backgroundMocks.db,
-      {
-        surface: 'dashboard',
-        slugOrUrl: 'binary-search',
-        title: 'Binary Search',
-        difficulty: 'easy',
-        isPremium: false,
-        topicLabels: [],
-        companyLabels: [],
-      },
+      request,
     )
     expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
       problemSlug: 'binary-search',
@@ -350,16 +335,11 @@ describe('background handler registration', () => {
   })
 
   it('rejects invalid problem writes before mutation side effects', () => {
-    const handler = readRegisteredHandler('problems.bulkUpdateProblems')
-
     expect(() =>
-      handler({
-        data: {
+      sendRuntimeMessage('problems.bulkUpdateProblems', {
           surface: 'dashboard',
           problemSlugs: ['two-sum'],
           set: {},
-        },
-        sender: { id: 'extension-id' },
       }),
     ).toThrow()
     expect(backgroundMocks.bulkUpdateProblems).not.toHaveBeenCalled()
@@ -369,15 +349,15 @@ describe('background handler registration', () => {
 
   it('includes problem invalidation for practice state that changes Library rows', async () => {
     const sender = { id: 'extension-id' }
-    const handler = readRegisteredHandler('practice.setSuspended')
-    const response = await handler({
-      data: {
+    const response = await sendRuntimeMessage(
+      'practice.setSuspended',
+      {
         surface: 'dashboard',
         problemSlug: 'two-sum',
         suspended: true,
       },
       sender,
-    })
+    )
 
     expect(
       backgroundMocks.assertCanSenderCallExtensionMethod,
@@ -452,6 +432,26 @@ function readRegisteredHandler(method: string) {
   expect(handler).toBeDefined()
 
   return handler!
+}
+
+function sendRuntimeMessage(
+  method: string,
+  data: unknown,
+  sender: unknown = { id: 'extension-id' },
+) {
+  return readRegisteredHandler(method)({ data, sender })
+}
+
+function binarySearchCreateRequest() {
+  return {
+    surface: 'dashboard',
+    slugOrUrl: 'binary-search',
+    title: 'Binary Search',
+    difficulty: 'easy',
+    isPremium: false,
+    topicLabels: [],
+    companyLabels: [],
+  } as const
 }
 
 function expectFlushBeforeBroadcast() {

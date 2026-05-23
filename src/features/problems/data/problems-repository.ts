@@ -2,18 +2,15 @@ import { and, asc, eq, inArray } from 'drizzle-orm'
 
 import {
   derivePracticeSummary,
-  normalizeReviewLogFields,
   parsePracticeStatus,
-  type PracticeStateSnapshot,
   type PracticeSummary,
 } from '@/features/practice/domain'
-import { renamePracticeProblemReferences } from '@/features/practice/data/practice-repository'
 import {
-  defaultFsrsCardKind,
-  parseFsrsCardState,
-  parseReviewRating,
-  type FsrsCardSnapshot,
-} from '@/lib/fsrs'
+  mapFsrsCardRow,
+  mapProblemPracticeRow,
+  renamePracticeProblemReferences,
+} from '@/features/practice/data/practice-repository'
+import { defaultFsrsCardKind } from '@/lib/fsrs'
 import { normalizeLeetCodeSlug, parseLeetCodeProblemInput } from '@/lib/leetcode'
 import type { Db } from '@/platform/db'
 import {
@@ -149,8 +146,13 @@ export class ProblemsRepository {
           },
         })
 
-      await this.setProblemTopics(transactionDb, slug, input.topicLabels)
-      await this.setProblemCompanies(transactionDb, slug, input.companyLabels)
+      await setProblemLabels(transactionDb, 'topic', slug, input.topicLabels)
+      await setProblemLabels(
+        transactionDb,
+        'company',
+        slug,
+        input.companyLabels,
+      )
     })
 
     return this.readRequiredProblemForEdit(slug)
@@ -177,8 +179,13 @@ export class ProblemsRepository {
         })
         .where(eq(problems.slug, slug))
 
-      await this.setProblemTopics(transactionDb, slug, input.topicLabels)
-      await this.setProblemCompanies(transactionDb, slug, input.companyLabels)
+      await setProblemLabels(transactionDb, 'topic', slug, input.topicLabels)
+      await setProblemLabels(
+        transactionDb,
+        'company',
+        slug,
+        input.companyLabels,
+      )
 
       return true
     })
@@ -217,8 +224,9 @@ export class ProblemsRepository {
   async bulkUpdateProblems(input: BulkUpdateProblemsInput, now = new Date()) {
     const requestedSlugs = normalizeProblemSlugList(input.problemSlugs)
     const existingRows = await this.readProblemOwnershipRows(requestedSlugs)
+    const existingRowSlugs = new Set(existingRows.map((row) => row.slug))
     const existingSlugs = requestedSlugs.filter((slug) =>
-      existingRows.some((row) => row.slug === slug),
+      existingRowSlugs.has(slug),
     )
     const existingSet = new Set(existingSlugs)
     const missingProblemSlugs = requestedSlugs.filter(
@@ -256,8 +264,9 @@ export class ProblemsRepository {
 
       if (input.set.topicLabels !== undefined) {
         for (const slug of existingSlugs) {
-          await this.setProblemTopics(
+          await setProblemLabels(
             transactionDb,
+            'topic',
             slug,
             input.set.topicLabels,
           )
@@ -266,8 +275,9 @@ export class ProblemsRepository {
 
       if (input.set.companyLabels !== undefined) {
         for (const slug of existingSlugs) {
-          await this.setProblemCompanies(
+          await setProblemLabels(
             transactionDb,
+            'company',
             slug,
             input.set.companyLabels,
           )
@@ -341,9 +351,9 @@ export class ProblemsRepository {
   }) {
     const baseRows = await this.db
       .select({
-        problem: problemReadFields,
-        practice: practiceReadFields,
-        card: cardReadFields,
+        problem: problems,
+        practice: problemPractice,
+        card: fsrsCards,
       })
       .from(problems)
       .leftJoin(problemPractice, eq(problemPractice.problemSlug, problems.slug))
@@ -358,16 +368,16 @@ export class ProblemsRepository {
     const slugs = baseRows.map((row) => row.problem.slug)
     const [topicsBySlug, companiesBySlug, tracksBySlug, lastSolvedBySlug] =
       await Promise.all([
-        this.readTopicsByProblem(this.db, slugs),
-        this.readCompaniesByProblem(this.db, slugs),
+        readLabelsByProblem(this.db, 'topic', slugs),
+        readLabelsByProblem(this.db, 'company', slugs),
         this.readTrackMembershipsByProblem(this.db, slugs),
         this.readLastSolvedByProblem(this.db, slugs),
       ])
 
     return baseRows.map((row) => {
       const problem = mapProblem(row.problem)
-      const practice = mapPracticeState(row.practice)
-      const card = mapFsrsCard(row.card)
+      const practice = row.practice ? mapProblemPracticeRow(row.practice) : null
+      const card = row.card ? mapFsrsCardRow(row.card) : null
       const summary = derivePracticeSummary({
         practice,
         card,
@@ -401,8 +411,8 @@ export class ProblemsRepository {
 
     const [topicsBySlug, companiesBySlug, tracksBySlug, options] =
       await Promise.all([
-        this.readTopicsByProblem(db, [problemSlug]),
-        this.readCompaniesByProblem(db, [problemSlug]),
+        readLabelsByProblem(db, 'topic', [problemSlug]),
+        readLabelsByProblem(db, 'company', [problemSlug]),
         this.readTrackMembershipsByProblem(db, [problemSlug]),
         this.readLibraryOptions(db),
       ])
@@ -448,50 +458,6 @@ export class ProblemsRepository {
       })
       .from(problems)
       .where(inArray(problems.slug, [...problemSlugs]))
-  }
-
-  private async readTopicsByProblem(
-    db: ProblemReadDb,
-    problemSlugs: readonly string[],
-  ) {
-    if (problemSlugs.length === 0) {
-      return new Map<string, ProblemTaxonomyLabel[]>()
-    }
-
-    const rows = await db
-      .select({
-        problemSlug: problemTopics.problemSlug,
-        id: topics.id,
-        label: topics.label,
-      })
-      .from(problemTopics)
-      .innerJoin(topics, eq(topics.id, problemTopics.topicId))
-      .where(inArray(problemTopics.problemSlug, [...problemSlugs]))
-      .orderBy(asc(topics.label))
-
-    return groupLabelsByProblem(rows)
-  }
-
-  private async readCompaniesByProblem(
-    db: ProblemReadDb,
-    problemSlugs: readonly string[],
-  ) {
-    if (problemSlugs.length === 0) {
-      return new Map<string, ProblemTaxonomyLabel[]>()
-    }
-
-    const rows = await db
-      .select({
-        problemSlug: problemCompanies.problemSlug,
-        id: companies.id,
-        label: companies.label,
-      })
-      .from(problemCompanies)
-      .innerJoin(companies, eq(companies.id, problemCompanies.companyId))
-      .where(inArray(problemCompanies.problemSlug, [...problemSlugs]))
-      .orderBy(asc(companies.label))
-
-    return groupLabelsByProblem(rows)
   }
 
   private async readTrackMembershipsByProblem(
@@ -574,20 +540,8 @@ export class ProblemsRepository {
 
   private async readLibraryOptions(db: ProblemReadDb) {
     const [topicOptions, companyOptions, trackGroupOptions] = await Promise.all([
-      db
-        .select({
-          id: topics.id,
-          label: topics.label,
-        })
-        .from(topics)
-        .orderBy(asc(topics.label)),
-      db
-        .select({
-          id: companies.id,
-          label: companies.label,
-        })
-        .from(companies)
-        .orderBy(asc(companies.label)),
+      readLabelOptions(db, 'topic'),
+      readLabelOptions(db, 'company'),
       db
         .select({
           trackId: tracks.id,
@@ -607,108 +561,6 @@ export class ProblemsRepository {
       companies: companyOptions,
       trackGroups: trackGroupOptions,
     } satisfies ProblemLibraryOptions
-  }
-
-  private async setProblemTopics(
-    db: ProblemWriteDb,
-    problemSlug: string,
-    labels: readonly string[],
-  ) {
-    const normalizedLabels = normalizeLabelList(labels)
-    const storedTopics = await this.ensureTopics(db, normalizedLabels)
-
-    await db
-      .delete(problemTopics)
-      .where(eq(problemTopics.problemSlug, problemSlug))
-
-    if (storedTopics.length === 0) {
-      return
-    }
-
-    await db
-      .insert(problemTopics)
-      .values(
-        storedTopics.map((topic) => ({
-          problemSlug,
-          topicId: topic.id,
-        })),
-      )
-      .onConflictDoNothing()
-  }
-
-  private async setProblemCompanies(
-    db: ProblemWriteDb,
-    problemSlug: string,
-    labels: readonly string[],
-  ) {
-    const normalizedLabels = normalizeLabelList(labels)
-    const storedCompanies = await this.ensureCompanies(db, normalizedLabels)
-
-    await db
-      .delete(problemCompanies)
-      .where(eq(problemCompanies.problemSlug, problemSlug))
-
-    if (storedCompanies.length === 0) {
-      return
-    }
-
-    await db
-      .insert(problemCompanies)
-      .values(
-        storedCompanies.map((company) => ({
-          problemSlug,
-          companyId: company.id,
-        })),
-      )
-      .onConflictDoNothing()
-  }
-
-  private async ensureTopics(
-    db: ProblemWriteDb,
-    labels: readonly string[],
-  ) {
-    if (labels.length === 0) {
-      return []
-    }
-
-    await db
-      .insert(topics)
-      .values(labels.map((label) => ({ id: createTaxonomyId(label), label })))
-      .onConflictDoNothing()
-
-    const storedTopics = await db
-      .select({
-        id: topics.id,
-        label: topics.label,
-      })
-      .from(topics)
-      .where(inArray(topics.label, [...labels]))
-
-    return sortLabelsByInput(labels, storedTopics)
-  }
-
-  private async ensureCompanies(
-    db: ProblemWriteDb,
-    labels: readonly string[],
-  ) {
-    if (labels.length === 0) {
-      return []
-    }
-
-    await db
-      .insert(companies)
-      .values(labels.map((label) => ({ id: createTaxonomyId(label), label })))
-      .onConflictDoNothing()
-
-    const storedCompanies = await db
-      .select({
-        id: companies.id,
-        label: companies.label,
-      })
-      .from(companies)
-      .where(inArray(companies.label, [...labels]))
-
-    return sortLabelsByInput(labels, storedCompanies)
   }
 
   private async renameProblemSlug(
@@ -761,45 +613,6 @@ export class ProblemsRepository {
   }
 }
 
-const problemReadFields = {
-  slug: problems.slug,
-  title: problems.title,
-  difficulty: problems.difficulty,
-  isPremium: problems.isPremium,
-  isUserCreated: problems.isUserCreated,
-  createdAt: problems.createdAt,
-  updatedAt: problems.updatedAt,
-} as const
-
-const practiceReadFields = {
-  status: problemPractice.status,
-  lastReviewedAt: problemPractice.lastReviewedAt,
-  lastRating: problemPractice.lastRating,
-  lastElapsedSeconds: problemPractice.lastElapsedSeconds,
-  bestElapsedSeconds: problemPractice.bestElapsedSeconds,
-  interviewPattern: problemPractice.interviewPattern,
-  timeComplexity: problemPractice.timeComplexity,
-  spaceComplexity: problemPractice.spaceComplexity,
-  languages: problemPractice.languages,
-  notes: problemPractice.notes,
-  solvedCount: problemPractice.solvedCount,
-  attemptCount: problemPractice.attemptCount,
-  isSuspended: problemPractice.isSuspended,
-} as const
-
-const cardReadFields = {
-  dueAt: fsrsCards.dueAt,
-  stability: fsrsCards.stability,
-  difficulty: fsrsCards.difficulty,
-  elapsedDays: fsrsCards.elapsedDays,
-  scheduledDays: fsrsCards.scheduledDays,
-  learningSteps: fsrsCards.learningSteps,
-  reps: fsrsCards.reps,
-  lapses: fsrsCards.lapses,
-  state: fsrsCards.state,
-  lastReviewAt: fsrsCards.lastReviewAt,
-} as const
-
 function mapProblem(row: ProblemRow): Problem {
   return {
     slug: row.slug,
@@ -809,60 +622,6 @@ function mapProblem(row: ProblemRow): Problem {
     isUserCreated: row.isUserCreated,
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
-  }
-}
-
-function mapPracticeState(
-  row: SelectedPracticeReadRow | null,
-): PracticeStateSnapshot | null {
-  if (!row || row.status === null) {
-    return null
-  }
-
-  return {
-    status: parsePracticeStatus(row.status),
-    lastReviewedAt:
-      row.lastReviewedAt === null ? null : new Date(row.lastReviewedAt),
-    attemptCount: row.attemptCount ?? 0,
-    solvedCount: row.solvedCount ?? 0,
-    isSuspended: row.isSuspended === true,
-    lastRating:
-      row.lastRating === null || row.lastRating === undefined
-        ? null
-        : parseReviewRating(row.lastRating),
-    lastElapsedSeconds: row.lastElapsedSeconds,
-    bestElapsedSeconds: row.bestElapsedSeconds,
-    log: normalizeReviewLogFields({
-      interviewPattern: row.interviewPattern,
-      timeComplexity: row.timeComplexity,
-      spaceComplexity: row.spaceComplexity,
-      languages: row.languages,
-      notes: row.notes,
-    }),
-  }
-}
-
-function mapFsrsCard(
-  row: SelectedCardReadRow | null,
-): FsrsCardSnapshot | null {
-  if (!row || row.dueAt === null) {
-    return null
-  }
-
-  return {
-    dueAt: new Date(row.dueAt),
-    stability: row.stability ?? 0,
-    difficulty: row.difficulty ?? 0,
-    elapsedDays: row.elapsedDays ?? 0,
-    scheduledDays: row.scheduledDays ?? 0,
-    learningSteps: row.learningSteps ?? 0,
-    reps: row.reps ?? 0,
-    lapses: row.lapses ?? 0,
-    state: parseFsrsCardState(row.state ?? 'new'),
-    lastReviewAt:
-      row.lastReviewAt === null || row.lastReviewAt === undefined
-        ? null
-        : new Date(row.lastReviewAt),
   }
 }
 
@@ -901,6 +660,134 @@ function groupLabelsByProblem(
   }
 
   return grouped
+}
+
+async function readLabelsByProblem(
+  db: ProblemReadDb,
+  kind: TaxonomyKind,
+  problemSlugs: readonly string[],
+) {
+  if (problemSlugs.length === 0) {
+    return new Map<string, ProblemTaxonomyLabel[]>()
+  }
+
+  const source = taxonomySource(kind)
+  return groupLabelsByProblem(
+    await db
+      .select({
+        problemSlug: source.problemSlug,
+        id: source.id,
+        label: source.label,
+      })
+      .from(source.joinTable)
+      .innerJoin(source.labelTable, eq(source.id, source.labelId))
+      .where(inArray(source.problemSlug, [...problemSlugs]))
+      .orderBy(asc(source.label)),
+  )
+}
+
+async function readLabelOptions(db: ProblemReadDb, kind: TaxonomyKind) {
+  const source = taxonomySource(kind)
+  return db
+    .select({
+      id: source.id,
+      label: source.label,
+    })
+    .from(source.labelTable)
+    .orderBy(asc(source.label))
+}
+
+async function setProblemLabels(
+  db: ProblemWriteDb,
+  kind: TaxonomyKind,
+  problemSlug: string,
+  labels: readonly string[],
+) {
+  const storedLabels = await ensureLabels(db, kind, normalizeLabelList(labels))
+
+  if (kind === 'topic') {
+    await db
+      .delete(problemTopics)
+      .where(eq(problemTopics.problemSlug, problemSlug))
+
+    if (storedLabels.length > 0) {
+      await db
+        .insert(problemTopics)
+        .values(
+          storedLabels.map((topic) => ({
+            problemSlug,
+            topicId: topic.id,
+          })),
+        )
+        .onConflictDoNothing()
+    }
+
+    return
+  }
+
+  await db
+    .delete(problemCompanies)
+    .where(eq(problemCompanies.problemSlug, problemSlug))
+
+  if (storedLabels.length > 0) {
+    await db
+      .insert(problemCompanies)
+      .values(
+        storedLabels.map((company) => ({
+          problemSlug,
+          companyId: company.id,
+        })),
+      )
+      .onConflictDoNothing()
+  }
+}
+
+async function ensureLabels(
+  db: ProblemWriteDb,
+  kind: TaxonomyKind,
+  labels: readonly string[],
+) {
+  if (labels.length === 0) {
+    return []
+  }
+
+  const source = taxonomySource(kind)
+
+  await db
+    .insert(source.labelTable)
+    .values(labels.map((label) => ({ id: createTaxonomyId(label), label })))
+    .onConflictDoNothing()
+
+  return sortLabelsByInput(
+    labels,
+    await db
+      .select({
+        id: source.id,
+        label: source.label,
+      })
+      .from(source.labelTable)
+      .where(inArray(source.label, [...labels])),
+  )
+}
+
+function taxonomySource(kind: TaxonomyKind) {
+  return kind === 'topic'
+    ? {
+        labelTable: topics,
+        joinTable: problemTopics,
+        id: topics.id,
+        label: topics.label,
+        labelId: problemTopics.topicId,
+        problemSlug: problemTopics.problemSlug,
+      }
+    : {
+        labelTable: companies,
+        joinTable: problemCompanies,
+        id: companies.id,
+        label: companies.label,
+        labelId: problemCompanies.companyId,
+        problemSlug: problemCompanies.problemSlug,
+      }
 }
 
 function normalizeProblemSlugList(problemSlugs: readonly string[]) {
@@ -963,35 +850,7 @@ function sortLabelsByInput(
 
 type ProblemReadDb = Pick<Db, 'select'>
 type ProblemWriteDb = Pick<Db, 'delete' | 'insert' | 'select' | 'update'>
-
-interface SelectedPracticeReadRow {
-  status: string | null
-  lastReviewedAt: number | null
-  lastRating: string | null
-  lastElapsedSeconds: number | null
-  bestElapsedSeconds: number | null
-  interviewPattern: string | null
-  timeComplexity: string | null
-  spaceComplexity: string | null
-  languages: string | null
-  notes: string | null
-  solvedCount: number | null
-  attemptCount: number | null
-  isSuspended: boolean | null
-}
-
-interface SelectedCardReadRow {
-  dueAt: number | null
-  stability: number | null
-  difficulty: number | null
-  elapsedDays: number | null
-  scheduledDays: number | null
-  learningSteps: number | null
-  reps: number | null
-  lapses: number | null
-  state: string | null
-  lastReviewAt: number | null
-}
+type TaxonomyKind = 'topic' | 'company'
 
 export interface ProblemLibraryReadOptions {
   now?: Date | undefined

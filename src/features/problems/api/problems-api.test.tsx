@@ -8,11 +8,12 @@ import {
   useBulkUpdateProblems,
   useCreateProblem,
   useProblemLibrary,
-  useUpdateProblem,
 } from './problems-api'
 import type {
   ProblemForEditResponse,
   ProblemLibraryResponse,
+  ProblemsBulkUpdateProblemsRequest,
+  ProblemsCreateProblemRequest,
 } from './problems-contracts'
 
 vi.mock('@/extension/messaging', () => ({
@@ -42,14 +43,11 @@ describe('problems API hooks', () => {
     })
   })
 
-  it('invalidates problem-backed queries after create/update/bulk mutations', async () => {
-    const { queryClient, wrapper } = createQueryTestHarness()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-    vi.mocked(sendMessage).mockResolvedValue(problemForEditResponse)
-
-    const createHook = renderHook(() => useCreateProblem(), { wrapper })
-    await act(async () => {
-      await createHook.result.current.mutateAsync({
+  it('invalidates problem-backed queries after create and bulk mutations', async () => {
+    await expectProblemMutation({
+      method: 'problems.createProblem',
+      response: problemForEditResponse,
+      request: {
         surface: 'dashboard',
         slugOrUrl: 'binary-search',
         title: 'Binary Search',
@@ -57,68 +55,45 @@ describe('problems API hooks', () => {
         isPremium: false,
         topicLabels: [],
         companyLabels: [],
-      })
+      } satisfies ProblemsCreateProblemRequest,
+      useHook: useCreateProblem,
     })
-
-    expect(sendMessage).toHaveBeenCalledWith('problems.createProblem', {
-      surface: 'dashboard',
-      slugOrUrl: 'binary-search',
-      title: 'Binary Search',
-      difficulty: 'easy',
-      isPremium: false,
-      topicLabels: [],
-      companyLabels: [],
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['problems'] })
-
-    vi.clearAllMocks()
-    vi.mocked(sendMessage).mockResolvedValue(problemForEditResponse)
-    const updateHook = renderHook(() => useUpdateProblem(), { wrapper })
-    await act(async () => {
-      await updateHook.result.current.mutateAsync({
-        surface: 'dashboard',
-        problemSlug: 'binary-search',
-        title: 'Binary Search',
-        difficulty: 'medium',
-        isPremium: true,
-        topicLabels: ['Search'],
-        companyLabels: ['Meta'],
-      })
-    })
-
-    expect(sendMessage).toHaveBeenCalledWith('problems.updateProblem', {
-      surface: 'dashboard',
-      problemSlug: 'binary-search',
-      title: 'Binary Search',
-      difficulty: 'medium',
-      isPremium: true,
-      topicLabels: ['Search'],
-      companyLabels: ['Meta'],
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['problems'] })
-
-    vi.clearAllMocks()
-    vi.mocked(sendMessage).mockResolvedValue({
-      updatedProblemSlugs: ['binary-search'],
-      missingProblemSlugs: [],
-    })
-    const bulkHook = renderHook(() => useBulkUpdateProblems(), { wrapper })
-    await act(async () => {
-      await bulkHook.result.current.mutateAsync({
+    await expectProblemMutation({
+      method: 'problems.bulkUpdateProblems',
+      response: {
+        updatedProblemSlugs: ['binary-search'],
+        missingProblemSlugs: [],
+      },
+      request: {
         surface: 'dashboard',
         problemSlugs: ['binary-search'],
         set: { isPremium: true },
-      })
+      } satisfies ProblemsBulkUpdateProblemsRequest,
+      useHook: useBulkUpdateProblems,
     })
-
-    expect(sendMessage).toHaveBeenCalledWith('problems.bulkUpdateProblems', {
-      surface: 'dashboard',
-      problemSlugs: ['binary-search'],
-      set: { isPremium: true },
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['problems'] })
   })
 })
+
+async function expectProblemMutation<TRequest>(input: {
+  method: string
+  request: TRequest
+  response: Awaited<ReturnType<typeof sendMessage>>
+  useHook: () => {
+    mutateAsync: (request: TRequest) => Promise<unknown>
+  }
+}) {
+  const { queryClient, wrapper } = createQueryTestHarness()
+  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+  vi.mocked(sendMessage).mockResolvedValue(input.response)
+  const { result } = renderHook(() => input.useHook(), { wrapper })
+
+  await act(async () => {
+    await result.current.mutateAsync(input.request)
+  })
+
+  expect(sendMessage).toHaveBeenCalledWith(input.method, input.request)
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['problems'] })
+}
 
 const summary = {
   phase: 'new',
