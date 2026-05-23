@@ -4,10 +4,8 @@ import type { Db } from '@/platform/db'
 import { createProblemsRepository } from '../data/problems-repository'
 import type { UpsertProblemInput } from '../domain'
 
-export interface UpsertProblemFromPageInput extends Omit<
-  UpsertProblemInput,
-  'slug' | 'url'
-> {
+export interface UpsertProblemFromPageInput
+  extends Omit<UpsertProblemInput, 'slug'> {
   slug?: string | null | undefined
   url: string
 }
@@ -26,9 +24,10 @@ export async function upsertProblemFromPage(
 
   return createProblemsRepository(db).upsertFromLeetCode(
     {
-      ...input,
       slug,
-      url: location?.url ?? input.url,
+      title: input.title,
+      difficulty: input.difficulty,
+      isPremium: input.isPremium,
     },
     now,
   )

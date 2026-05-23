@@ -1,40 +1,35 @@
-import { normalizeLeetCodeSlug } from '@/lib/leetcode'
+import { normalizeLeetCodeSlug, titleFromLeetCodeSlug } from '@/lib/leetcode'
+import {
+  problemDifficulties,
+  type ProblemDifficulty,
+  type ProblemSlug,
+} from '@/lib/problem-catalog'
 
-export const problemDifficulties = [
-  'easy',
-  'medium',
-  'hard',
-  'unknown',
-] as const
-
-export type ProblemDifficulty = (typeof problemDifficulties)[number]
+export {
+  problemDifficulties,
+  type ProblemDifficulty,
+  type ProblemSlug,
+}
 
 export interface Problem {
-  id: string
-  source: 'leetcode'
-  externalId: string | null
-  slug: string
+  slug: ProblemSlug
   title: string
   difficulty: ProblemDifficulty
-  url: string
   isPremium: boolean
-  acceptanceRate: number | null
+  isUserCreated: boolean
   createdAt: Date
   updatedAt: Date
 }
 
 export interface UpsertProblemInput {
-  slug: string
+  slug: ProblemSlug
   title?: string | null | undefined
   difficulty?: string | null | undefined
-  url?: string | null | undefined
   isPremium?: boolean | null | undefined
-  externalId?: string | null | undefined
-  acceptanceRate?: number | null | undefined
 }
 
-export function createLeetCodeProblemId(slug: string) {
-  return `leetcode:${normalizeLeetCodeSlug(slug)}`
+export function createLeetCodeProblemSlug(slugInput: string): ProblemSlug {
+  return normalizeLeetCodeSlug(slugInput)
 }
 
 export function normalizeProblemDifficulty(
@@ -54,8 +49,5 @@ export function normalizeProblemDifficulty(
 }
 
 export function titleFromSlug(slug: string) {
-  return normalizeLeetCodeSlug(slug)
-    .split('-')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
+  return titleFromLeetCodeSlug(slug)
 }

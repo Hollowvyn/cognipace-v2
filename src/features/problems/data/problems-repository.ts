@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm'
 
-import type { PracticeStatus } from '@/features/practice/domain'
+import { parsePracticeStatus } from '@/features/practice/domain'
 import { defaultFsrsCardKind } from '@/lib/fsrs'
 import { normalizeLeetCodeSlug } from '@/lib/leetcode'
 import type { Db } from '@/platform/db'
@@ -12,7 +12,7 @@ import {
 } from '@/platform/db/schema'
 
 import {
-  createLeetCodeProblemId,
+  createLeetCodeProblemSlug,
   normalizeProblemDifficulty,
   titleFromSlug,
   type Problem,
@@ -36,15 +36,11 @@ export class ProblemsRepository {
 
     const timestamp = now.getTime()
     const problem = {
-      id: createLeetCodeProblemId(slug),
-      source: 'leetcode',
-      externalId: input.externalId ?? null,
-      slug,
+      slug: createLeetCodeProblemSlug(slug),
       title: input.title?.trim() || titleFromSlug(slug),
       difficulty: normalizeProblemDifficulty(input.difficulty),
-      url: input.url ?? `https://leetcode.com/problems/${slug}/`,
       isPremium: input.isPremium ?? false,
-      acceptanceRate: input.acceptanceRate ?? null,
+      isUserCreated: false,
       createdAt: timestamp,
       updatedAt: timestamp,
     } as const
@@ -53,35 +49,22 @@ export class ProblemsRepository {
       .insert(problems)
       .values(problem)
       .onConflictDoUpdate({
-        target: problems.id,
+        target: problems.slug,
         set: {
-          externalId: problem.externalId,
           title: problem.title,
           difficulty: problem.difficulty,
-          url: problem.url,
           isPremium: problem.isPremium,
-          acceptanceRate: problem.acceptanceRate,
           updatedAt: timestamp,
         },
       })
 
-    const savedProblem = await this.getById(problem.id)
+    const savedProblem = await this.getBySlug(problem.slug)
 
     if (!savedProblem) {
-      throw new Error(`Failed to read saved problem "${problem.id}".`)
+      throw new Error(`Failed to read saved problem "${problem.slug}".`)
     }
 
     return savedProblem
-  }
-
-  async getById(id: string) {
-    const rows = await this.db
-      .select()
-      .from(problems)
-      .where(eq(problems.id, id))
-      .limit(1)
-
-    return rows[0] ? mapProblem(rows[0]) : null
   }
 
   async getBySlug(slug: string) {
@@ -98,15 +81,11 @@ export class ProblemsRepository {
     const rows = await this.db
       .select({
         problem: {
-          id: problems.id,
-          source: problems.source,
-          externalId: problems.externalId,
           slug: problems.slug,
           title: problems.title,
           difficulty: problems.difficulty,
-          url: problems.url,
           isPremium: problems.isPremium,
-          acceptanceRate: problems.acceptanceRate,
+          isUserCreated: problems.isUserCreated,
           createdAt: problems.createdAt,
           updatedAt: problems.updatedAt,
         },
@@ -114,11 +93,11 @@ export class ProblemsRepository {
         cardDueAt: fsrsCards.dueAt,
       })
       .from(problems)
-      .leftJoin(problemPractice, eq(problemPractice.problemId, problems.id))
+      .leftJoin(problemPractice, eq(problemPractice.problemSlug, problems.slug))
       .leftJoin(
         fsrsCards,
         and(
-          eq(fsrsCards.problemId, problems.id),
+          eq(fsrsCards.problemSlug, problems.slug),
           eq(fsrsCards.cardKind, defaultFsrsCardKind),
         ),
       )
@@ -134,7 +113,10 @@ export class ProblemsRepository {
     return {
       problem: mapProblem(row.problem),
       isTracked: row.practiceStatus !== null,
-      practiceStatus: row.practiceStatus as PracticeStatus | null,
+      practiceStatus:
+        row.practiceStatus === null
+          ? null
+          : parsePracticeStatus(row.practiceStatus),
       dueAt: row.cardDueAt === null ? null : new Date(row.cardDueAt),
     }
   }
@@ -142,15 +124,11 @@ export class ProblemsRepository {
 
 function mapProblem(row: ProblemRow): Problem {
   return {
-    id: row.id,
-    source: 'leetcode',
-    externalId: row.externalId,
     slug: row.slug,
     title: row.title,
     difficulty: normalizeProblemDifficulty(row.difficulty),
-    url: row.url,
     isPremium: row.isPremium,
-    acceptanceRate: row.acceptanceRate,
+    isUserCreated: row.isUserCreated,
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
   }

@@ -32,7 +32,7 @@ export const dashboardPaths = {
   trackNew: '/tracks/new',
   trackEdit: '/tracks/$trackId/edit',
   problemNew: '/library/problems/new',
-  problemEdit: '/library/problems/$problemId/edit',
+  problemEdit: '/library/problems/$problemSlug/edit',
 } as const satisfies Record<string, string>
 
 export type DashboardTopLevelPath =
@@ -155,7 +155,7 @@ export const dashboardModalRouteMeta = {
   problemEdit: {
     closeTo: dashboardPaths.library,
     description: 'Problem editing will be implemented in a later phase.',
-    relativePath: 'problems/$problemId/edit',
+    relativePath: 'problems/$problemSlug/edit',
     staticData: {
       presentation: 'modal-placeholder',
       section: 'library',

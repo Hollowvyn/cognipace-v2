@@ -1,0 +1,251 @@
+import { z } from 'zod'
+
+import { practiceSummarySchema } from '@/features/practice/api/practice-contracts'
+import { problemDifficulties } from '@/lib/problem-catalog'
+
+export const problemDifficultySchema = z.enum(problemDifficulties)
+
+export const problemSlugSchema = z.string().trim().min(1)
+
+export const problemRuntimeSurfaceSchema = z.literal('dashboard')
+
+export const serializedProblemSchema = z.object({
+  slug: problemSlugSchema,
+  title: z.string(),
+  difficulty: problemDifficultySchema,
+  isPremium: z.boolean(),
+  isUserCreated: z.boolean(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+})
+
+export type SerializedProblem = z.infer<typeof serializedProblemSchema>
+
+export const problemTopicSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+})
+
+export type SerializedProblemTopic = z.infer<typeof problemTopicSchema>
+
+export const problemCompanySchema = z.object({
+  id: z.string(),
+  label: z.string(),
+})
+
+export type SerializedProblemCompany = z.infer<typeof problemCompanySchema>
+
+export const problemTrackMembershipSchema = z.object({
+  trackId: z.string(),
+  trackSlug: z.string(),
+  trackTitle: z.string(),
+  groupId: z.string(),
+  groupTitle: z.string(),
+  groupPosition: z.number().int(),
+  problemPosition: z.number().int(),
+})
+
+export type SerializedProblemTrackMembership = z.infer<
+  typeof problemTrackMembershipSchema
+>
+
+export const problemTrackGroupOptionSchema = z.object({
+  trackId: z.string(),
+  trackSlug: z.string(),
+  trackTitle: z.string(),
+  groupId: z.string(),
+  groupTitle: z.string(),
+  groupPosition: z.number().int(),
+})
+
+export type SerializedProblemTrackGroupOption = z.infer<
+  typeof problemTrackGroupOptionSchema
+>
+
+export const problemLibraryStatusSchema = z.enum([
+  'not-started',
+  'due',
+  'scheduled',
+  'suspended',
+])
+
+export type ProblemLibraryStatus = z.infer<typeof problemLibraryStatusSchema>
+
+export const problemLibraryRowSchema = z.object({
+  problem: serializedProblemSchema,
+  status: problemLibraryStatusSchema,
+  summary: practiceSummarySchema,
+  nextReviewAt: z.iso.datetime().nullable(),
+  lastReviewedAt: z.iso.datetime().nullable(),
+  lastSolvedAt: z.iso.datetime().nullable(),
+  topics: z.array(problemTopicSchema),
+  companies: z.array(problemCompanySchema),
+  trackMemberships: z.array(problemTrackMembershipSchema),
+})
+
+export type ProblemLibraryRow = z.infer<typeof problemLibraryRowSchema>
+
+export const problemLibrarySummarySchema = z.object({
+  totalCount: z.number().int().min(0),
+  filteredCount: z.number().int().min(0),
+  dueCount: z.number().int().min(0),
+  suspendedCount: z.number().int().min(0),
+}).superRefine((summary, context) => {
+  if (summary.filteredCount > summary.totalCount) {
+    context.addIssue({
+      code: 'custom',
+      message: 'filteredCount cannot exceed totalCount',
+      path: ['filteredCount'],
+    })
+  }
+
+  if (summary.dueCount > summary.totalCount) {
+    context.addIssue({
+      code: 'custom',
+      message: 'dueCount cannot exceed totalCount',
+      path: ['dueCount'],
+    })
+  }
+
+  if (summary.suspendedCount > summary.totalCount) {
+    context.addIssue({
+      code: 'custom',
+      message: 'suspendedCount cannot exceed totalCount',
+      path: ['suspendedCount'],
+    })
+  }
+})
+
+export type ProblemLibrarySummary = z.infer<typeof problemLibrarySummarySchema>
+
+export const problemLibraryOptionsSchema = z.object({
+  topics: z.array(problemTopicSchema),
+  companies: z.array(problemCompanySchema),
+  trackGroups: z.array(problemTrackGroupOptionSchema),
+})
+
+export type ProblemLibraryOptions = z.infer<typeof problemLibraryOptionsSchema>
+
+export const problemLibraryResponseSchema = z.object({
+  generatedAt: z.iso.datetime(),
+  summary: problemLibrarySummarySchema,
+  options: problemLibraryOptionsSchema,
+  rows: z.array(problemLibraryRowSchema),
+})
+
+export type ProblemLibraryResponse = z.infer<
+  typeof problemLibraryResponseSchema
+>
+
+export const problemForEditResponseSchema = z.object({
+  problem: serializedProblemSchema,
+  topics: z.array(problemTopicSchema),
+  companies: z.array(problemCompanySchema),
+  trackMemberships: z.array(problemTrackMembershipSchema),
+  options: problemLibraryOptionsSchema,
+})
+
+export type ProblemForEditResponse = z.infer<
+  typeof problemForEditResponseSchema
+>
+
+export const problemsGetLibraryRequestSchema = z.object({
+  surface: problemRuntimeSurfaceSchema,
+  at: z.iso.datetime().optional(),
+})
+
+export type ProblemsGetLibraryRequest = z.infer<
+  typeof problemsGetLibraryRequestSchema
+>
+
+export const problemsGetProblemForEditRequestSchema = z.object({
+  surface: problemRuntimeSurfaceSchema,
+  problemSlug: problemSlugSchema,
+})
+
+export type ProblemsGetProblemForEditRequest = z.infer<
+  typeof problemsGetProblemForEditRequestSchema
+>
+
+const labelListSchema = z.array(z.string().trim().min(1)).default(() => [])
+
+const idListSchema = z.array(z.string().trim().min(1)).default(() => [])
+
+const problemMetadataInputSchema = z.object({
+  title: z.string().trim().min(1),
+  difficulty: problemDifficultySchema.default('unknown'),
+  isPremium: z.boolean().default(false),
+  topicLabels: labelListSchema,
+  companyLabels: labelListSchema,
+  trackGroupIds: idListSchema,
+})
+
+export const problemsCreateProblemRequestSchema =
+  problemMetadataInputSchema.extend({
+    surface: problemRuntimeSurfaceSchema,
+    slugOrUrl: z.string().trim().min(1),
+  })
+
+export type ProblemsCreateProblemRequest = z.infer<
+  typeof problemsCreateProblemRequestSchema
+>
+
+export const problemsUpdateProblemRequestSchema =
+  problemMetadataInputSchema.extend({
+    surface: problemRuntimeSurfaceSchema,
+    problemSlug: problemSlugSchema,
+  })
+
+export type ProblemsUpdateProblemRequest = z.infer<
+  typeof problemsUpdateProblemRequestSchema
+>
+
+export const problemsDeleteProblemRequestSchema = z.object({
+  surface: problemRuntimeSurfaceSchema,
+  problemSlug: problemSlugSchema,
+})
+
+export type ProblemsDeleteProblemRequest = z.infer<
+  typeof problemsDeleteProblemRequestSchema
+>
+
+export const problemsBulkUpdateMetadataRequestSchema = z.object({
+  surface: problemRuntimeSurfaceSchema,
+  problemSlugs: z.array(problemSlugSchema).min(1),
+  addTopicLabels: labelListSchema,
+  removeTopicIds: idListSchema,
+  addCompanyLabels: labelListSchema,
+  removeCompanyIds: idListSchema,
+  addTrackGroupIds: idListSchema,
+  removeTrackGroupIds: idListSchema,
+})
+
+export type ProblemsBulkUpdateMetadataRequest = z.infer<
+  typeof problemsBulkUpdateMetadataRequestSchema
+>
+
+export const problemsBulkDeleteRequestSchema = z.object({
+  surface: problemRuntimeSurfaceSchema,
+  problemSlugs: z.array(problemSlugSchema).min(1),
+})
+
+export type ProblemsBulkDeleteRequest = z.infer<
+  typeof problemsBulkDeleteRequestSchema
+>
+
+export const problemDeleteResponseSchema = z.object({
+  deletedProblemSlugs: z.array(problemSlugSchema),
+  protectedProblemSlugs: z.array(problemSlugSchema),
+  missingProblemSlugs: z.array(problemSlugSchema),
+})
+
+export type ProblemDeleteResponse = z.infer<typeof problemDeleteResponseSchema>
+
+export const problemBulkMetadataResponseSchema = z.object({
+  updatedProblemSlugs: z.array(problemSlugSchema),
+  missingProblemSlugs: z.array(problemSlugSchema),
+})
+
+export type ProblemBulkMetadataResponse = z.infer<
+  typeof problemBulkMetadataResponseSchema
+>
