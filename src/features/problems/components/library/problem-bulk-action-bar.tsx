@@ -113,14 +113,11 @@ export function ProblemBulkActionBar({
         problemSlugs: selectedProblemSlugs,
       })
       const deletedCount = response.deletedProblemSlugs.length
-      const protectedCount = response.protectedProblemSlugs.length
       const missingCount = response.missingProblemSlugs.length
 
       setConfirmation(null)
       onClearSelection()
-      setMessage(
-        formatBulkDeleteResult(deletedCount, protectedCount, missingCount),
-      )
+      setMessage(formatBulkDeleteResult(deletedCount, missingCount))
     })
   }
 
@@ -248,7 +245,7 @@ export function ProblemBulkActionBar({
       {confirmation === 'delete' ? (
         <ProblemConfirmationDialog
           confirmLabel="Delete Problems"
-          description={`Only user-created problems can be deleted. Protected selected problems will be skipped.`}
+          description="This permanently deletes the selected problems and their practice data."
           onCancel={() => setConfirmation(null)}
           onConfirm={() => {
             void confirmDelete()
@@ -267,12 +264,15 @@ function pluralize(label: string, count: number) {
 
 function formatBulkDeleteResult(
   deletedCount: number,
-  protectedCount: number,
   missingCount: number,
 ) {
-  return [
-    `Deleted ${deletedCount} ${pluralize('problem', deletedCount)}.`,
-    `Skipped ${protectedCount} protected ${pluralize('problem', protectedCount)}.`,
-    `Skipped ${missingCount} missing ${pluralize('problem', missingCount)}.`,
-  ].join(' ')
+  const result = [`Deleted ${deletedCount} ${pluralize('problem', deletedCount)}.`]
+
+  if (missingCount > 0) {
+    result.push(
+      `Skipped ${missingCount} missing ${pluralize('problem', missingCount)}.`,
+    )
+  }
+
+  return result.join(' ')
 }

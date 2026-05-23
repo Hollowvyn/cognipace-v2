@@ -185,13 +185,9 @@ export class ProblemsRepository {
     const requestedSlugs = normalizeProblemSlugList(problemSlugs)
     const existingRows = await this.readProblemOwnershipRows(requestedSlugs)
     const existingBySlug = new Map(existingRows.map((row) => [row.slug, row]))
-    const deletedProblemSlugs = requestedSlugs.filter(
-      (slug) => existingBySlug.get(slug)?.isUserCreated === true,
+    const deletedProblemSlugs = requestedSlugs.filter((slug) =>
+      existingBySlug.has(slug),
     )
-    const protectedProblemSlugs = requestedSlugs.filter((slug) => {
-      const row = existingBySlug.get(slug)
-      return row !== undefined && !row.isUserCreated
-    })
     const missingProblemSlugs = requestedSlugs.filter(
       (slug) => !existingBySlug.has(slug),
     )
@@ -204,7 +200,7 @@ export class ProblemsRepository {
 
     return {
       deletedProblemSlugs,
-      protectedProblemSlugs,
+      protectedProblemSlugs: [],
       missingProblemSlugs,
     } satisfies ProblemDeleteResult
   }

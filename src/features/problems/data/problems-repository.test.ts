@@ -105,7 +105,7 @@ describe('ProblemsRepository library data', () => {
     })
   })
 
-  it('bulk-updates fields and classifies delete results by persisted ownership', async () => {
+  it('bulk-updates fields and deletes existing problems', async () => {
     const handle = await createTestDb()
 
     await createProblem(handle.db, newProblemInput({
@@ -142,14 +142,20 @@ describe('ProblemsRepository library data', () => {
       companies: [],
     })
     expect(deleteResult).toEqual({
-      deletedProblemSlugs: ['binary-search'],
-      protectedProblemSlugs: ['two-sum'],
+      deletedProblemSlugs: ['binary-search', 'two-sum'],
+      protectedProblemSlugs: [],
       missingProblemSlugs: ['missing-problem'],
     })
     await expect(
       getProblemForEdit(handle.db, {
         surface: 'dashboard',
         problemSlug: 'binary-search',
+      }),
+    ).rejects.toThrow(/was not found/)
+    await expect(
+      getProblemForEdit(handle.db, {
+        surface: 'dashboard',
+        problemSlug: 'two-sum',
       }),
     ).rejects.toThrow(/was not found/)
   })

@@ -362,15 +362,17 @@ describe('ProblemLibraryScreen', () => {
     })
   })
 
-  it('deletes user-created problems with confirmation and disables protected delete', async () => {
+  it('deletes any library problem with confirmation', async () => {
     const user = userEvent.setup()
-    vi.mocked(sendMessage).mockImplementation((method) => {
+    vi.mocked(sendMessage).mockImplementation((method, request) => {
       if (method === 'problems.getLibrary') {
         return Promise.resolve(libraryResponse)
       }
 
+      const problemSlug = (request as { problemSlug?: string }).problemSlug
+
       return Promise.resolve({
-        deletedProblemSlugs: ['binary-search'],
+        deletedProblemSlugs: problemSlug ? [problemSlug] : [],
         protectedProblemSlugs: [],
         missingProblemSlugs: [],
       })
@@ -379,13 +381,6 @@ describe('ProblemLibraryScreen', () => {
 
     await user.click(
       await screen.findByRole('button', { name: 'Expand Two Sum' }),
-    )
-    expect(
-      screen.getByRole('button', { name: 'Delete' }),
-    ).toBeDisabled()
-
-    await user.click(
-      screen.getByRole('button', { name: 'Expand Binary Search' }),
     )
     expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: 'Delete' }))
@@ -397,11 +392,11 @@ describe('ProblemLibraryScreen', () => {
     )
     expect(sendMessage).toHaveBeenCalledWith('problems.deleteProblem', {
       surface: 'dashboard',
-      problemSlug: 'binary-search',
+      problemSlug: 'two-sum',
     })
   })
 
-  it('surfaces backend protected-delete refusal', async () => {
+  it('surfaces backend missing-delete refusal', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage).mockImplementation((method) => {
       if (method === 'problems.getLibrary') {
@@ -410,8 +405,8 @@ describe('ProblemLibraryScreen', () => {
 
       return Promise.resolve({
         deletedProblemSlugs: [],
-        protectedProblemSlugs: ['binary-search'],
-        missingProblemSlugs: [],
+        protectedProblemSlugs: [],
+        missingProblemSlugs: ['binary-search'],
       })
     })
     renderProblemLibrary()
@@ -428,7 +423,7 @@ describe('ProblemLibraryScreen', () => {
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This problem is protected and cannot be deleted.',
+      'This problem no longer exists.',
     )
     expect(
       screen.queryByRole('dialog', { name: 'Delete problem?' }),
@@ -444,8 +439,8 @@ describe('ProblemLibraryScreen', () => {
 
       if (method === 'problems.bulkDelete') {
         return Promise.resolve({
-          deletedProblemSlugs: ['binary-search'],
-          protectedProblemSlugs: ['two-sum'],
+          deletedProblemSlugs: ['01-matrix', 'binary-search', 'two-sum'],
+          protectedProblemSlugs: [],
           missingProblemSlugs: [],
         })
       }
@@ -529,9 +524,7 @@ describe('ProblemLibraryScreen', () => {
       problemSlugs: ['01-matrix', 'binary-search', 'two-sum'],
     })
     expect(
-      await screen.findByText(
-        'Deleted 1 problem. Skipped 1 protected problem. Skipped 0 missing problems.',
-      ),
+      await screen.findByText('Deleted 3 problems.'),
     ).toBeVisible()
   })
 

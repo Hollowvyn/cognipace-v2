@@ -57,12 +57,6 @@ export function ProblemRowActions({
         problemSlug: row.problem.slug,
       })
 
-      if (response.protectedProblemSlugs.includes(row.problem.slug)) {
-        setConfirmation(null)
-        setError('This problem is protected and cannot be deleted.')
-        return
-      }
-
       if (response.missingProblemSlugs.includes(row.problem.slug)) {
         setConfirmation(null)
         setError('This problem no longer exists.')
@@ -118,14 +112,9 @@ export function ProblemRowActions({
         </Button>
         <Button
           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-          disabled={isPending || !row.problem.isUserCreated}
+          disabled={isPending}
           onClick={() => setConfirmation('delete')}
           size="sm"
-          title={
-            row.problem.isUserCreated
-              ? undefined
-              : 'Only user-created problems can be deleted.'
-          }
           variant="ghost"
         >
           Delete
@@ -148,7 +137,7 @@ export function ProblemRowActions({
       {confirmation === 'delete' ? (
         <ProblemConfirmationDialog
           confirmLabel="Delete Problem"
-          description="This permanently deletes this user-created problem and its practice data."
+          description="This permanently deletes this problem and its practice data."
           onCancel={() => setConfirmation(null)}
           onConfirm={() => {
             void confirmDelete()
