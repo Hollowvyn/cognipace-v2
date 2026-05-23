@@ -5,7 +5,10 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { InlineStatus } from '@/components/ui/inline-status'
 import type { SerializedProblem } from '@/features/problems/api/problems-contracts'
-import { problemDifficulties, type ProblemDifficulty } from '@/lib/problem-catalog'
+import {
+  problemDifficulties,
+  type ProblemDifficulty,
+} from '@/lib/problem-catalog'
 import {
   createLeetCodeProblemUrl,
   parseLeetCodeProblemInput,
@@ -75,15 +78,13 @@ export function ProblemFormFields({
       await onSubmit(normalizedValues)
       onSaved()
     } catch (caughtError) {
-      setError(
-        {
-          field: 'title',
-          message:
-            caughtError instanceof Error
-              ? caughtError.message
-              : 'Failed to save problem.',
-        },
-      )
+      setError({
+        field: 'title',
+        message:
+          caughtError instanceof Error
+            ? caughtError.message
+            : 'Failed to save problem.',
+      })
     }
   }
 
@@ -101,17 +102,7 @@ export function ProblemFormFields({
         </InlineStatus>
       ) : null}
 
-      {isEdit ? (
-        <ProblemTextField
-          disabled
-          describedBy={error?.field === 'slugOrUrl' ? errorId : undefined}
-          invalid={error?.field === 'slugOrUrl'}
-          label="Problem slug"
-          name="problem-slug"
-          required
-          value={problem?.slug ?? ''}
-        />
-      ) : (
+      {!isEdit ? (
         <ProblemTextField
           describedBy={error?.field === 'slugOrUrl' ? errorId : undefined}
           invalid={error?.field === 'slugOrUrl'}
@@ -121,7 +112,7 @@ export function ProblemFormFields({
           required
           value={values.slugOrUrl}
         />
-      )}
+      ) : null}
 
       <ProblemTextField
         describedBy={error?.field === 'title' ? errorId : undefined}
@@ -133,8 +124,8 @@ export function ProblemFormFields({
         value={values.title}
       />
 
-      <label className="grid gap-1">
-        <span className="text-[length:var(--cp-badge-font-size)] font-bold uppercase text-muted-foreground">
+      <label className="relative block pt-2">
+        <span className="absolute left-3 top-0 z-10 max-w-[calc(100%-1.5rem)] truncate bg-card px-1 text-[length:var(--cp-badge-font-size)] font-semibold leading-none text-muted-foreground">
           Difficulty
         </span>
         <select
@@ -152,6 +143,36 @@ export function ProblemFormFields({
           ))}
         </select>
       </label>
+
+      <ProblemTextField
+        label="LeetCode URL"
+        name="problem-leetcode-url"
+        placeholder="Enter a slug to preview the LeetCode URL."
+        readOnly
+        value={
+          normalizedLocation
+            ? createLeetCodeProblemUrl(normalizedLocation.slug)
+            : problem
+              ? createLeetCodeProblemUrl(problem.slug)
+              : ''
+        }
+      />
+
+      <ProblemLabelInput
+        itemName="topic"
+        label="Topics"
+        labels={values.topicLabels}
+        onChange={(topicLabels) => setField('topicLabels', topicLabels)}
+        options={topicOptions}
+      />
+
+      <ProblemLabelInput
+        itemName="company"
+        label="Companies"
+        labels={values.companyLabels}
+        onChange={(companyLabels) => setField('companyLabels', companyLabels)}
+        options={companyOptions}
+      />
 
       <button
         aria-checked={values.isPremium}
@@ -178,38 +199,20 @@ export function ProblemFormFields({
         <span>LeetCode Premium</span>
       </button>
 
-      <ProblemLabelInput
-        itemName="topic"
-        label="Topics"
-        labels={values.topicLabels}
-        onChange={(topicLabels) => setField('topicLabels', topicLabels)}
-        options={topicOptions}
-      />
-
-      <ProblemLabelInput
-        itemName="company"
-        label="Companies"
-        labels={values.companyLabels}
-        onChange={(companyLabels) => setField('companyLabels', companyLabels)}
-        options={companyOptions}
-      />
-
-      <p className="m-0 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
-        URL:{' '}
-        {normalizedLocation
-          ? createLeetCodeProblemUrl(normalizedLocation.slug)
-          : 'Enter a slug to preview the LeetCode URL.'}
-      </p>
-
-      <div className="-mx-[var(--cp-panel-padding)] mt-2 flex justify-end gap-2 border-t border-border px-[var(--cp-panel-padding)] pt-4">
-        <Button disabled={pending} onClick={onCancel} type="button" variant="ghost">
-          Cancel
+      <div className="-mx-[var(--cp-panel-padding)] mt-2 flex justify-end gap-3 border-t border-border px-[var(--cp-panel-padding)] py-4">
+        <Button
+          disabled={pending}
+          onClick={onCancel}
+          type="button"
+          variant="ghost"
+        >
+          CANCEL
         </Button>
         <Button disabled={pending} type="submit">
           {pending ? (
             <Loader2 aria-hidden="true" className="animate-spin" />
           ) : null}
-          Save Problem
+          SAVE
         </Button>
       </div>
     </form>
@@ -223,6 +226,8 @@ function ProblemTextField({
   label,
   name,
   onChange,
+  placeholder,
+  readOnly = false,
   required = false,
   value,
 }: {
@@ -232,12 +237,14 @@ function ProblemTextField({
   label: string
   name: string
   onChange?: (value: string) => void
+  placeholder?: string | undefined
+  readOnly?: boolean
   required?: boolean
   value: string
 }) {
   return (
-    <label className="grid gap-1">
-      <span className="text-[length:var(--cp-badge-font-size)] font-bold uppercase text-muted-foreground">
+    <label className="relative block pt-2">
+      <span className="absolute left-3 top-0 z-10 max-w-[calc(100%-1.5rem)] truncate bg-card px-1 text-[length:var(--cp-badge-font-size)] font-semibold leading-none text-muted-foreground">
         {label}
       </span>
       <input
@@ -247,6 +254,8 @@ function ProblemTextField({
         disabled={disabled}
         name={name}
         onChange={(event) => onChange?.(event.target.value)}
+        placeholder={placeholder}
+        readOnly={readOnly}
         required={required}
         type="text"
         value={value}
@@ -256,7 +265,7 @@ function ProblemTextField({
 }
 
 const fieldClassName =
-  'h-[var(--cp-control-height-lg)] rounded-[var(--cp-control-radius)] border border-border bg-background px-3 text-[length:var(--cp-control-font-size)] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-70'
+  'h-[var(--cp-control-height-lg)] w-full rounded-[var(--cp-control-radius)] border border-border bg-background px-3 pt-1 text-[length:var(--cp-control-font-size)] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-70 read-only:text-muted-foreground'
 
 interface ProblemFormError {
   field: 'slugOrUrl' | 'title'

@@ -38,9 +38,11 @@ describe('ProblemForm', () => {
 
   it('validates required create fields', async () => {
     const user = userEvent.setup()
-    renderProblemForm(<ProblemForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />)
+    renderProblemForm(
+      <ProblemForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
+    )
 
-    await user.click(screen.getByRole('button', { name: 'Save Problem' }))
+    await user.click(screen.getByRole('button', { name: 'SAVE' }))
 
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Enter a LeetCode URL or slug.',
@@ -69,7 +71,7 @@ describe('ProblemForm', () => {
     await user.type(screen.getByLabelText('Title'), 'Two Sum')
     await user.selectOptions(screen.getByLabelText('Difficulty'), 'medium')
     await user.click(screen.getByRole('switch', { name: 'LeetCode Premium' }))
-    await user.click(screen.getByRole('button', { name: 'Save Problem' }))
+    await user.click(screen.getByRole('button', { name: 'SAVE' }))
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
     expect(sendMessage).toHaveBeenCalledWith('problems.createProblem', {
@@ -122,12 +124,11 @@ describe('ProblemForm', () => {
       />,
     )
 
-    expect(await screen.findByDisplayValue('two-sum')).toBeDisabled()
-    await user.clear(screen.getByLabelText('Title'))
+    await user.clear(await screen.findByLabelText('Title'))
     await user.type(screen.getByLabelText('Title'), '2Sum')
     await user.selectOptions(screen.getByLabelText('Difficulty'), 'hard')
     await user.click(screen.getByRole('switch', { name: 'LeetCode Premium' }))
-    await user.click(screen.getByRole('button', { name: 'Save Problem' }))
+    await user.click(screen.getByRole('button', { name: 'SAVE' }))
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
     expect(sendMessage).toHaveBeenCalledWith('problems.updateProblem', {
@@ -154,7 +155,7 @@ describe('ProblemForm', () => {
     await addLabel(user, 'Topics', 'Dynamic Programming')
     await addLabel(user, 'Companies', 'Meta')
     await addLabel(user, 'Companies', 'Netflix')
-    await user.click(screen.getByRole('button', { name: 'Save Problem' }))
+    await user.click(screen.getByRole('button', { name: 'SAVE' }))
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
     expect(sendMessage).toHaveBeenCalledWith('problems.createProblem', {
@@ -202,7 +203,7 @@ describe('ProblemForm', () => {
     await user.click(
       screen.getByRole('button', { name: 'Remove company Meta' }),
     )
-    await user.click(screen.getByRole('button', { name: 'Save Problem' }))
+    await user.click(screen.getByRole('button', { name: 'SAVE' }))
 
     await waitFor(() => {
       expect(sendMessage).toHaveBeenCalledWith('problems.updateProblem', {
@@ -233,7 +234,7 @@ describe('ProblemForm', () => {
     await user.type(screen.getByLabelText('LeetCode URL or slug'), 'two-sum')
     await user.type(screen.getByLabelText('Title'), 'Two Sum')
     await addLabel(user, 'Topics', 'Array')
-    await user.click(screen.getByRole('button', { name: 'Save Problem' }))
+    await user.click(screen.getByRole('button', { name: 'SAVE' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('save failed')
     expect(screen.getByText('Array')).toBeVisible()
@@ -242,9 +243,11 @@ describe('ProblemForm', () => {
   it('cancels without mutating', async () => {
     const user = userEvent.setup()
     const onCancel = vi.fn()
-    renderProblemForm(<ProblemForm mode="create" onCancel={onCancel} onSaved={vi.fn()} />)
+    renderProblemForm(
+      <ProblemForm mode="create" onCancel={onCancel} onSaved={vi.fn()} />,
+    )
 
-    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getByRole('button', { name: 'CANCEL' }))
 
     expect(onCancel).toHaveBeenCalledTimes(1)
     expect(sendMessage).not.toHaveBeenCalledWith(
@@ -267,5 +270,5 @@ async function addLabel(
 ) {
   await user.clear(screen.getByLabelText(groupLabel))
   await user.type(screen.getByLabelText(groupLabel), value)
-  await user.click(screen.getByRole('button', { name: `Add ${groupLabel}` }))
+  await user.keyboard('{Enter}')
 }

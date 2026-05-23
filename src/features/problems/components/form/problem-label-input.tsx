@@ -1,8 +1,8 @@
-import { X } from 'lucide-react'
-import { useId, useState } from 'react'
+import { Check, ChevronDown, X } from 'lucide-react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { cn } from '@/utils/cn'
 
 import {
   normalizeProblemLabel,
@@ -28,81 +28,280 @@ export function ProblemLabelInput({
   options: readonly ProblemLabelOption[]
 }) {
   const inputId = useId()
-  const optionsId = `${inputId}-options`
+  const labelId = `${inputId}-label`
+  const listboxId = `${inputId}-listbox`
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
   const [draft, setDraft] = useState('')
+  const [isOpen, setIsOpen] = useState(false)
+  const normalizedDraft = normalizeProblemLabel(draft)
+  const visibleOptions = filterOptions(options, normalizedDraft)
+  const canAddDraft =
+    normalizedDraft.length > 0 &&
+    !hasLabel(labels, readCanonicalLabel(draft, options))
 
-  function addDraftLabel() {
-    const nextLabel = readCanonicalLabel(draft, options)
-
-    if (!nextLabel) {
+  useEffect(() => {
+    if (!isOpen) {
       return
     }
 
-    onChange(normalizeProblemLabelList([...labels, nextLabel]))
+    function handlePointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [isOpen])
+
+  function addLabel(nextLabel: string) {
+    const normalizedLabel = normalizeProblemLabel(nextLabel)
+
+    if (!normalizedLabel) {
+      return
+    }
+
+    onChange(normalizeProblemLabelList([...labels, normalizedLabel]))
     setDraft('')
+    setIsOpen(false)
   }
 
   function removeLabel(labelToRemove: string) {
     onChange(labels.filter((currentLabel) => currentLabel !== labelToRemove))
   }
 
+  function toggleLabel(nextLabel: string) {
+    if (hasLabel(labels, nextLabel)) {
+      removeLabel(nextLabel)
+      return
+    }
+
+    addLabel(nextLabel)
+  }
+
+  function commitDraft() {
+    const nextLabel = readCanonicalLabel(draft, options)
+
+    if (nextLabel) {
+      addLabel(nextLabel)
+    }
+  }
+
+  function handleInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      commitDraft()
+      return
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setIsOpen(false)
+      return
+    }
+
+    if (event.key === 'ArrowDown') {
+      setIsOpen(true)
+      return
+    }
+
+    if (event.key === 'Backspace' && draft.length === 0) {
+      const lastLabel = labels.at(-1)
+
+      if (lastLabel) {
+        removeLabel(lastLabel)
+      }
+    }
+  }
+
   return (
-    <fieldset className="grid gap-2">
-      <legend className="text-[length:var(--cp-badge-font-size)] font-bold uppercase text-muted-foreground">
+    <div className="relative pt-2">
+      <label
+        className="absolute left-3 top-0 z-10 max-w-[calc(100%-1.5rem)] truncate bg-card px-1 text-[length:var(--cp-badge-font-size)] font-semibold leading-none text-muted-foreground"
+        htmlFor={inputId}
+        id={labelId}
+      >
         {label}
-      </legend>
-      <div className="flex min-w-0 gap-2">
-        <label className="min-w-0 flex-1">
-          <span className="sr-only">{label}</span>
-          <input
-            autoComplete="off"
-            className="h-[var(--cp-control-height-lg)] w-full rounded-[var(--cp-control-radius)] border border-border bg-background px-3 text-[length:var(--cp-control-font-size)] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            list={optionsId}
-            name={itemName === 'topic' ? 'problem-topics' : 'problem-companies'}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault()
-                addDraftLabel()
-              }
-            }}
-            value={draft}
-          />
-        </label>
-        <Button onClick={addDraftLabel} type="button" variant="outline">
-          Add {label}
-        </Button>
-      </div>
-      <datalist id={optionsId}>
-        {options.map((option) => (
-          <option key={option.id} value={option.label} />
-        ))}
-      </datalist>
-      {labels.length > 0 ? (
-        <ul
-          aria-label={`Selected ${label.toLowerCase()}`}
-          className="m-0 flex list-none flex-wrap gap-2 p-0"
+      </label>
+      <div className="relative" ref={rootRef}>
+        <div
+          className={cn(
+            'flex min-h-[var(--cp-control-height-lg)] min-w-0 items-center gap-2 rounded-[var(--cp-control-radius)] border border-border bg-background px-2 py-1 text-[length:var(--cp-control-font-size)] text-foreground transition-[border-color,box-shadow]',
+            'focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background',
+          )}
+          onClick={() => inputRef.current?.focus()}
         >
-          {labels.map((currentLabel) => (
-            <li key={currentLabel}>
-              <Badge className="gap-1 pr-1" tone="neutral" variant="outline">
-                <span className="max-w-52 break-words text-left leading-tight">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+            {labels.map((currentLabel) => (
+              <Badge
+                className="min-h-7 gap-1 rounded-full pr-1"
+                key={currentLabel}
+                tone={itemName === 'company' ? 'warning' : 'info'}
+                variant="outline"
+              >
+                <span className="max-w-44 truncate text-left leading-tight">
                   {currentLabel}
                 </span>
                 <button
                   aria-label={`Remove ${itemName} ${currentLabel}`}
-                  className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  onClick={() => removeLabel(currentLabel)}
+                  className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    removeLabel(currentLabel)
+                  }}
                   type="button"
                 >
-                  <X aria-hidden="true" className="size-3" />
+                  <X aria-hidden="true" className="size-3.5" />
                 </button>
               </Badge>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </fieldset>
+            ))}
+            <input
+              aria-autocomplete="list"
+              aria-controls={listboxId}
+              aria-expanded={isOpen}
+              aria-labelledby={labelId}
+              autoComplete="off"
+              className="min-h-8 min-w-32 flex-1 border-0 bg-transparent px-1 text-[length:var(--cp-control-font-size)] text-foreground outline-none placeholder:text-muted-foreground"
+              id={inputId}
+              name={
+                itemName === 'topic' ? 'problem-topics' : 'problem-companies'
+              }
+              onChange={(event) => {
+                setDraft(event.target.value)
+                setIsOpen(true)
+              }}
+              onFocus={() => setIsOpen(true)}
+              onKeyDown={handleInputKeyDown}
+              placeholder={
+                labels.length > 0 ? '' : `Choose ${label.toLowerCase()}...`
+              }
+              ref={inputRef}
+              value={draft}
+            />
+          </div>
+          {labels.length > 0 ? (
+            <button
+              aria-label={`Clear ${label.toLowerCase()}`}
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={(event) => {
+                event.stopPropagation()
+                onChange([])
+                inputRef.current?.focus()
+              }}
+              type="button"
+            >
+              <X aria-hidden="true" className="size-4" />
+            </button>
+          ) : null}
+          <button
+            aria-label={`${isOpen ? 'Close' : 'Open'} ${label.toLowerCase()} options`}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={(event) => {
+              event.stopPropagation()
+              setIsOpen((current) => !current)
+              inputRef.current?.focus()
+            }}
+            type="button"
+          >
+            <ChevronDown
+              aria-hidden="true"
+              className={cn(
+                'size-4 transition-transform',
+                isOpen && 'rotate-180',
+              )}
+            />
+          </button>
+        </div>
+
+        {isOpen ? (
+          <div
+            aria-label={`${label} options`}
+            className="absolute left-0 right-0 top-[calc(100%+0.375rem)] z-30 grid max-h-64 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-popover p-1 text-[length:var(--cp-control-font-size)] text-popover-foreground shadow-lg"
+            id={listboxId}
+            role="listbox"
+          >
+            {visibleOptions.map((option) => {
+              const selected = hasLabel(labels, option.label)
+
+              return (
+                <button
+                  aria-selected={selected}
+                  className={optionClassName(selected)}
+                  key={option.id}
+                  onClick={() => toggleLabel(option.label)}
+                  role="option"
+                  type="button"
+                >
+                  <OptionCheck selected={selected} />
+                  <span className="min-w-0 truncate">{option.label}</span>
+                </button>
+              )
+            })}
+            {canAddDraft ? (
+              <button
+                aria-selected={false}
+                className={optionClassName(false)}
+                onClick={() => commitDraft()}
+                role="option"
+                type="button"
+              >
+                <OptionCheck selected={false} />
+                <span className="min-w-0 truncate">
+                  Add "{normalizedDraft}"
+                </span>
+              </button>
+            ) : null}
+            {visibleOptions.length === 0 && !canAddDraft ? (
+              <p className="m-0 px-2 py-2 text-muted-foreground">
+                Type a label and press Enter.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function filterOptions(
+  options: readonly ProblemLabelOption[],
+  normalizedDraft: string,
+) {
+  if (!normalizedDraft) {
+    return options
+  }
+
+  return options.filter((option) =>
+    option.label.toLowerCase().includes(normalizedDraft.toLowerCase()),
+  )
+}
+
+function hasLabel(labels: readonly string[], label: string) {
+  return labels.some(
+    (currentLabel) => currentLabel.toLowerCase() === label.toLowerCase(),
+  )
+}
+
+function optionClassName(selected: boolean) {
+  return cn(
+    'flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[calc(var(--cp-control-radius)-2px)] px-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+    selected && 'bg-muted text-foreground',
+  )
+}
+
+function OptionCheck({ selected }: { selected: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'grid size-4 shrink-0 place-items-center rounded border border-border text-primary',
+        selected ? 'border-primary bg-primary/15' : 'opacity-60',
+      )}
+    >
+      {selected ? <Check className="size-3" /> : null}
+    </span>
   )
 }
 

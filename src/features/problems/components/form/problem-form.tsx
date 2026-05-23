@@ -1,6 +1,8 @@
 import { Loader2 } from 'lucide-react'
+import { useEffect } from 'react'
 
 import { InlineStatus } from '@/components/ui/inline-status'
+import type { SerializedProblem } from '@/features/problems/api/problems-contracts'
 import {
   useCreateProblem,
   useProblemLibrary,
@@ -20,6 +22,7 @@ type ProblemFormProps =
   | {
       mode: 'edit'
       onCancel: () => void
+      onLoaded?: ((problem: SerializedProblem) => void) | undefined
       onSaved: () => void
       problemSlug: string
     }
@@ -29,6 +32,7 @@ export function ProblemForm(props: ProblemFormProps) {
     return (
       <EditProblemForm
         onCancel={props.onCancel}
+        onLoaded={props.onLoaded}
         onSaved={props.onSaved}
         problemSlug={props.problemSlug}
       />
@@ -76,10 +80,12 @@ function CreateProblemForm({
 
 function EditProblemForm({
   onCancel,
+  onLoaded,
   onSaved,
   problemSlug,
 }: {
   onCancel: () => void
+  onLoaded?: ((problem: SerializedProblem) => void) | undefined
   onSaved: () => void
   problemSlug: string
 }) {
@@ -88,6 +94,12 @@ function EditProblemForm({
     surface: 'dashboard',
     problemSlug,
   })
+
+  useEffect(() => {
+    if (editQuery.data) {
+      onLoaded?.(editQuery.data.problem)
+    }
+  }, [editQuery.data, onLoaded])
 
   if (editQuery.isPending) {
     return (

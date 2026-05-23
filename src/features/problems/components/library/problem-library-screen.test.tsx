@@ -684,11 +684,10 @@ async function addDialogLabel(
   groupLabel: 'Companies' | 'Topics',
   value: string,
 ) {
-  await user.clear(within(dialog).getByLabelText(groupLabel))
-  await user.type(within(dialog).getByLabelText(groupLabel), value)
-  await user.click(
-    within(dialog).getByRole('button', { name: `Add ${groupLabel}` }),
-  )
+  const input = within(dialog).getByLabelText(groupLabel)
+
+  await user.clear(input)
+  await user.type(input, `${value}{Enter}`)
 }
 
 const topicArray = { id: 'array', label: 'Array' }

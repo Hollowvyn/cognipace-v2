@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from '@tanstack/react-router'
+import { useState } from 'react'
 
 import { RouteModal } from '@/app/dashboard/layout/route-modal'
 import {
@@ -13,9 +14,9 @@ export function NewProblemModalPage() {
   return (
     <RouteModal
       closeTo={dashboardModalRouteMeta.problemNew.closeTo}
-      description={dashboardModalRouteMeta.problemNew.description}
-      eyebrow="Problem"
-      title={dashboardModalRouteMeta.problemNew.staticData.title}
+      showCloseButton={false}
+      title="Add problem"
+      variant="form"
     >
       <ProblemForm
         mode="create"
@@ -29,17 +30,21 @@ export function NewProblemModalPage() {
 export function EditProblemModalPage() {
   const closeToLibrary = useCloseToLibrary()
   const params = useParams({ from: dashboardPaths.problemEdit })
+  const [title, setTitle] = useState<string>(
+    dashboardModalRouteMeta.problemEdit.staticData.title,
+  )
 
   return (
     <RouteModal
       closeTo={dashboardModalRouteMeta.problemEdit.closeTo}
-      description={dashboardModalRouteMeta.problemEdit.description}
-      eyebrow="Problem"
-      title={dashboardModalRouteMeta.problemEdit.staticData.title}
+      showCloseButton={false}
+      title={title}
+      variant="form"
     >
       <ProblemForm
         mode="edit"
         onCancel={closeToLibrary}
+        onLoaded={(problem) => setTitle(`Edit: ${problem.title}`)}
         onSaved={closeToLibrary}
         problemSlug={params.problemSlug}
       />

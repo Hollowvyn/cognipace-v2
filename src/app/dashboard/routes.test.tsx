@@ -84,10 +84,10 @@ describe('dashboard routes', () => {
   })
 
   it.each([
-    ['/tracks/new', 'Tracks', 'New Track', 'Placeholder'],
-    ['/tracks/leetcode-75/edit', 'Tracks', 'Edit Track', 'Placeholder'],
-    ['/library/problems/new', 'Library', 'New Problem', 'Problem'],
-    ['/library/problems/two-sum/edit', 'Library', 'Edit Problem', 'Problem'],
+    ['/tracks/new', 'Tracks', /New Track/i, 'Placeholder'],
+    ['/tracks/leetcode-75/edit', 'Tracks', /Edit Track/i, 'Placeholder'],
+    ['/library/problems/new', 'Library', /Add problem/i, null],
+    ['/library/problems/two-sum/edit', 'Library', /Edit/i, null],
   ])(
     'renders %s over the parent route',
     async (path, parentHeading, modalHeading, eyebrow) => {
@@ -97,7 +97,10 @@ describe('dashboard routes', () => {
         await screen.findByRole('heading', { name: parentHeading }),
       ).toBeVisible()
       expect(screen.getByRole('dialog', { name: modalHeading })).toBeVisible()
-      expect(screen.getByText(eyebrow)).toBeVisible()
+
+      if (eyebrow) {
+        expect(screen.getByText(eyebrow)).toBeVisible()
+      }
     },
   )
 
@@ -110,7 +113,13 @@ describe('dashboard routes', () => {
     const { router, user } = renderDashboard(path)
 
     await screen.findByRole('dialog')
-    await user.click(screen.getByRole('link', { name: 'Close' }))
+    const closeLink = screen.queryByRole('link', { name: 'Close' })
+
+    if (closeLink) {
+      await user.click(closeLink)
+    } else {
+      await user.click(await screen.findByRole('button', { name: 'CANCEL' }))
+    }
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe(closePath)
