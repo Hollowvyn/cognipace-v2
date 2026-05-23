@@ -17,9 +17,9 @@ export function ProblemLibraryHeader({
   return (
     <header className="flex min-w-0 flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5">
       <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-baseline">
-        <h2 className="m-0 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
-          Library
-        </h2>
+        <h3 className="m-0 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
+          All Tracked Problems
+        </h3>
         <dl className="flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-[length:var(--cp-copy-font-size)]">
           <ProblemLibraryCount label="Total" value={summary.totalCount} />
           <ProblemLibraryCount label="Filtered" value={summary.filteredCount} />

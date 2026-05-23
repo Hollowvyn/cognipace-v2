@@ -1,5 +1,4 @@
 import { RefreshCw } from 'lucide-react'
-import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -9,16 +8,12 @@ import { Surface } from '@/components/ui/surface'
 import { useProblemLibrary } from '../../api/problems-api'
 import { ProblemLibraryHeader } from './problem-library-header'
 import {
-  defaultProblemLibraryFilters,
-  defaultProblemLibrarySort,
-  filterProblemLibraryRows,
-  sortProblemLibraryRows,
+  getFilteredOriginalRows,
   summarizeVisibleLibraryRows,
-  type ProblemLibraryFilters,
-  type ProblemLibrarySort,
 } from './problem-library-filtering'
 import { ProblemLibraryTable } from './problem-library-table'
 import { ProblemLibraryToolbar } from './problem-library-toolbar'
+import { useProblemLibraryTable } from './use-problem-library-table'
 
 export function ProblemLibraryScreen({
   newProblemAction,
@@ -26,23 +21,11 @@ export function ProblemLibraryScreen({
   newProblemAction: ReactNode
 }) {
   const libraryQuery = useProblemLibrary({ surface: 'dashboard' })
-  const [filters, setFilters] = useState<ProblemLibraryFilters>(
-    defaultProblemLibraryFilters,
-  )
-  const [sort, setSort] = useState<ProblemLibrarySort>(
-    defaultProblemLibrarySort,
-  )
-  const [expandedProblemSlug, setExpandedProblemSlug] = useState<string | null>(
-    null,
-  )
   const library = libraryQuery.data
-  const filteredRows = useMemo(
-    () => (library ? filterProblemLibraryRows(library.rows, filters) : []),
-    [filters, library],
-  )
-  const rows = useMemo(
-    () => sortProblemLibraryRows(filteredRows, sort),
-    [filteredRows, sort],
+  const tableModel = useProblemLibraryTable(library?.rows ?? [])
+  const table = tableModel.table
+  const filteredRows = getFilteredOriginalRows(
+    table.getFilteredRowModel().rows,
   )
   const summary = library
     ? summarizeVisibleLibraryRows(library, filteredRows)
@@ -56,7 +39,7 @@ export function ProblemLibraryScreen({
   if (libraryQuery.isPending) {
     return (
       <ProblemLibraryFrame>
-        <Surface className="max-w-[72rem]">
+        <Surface className="w-full">
           <InlineStatus>Loading Library…</InlineStatus>
         </Surface>
       </ProblemLibraryFrame>
@@ -66,7 +49,7 @@ export function ProblemLibraryScreen({
   if (libraryQuery.isError || !library) {
     return (
       <ProblemLibraryFrame>
-        <Surface className="grid max-w-[72rem] gap-3">
+        <Surface className="grid w-full gap-3">
           <InlineStatus role="alert" tone="danger">
             Failed to load the Library.
           </InlineStatus>
@@ -89,7 +72,7 @@ export function ProblemLibraryScreen({
 
   return (
     <ProblemLibraryFrame>
-      <Surface className="grid w-full max-w-[88rem] gap-3 p-0">
+      <Surface className="grid w-full overflow-hidden p-0">
         <ProblemLibraryHeader
           newProblemAction={newProblemAction}
           summary={summary}
@@ -99,24 +82,15 @@ export function ProblemLibraryScreen({
         ) : (
           <>
             <ProblemLibraryToolbar
-              filters={filters}
+              filters={tableModel.filters}
               library={library}
-              onChange={setFilters}
+              onChange={tableModel.setFilters}
+              visibleCount={filteredRows.length}
             />
-            {rows.length === 0 ? (
+            {filteredRows.length === 0 ? (
               <ProblemLibraryNoResults />
             ) : (
-              <ProblemLibraryTable
-                expandedProblemSlug={expandedProblemSlug}
-                onSortChange={setSort}
-                onToggleExpanded={(problemSlug) =>
-                  setExpandedProblemSlug((current) =>
-                    current === problemSlug ? null : problemSlug,
-                  )
-                }
-                rows={rows}
-                sort={sort}
-              />
+              <ProblemLibraryTable table={table} />
             )}
           </>
         )}
@@ -133,7 +107,7 @@ function ProblemLibraryFrame({ children }: { children: ReactNode }) {
 
 function ProblemLibraryEmptyState() {
   return (
-    <div className="px-4 pb-5 md:px-5">
+    <div className="border-t border-border px-4 py-5 md:px-5">
       <InlineStatus>No problems are tracked yet.</InlineStatus>
     </div>
   )
@@ -141,7 +115,7 @@ function ProblemLibraryEmptyState() {
 
 function ProblemLibraryNoResults() {
   return (
-    <div className="px-4 pb-5 md:px-5">
+    <div className="border-t border-border px-4 py-5 md:px-5">
       <InlineStatus>No problems match these filters.</InlineStatus>
     </div>
   )

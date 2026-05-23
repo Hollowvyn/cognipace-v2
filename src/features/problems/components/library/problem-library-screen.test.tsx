@@ -74,7 +74,7 @@ describe('ProblemLibraryScreen', () => {
     expect(getProblemRow('01 Matrix')).toBeVisible()
     expect(queryProblemRow('Two Sum')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Clear' }))
+    await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
     expect(getProblemRow('Two Sum')).toBeVisible()
 
     await user.selectOptions(screen.getByLabelText('Difficulty'), 'medium')
@@ -84,20 +84,70 @@ describe('ProblemLibraryScreen', () => {
     await user.selectOptions(screen.getByLabelText('Status'), 'due')
     expect(screen.getByText('No problems match these filters.')).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: 'Clear' }))
-    await user.selectOptions(screen.getByLabelText('Topic'), 'array')
+    await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
+    await user.selectOptions(screen.getByLabelText('Topics'), 'array')
     expect(getProblemRow('Two Sum')).toBeVisible()
     expect(queryProblemRow('Binary Search')).not.toBeInTheDocument()
 
-    await user.selectOptions(screen.getByLabelText('Company'), 'netflix')
+    await user.selectOptions(screen.getByLabelText('Companies'), 'netflix')
     expect(screen.getByText('No problems match these filters.')).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: 'Clear' }))
-    await user.selectOptions(
-      screen.getByLabelText('Track'),
-      'leetcode-75:arrays-hashing',
+    expect(screen.queryByLabelText('Track')).not.toBeInTheDocument()
+  })
+
+  it('renders the MVP table columns and row selection controls', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockResolvedValueOnce(libraryResponse)
+    renderProblemLibrary()
+
+    await findProblemRow('Two Sum')
+
+    expect(screen.getByRole('columnheader', { name: 'Problem' })).toBeVisible()
+    expect(
+      screen.getByRole('columnheader', { name: 'Difficulty' }),
+    ).toBeVisible()
+    expect(screen.getByRole('columnheader', { name: 'Status' })).toBeVisible()
+    expect(
+      screen.getByRole('columnheader', { name: 'Retention' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('columnheader', { name: 'Last Review' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('columnheader', { name: 'Next Review' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('columnheader', { name: 'Tracks' })).toBeNull()
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select Two Sum' }))
+    expect(screen.getByRole('checkbox', { name: 'Select Two Sum' })).toBeChecked()
+    expect(screen.getByText('1 selected')).toBeVisible()
+
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select visible problems' }),
     )
-    expect(getProblemRow('Two Sum')).toBeVisible()
+    expect(
+      screen.getByRole('checkbox', { name: 'Select Binary Search' }),
+    ).toBeChecked()
+    expect(screen.getByText('3 selected')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Clear selection' }))
+    expect(screen.queryByText('3 selected')).not.toBeInTheDocument()
+  })
+
+  it('hides premium and suspended rows from switch filters', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockResolvedValueOnce(libraryResponse)
+    renderProblemLibrary()
+
+    expect(await findProblemRow('01 Matrix')).toBeVisible()
+
+    await user.click(screen.getByRole('switch', { name: 'Hide premium' }))
+    expect(queryProblemRow('01 Matrix')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('switch', { name: 'Hide premium' }))
+    expect(getProblemRow('01 Matrix')).toBeVisible()
+
+    await user.click(screen.getByRole('switch', { name: 'Hide suspended' }))
     expect(queryProblemRow('01 Matrix')).not.toBeInTheDocument()
   })
 
@@ -107,7 +157,7 @@ describe('ProblemLibraryScreen', () => {
     renderProblemLibrary()
 
     expect(
-      await screen.findByRole('heading', { name: 'Library' }),
+      await screen.findByRole('heading', { name: 'All Tracked Problems' }),
     ).toBeVisible()
     expect(screen.getByText('Total')).toBeVisible()
     expect(screen.getByText('Filtered')).toBeVisible()
@@ -116,11 +166,24 @@ describe('ProblemLibraryScreen', () => {
 
     await user.click(screen.getByRole('button', { name: 'Expand Two Sum' }))
 
+    expect(screen.getByRole('heading', { name: 'Details' })).toBeVisible()
+    expect(
+      screen.getByRole('heading', { name: 'Analytics and history' }),
+    ).toBeVisible()
     expect(screen.getByText('Last reviewed')).toBeVisible()
     expect(screen.getByText('Retrievability')).toBeVisible()
+    expect(screen.getByText('Reps')).toBeVisible()
+
+    expect(screen.queryByText('Tracks')).not.toBeInTheDocument()
     expect(
-      screen.getAllByText('LeetCode 75: Arrays and Hashing').length,
-    ).toBeGreaterThan(0)
+      screen.queryByText('LeetCode 75: Arrays and Hashing'),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Expand 01 Matrix' }))
+    expect(screen.queryByText('Retrievability')).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Collapse Two Sum' }),
+    ).not.toBeInTheDocument()
   })
 
   it('sorts rows and uses contextual empty date labels', async () => {
@@ -136,10 +199,14 @@ describe('ProblemLibraryScreen', () => {
       'Two Sum',
     ])
     expect(screen.getAllByText('Unscheduled').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Never solved').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Never reviewed').length).toBeGreaterThan(0)
 
-    await user.click(screen.getByRole('button', { name: 'Last Solved' }))
-    expect(getProblemTitleOrder()[0]).toBe('Two Sum')
+    await user.click(screen.getByRole('button', { name: 'Problem' }))
+    expect(getProblemTitleOrder()).toEqual([
+      'Two Sum',
+      'Binary Search',
+      '01 Matrix',
+    ])
   })
 })
 
