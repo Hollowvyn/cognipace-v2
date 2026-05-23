@@ -1,5 +1,5 @@
-import { FilterX, SlidersHorizontal } from 'lucide-react'
-import { useState } from 'react'
+import { Check, ChevronDown, FilterX, SlidersHorizontal } from 'lucide-react'
+import { useEffect, useId, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
@@ -23,7 +23,7 @@ export function ProblemLibraryToolbar({
   onChange: (filters: ProblemLibraryFilters) => void
   visibleCount: number
 }) {
-  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(true)
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false)
   const hasFilters = hasProblemLibraryFilters(filters)
 
   function patchFilters(patch: Partial<ProblemLibraryFilters>) {
@@ -57,9 +57,9 @@ export function ProblemLibraryToolbar({
         <IconButton
           aria-pressed={isFilterPanelOpen}
           className="rounded-full"
-          label={isFilterPanelOpen ? 'Hide filters' : 'Show filters'}
+          label={isFilterPanelOpen ? 'Collapse filters' : 'Expand filters'}
           onClick={() => setIsFilterPanelOpen((current) => !current)}
-          tooltip={isFilterPanelOpen ? 'Hide filters' : 'Show filters'}
+          tooltip={isFilterPanelOpen ? 'Collapse filters' : 'Expand filters'}
           variant="outline"
         >
           <SlidersHorizontal aria-hidden="true" />
@@ -69,74 +69,56 @@ export function ProblemLibraryToolbar({
       {isFilterPanelOpen ? (
         <div className="grid gap-3 border-t border-border pt-3">
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[minmax(10rem,0.8fr)_minmax(10rem,0.8fr)_minmax(12rem,1.1fr)]">
-            <ProblemLibrarySelect
+            <ProblemLibraryFacetFilter
+              allLabel="All difficulties"
               label="Difficulty"
-              name="problem-library-difficulty"
-              onChange={(difficulty) =>
-                patchFilters({
-                  difficultyValues: difficulty === 'all' ? [] : [difficulty],
-                })
-              }
               options={[
-                ['all', 'All difficulties'],
                 ['easy', 'Easy'],
                 ['medium', 'Medium'],
                 ['hard', 'Hard'],
                 ['unknown', 'Unknown'],
               ]}
-              value={filters.difficultyValues[0] ?? 'all'}
-            />
-            <ProblemLibrarySelect
-              label="Status"
-              name="problem-library-status"
-              onChange={(status) =>
-                patchFilters({
-                  statusValues: status === 'all' ? [] : [status],
-                })
+              value={filters.difficultyValues}
+              onChange={(difficultyValues) =>
+                patchFilters({ difficultyValues })
               }
+            />
+            <ProblemLibraryFacetFilter
+              allLabel="All statuses"
+              label="Status"
               options={[
-                ['all', 'All statuses'],
                 ['not-started', 'Not started'],
                 ['due', 'Due'],
                 ['scheduled', 'Scheduled'],
                 ['suspended', 'Suspended'],
               ]}
-              value={filters.statusValues[0] ?? 'all'}
+              value={filters.statusValues}
+              onChange={(statusValues) => patchFilters({ statusValues })}
             />
-            <ProblemLibrarySelect
+            <ProblemLibraryFacetFilter
+              allLabel="All topics"
               label="Topics"
-              name="problem-library-topic"
-              onChange={(topicId) =>
-                patchFilters({
-                  topicIds: topicId === 'all' ? [] : [topicId],
-                })
-              }
               options={[
-                ['all', 'All topics'],
                 ...library.options.topics.map(
                   (topic) => [topic.id, topic.label] as const,
                 ),
               ]}
-              value={filters.topicIds[0] ?? 'all'}
+              value={filters.topicIds}
+              onChange={(topicIds) => patchFilters({ topicIds })}
             />
           </div>
 
           <div className="grid gap-3 md:grid-cols-[minmax(12rem,22rem)_auto_auto] md:items-center md:justify-start">
-            <ProblemLibrarySelect
+            <ProblemLibraryFacetFilter
+              allLabel="All companies"
               label="Companies"
-              name="problem-library-company"
-              onChange={(companyId) =>
-                patchFilters({
-                  companyIds: companyId === 'all' ? [] : [companyId],
-                })
-              }
               options={[
-                ['all', 'All companies'],
                 ...library.options.companies.map(
                   (company) => [company.id, company.label] as const,
                 ),
               ]}
-              value={filters.companyIds[0] ?? 'all'}
+              value={filters.companyIds}
+              onChange={(companyIds) => patchFilters({ companyIds })}
             />
             <ProblemLibraryToggle
               checked={filters.hidePremium}
@@ -173,44 +155,173 @@ export function ProblemLibraryToolbar({
   )
 }
 
-function ProblemLibrarySelect<TValue extends string>({
+function ProblemLibraryFacetFilter<TValue extends string>({
+  allLabel,
   label,
-  name,
   onChange,
   options,
   value,
 }: {
+  allLabel: string
   label: string
-  name: string
-  onChange: (value: TValue) => void
   options: readonly (readonly [TValue, string])[]
-  value: TValue
+  value: readonly TValue[]
+  onChange: (value: TValue[]) => void
 }) {
-  const labelId = `${name}-label`
+  const [isOpen, setIsOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const buttonId = useId()
+  const listboxId = useId()
+  const selectedLabelByValue = new Map(
+    options.map(([optionValue, optionLabel]) => [optionValue, optionLabel]),
+  )
+  const selectedSummary = getFacetFilterSummary({
+    allLabel,
+    selectedLabels: value.map(
+      (optionValue) => selectedLabelByValue.get(optionValue) ?? optionValue,
+    ),
+  })
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen])
+
+  function toggleOption(optionValue: TValue) {
+    const nextValue = value.includes(optionValue)
+      ? value.filter((selectedValue) => selectedValue !== optionValue)
+      : [...value, optionValue]
+
+    onChange(nextValue)
+  }
 
   return (
-    <label className="relative block min-w-0 pt-2">
+    <div className="relative min-w-0 pt-2" ref={rootRef}>
       <span
         className="absolute left-3 top-0 z-10 max-w-[calc(100%-1.5rem)] truncate bg-card px-1 text-[length:var(--cp-badge-font-size)] font-semibold leading-none text-muted-foreground"
-        id={labelId}
+        id={`${buttonId}-label`}
       >
         {label}
       </span>
-      <select
-        aria-labelledby={labelId}
-        className="h-[var(--cp-control-height-lg)] w-full min-w-0 rounded-[var(--cp-control-radius)] border border-border bg-card px-3 pt-1 text-[length:var(--cp-control-font-size)] text-foreground transition-[border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        name={name}
-        onChange={(event) => onChange(event.target.value as TValue)}
-        value={value}
+      <button
+        aria-controls={listboxId}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-labelledby={`${buttonId}-label ${buttonId}`}
+        className="flex h-[var(--cp-control-height-lg)] w-full min-w-0 items-center justify-between gap-3 rounded-[var(--cp-control-radius)] border border-border bg-card px-3 pt-1 text-left text-[length:var(--cp-control-font-size)] text-foreground transition-[border-color,box-shadow] hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        id={buttonId}
+        onClick={() => setIsOpen((current) => !current)}
+        type="button"
       >
-        {options.map(([optionValue, optionLabel]) => (
-          <option key={optionValue} value={optionValue}>
-            {optionLabel}
-          </option>
-        ))}
-      </select>
-    </label>
+        <span className="min-w-0 truncate">{selectedSummary}</span>
+        <ChevronDown
+          aria-hidden="true"
+          className={cn(
+            'size-4 shrink-0 text-muted-foreground transition-transform',
+            isOpen && 'rotate-180',
+          )}
+        />
+      </button>
+
+      {isOpen ? (
+        <div
+          aria-labelledby={`${buttonId}-label`}
+          aria-multiselectable="true"
+          className="absolute left-0 top-[calc(100%+0.375rem)] z-30 grid max-h-80 w-full min-w-56 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-popover p-1 text-[length:var(--cp-control-font-size)] text-popover-foreground shadow-lg"
+          id={listboxId}
+          role="listbox"
+        >
+          <button
+            aria-selected={value.length === 0}
+            className={facetOptionClassName(value.length === 0)}
+            onClick={() => onChange([])}
+            role="option"
+            type="button"
+          >
+            <FacetFilterCheck selected={value.length === 0} />
+            <span className="min-w-0 truncate">{allLabel}</span>
+          </button>
+          {options.map(([optionValue, optionLabel]) => {
+            const isSelected = value.includes(optionValue)
+
+            return (
+              <button
+                aria-selected={isSelected}
+                className={facetOptionClassName(isSelected)}
+                key={optionValue}
+                onClick={() => toggleOption(optionValue)}
+                role="option"
+                type="button"
+              >
+                <FacetFilterCheck selected={isSelected} />
+                <span className="min-w-0 truncate">{optionLabel}</span>
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+    </div>
   )
+}
+
+function FacetFilterCheck({ selected }: { selected: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'grid size-4 shrink-0 place-items-center rounded border border-border text-primary',
+        selected ? 'border-primary bg-primary/15' : 'opacity-60',
+      )}
+    >
+      {selected ? <Check className="size-3" /> : null}
+    </span>
+  )
+}
+
+function facetOptionClassName(selected: boolean) {
+  return cn(
+    'flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[calc(var(--cp-control-radius)-2px)] px-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+    selected && 'bg-muted text-foreground',
+  )
+}
+
+function getFacetFilterSummary({
+  allLabel,
+  selectedLabels,
+}: {
+  allLabel: string
+  selectedLabels: readonly string[]
+}) {
+  if (selectedLabels.length === 0) {
+    return allLabel
+  }
+
+  if (selectedLabels.length === 1) {
+    return selectedLabels[0]
+  }
+
+  return `${selectedLabels.length} selected`
 }
 
 function ProblemLibraryToggle({

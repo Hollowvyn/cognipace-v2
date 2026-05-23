@@ -140,6 +140,24 @@ describe('dashboard routes', () => {
     )
   })
 
+  it('skips to dashboard content without changing the hash route', async () => {
+    const { router, user } = renderDashboard('/library')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Library' }),
+    ).toBeVisible()
+
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'Skip to content' }),
+    ).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+
+    expect(screen.getByRole('main')).toHaveFocus()
+    expect(router.state.location.pathname).toBe('/library')
+  })
+
   it('does not define deferred destructive or data-management routes', () => {
     const router = createDashboardRouter({
       history: createMemoryHistory({ initialEntries: ['/'] }),

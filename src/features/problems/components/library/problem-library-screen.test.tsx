@@ -77,25 +77,61 @@ describe('ProblemLibraryScreen', () => {
     expect(getProblemRow('01 Matrix')).toBeVisible()
     expect(queryProblemRow('Two Sum')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
+    await user.clear(screen.getByLabelText('Search problems'))
     expect(getProblemRow('Two Sum')).toBeVisible()
 
-    await user.selectOptions(screen.getByLabelText('Difficulty'), 'medium')
+    expect(screen.getByRole('button', { name: 'Expand filters' })).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: /Difficulty/i }),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Expand filters' }))
+    await selectLibraryFacetOption(user, 'Difficulty', 'Medium')
     expect(getProblemRow('01 Matrix')).toBeVisible()
     expect(queryProblemRow('Binary Search')).not.toBeInTheDocument()
 
-    await user.selectOptions(screen.getByLabelText('Status'), 'due')
+    await selectLibraryFacetOption(user, 'Status', 'Due')
     expect(screen.getByText('No problems match these filters.')).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
-    await user.selectOptions(screen.getByLabelText('Topics'), 'array')
+    await selectLibraryFacetOption(user, 'Topics', 'Array')
     expect(getProblemRow('Two Sum')).toBeVisible()
     expect(queryProblemRow('Binary Search')).not.toBeInTheDocument()
 
-    await user.selectOptions(screen.getByLabelText('Companies'), 'netflix')
+    await selectLibraryFacetOption(user, 'Companies', 'Netflix')
     expect(screen.getByText('No problems match these filters.')).toBeVisible()
 
-    expect(screen.queryByLabelText('Track')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Track/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('allows multiple values in one facet filter', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockResolvedValueOnce(libraryResponse)
+    renderProblemLibrary()
+
+    expect(await findProblemRow('Two Sum')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Expand filters' }))
+    await user.click(screen.getByRole('button', { name: /Difficulty/i }))
+    await user.click(screen.getByRole('option', { name: 'Easy' }))
+    await user.click(screen.getByRole('option', { name: 'Medium' }))
+
+    expect(
+      screen.getByRole('button', { name: /Difficulty 2 selected/i }),
+    ).toBeVisible()
+    expect(getProblemRow('Two Sum')).toBeVisible()
+    expect(getProblemRow('Binary Search')).toBeVisible()
+    expect(getProblemRow('01 Matrix')).toBeVisible()
+
+    await user.click(screen.getByRole('option', { name: 'Easy' }))
+    expect(getProblemRow('01 Matrix')).toBeVisible()
+    expect(queryProblemRow('Two Sum')).not.toBeInTheDocument()
+    expect(queryProblemRow('Binary Search')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('option', { name: 'All difficulties' }))
+    expect(getProblemRow('Two Sum')).toBeVisible()
+    expect(getProblemRow('Binary Search')).toBeVisible()
   })
 
   it('renders the MVP table columns and row selection controls', async () => {
@@ -146,6 +182,7 @@ describe('ProblemLibraryScreen', () => {
 
     expect(await findProblemRow('01 Matrix')).toBeVisible()
 
+    await user.click(screen.getByRole('button', { name: 'Expand filters' }))
     await user.click(screen.getByRole('switch', { name: 'Hide premium' }))
     expect(queryProblemRow('01 Matrix')).not.toBeInTheDocument()
 
@@ -608,6 +645,15 @@ function queryProblemRow(title: string) {
 
 function findProblemRow(title: string) {
   return screen.findByRole('row', { name: new RegExp(title, 'i') })
+}
+
+async function selectLibraryFacetOption(
+  user: ReturnType<typeof userEvent.setup>,
+  facetLabel: string,
+  optionLabel: string,
+) {
+  await user.click(screen.getByRole('button', { name: new RegExp(facetLabel) }))
+  await user.click(screen.getByRole('option', { name: optionLabel }))
 }
 
 function getProblemTitleOrder() {
