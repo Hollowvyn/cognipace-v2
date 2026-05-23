@@ -118,11 +118,9 @@ const defaultTiming = {
 
 const overlayProblem = {
   difficulty: 'easy',
-  id: 'leetcode:two-sum',
   isPremium: false,
-  slug: 'two-sum',
+  problemSlug: 'two-sum',
   title: 'Two Sum',
-  url: 'https://leetcode.com/problems/two-sum/',
 } satisfies NonNullable<OverlayAppShellData['overlay']['problem']>
 
 const nextStep = {
@@ -132,11 +130,9 @@ const nextStep = {
   kind: 'track',
   problem: {
     difficulty: 'easy',
-    id: 'leetcode:valid-parentheses',
     isPremium: false,
-    slug: 'valid-parentheses',
+    problemSlug: 'valid-parentheses',
     title: 'Valid Parentheses',
-    url: 'https://leetcode.com/problems/valid-parentheses/',
   },
   title: 'Valid Parentheses',
 } satisfies NonNullable<OverlayAppShellData['overlay']['nextStep']>
@@ -185,7 +181,7 @@ describe('useLeetCodeOverlaySession', () => {
 
     expect(latestSavedReviewRequest()).toMatchObject({
       surface: 'content-script',
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'good',
       elapsedSeconds: null,
       isCorrect: true,
@@ -397,7 +393,7 @@ describe('useLeetCodeOverlaySession', () => {
     expect(
       vi.mocked(overrideLastReviewResultViaRuntime).mock.calls[0]?.[0],
     ).toMatchObject({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'hard',
       log: {
         notes: 'Need to revisit overflow cases.',
@@ -421,7 +417,7 @@ describe('useLeetCodeOverlaySession', () => {
 
     expect(latestPracticeLogUpdateRequest()).toMatchObject({
       surface: 'content-script',
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       log: {
         notes: 'Carry this draft.',
       },
@@ -584,7 +580,7 @@ async function renderReadySession(options?: {
   await waitFor(() =>
     expect(session.result.current).toMatchObject({
       status: 'ready',
-      overlay: { activeProblemId: 'leetcode:two-sum' },
+      overlay: { activeProblemSlug: 'two-sum' },
     }),
   )
 
@@ -757,8 +753,8 @@ function createPracticeDetails(
   overrides: Partial<SerializedPracticeDetails> = {},
 ): SerializedPracticeDetails {
   return {
-    problemId: 'leetcode:two-sum',
-    cardId: 'fsrs:leetcode:two-sum',
+    problemSlug: 'two-sum',
+    cardId: 'fsrs:two-sum',
     practice: null,
     card: null,
     summary: createSummary(),
@@ -810,8 +806,8 @@ function createPracticeAttempt(
 ): PracticeAttempt {
   return {
     id: 'attempt-1',
-    problemId: 'leetcode:two-sum',
-    cardId: 'fsrs:leetcode:two-sum',
+    problemSlug: 'two-sum',
+    cardId: 'fsrs:two-sum',
     rating: 'good',
     reviewMode: 'leetcode',
     reviewedAt: '2026-01-01T10:00:00.000Z',
@@ -862,15 +858,11 @@ function createSummary(
 }
 
 const problemRecord = {
-  id: overlayProblem.id,
-  source: 'leetcode',
-  externalId: '1',
-  slug: overlayProblem.slug,
+  slug: overlayProblem.problemSlug,
   title: overlayProblem.title,
   difficulty: overlayProblem.difficulty,
-  url: overlayProblem.url,
   isPremium: overlayProblem.isPremium,
-  acceptanceRate: null,
+  isUserCreated: false,
   createdAt: '2026-01-01T10:00:00.000Z',
   updatedAt: '2026-01-01T10:00:00.000Z',
 } as const

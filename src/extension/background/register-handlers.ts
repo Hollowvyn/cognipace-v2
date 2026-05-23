@@ -104,7 +104,6 @@ export function registerBackgroundHandlers() {
       },
       (problem) =>
         broadcastCacheInvalidation({
-          problemId: problem.id,
           problemSlug: problem.slug,
           reason: 'problem-catalog-updated',
           source: request.surface,
@@ -123,7 +122,7 @@ export function registerBackgroundHandlers() {
     )
     return getAppDb().then(async ({ db }) => {
       const settings = await getSettings(db)
-      const details = await getPracticeDetails(db, request.problemId, {
+      const details = await getPracticeDetails(db, request.problemSlug, {
         targetRetention: settings.review.targetRetention,
         ...(request.at ? { now: new Date(request.at) } : {}),
       })
@@ -144,7 +143,7 @@ export function registerBackgroundHandlers() {
       async (db) => {
         const settings = await getSettings(db)
         const reviewInput = {
-          problemId: request.problemId,
+          problemSlug: request.problemSlug,
           rating: request.rating,
           elapsedSeconds: request.elapsedSeconds,
           isCorrect: request.isCorrect,
@@ -159,7 +158,7 @@ export function registerBackgroundHandlers() {
             : {}),
           ...(request.reviewMode ? { reviewMode: request.reviewMode } : {}),
         })
-        const details = await getPracticeDetails(db, request.problemId, {
+        const details = await getPracticeDetails(db, request.problemSlug, {
           targetRetention: settings.review.targetRetention,
         })
 
@@ -167,7 +166,7 @@ export function registerBackgroundHandlers() {
       },
       () =>
         broadcastCacheInvalidation({
-          problemId: request.problemId,
+          problemSlug: request.problemSlug,
           reason: 'practice-updated',
           source: request.surface,
           tags: ['practice', 'queue', 'app-shell'],
@@ -187,14 +186,14 @@ export function registerBackgroundHandlers() {
       async (db) => {
         const settings = await getSettings(db)
         await overrideLastReviewResult(db, {
-          problemId: request.problemId,
+          problemSlug: request.problemSlug,
           rating: request.rating,
           elapsedSeconds: request.elapsedSeconds,
           isCorrect: request.isCorrect,
           log: readReviewLogRequest(request),
           targetRetention: settings.review.targetRetention,
         })
-        const details = await getPracticeDetails(db, request.problemId, {
+        const details = await getPracticeDetails(db, request.problemSlug, {
           targetRetention: settings.review.targetRetention,
         })
 
@@ -202,7 +201,7 @@ export function registerBackgroundHandlers() {
       },
       () =>
         broadcastCacheInvalidation({
-          problemId: request.problemId,
+          problemSlug: request.problemSlug,
           reason: 'practice-updated',
           source: request.surface,
           tags: ['practice', 'queue', 'app-shell'],
@@ -221,7 +220,7 @@ export function registerBackgroundHandlers() {
     return runDbMutation(
       async (db) => {
         const details = await setPracticeSuspended(db, {
-          problemId: request.problemId,
+          problemSlug: request.problemSlug,
           suspended: request.suspended,
         })
 
@@ -229,7 +228,7 @@ export function registerBackgroundHandlers() {
       },
       () =>
         broadcastCacheInvalidation({
-          problemId: request.problemId,
+          problemSlug: request.problemSlug,
           reason: 'practice-updated',
           source: request.surface,
           tags: ['practice', 'queue', 'app-shell'],
@@ -248,7 +247,7 @@ export function registerBackgroundHandlers() {
     return runDbMutation(
       async (db) => {
         const details = await resetPracticeSchedule(db, {
-          problemId: request.problemId,
+          problemSlug: request.problemSlug,
           keepLog: request.keepLog,
         })
 
@@ -256,7 +255,7 @@ export function registerBackgroundHandlers() {
       },
       () =>
         broadcastCacheInvalidation({
-          problemId: request.problemId,
+          problemSlug: request.problemSlug,
           reason: 'practice-updated',
           source: request.surface,
           tags: ['practice', 'queue', 'app-shell'],
@@ -277,7 +276,7 @@ export function registerBackgroundHandlers() {
         const settings = await getSettings(db)
 
         const details = await updateCurrentPracticeLog(db, {
-          problemId: request.problemId,
+          problemSlug: request.problemSlug,
           log: request.log,
           targetRetention: settings.review.targetRetention,
         })
@@ -286,7 +285,7 @@ export function registerBackgroundHandlers() {
       },
       () =>
         broadcastCacheInvalidation({
-          problemId: request.problemId,
+          problemSlug: request.problemSlug,
           reason: 'practice-updated',
           source: request.surface,
           tags: ['practice', 'app-shell'],

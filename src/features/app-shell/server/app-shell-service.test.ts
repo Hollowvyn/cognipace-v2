@@ -50,7 +50,7 @@ describe('app-shell service', () => {
           percent: 0,
         },
         nextProblem: {
-          slug: 'two-sum',
+          problemSlug: 'two-sum',
         },
       },
       settings: {
@@ -113,7 +113,7 @@ describe('app-shell service', () => {
 
     expect(payload.surface).toBe('dashboard')
     expect(
-      payload.dashboard.queuePreview.map((item) => item.problem.slug),
+      payload.dashboard.queuePreview.map((item) => item.problem.problemSlug),
     ).toEqual([])
   })
 
@@ -122,7 +122,7 @@ describe('app-shell service', () => {
     const practiceRepository = createPracticeRepository(handle.db)
 
     await practiceRepository.updateCurrentPracticeLog({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       log: {
         interviewPattern: 'Hash map',
         notes: 'Track complements.',
@@ -138,11 +138,10 @@ describe('app-shell service', () => {
           autoDetectSolved: true,
         },
         problem: {
-          id: 'leetcode:two-sum',
-          slug: 'two-sum',
+          problemSlug: 'two-sum',
         },
         practice: {
-          problemId: 'leetcode:two-sum',
+          problemSlug: 'two-sum',
           card: null,
           currentLog: {
             interviewPattern: 'Hash map',
@@ -197,7 +196,7 @@ describe('app-shell service', () => {
       kind: 'track',
       title: 'Two Sum',
       problem: {
-        slug: 'two-sum',
+        problemSlug: 'two-sum',
       },
     })
   })
@@ -236,7 +235,7 @@ describe('app-shell service', () => {
     const practiceRepository = createPracticeRepository(handle.db)
 
     await practiceRepository.saveReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'good',
       reviewedAt: new Date(generatedAt),
       reviewMode: 'leetcode',

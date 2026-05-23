@@ -1,4 +1,8 @@
-import type { Problem, ProblemDifficulty } from '@/features/problems'
+import type {
+  Problem,
+  ProblemDifficulty,
+  ProblemSlug,
+} from '@/features/problems'
 import {
   derivePracticeSummary,
   type PracticeStateSnapshot,
@@ -17,11 +21,9 @@ export interface QueueCandidate {
 
 export interface QueueItem {
   category: QueueItemCategory
-  problemId: string
+  problemSlug: ProblemSlug
   title: string
-  slug: string
   difficulty: ProblemDifficulty
-  url: string
   isPremium: boolean
   dueAt: Date | null
   summary: PracticeSummary
@@ -129,11 +131,9 @@ function mapQueueItem(
 ): QueueItem {
   return {
     category,
-    problemId: candidate.problem.id,
+    problemSlug: candidate.problem.slug,
     title: candidate.problem.title,
-    slug: candidate.problem.slug,
     difficulty: candidate.problem.difficulty,
-    url: candidate.problem.url,
     isPremium: candidate.problem.isPremium,
     dueAt: summary.nextReviewAt,
     summary,
@@ -163,7 +163,7 @@ function sortByDueThenPosition(items: QueueItem[]) {
       return dueComparison
     }
 
-    return left.slug.localeCompare(right.slug)
+    return left.problemSlug.localeCompare(right.problemSlug)
   })
 }
 

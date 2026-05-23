@@ -28,20 +28,16 @@ vi.mock('@/extension/messaging', () => ({
 }))
 
 const twoSum = {
-  id: 'leetcode:two-sum',
-  slug: 'two-sum',
+  problemSlug: 'two-sum',
   title: 'Two Sum',
   difficulty: 'easy',
-  url: 'https://leetcode.com/problems/two-sum/',
   isPremium: false,
 } satisfies AppShellProblemSummary
 
 const validParentheses = {
-  id: 'leetcode:valid-parentheses',
-  slug: 'valid-parentheses',
+  problemSlug: 'valid-parentheses',
   title: 'Valid Parentheses',
   difficulty: 'easy',
-  url: 'https://leetcode.com/problems/valid-parentheses/',
   isPremium: false,
 } satisfies AppShellProblemSummary
 
@@ -158,7 +154,9 @@ describe('usePopupAppShellController', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.data.recommendation.problem?.slug).toBe('two-sum')
+      expect(result.current.data.recommendation.problem?.problemSlug).toBe(
+        'two-sum',
+      )
     })
 
     act(() => {
@@ -169,7 +167,9 @@ describe('usePopupAppShellController', () => {
     expect(browserMocks.tabsCreate).toHaveBeenCalledWith({
       url: 'chrome-extension://extension-id/dashboard.html#/settings',
     })
-    expect(browserMocks.tabsCreate).toHaveBeenCalledWith({ url: twoSum.url })
+    expect(browserMocks.tabsCreate).toHaveBeenCalledWith({
+      url: 'https://leetcode.com/problems/two-sum/',
+    })
   })
 
   it('keeps study mode derived from app-shell data while toggling', async () => {
@@ -304,14 +304,16 @@ describe('usePopupAppShellController', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.data.recommendation.problem?.slug).toBe('two-sum')
+      expect(result.current.data.recommendation.problem?.problemSlug).toBe(
+        'two-sum',
+      )
     })
 
     act(() => {
       result.current.actions.shuffleRecommendation()
     })
 
-    expect(result.current.data.recommendation.problem?.slug).toBe(
+    expect(result.current.data.recommendation.problem?.problemSlug).toBe(
       'valid-parentheses',
     )
   })

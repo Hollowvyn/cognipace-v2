@@ -6,6 +6,7 @@ import {
   getDashboardUrl,
   type DashboardRoute,
 } from '@/platform/chrome/extension-pages'
+import { createLeetCodeProblemUrl } from '@/lib/leetcode'
 import { readErrorMessage } from '@/utils/errors'
 
 import type {
@@ -155,7 +156,9 @@ export function usePopupAppShellController(): PopupAppShellController {
     scope: 'recommendation' | 'track',
   ) {
     try {
-      await browser.tabs.create({ url: problem.url })
+      await browser.tabs.create({
+        url: createLeetCodeProblemUrl(problem.problemSlug),
+      })
     } catch (error) {
       setStatus({
         scope,

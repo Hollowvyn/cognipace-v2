@@ -29,14 +29,14 @@ export type OverlaySyncStatus =
 export type LeetCodeOverlayContext = OverlayAppShellData['overlay']
 
 type UseLeetCodePageSyncOptions = {
-  activeProblemId: string | null
+  activeProblemSlug: string | null
   onPageChanged: () => void
   onProblemContextRefreshed: (context: LeetCodeOverlayContext) => void
   onProblemLoaded: (context: LeetCodeOverlayContext) => void
 }
 
 export function useLeetCodePageSync({
-  activeProblemId,
+  activeProblemSlug,
   onPageChanged,
   onProblemContextRefreshed,
   onProblemLoaded,
@@ -58,7 +58,7 @@ export function useLeetCodePageSync({
   const requestedMetadataFingerprintRef = useRef<string | null>(null)
   const syncedMetadataFingerprintRef = useRef<string | null>(null)
   const latestContextRef = useRef<LeetCodeOverlayContext | null>(null)
-  const activeProblemIdRef = useRef(activeProblemId)
+  const activeProblemSlugRef = useRef(activeProblemSlug)
   const onPageChangedRef = useRef(onPageChanged)
   const queryClient = useQueryClient()
   const overlayShell = useOverlayAppShellData(syncedProblemSlug)
@@ -75,8 +75,8 @@ export function useLeetCodePageSync({
       : feedback
 
   useEffect(() => {
-    activeProblemIdRef.current = activeProblemId
-  }, [activeProblemId])
+    activeProblemSlugRef.current = activeProblemSlug
+  }, [activeProblemSlug])
 
   useEffect(() => {
     latestContextRef.current = context
@@ -96,7 +96,7 @@ export function useLeetCodePageSync({
       return
     }
 
-    if (activeProblemIdRef.current === problem.id) {
+    if (activeProblemSlugRef.current === problem.problemSlug) {
       onProblemContextRefreshed(context)
       return
     }
@@ -130,7 +130,6 @@ export function useLeetCodePageSync({
           title: nextMetadata.title,
           difficulty: nextMetadata.difficulty,
           isPremium: nextMetadata.isPremium,
-          externalId: nextMetadata.frontendId,
         })
         if (syncTokenRef.current !== syncToken) {
           return

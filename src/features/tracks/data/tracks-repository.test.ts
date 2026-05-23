@@ -73,11 +73,11 @@ describe('TracksRepository', () => {
     })
     await handle.db.insert(trackGroupProblems).values({
       trackGroupId: 'leetcode-75:stack',
-      problemId: 'leetcode:valid-parentheses',
+      problemSlug: 'valid-parentheses',
       position: 1,
     })
     await handle.db.insert(problemPractice).values({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       status: 'mastered',
       firstSeenAt: timestamp,
       lastSeenAt: timestamp,
@@ -143,7 +143,7 @@ describe('TracksRepository', () => {
     const timestamp = new Date('2026-01-01T08:00:00.000Z').getTime()
 
     await handle.db.insert(problemPractice).values({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       status: 'suspended',
       firstSeenAt: timestamp,
       lastSeenAt: timestamp,

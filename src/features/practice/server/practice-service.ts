@@ -13,10 +13,10 @@ import type {
 
 export function getPracticeDetails(
   db: Db,
-  problemId: string,
+  problemSlug: string,
   options: PracticeReadOptions = {},
 ): Promise<PracticeDetails> {
-  return createPracticeRepository(db).getPracticeDetails(problemId, options)
+  return createPracticeRepository(db).getPracticeDetails(problemSlug, options)
 }
 
 export function saveReviewResult(db: Db, input: SaveReviewResultInput) {

@@ -7,7 +7,7 @@ describe('practice runtime contracts', () => {
     expect(() =>
       practiceOverrideLastReviewResultRequestSchema.parse({
         surface: 'content-script',
-        problemId: 'leetcode:two-sum',
+        problemSlug: 'two-sum',
         rating: 'good',
         reviewedAt: '2026-01-01T10:00:00.000Z',
       }),

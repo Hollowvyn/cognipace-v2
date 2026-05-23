@@ -23,14 +23,14 @@ describe('practice API hooks', () => {
     await act(async () => {
       await result.current.mutateAsync({
         surface: 'content-script',
-        problemId: 'leetcode:two-sum',
+        problemSlug: 'two-sum',
         rating: 'good',
       })
     })
 
     expect(sendMessage).toHaveBeenCalledWith('practice.saveReviewResult', {
       surface: 'content-script',
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'good',
     })
     expect(invalidateQueries).not.toHaveBeenCalled()
@@ -38,8 +38,8 @@ describe('practice API hooks', () => {
 })
 
 const practiceDetails = {
-  problemId: 'leetcode:two-sum',
-  cardId: 'fsrs:leetcode:two-sum',
+  problemSlug: 'two-sum',
+  cardId: 'fsrs:two-sum',
   practice: null,
   card: null,
   summary: {

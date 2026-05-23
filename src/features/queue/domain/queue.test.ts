@@ -7,15 +7,11 @@ import { buildTodayQueue, type QueueCandidate } from './queue'
 
 const generatedAt = new Date('2026-01-01T12:00:00.000Z')
 const baseProblem = {
-  id: 'leetcode:two-sum',
-  source: 'leetcode' as const,
-  externalId: '1',
   slug: 'two-sum',
   title: 'Two Sum',
   difficulty: 'easy' as const,
-  url: 'https://leetcode.com/problems/two-sum/',
   isPremium: false,
-  acceptanceRate: null,
+  isUserCreated: false,
   createdAt: new Date('2026-01-01T00:00:00.000Z'),
   updatedAt: new Date('2026-01-01T00:00:00.000Z'),
 }
@@ -92,7 +88,7 @@ describe('buildTodayQueue', () => {
     )
 
     expect(queue.items).toHaveLength(1)
-    expect(queue.items[0]?.slug).toBe('due')
+    expect(queue.items[0]?.problemSlug).toBe('due')
   })
 
   it('excludes manually suspended and premium-filtered candidates', () => {
@@ -171,7 +167,7 @@ describe('buildTodayQueue', () => {
       generatedAt,
     )
 
-    expect(queue.items.map((item) => item.slug)).toEqual([
+    expect(queue.items.map((item) => item.problemSlug)).toEqual([
       'high-lapse',
       'low-lapse',
     ])
@@ -187,7 +183,6 @@ function candidate(input: {
   return {
     problem: {
       ...baseProblem,
-      id: `leetcode:${input.slug}`,
       slug: input.slug,
       title: titleFromSlug(input.slug),
       isPremium: input.isPremium ?? false,

@@ -32,11 +32,11 @@ async function readQueueCandidates(db: Db): Promise<QueueCandidate[]> {
   const rows = await db
     .select(queueCandidateSelection)
     .from(problems)
-    .leftJoin(problemPractice, eq(problemPractice.problemId, problems.id))
+    .leftJoin(problemPractice, eq(problemPractice.problemSlug, problems.slug))
     .leftJoin(
       fsrsCards,
       and(
-        eq(fsrsCards.problemId, problems.id),
+        eq(fsrsCards.problemSlug, problems.slug),
         eq(fsrsCards.cardKind, defaultFsrsCardKind),
       ),
     )
@@ -47,15 +47,11 @@ async function readQueueCandidates(db: Db): Promise<QueueCandidate[]> {
 
 const queueCandidateSelection = {
   problem: {
-    id: problems.id,
-    source: problems.source,
-    externalId: problems.externalId,
     slug: problems.slug,
     title: problems.title,
     difficulty: problems.difficulty,
-    url: problems.url,
     isPremium: problems.isPremium,
-    acceptanceRate: problems.acceptanceRate,
+    isUserCreated: problems.isUserCreated,
     createdAt: problems.createdAt,
     updatedAt: problems.updatedAt,
   },
@@ -101,15 +97,11 @@ function mapQueueCandidate(row: {
 }
 
 interface QueueProblemRow {
-  id: string
-  source: string
-  externalId: string | null
   slug: string
   title: string
   difficulty: string
-  url: string
   isPremium: boolean
-  acceptanceRate: number | null
+  isUserCreated: boolean
   createdAt: number
   updatedAt: number
 }
@@ -145,15 +137,11 @@ interface QueueCardRow {
 
 function mapProblem(row: QueueProblemRow): Problem {
   return {
-    id: row.id,
-    source: 'leetcode',
-    externalId: row.externalId,
     slug: row.slug,
     title: row.title,
     difficulty: normalizeProblemDifficulty(row.difficulty),
-    url: row.url,
     isPremium: row.isPremium,
-    acceptanceRate: row.acceptanceRate,
+    isUserCreated: row.isUserCreated,
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
   }

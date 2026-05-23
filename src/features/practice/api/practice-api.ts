@@ -54,7 +54,7 @@ export type RuntimePracticeDetails = Awaited<
 
 export function usePracticeDetails(request: PracticeDetailsRequest) {
   return useQuery({
-    queryKey: practiceQueryKeys.details(request.problemId, request.at),
+    queryKey: practiceQueryKeys.details(request.problemSlug, request.at),
     queryFn: () => getPracticeDetailsViaRuntime(request),
   })
 }

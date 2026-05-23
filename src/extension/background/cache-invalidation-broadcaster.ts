@@ -10,7 +10,6 @@ import type { CacheInvalidationTag } from '@/platform/query/cache-invalidation'
 type CacheInvalidationReason = CacheInvalidationEvent['reason']
 
 type BroadcastCacheInvalidationInput = {
-  problemId?: string
   problemSlug?: string
   reason: CacheInvalidationReason
   source: CacheInvalidationEvent['source']

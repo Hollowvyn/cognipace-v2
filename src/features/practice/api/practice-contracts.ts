@@ -64,7 +64,7 @@ export const practiceStateSnapshotSchema = z.object({
 
 export const practiceReviewAttemptSchema = z.object({
   id: z.string(),
-  problemId: z.string(),
+  problemSlug: z.string(),
   cardId: z.string(),
   rating: z.enum(reviewRatings),
   reviewMode: z.enum(reviewModes),
@@ -77,7 +77,7 @@ export const practiceReviewAttemptSchema = z.object({
 })
 
 export const practiceDetailsSchema = z.object({
-  problemId: z.string(),
+  problemSlug: z.string(),
   cardId: z.string(),
   practice: practiceStateSnapshotSchema.nullable(),
   card: fsrsCardSnapshotSchema.nullable(),
@@ -91,7 +91,7 @@ export const practiceDetailsSchema = z.object({
 export type SerializedPracticeDetails = z.infer<typeof practiceDetailsSchema>
 
 export const practiceReviewResultSchema = z.object({
-  problemId: z.string(),
+  problemSlug: z.string(),
   cardId: z.string(),
   rating: z.enum(reviewRatings),
   status: z.enum(practiceStatuses),
@@ -104,7 +104,7 @@ export type SerializedReviewResult = z.infer<typeof practiceReviewResultSchema>
 
 export const practiceDetailsRequestSchema = z.object({
   surface: practiceRuntimeSurfaceSchema,
-  problemId: z.string(),
+  problemSlug: z.string(),
   at: z.iso.datetime().optional(),
 })
 
@@ -114,7 +114,7 @@ export type PracticeDetailsRequest = z.infer<
 
 export const practiceSaveReviewResultRequestSchema = z.object({
   surface: practiceRuntimeSurfaceSchema,
-  problemId: z.string(),
+  problemSlug: z.string(),
   rating: z.enum(reviewRatings),
   reviewedAt: z.iso.datetime().optional(),
   reviewMode: z.enum(reviewModes).optional(),
@@ -131,7 +131,7 @@ export type PracticeSaveReviewResultRequest = z.infer<
 export const practiceOverrideLastReviewResultRequestSchema = z
   .object({
     surface: practiceRuntimeSurfaceSchema,
-    problemId: z.string(),
+    problemSlug: z.string(),
     rating: z.enum(reviewRatings),
     elapsedSeconds: z.number().int().positive().nullish(),
     isCorrect: z.boolean().nullish(),
@@ -145,7 +145,7 @@ export type PracticeOverrideLastReviewResultRequest = z.infer<
 
 export const practiceSetSuspendedRequestSchema = z.object({
   surface: practiceRuntimeSurfaceSchema,
-  problemId: z.string(),
+  problemSlug: z.string(),
   suspended: z.boolean(),
 })
 
@@ -155,7 +155,7 @@ export type PracticeSetSuspendedRequest = z.infer<
 
 export const practiceResetScheduleRequestSchema = z.object({
   surface: practiceRuntimeSurfaceSchema,
-  problemId: z.string(),
+  problemSlug: z.string(),
   keepLog: z.boolean().optional(),
 })
 
@@ -165,7 +165,7 @@ export type PracticeResetScheduleRequest = z.infer<
 
 export const practiceUpdateCurrentLogRequestSchema = z.object({
   surface: practiceRuntimeSurfaceSchema,
-  problemId: z.string(),
+  problemSlug: z.string(),
   log: practiceLogPatchSchema,
 })
 

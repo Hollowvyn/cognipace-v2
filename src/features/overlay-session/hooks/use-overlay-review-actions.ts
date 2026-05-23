@@ -120,7 +120,7 @@ export function useOverlayReviewActions({
     try {
       const details = await updateCurrentPracticeLogViaRuntime({
         surface: 'content-script',
-        problemId: problem.id,
+        problemSlug: problem.problemSlug,
         log: toPracticeLogPatch(currentOverlay.draft),
       })
 
@@ -288,7 +288,7 @@ export function useOverlayReviewActions({
     try {
       const details = await saveReviewResultViaRuntime({
         surface: 'content-script',
-        problemId: problem.id,
+        problemSlug: problem.problemSlug,
         rating: decision.rating,
         reviewMode: 'leetcode',
         elapsedSeconds: decision.elapsedSeconds,
@@ -311,7 +311,7 @@ export function useOverlayReviewActions({
         nextStep: null,
         feedback: formatAssessmentFeedback(decision),
       })
-      await refreshNextStep(problem.slug, saveToken)
+      await refreshNextStep(problem.problemSlug, saveToken)
       return true
     } catch (error) {
       if (syncTokenRef.current !== saveToken) {
@@ -351,7 +351,7 @@ export function useOverlayReviewActions({
     try {
       const details = await overrideLastReviewResultViaRuntime({
         surface: 'content-script',
-        problemId: problem.id,
+        problemSlug: problem.problemSlug,
         rating,
         elapsedSeconds: submittedSession.elapsedSeconds,
         isCorrect: rating !== 'again',
@@ -375,7 +375,7 @@ export function useOverlayReviewActions({
           message: 'Latest review updated.',
         },
       })
-      await refreshNextStep(problem.slug, saveToken)
+      await refreshNextStep(problem.problemSlug, saveToken)
     } catch (error) {
       if (syncTokenRef.current !== saveToken) {
         return

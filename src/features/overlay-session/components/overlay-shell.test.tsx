@@ -69,11 +69,9 @@ function createSession(
       practice: null,
       problem: {
         difficulty: 'easy',
-        id: 'leetcode:two-sum',
         isPremium: false,
-        slug: 'two-sum',
+        problemSlug: 'two-sum',
         title: 'Two Sum',
-        url: 'https://leetcode.com/problems/two-sum/',
       },
       timing: {
         requireSolveTime: false,

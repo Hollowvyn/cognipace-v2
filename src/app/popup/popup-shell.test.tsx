@@ -12,20 +12,16 @@ import type {
 import { PopupShell } from './popup-shell'
 
 const twoSum = {
-  id: 'leetcode:two-sum',
-  slug: 'two-sum',
+  problemSlug: 'two-sum',
   title: 'Two Sum',
   difficulty: 'easy',
-  url: 'https://leetcode.com/problems/two-sum/',
   isPremium: false,
 } satisfies AppShellProblemSummary
 
 const validParentheses = {
-  id: 'leetcode:valid-parentheses',
-  slug: 'valid-parentheses',
+  problemSlug: 'valid-parentheses',
   title: 'Valid Parentheses',
   difficulty: 'easy',
-  url: 'https://leetcode.com/problems/valid-parentheses/',
   isPremium: false,
 } satisfies AppShellProblemSummary
 

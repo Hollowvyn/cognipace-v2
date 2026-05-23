@@ -143,7 +143,7 @@ function createProps(
       isOverTarget: false,
       overlay: {
         ...initialOverlaySessionState,
-        activeProblemId: 'leetcode:two-sum',
+        activeProblemSlug: 'two-sum',
         visualMode: 'expanded',
       },
       problemTitle: 'Two Sum',
@@ -161,7 +161,7 @@ function createSubmittedOverlay(
 ): ExpandedOverlayProps['view']['overlay'] {
   return {
     ...initialOverlaySessionState,
-    activeProblemId: 'leetcode:two-sum',
+    activeProblemSlug: 'two-sum',
     reviewStatus: 'submitted-clean',
     submittedSession: {
       draft: initialOverlaySessionState.draft,
@@ -195,11 +195,9 @@ function createOverlayContext(): ExpandedOverlayProps['view']['context'] {
       autoDetectSolved: false,
     },
     problem: {
-      id: 'leetcode:two-sum',
-      slug: 'two-sum',
+      problemSlug: 'two-sum',
       title: 'Two Sum',
       difficulty: 'easy',
-      url: 'https://leetcode.com/problems/two-sum/',
       isPremium: false,
     },
     practice: null,
@@ -225,11 +223,9 @@ const nextStep = {
   kind: 'track',
   problem: {
     difficulty: 'easy',
-    id: 'leetcode:valid-parentheses',
     isPremium: false,
-    slug: 'valid-parentheses',
+    problemSlug: 'valid-parentheses',
     title: 'Valid Parentheses',
-    url: 'https://leetcode.com/problems/valid-parentheses/',
   },
   title: 'Valid Parentheses',
 } satisfies NonNullable<

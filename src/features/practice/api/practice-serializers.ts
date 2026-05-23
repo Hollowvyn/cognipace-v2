@@ -17,7 +17,7 @@ export function serializePracticeDetails(
   details: PracticeDetails,
 ): SerializedPracticeDetails {
   return practiceDetailsSchema.parse({
-    problemId: details.problemId,
+    problemSlug: details.problemSlug,
     cardId: details.cardId,
     practice: details.practice
       ? serializePracticeState(details.practice)
@@ -43,7 +43,7 @@ export function serializeReviewResult(
   result: ReviewResult,
 ): SerializedReviewResult {
   return practiceReviewResultSchema.parse({
-    problemId: result.problemId,
+    problemSlug: result.problemSlug,
     cardId: result.cardId,
     rating: result.rating,
     status: result.status,

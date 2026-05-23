@@ -1,6 +1,7 @@
 import { ArrowRight, LoaderCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { createLeetCodeProblemUrl } from '@/lib/leetcode'
 
 import type { OverlayNextStepState } from '../../../domain'
 
@@ -71,7 +72,7 @@ export function OverlayNextCard({ nextStep }: OverlayNextCardProps) {
         </div>
         {value.problem ? (
           <Button asChild size="sm" variant="outline">
-            <a href={value.problem.url}>
+            <a href={createLeetCodeProblemUrl(value.problem.problemSlug)}>
               <ArrowRight aria-hidden="true" />
               Open
             </a>

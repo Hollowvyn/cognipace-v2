@@ -22,7 +22,13 @@ import {
   type PracticeUpdateCurrentLogRequest,
   type SerializedPracticeDetails,
 } from '@/features/practice/api/practice-contracts'
-import { problemDifficulties } from '@/features/problems'
+import {
+  problemDifficultySchema,
+  problemSlugSchema,
+  serializedProblemSchema,
+  type SerializedProblem,
+} from '@/features/problems/api/problems-contracts'
+export type { SerializedProblem } from '@/features/problems/api/problems-contracts'
 import type { UserSettings } from '@/features/settings'
 export {
   settingsRequestSchema,
@@ -58,8 +64,7 @@ export const cacheInvalidationReasonSchema = z.enum([
 
 export const cacheInvalidationEventSchema = z.object({
   emittedAt: z.iso.datetime(),
-  problemId: z.string().optional(),
-  problemSlug: z.string().optional(),
+  problemSlug: problemSlugSchema.optional(),
   reason: cacheInvalidationReasonSchema,
   source: uiSurfaceSchema,
   tags: z.array(z.enum(cacheInvalidationTags)).min(1),
@@ -69,29 +74,11 @@ export type CacheInvalidationEvent = z.infer<
   typeof cacheInvalidationEventSchema
 >
 
-const serializedProblemSchema = z.object({
-  id: z.string(),
-  source: z.literal('leetcode'),
-  externalId: z.string().nullable(),
-  slug: z.string(),
-  title: z.string(),
-  difficulty: z.enum(problemDifficulties),
-  url: z.string(),
-  isPremium: z.boolean(),
-  acceptanceRate: z.number().nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-})
-
-export type SerializedProblem = z.infer<typeof serializedProblemSchema>
-
 export const queueItemSchema = z.object({
   category: z.enum(['due', 'new', 'reinforcement']),
-  problemId: z.string(),
+  problemSlug: problemSlugSchema,
   title: z.string(),
-  slug: z.string(),
-  difficulty: z.enum(problemDifficulties),
-  url: z.string(),
+  difficulty: problemDifficultySchema,
   isPremium: z.boolean(),
   dueAt: z.iso.datetime().nullable(),
   summary: practiceSummarySchema,
@@ -175,12 +162,10 @@ export type PingResponse = {
 export const problemsUpsertFromPageRequestSchema = z.object({
   surface: uiSurfaceSchema,
   url: z.string(),
-  slug: z.string().nullish(),
+  slug: problemSlugSchema.nullish(),
   title: z.string().nullish(),
   difficulty: z.string().nullish(),
   isPremium: z.boolean().nullish(),
-  externalId: z.string().nullish(),
-  acceptanceRate: z.number().nullish(),
 })
 
 export type ProblemsUpsertFromPageRequest = z.infer<

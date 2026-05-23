@@ -4,7 +4,10 @@ import {
   practiceDetailsSchema,
   practiceSummarySchema,
 } from '@/features/practice/api/practice-contracts'
-import { problemDifficulties } from '@/features/problems/domain'
+import {
+  problemDifficultySchema,
+  problemSlugSchema,
+} from '@/features/problems/api/problems-contracts'
 import { userSettingsSchema } from '@/features/settings/domain'
 
 export const appShellRequestSchema = z.discriminatedUnion('surface', [
@@ -12,7 +15,7 @@ export const appShellRequestSchema = z.discriminatedUnion('surface', [
   z.object({ surface: z.literal('dashboard') }),
   z.object({
     surface: z.literal('overlay'),
-    problemSlug: z.string().optional(),
+    problemSlug: problemSlugSchema.optional(),
   }),
 ])
 
@@ -24,11 +27,9 @@ const appShellMetricSchema = z.object({
 })
 
 const appShellProblemSummarySchema = z.object({
-  id: z.string(),
-  slug: z.string(),
+  problemSlug: problemSlugSchema,
   title: z.string(),
-  difficulty: z.enum(problemDifficulties),
-  url: z.string(),
+  difficulty: problemDifficultySchema,
   isPremium: z.boolean(),
 })
 

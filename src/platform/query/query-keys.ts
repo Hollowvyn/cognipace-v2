@@ -8,8 +8,8 @@ export const queryKeys = {
   },
   practice: {
     all: ['practice-details'] as const,
-    details: (problemId: string, at?: string | null) =>
-      [...queryKeys.practice.all, problemId, at ?? null] as const,
+    details: (problemSlug: string, at?: string | null) =>
+      [...queryKeys.practice.all, problemSlug, at ?? null] as const,
   },
   problems: {
     all: ['problems'] as const,

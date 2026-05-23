@@ -140,7 +140,7 @@ export class TracksRepository {
         problem: problems,
       })
       .from(trackGroupProblems)
-      .innerJoin(problems, eq(problems.id, trackGroupProblems.problemId))
+      .innerJoin(problems, eq(problems.slug, trackGroupProblems.problemSlug))
       .where(eq(trackGroupProblems.trackGroupId, groupId))
       .orderBy(asc(trackGroupProblems.position))
       .limit(1)
@@ -155,7 +155,7 @@ export class TracksRepository {
   private async getTrackProgress(trackId: string): Promise<TrackProgress> {
     const rows = await this.db
       .select({
-        problemId: trackGroupProblems.problemId,
+        problemSlug: trackGroupProblems.problemSlug,
       })
       .from(trackGroupProblems)
       .innerJoin(
@@ -208,15 +208,11 @@ function mapTrackGroup(row: TrackGroupRow): TrackGroup {
 
 function mapProblem(row: typeof problems.$inferSelect): Problem {
   return {
-    id: row.id,
-    source: 'leetcode',
-    externalId: row.externalId,
     slug: row.slug,
     title: row.title,
     difficulty: normalizeProblemDifficulty(row.difficulty),
-    url: row.url,
     isPremium: row.isPremium,
-    acceptanceRate: row.acceptanceRate,
+    isUserCreated: row.isUserCreated,
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
   }

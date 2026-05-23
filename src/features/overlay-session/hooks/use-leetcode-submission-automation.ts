@@ -2,13 +2,10 @@ import { useEffect, useRef } from 'react'
 
 import type { LeetCodeSubmissionResult } from '@/lib/leetcode'
 
-import type {
-  OverlayReviewStatus,
-  OverlaySubmittedSession,
-} from '../domain'
+import type { OverlayReviewStatus, OverlaySubmittedSession } from '../domain'
 
 type UseLeetCodeSubmissionAutomationOptions = {
-  activeProblemId: string | null
+  activeProblemSlug: string | null
   autoDetectSolved: boolean
   problemSlug: string | null
   reviewStatus: OverlayReviewStatus
@@ -21,7 +18,7 @@ type UseLeetCodeSubmissionAutomationOptions = {
 }
 
 export function useLeetCodeSubmissionAutomation({
-  activeProblemId,
+  activeProblemSlug,
   autoDetectSolved,
   problemSlug,
   reviewStatus,
@@ -30,7 +27,7 @@ export function useLeetCodeSubmissionAutomation({
   saveLeetCodeSubmissionResult,
   startTimer,
 }: UseLeetCodeSubmissionAutomationOptions) {
-  const autoStartedProblemIdRef = useRef<string | null>(null)
+  const autoStartedProblemSlugRef = useRef<string | null>(null)
   const handledResultKeysRef = useRef(new Set<string>())
   const pendingResultKeysRef = useRef(new Set<string>())
   const reviewStatusRef = useRef(reviewStatus)
@@ -50,27 +47,27 @@ export function useLeetCodeSubmissionAutomation({
   }, [startTimer])
 
   useEffect(() => {
-    if (activeProblemId) {
+    if (activeProblemSlug) {
       return
     }
 
-    autoStartedProblemIdRef.current = null
+    autoStartedProblemSlugRef.current = null
     handledResultKeysRef.current.clear()
     pendingResultKeysRef.current.clear()
-  }, [activeProblemId])
+  }, [activeProblemSlug])
 
   useEffect(() => {
     if (
       !autoDetectSolved ||
-      !activeProblemId ||
-      autoStartedProblemIdRef.current === activeProblemId
+      !activeProblemSlug ||
+      autoStartedProblemSlugRef.current === activeProblemSlug
     ) {
       return
     }
 
-    autoStartedProblemIdRef.current = activeProblemId
+    autoStartedProblemSlugRef.current = activeProblemSlug
     startTimerRef.current()
-  }, [activeProblemId, autoDetectSolved])
+  }, [activeProblemSlug, autoDetectSolved])
 
   useEffect(() => {
     if (!submissionResult) {
@@ -105,7 +102,8 @@ export function useLeetCodeSubmissionAutomation({
     }
 
     pendingResultKeysRef.current.add(resultKey)
-    void saveResultRef.current(submissionResult)
+    void saveResultRef
+      .current(submissionResult)
       .then((saved) => {
         if (saved) {
           handledResultKeysRef.current.add(resultKey)
@@ -114,12 +112,7 @@ export function useLeetCodeSubmissionAutomation({
       .finally(() => {
         pendingResultKeysRef.current.delete(resultKey)
       })
-  }, [
-    autoDetectSolved,
-    problemSlug,
-    submissionResult,
-    submittedSession,
-  ])
+  }, [autoDetectSolved, problemSlug, submissionResult, submittedSession])
 }
 
 function isReviewMutating(reviewStatus: OverlayReviewStatus) {

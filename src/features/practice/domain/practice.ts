@@ -5,6 +5,7 @@ import {
   type FsrsCardSnapshot,
   type ReviewRating,
 } from '@/lib/fsrs'
+import type { ProblemSlug } from '@/lib/problem-catalog'
 
 export const practiceStatuses = [
   'new',
@@ -46,7 +47,7 @@ export interface PracticeLogFields {
 }
 
 export interface SaveReviewResultInput {
-  problemId: string
+  problemSlug: ProblemSlug
   rating: ReviewRating
   reviewedAt?: Date | undefined
   reviewMode?: ReviewMode | undefined
@@ -59,7 +60,7 @@ export interface SaveReviewResultInput {
 }
 
 export interface OverrideLastReviewResultInput {
-  problemId: string
+  problemSlug: ProblemSlug
   rating: ReviewRating
   elapsedSeconds?: number | null | undefined
   isCorrect?: boolean | null | undefined
@@ -69,23 +70,23 @@ export interface OverrideLastReviewResultInput {
 }
 
 export interface SetPracticeSuspendedInput {
-  problemId: string
+  problemSlug: ProblemSlug
   suspended: boolean
 }
 
 export interface ResetPracticeScheduleInput {
-  problemId: string
+  problemSlug: ProblemSlug
   keepLog?: boolean | undefined
 }
 
 export interface UpdatePracticeLogInput {
-  problemId: string
+  problemSlug: ProblemSlug
   log: PracticeLogFields
   targetRetention?: number | undefined
 }
 
 export interface ReviewResult {
-  problemId: string
+  problemSlug: ProblemSlug
   cardId: string
   rating: ReviewRating
   status: PracticeStatus
@@ -115,7 +116,7 @@ export interface PracticeStateSnapshot {
 
 export interface PracticeReviewAttemptSnapshot {
   id: string
-  problemId: string
+  problemSlug: ProblemSlug
   cardId: string
   rating: ReviewRating
   reviewMode: ReviewMode
@@ -145,7 +146,7 @@ export interface PracticeSummary {
 }
 
 export interface PracticeDetails {
-  problemId: string
+  problemSlug: ProblemSlug
   cardId: string
   practice: PracticeStateSnapshot | null
   card: FsrsCardSnapshot | null

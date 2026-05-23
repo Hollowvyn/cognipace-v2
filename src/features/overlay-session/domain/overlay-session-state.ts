@@ -43,7 +43,7 @@ export type OverlayNextStepState = {
 }
 
 export type OverlaySessionState = {
-  activeProblemId: string | null
+  activeProblemSlug: string | null
   visualMode: OverlayVisualMode
   reviewStatus: OverlayReviewStatus
   draft: OverlayDraftLog
@@ -58,13 +58,13 @@ export type OverlaySessionState = {
 export type OverlaySessionAction =
   | {
       type: 'problem-loaded'
-      problemId: string
+      problemSlug: string
       draft: OverlayDraftLog
       selectedRating: ReviewRating
     }
   | {
       type: 'problem-context-refreshed'
-      problemId: string
+      problemSlug: string
       draft: OverlayDraftLog
       selectedRating: ReviewRating
       submittedSession: OverlaySubmittedSession | null
@@ -100,7 +100,7 @@ export type OverlaySessionAction =
   | { type: 'set-feedback'; feedback: OverlayFeedback | null }
 
 export const initialOverlaySessionState: OverlaySessionState = {
-  activeProblemId: null,
+  activeProblemSlug: null,
   visualMode: 'collapsed',
   reviewStatus: 'draft',
   draft: createEmptyOverlayDraft(),
@@ -120,14 +120,14 @@ export function overlaySessionReducer(
     case 'problem-loaded':
       return {
         ...initialOverlaySessionState,
-        activeProblemId: action.problemId,
+        activeProblemSlug: action.problemSlug,
         draft: action.draft,
         persistedDraft: action.draft,
         selectedRating: action.selectedRating,
       }
     case 'problem-context-refreshed':
       if (
-        state.activeProblemId !== action.problemId ||
+        state.activeProblemSlug !== action.problemSlug ||
         state.reviewStatus === 'saving' ||
         state.reviewStatus === 'updating' ||
         hasUnpersistedDraftChanges(state) ||

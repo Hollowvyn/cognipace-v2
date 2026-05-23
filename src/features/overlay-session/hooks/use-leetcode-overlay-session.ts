@@ -73,7 +73,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
 
       dispatch({
         type: 'problem-loaded',
-        problemId: problem.id,
+        problemSlug: problem.problemSlug,
         draft: createOverlayDraftFromLog(nextContext.practice?.currentLog),
         selectedRating:
           nextContext.practice?.latestAttempt?.rating ??
@@ -94,7 +94,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
 
       dispatch({
         type: 'problem-context-refreshed',
-        problemId: problem.id,
+        problemSlug: problem.problemSlug,
         draft: createOverlayDraftFromLog(nextContext.practice?.currentLog),
         selectedRating:
           nextContext.practice?.latestAttempt?.rating ??
@@ -117,7 +117,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
   }, [])
 
   const pageSync = useLeetCodePageSync({
-    activeProblemId: overlay.activeProblemId,
+    activeProblemSlug: overlay.activeProblemSlug,
     onPageChanged: handlePageChanged,
     onProblemContextRefreshed: handleProblemContextRefreshed,
     onProblemLoaded: handleProblemLoaded,
@@ -132,9 +132,9 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
   })
 
   useLeetCodeSubmissionAutomation({
-    activeProblemId: overlay.activeProblemId,
+    activeProblemSlug: overlay.activeProblemSlug,
     autoDetectSolved: pageSync.context?.automation.autoDetectSolved ?? false,
-    problemSlug: pageSync.context?.problem?.slug ?? null,
+    problemSlug: pageSync.context?.problem?.problemSlug ?? null,
     reviewStatus: overlay.reviewStatus,
     saveLeetCodeSubmissionResult: actions.saveLeetCodeSubmissionResult,
     startTimer: timer.start,

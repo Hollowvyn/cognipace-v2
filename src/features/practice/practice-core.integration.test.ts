@@ -17,7 +17,7 @@ describe('practice core', () => {
     const reviewedAt = new Date('2026-01-01T10:00:00.000Z')
 
     const result = await repository.saveReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'good',
       reviewedAt,
       elapsedSeconds: 725,
@@ -35,7 +35,7 @@ describe('practice core', () => {
     const [practice] = await handle.db
       .select()
       .from(problemPractice)
-      .where(eq(problemPractice.problemId, 'leetcode:two-sum'))
+      .where(eq(problemPractice.problemSlug, 'two-sum'))
     const [attempt] = await handle.db
       .select()
       .from(reviewAttempts)
@@ -76,7 +76,7 @@ describe('practice core', () => {
 
     for (const index of [1, 2, 3, 4, 5, 6]) {
       await repository.saveReviewResult({
-        problemId: 'leetcode:two-sum',
+        problemSlug: 'two-sum',
         rating: 'good',
         reviewedAt: new Date(`2026-01-0${index}T10:00:00.000Z`),
         elapsedSeconds: 600 + index,
@@ -86,13 +86,13 @@ describe('practice core', () => {
       })
     }
 
-    const details = await repository.getPracticeDetails('leetcode:two-sum', {
+    const details = await repository.getPracticeDetails('two-sum', {
       now: new Date('2026-01-06T10:01:00.000Z'),
     })
 
     expect(details).toMatchObject({
-      problemId: 'leetcode:two-sum',
-      cardId: 'leetcode:two-sum:default',
+      problemSlug: 'two-sum',
+      cardId: 'two-sum:default',
       canOverrideLatestReview: true,
       currentLog: { notes: 'Attempt 6' },
       summary: {
@@ -117,7 +117,7 @@ describe('practice core', () => {
     const timestamp = new Date('2026-01-01T10:00:00.000Z').getTime()
 
     await handle.db.insert(problemPractice).values({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       status: 'new',
       firstSeenAt: timestamp,
       lastSeenAt: timestamp,
@@ -130,7 +130,7 @@ describe('practice core', () => {
       updatedAt: timestamp,
     })
 
-    const details = await repository.getPracticeDetails('leetcode:two-sum')
+    const details = await repository.getPracticeDetails('two-sum')
 
     expect(details).toMatchObject({
       card: null,
@@ -153,14 +153,14 @@ describe('practice core', () => {
     const repository = createPracticeRepository(handle.db)
 
     await repository.saveReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'good',
       reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
       log: { notes: 'Keep this note.' },
       reviewAttemptId: 'review-1',
     })
     await repository.saveReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'hard',
       reviewedAt: new Date('2026-01-02T10:00:00.000Z'),
       reviewAttemptId: 'review-2',
@@ -169,7 +169,7 @@ describe('practice core', () => {
     const [practice] = await handle.db
       .select()
       .from(problemPractice)
-      .where(eq(problemPractice.problemId, 'leetcode:two-sum'))
+      .where(eq(problemPractice.problemSlug, 'two-sum'))
     const [quickAttempt] = await handle.db
       .select()
       .from(reviewAttempts)
@@ -184,7 +184,7 @@ describe('practice core', () => {
     const repository = createPracticeRepository(handle.db)
 
     await repository.saveReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'good',
       reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
       log: {
@@ -197,7 +197,7 @@ describe('practice core', () => {
       reviewAttemptId: 'review-1',
     })
     await repository.saveReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'hard',
       reviewedAt: new Date('2026-01-02T10:00:00.000Z'),
       log: { notes: 'Updated note.' },
@@ -207,7 +207,7 @@ describe('practice core', () => {
     const [practice] = await handle.db
       .select()
       .from(problemPractice)
-      .where(eq(problemPractice.problemId, 'leetcode:two-sum'))
+      .where(eq(problemPractice.problemSlug, 'two-sum'))
     const [attempt] = await handle.db
       .select()
       .from(reviewAttempts)
@@ -234,7 +234,7 @@ describe('practice core', () => {
     const repository = createPracticeRepository(handle.db)
 
     await repository.saveReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'good',
       reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
       elapsedSeconds: 800,
@@ -242,7 +242,7 @@ describe('practice core', () => {
       reviewAttemptId: 'review-1',
     })
     const beforeOverride = await repository.saveReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'easy',
       reviewedAt: new Date('2026-01-03T10:00:00.000Z'),
       elapsedSeconds: 600,
@@ -258,7 +258,7 @@ describe('practice core', () => {
     })
 
     const override = await repository.overrideLastReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'again',
       elapsedSeconds: 900,
       isCorrect: false,
@@ -267,15 +267,15 @@ describe('practice core', () => {
     const attempts = await handle.db
       .select()
       .from(reviewAttempts)
-      .where(eq(reviewAttempts.problemId, 'leetcode:two-sum'))
+      .where(eq(reviewAttempts.problemSlug, 'two-sum'))
     const [practice] = await handle.db
       .select()
       .from(problemPractice)
-      .where(eq(problemPractice.problemId, 'leetcode:two-sum'))
+      .where(eq(problemPractice.problemSlug, 'two-sum'))
     const [card] = await handle.db
       .select()
       .from(fsrsCards)
-      .where(eq(fsrsCards.problemId, 'leetcode:two-sum'))
+      .where(eq(fsrsCards.problemSlug, 'two-sum'))
 
     expect(attempts).toHaveLength(2)
     expect(attempts.find((attempt) => attempt.id === 'review-2')).toMatchObject(
@@ -326,7 +326,7 @@ describe('practice core', () => {
     try {
       vi.setSystemTime(new Date('2026-01-01T10:01:00.000Z'))
       await repository.saveReviewResult({
-        problemId: 'leetcode:two-sum',
+        problemSlug: 'two-sum',
         rating: 'good',
         reviewedAt,
         reviewAttemptId: 'review-1',
@@ -334,7 +334,7 @@ describe('practice core', () => {
 
       vi.setSystemTime(new Date('2026-01-01T10:02:00.000Z'))
       await repository.saveReviewResult({
-        problemId: 'leetcode:two-sum',
+        problemSlug: 'two-sum',
         rating: 'easy',
         reviewedAt,
         reviewAttemptId: 'review-2',
@@ -342,7 +342,7 @@ describe('practice core', () => {
 
       vi.setSystemTime(new Date('2026-01-01T10:03:00.000Z'))
       await repository.overrideLastReviewResult({
-        problemId: 'leetcode:two-sum',
+        problemSlug: 'two-sum',
         rating: 'again',
       })
     } finally {
@@ -352,8 +352,8 @@ describe('practice core', () => {
     const attempts = await handle.db
       .select()
       .from(reviewAttempts)
-      .where(eq(reviewAttempts.problemId, 'leetcode:two-sum'))
-    const details = await repository.getPracticeDetails('leetcode:two-sum')
+      .where(eq(reviewAttempts.problemSlug, 'two-sum'))
+    const details = await repository.getPracticeDetails('two-sum')
 
     expect(attempts.find((attempt) => attempt.id === 'review-1')).toMatchObject(
       {
@@ -375,7 +375,7 @@ describe('practice core', () => {
     const repository = createPracticeRepository(handle.db)
 
     await repository.saveReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'easy',
       reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
       log: { notes: 'Keep the hash-map invariant.' },
@@ -383,7 +383,7 @@ describe('practice core', () => {
     })
 
     const suspended = await repository.setPracticeSuspended({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       suspended: true,
     })
     const queueWhileSuspended = await getTodayQueue(
@@ -391,7 +391,7 @@ describe('practice core', () => {
       new Date('2026-01-01T10:01:00.000Z'),
     )
     const resumed = await repository.setPracticeSuspended({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       suspended: false,
     })
 
@@ -412,9 +412,7 @@ describe('practice core', () => {
     expect(suspended.card?.reps).toBe(1)
     expect(suspended.latestAttempt?.id).toBe('review-1')
     expect(
-      queueWhileSuspended.items.some(
-        (item) => item.problemId === 'leetcode:two-sum',
-      ),
+      queueWhileSuspended.items.some((item) => item.problemSlug === 'two-sum'),
     ).toBe(false)
     expect(resumed).toMatchObject({
       practice: {
@@ -435,17 +433,17 @@ describe('practice core', () => {
     const repository = createPracticeRepository(handle.db)
 
     await repository.setPracticeSuspended({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       suspended: true,
     })
 
     const result = await repository.saveReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'good',
       reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
       reviewAttemptId: 'review-1',
     })
-    const details = await repository.getPracticeDetails('leetcode:two-sum')
+    const details = await repository.getPracticeDetails('two-sum')
 
     expect(result.summary).toMatchObject({
       phase: 'suspended',
@@ -470,7 +468,7 @@ describe('practice core', () => {
     const repository = createPracticeRepository(handle.db)
 
     const details = await repository.updateCurrentPracticeLog({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       log: {
         interviewPattern: 'Hash map',
         timeComplexity: 'O(n)',
@@ -482,11 +480,11 @@ describe('practice core', () => {
     const attempts = await handle.db
       .select()
       .from(reviewAttempts)
-      .where(eq(reviewAttempts.problemId, 'leetcode:two-sum'))
+      .where(eq(reviewAttempts.problemSlug, 'two-sum'))
     const cards = await handle.db
       .select()
       .from(fsrsCards)
-      .where(eq(fsrsCards.problemId, 'leetcode:two-sum'))
+      .where(eq(fsrsCards.problemSlug, 'two-sum'))
 
     expect(attempts).toEqual([])
     expect(cards).toEqual([])
@@ -520,7 +518,7 @@ describe('practice core', () => {
     const repository = createPracticeRepository(handle.db)
 
     await repository.updateCurrentPracticeLog({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       log: {
         interviewPattern: 'Hash map',
         timeComplexity: 'O(n)',
@@ -531,7 +529,7 @@ describe('practice core', () => {
     })
 
     const details = await repository.updateCurrentPracticeLog({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       log: {
         timeComplexity: null,
         spaceComplexity: '   ',
@@ -553,7 +551,7 @@ describe('practice core', () => {
     const repository = createPracticeRepository(handle.db)
 
     await repository.updateCurrentPracticeLog({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       log: {
         interviewPattern: 'Hash map',
         notes: 'Saved before solving.',
@@ -561,7 +559,7 @@ describe('practice core', () => {
     })
 
     await repository.saveReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'good',
       reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
       reviewAttemptId: 'review-1',
@@ -583,7 +581,7 @@ describe('practice core', () => {
     const repository = createPracticeRepository(handle.db)
 
     await repository.saveReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'good',
       reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
       log: {
@@ -593,21 +591,21 @@ describe('practice core', () => {
       reviewAttemptId: 'review-1',
     })
     await repository.setPracticeSuspended({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       suspended: true,
     })
 
     const reset = await repository.resetPracticeSchedule({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
     })
     const attempts = await handle.db
       .select()
       .from(reviewAttempts)
-      .where(eq(reviewAttempts.problemId, 'leetcode:two-sum'))
+      .where(eq(reviewAttempts.problemSlug, 'two-sum'))
     const cards = await handle.db
       .select()
       .from(fsrsCards)
-      .where(eq(fsrsCards.problemId, 'leetcode:two-sum'))
+      .where(eq(fsrsCards.problemSlug, 'two-sum'))
 
     expect(attempts).toEqual([])
     expect(cards).toEqual([])
@@ -642,7 +640,7 @@ describe('practice core', () => {
     const repository = createPracticeRepository(handle.db)
 
     await repository.saveReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'good',
       reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
       log: { notes: 'Clear me.' },
@@ -650,7 +648,7 @@ describe('practice core', () => {
     })
 
     const reset = await repository.resetPracticeSchedule({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       keepLog: false,
     })
 

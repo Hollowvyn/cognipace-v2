@@ -31,14 +31,14 @@ describe('overlaySessionReducer', () => {
       },
       {
         type: 'problem-loaded',
-        problemId: 'leetcode:two-sum',
+        problemSlug: 'two-sum',
         draft,
         selectedRating: 'hard',
       },
     )
 
     expect(state).toMatchObject({
-      activeProblemId: 'leetcode:two-sum',
+      activeProblemSlug: 'two-sum',
       draft,
       persistedDraft: draft,
       feedback: null,
@@ -210,11 +210,9 @@ const nextProblem = {
   kind: 'track',
   problem: {
     difficulty: 'easy',
-    id: 'leetcode:valid-parentheses',
     isPremium: false,
-    slug: 'valid-parentheses',
+    problemSlug: 'valid-parentheses',
     title: 'Valid Parentheses',
-    url: 'https://leetcode.com/problems/valid-parentheses/',
   },
   title: 'Valid Parentheses',
 } satisfies OverlayNextStep

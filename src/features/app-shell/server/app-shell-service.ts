@@ -142,7 +142,7 @@ async function getOverlayPayload(
   }
 
   const [practice, queue, activeTrack] = await Promise.all([
-    getPracticeDetails(db, context.problem.id, {
+    getPracticeDetails(db, context.problem.slug, {
       now,
       targetRetention: settings.review.targetRetention,
     }),
@@ -181,7 +181,8 @@ function serializeOverlayNextStep(input: {
 }): OverlayNextStep {
   if (
     input.activeTrackNextProblem &&
-    input.activeTrackNextProblem.slug !== input.currentProblem.slug
+    input.activeTrackNextProblem.problemSlug !==
+      input.currentProblem.problemSlug
   ) {
     return {
       kind: 'track',
@@ -194,7 +195,7 @@ function serializeOverlayNextStep(input: {
   }
 
   const recommendation = input.queueItems.find(
-    (item) => item.problem.slug !== input.currentProblem.slug,
+    (item) => item.problem.problemSlug !== input.currentProblem.problemSlug,
   )
 
   if (recommendation) {
@@ -262,11 +263,9 @@ function serializeQueueItem(item: QueueItem): AppShellQueueItem {
   return {
     category: item.category,
     problem: {
-      id: item.problemId,
-      slug: item.slug,
+      problemSlug: item.problemSlug,
       title: item.title,
       difficulty: item.difficulty,
-      url: item.url,
       isPremium: item.isPremium,
     },
     dueAt: item.dueAt?.toISOString() ?? null,
@@ -276,11 +275,9 @@ function serializeQueueItem(item: QueueItem): AppShellQueueItem {
 
 function serializeProblemSummary(problem: Problem): AppShellProblemSummary {
   return {
-    id: problem.id,
-    slug: problem.slug,
+    problemSlug: problem.slug,
     title: problem.title,
     difficulty: problem.difficulty,
-    url: problem.url,
     isPremium: problem.isPremium,
   }
 }

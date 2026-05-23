@@ -43,14 +43,14 @@ describe('cache invalidation broadcaster', () => {
 
   it('broadcasts typed cache invalidation events to extension pages and LeetCode tabs', async () => {
     const event = await broadcastCacheInvalidation({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       reason: 'practice-updated',
       source: 'content-script',
       tags: ['practice', 'queue', 'app-shell'],
     })
 
     expect(event).toMatchObject({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       reason: 'practice-updated',
       source: 'content-script',
       tags: ['practice', 'queue', 'app-shell'],
