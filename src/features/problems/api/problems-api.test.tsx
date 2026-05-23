@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
 import {
@@ -9,13 +9,21 @@ import {
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import {
+  problemsQueryKeys,
+  useBulkDeleteProblems,
   useBulkUpdateProblems,
   useCreateProblem,
+  useDeleteProblem,
+  useProblemForEdit,
   useProblemLibrary,
+  useUpdateProblem,
 } from './problems-api'
 import type {
+  ProblemsBulkDeleteRequest,
   ProblemsBulkUpdateProblemsRequest,
   ProblemsCreateProblemRequest,
+  ProblemsDeleteProblemRequest,
+  ProblemsUpdateProblemRequest,
 } from './problems-contracts'
 
 vi.mock('@/extension/messaging', () => ({
@@ -23,6 +31,24 @@ vi.mock('@/extension/messaging', () => ({
 }))
 
 describe('problems API hooks', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('exposes stable problem query keys', () => {
+    expect(problemsQueryKeys.library()).toEqual(['problems', 'library', 'now'])
+    expect(problemsQueryKeys.library('2026-01-01T10:00:00.000Z')).toEqual([
+      'problems',
+      'library',
+      '2026-01-01T10:00:00.000Z',
+    ])
+    expect(problemsQueryKeys.edit('binary-search')).toEqual([
+      'problems',
+      'edit',
+      'binary-search',
+    ])
+  })
+
   it('reads the problem library through the runtime boundary', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(libraryResponse)
     const { wrapper } = createQueryTestHarness()
@@ -41,7 +67,28 @@ describe('problems API hooks', () => {
     expect(sendMessage).toHaveBeenCalledWith('problems.getLibrary', request)
   })
 
-  it('invalidates problem-backed queries after create and bulk mutations', async () => {
+  it('reads edit data through the runtime boundary', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(problemForEditResponse)
+    const { wrapper } = createQueryTestHarness()
+    const request = {
+      surface: 'dashboard',
+      problemSlug: 'binary-search',
+    } as const
+
+    const { result } = renderHook(() => useProblemForEdit(request), {
+      wrapper,
+    })
+
+    await waitFor(() => {
+      expect(result.current.data).toBe(problemForEditResponse)
+    })
+    expect(sendMessage).toHaveBeenCalledWith(
+      'problems.getProblemForEdit',
+      request,
+    )
+  })
+
+  it('invalidates problem-backed queries after create, update, delete, and bulk mutations', async () => {
     await expectProblemMutation({
       method: 'problems.createProblem',
       response: problemForEditResponse,
@@ -57,6 +104,33 @@ describe('problems API hooks', () => {
       useHook: useCreateProblem,
     })
     await expectProblemMutation({
+      method: 'problems.updateProblem',
+      response: problemForEditResponse,
+      request: {
+        surface: 'dashboard',
+        problemSlug: 'binary-search',
+        title: 'Binary Search',
+        difficulty: 'easy',
+        isPremium: false,
+        topicLabels: [],
+        companyLabels: [],
+      } satisfies ProblemsUpdateProblemRequest,
+      useHook: useUpdateProblem,
+    })
+    await expectProblemMutation({
+      method: 'problems.deleteProblem',
+      response: {
+        deletedProblemSlugs: ['binary-search'],
+        protectedProblemSlugs: [],
+        missingProblemSlugs: [],
+      },
+      request: {
+        surface: 'dashboard',
+        problemSlug: 'binary-search',
+      } satisfies ProblemsDeleteProblemRequest,
+      useHook: useDeleteProblem,
+    })
+    await expectProblemMutation({
       method: 'problems.bulkUpdateProblems',
       response: {
         updatedProblemSlugs: ['binary-search'],
@@ -68,6 +142,19 @@ describe('problems API hooks', () => {
         set: { isPremium: true },
       } satisfies ProblemsBulkUpdateProblemsRequest,
       useHook: useBulkUpdateProblems,
+    })
+    await expectProblemMutation({
+      method: 'problems.bulkDelete',
+      response: {
+        deletedProblemSlugs: ['binary-search'],
+        protectedProblemSlugs: [],
+        missingProblemSlugs: [],
+      },
+      request: {
+        surface: 'dashboard',
+        problemSlugs: ['binary-search'],
+      } satisfies ProblemsBulkDeleteRequest,
+      useHook: useBulkDeleteProblems,
     })
   })
 })
@@ -82,7 +169,7 @@ async function expectProblemMutation<TRequest>(input: {
 }) {
   const { queryClient, wrapper } = createQueryTestHarness()
   const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-  vi.mocked(sendMessage).mockResolvedValue(input.response)
+  vi.mocked(sendMessage).mockResolvedValueOnce(input.response)
   const { result } = renderHook(() => input.useHook(), { wrapper })
 
   await act(async () => {
@@ -90,7 +177,13 @@ async function expectProblemMutation<TRequest>(input: {
   })
 
   expect(sendMessage).toHaveBeenCalledWith(input.method, input.request)
-  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['problems'] })
+  expect(invalidateQueries.mock.calls.map(([call]) => call)).toEqual([
+    { queryKey: ['problems'] },
+    { queryKey: ['app-shell-data'] },
+    { queryKey: ['practice-details'] },
+    { queryKey: ['today-queue'] },
+    { queryKey: ['tracks'] },
+  ])
 }
 
 const problemForEditResponse = createProblemForEditResponse()

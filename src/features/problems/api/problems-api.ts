@@ -1,8 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import {
-  sendMessage,
-} from '@/extension/messaging'
+import { sendMessage } from '@/extension/messaging'
 import { invalidateTaggedQueries } from '@/platform/query/cache-invalidation'
 import { queryKeys } from '@/platform/query/query-keys'
 
@@ -80,54 +78,32 @@ export function useUpsertProblemFromPage() {
 }
 
 export function useCreateProblem() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: createProblemViaRuntime,
-    onSuccess: () => {
-      invalidateTaggedQueries(queryClient, ['problems'])
-    },
-  })
+  return useProblemMutation(createProblemViaRuntime)
 }
 
 export function useUpdateProblem() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: updateProblemViaRuntime,
-    onSuccess: () => {
-      invalidateTaggedQueries(queryClient, ['problems'])
-    },
-  })
+  return useProblemMutation(updateProblemViaRuntime)
 }
 
 export function useDeleteProblem() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: deleteProblemViaRuntime,
-    onSuccess: () => {
-      invalidateTaggedQueries(queryClient, ['problems'])
-    },
-  })
+  return useProblemMutation(deleteProblemViaRuntime)
 }
 
 export function useBulkUpdateProblems() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: bulkUpdateProblemsViaRuntime,
-    onSuccess: () => {
-      invalidateTaggedQueries(queryClient, ['problems'])
-    },
-  })
+  return useProblemMutation(bulkUpdateProblemsViaRuntime)
 }
 
 export function useBulkDeleteProblems() {
+  return useProblemMutation(bulkDeleteProblemsViaRuntime)
+}
+
+function useProblemMutation<TRequest, TResponse>(
+  mutationFn: (request: TRequest) => Promise<TResponse>,
+) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: bulkDeleteProblemsViaRuntime,
+    mutationFn,
     onSuccess: () => {
       invalidateTaggedQueries(queryClient, ['problems'])
     },
