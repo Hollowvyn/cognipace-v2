@@ -1,22 +1,23 @@
-import { Outlet } from '@tanstack/react-router'
+import { Link, Outlet } from '@tanstack/react-router'
+import { Plus } from 'lucide-react'
 
-import { DashboardPlaceholderPage } from '@/app/dashboard/layout/dashboard-placeholder-page'
-import {
-  dashboardPaths,
-  dashboardRouteMeta,
-} from '@/app/dashboard/navigation/route-manifest'
+import { Button } from '@/components/ui/button'
+import { ProblemLibraryScreen } from '@/features/problems'
+
+import { dashboardPaths } from '@/app/dashboard/navigation/route-manifest'
 
 export function LibraryPage() {
   return (
     <>
-      <DashboardPlaceholderPage
-        action={{
-          label: 'New Problem',
-          to: dashboardPaths.problemNew,
-        }}
-        description="The all-problem table, search, filters, and problem create/edit flows will land here later."
-        panelCopy="This route is ready for future problem library work without adding table state or data fetching yet."
-        title={dashboardRouteMeta.library.staticData.title}
+      <ProblemLibraryScreen
+        newProblemAction={
+          <Button asChild size="sm">
+            <Link to={dashboardPaths.problemNew}>
+              <Plus aria-hidden="true" />
+              New Problem
+            </Link>
+          </Button>
+        }
       />
       <Outlet />
     </>

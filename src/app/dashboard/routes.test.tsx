@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
 import { defaultUserSettings } from '@/features/settings/domain'
+import { createProblemLibraryResponse } from '@/testing/problem-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import {
@@ -34,7 +35,13 @@ function renderDashboard(initialEntry = '/') {
 describe('dashboard routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.resolve(createProblemLibraryResponse())
+      }
+
+      return Promise.resolve(defaultUserSettings)
+    })
   })
 
   it('renders all top-level navigation links', async () => {
@@ -50,7 +57,7 @@ describe('dashboard routes', () => {
   it.each([
     ['/', 'Overview', 'what should I do now'],
     ['/tracks', 'Tracks', 'Track catalog'],
-    ['/library', 'Library', 'all-problem table'],
+    ['/library', 'Library', 'Total'],
     ['/analytics', 'Analytics', 'Queue, FSRS, and Analytics'],
     ['/settings', 'Settings', 'Daily goal'],
   ])('renders the %s route', async (path, heading, expectedCopy) => {
