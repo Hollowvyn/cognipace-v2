@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
 
 import type { ProblemLibraryRow } from '../../api/problems-contracts'
+import { ProblemBulkActionBar } from './problem-bulk-action-bar'
 import { problemLibraryColumnIds } from './problem-library-filtering'
 import { ProblemLibraryRowDetails } from './problem-library-row-details'
 import type { RenderProblemEditAction } from './problem-row-actions'
@@ -21,8 +22,17 @@ export function ProblemLibraryTable({
   renderEditProblemAction: RenderProblemEditAction
   table: Table<ProblemLibraryRow>
 }) {
+  const selectedRows = table
+    .getPrePaginationRowModel()
+    .rows.map((row) => row.original)
+    .filter((row) => table.getState().rowSelection[row.problem.slug])
+
   return (
     <>
+      <ProblemBulkActionBar
+        onClearSelection={() => table.resetRowSelection()}
+        selectedRows={selectedRows}
+      />
       <div className="overflow-x-auto border-t border-border bg-card">
         <table className="w-full min-w-[58rem] border-collapse text-left text-[length:var(--cp-copy-font-size)]">
           <thead>
@@ -176,7 +186,6 @@ function ProblemLibraryPagination({
   table: Table<ProblemLibraryRow>
 }) {
   const filteredCount = table.getFilteredRowModel().rows.length
-  const selectedCount = table.getSelectedRowModel().rows.length
   const { pageIndex, pageSize } = table.getState().pagination
   const firstRow = filteredCount === 0 ? 0 : pageIndex * pageSize + 1
   const lastRow = Math.min(filteredCount, (pageIndex + 1) * pageSize)
@@ -188,21 +197,6 @@ function ProblemLibraryPagination({
   return (
     <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-t border-border bg-card px-4 py-2 text-[length:var(--cp-copy-font-size)] text-muted-foreground md:px-5">
       <div className="min-w-0">
-        {selectedCount > 0 ? (
-          <div className="inline-flex items-center gap-3">
-            <span className="font-semibold text-foreground">
-              {selectedCount} selected
-            </span>
-            <Button
-              className="px-0"
-              onClick={() => table.resetRowSelection()}
-              size="sm"
-              variant="ghost"
-            >
-              Clear selection
-            </Button>
-          </div>
-        ) : null}
       </div>
       <div className="flex flex-wrap items-center justify-end gap-3">
         <label className="inline-flex items-center gap-2">

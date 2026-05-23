@@ -340,6 +340,100 @@ describe('ProblemLibraryScreen', () => {
       screen.queryByRole('dialog', { name: 'Delete problem?' }),
     ).not.toBeInTheDocument()
   })
+
+  it('runs bulk suspend, resume, reset, and delete actions for selected rows', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.resolve(libraryResponse)
+      }
+
+      if (method === 'problems.bulkDelete') {
+        return Promise.resolve({
+          deletedProblemSlugs: ['binary-search'],
+          protectedProblemSlugs: ['two-sum'],
+          missingProblemSlugs: [],
+        })
+      }
+
+      return Promise.resolve(createSerializedPracticeDetails())
+    })
+    renderProblemLibrary()
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Select Two Sum' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Select Binary Search' }))
+
+    const bulkBar = screen.getByRole('region', { name: 'Bulk actions' })
+    expect(within(bulkBar).getByText('2 selected')).toBeVisible()
+
+    await user.click(within(bulkBar).getByRole('button', { name: 'Suspend' }))
+    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      suspended: true,
+    })
+    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
+      surface: 'dashboard',
+      problemSlug: 'binary-search',
+      suspended: true,
+    })
+
+    await user.click(within(bulkBar).getByRole('button', { name: 'Resume' }))
+    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      suspended: false,
+    })
+    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
+      surface: 'dashboard',
+      problemSlug: 'binary-search',
+      suspended: false,
+    })
+
+    await user.click(
+      within(bulkBar).getByRole('button', { name: 'Reset Schedule' }),
+    )
+    const resetDialog = screen.getByRole('dialog', {
+      name: 'Reset selected schedules?',
+    })
+    await user.click(
+      within(resetDialog).getByRole('button', { name: 'Reset Schedule' }),
+    )
+    expect(sendMessage).toHaveBeenCalledWith('practice.resetSchedule', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+    })
+    expect(sendMessage).toHaveBeenCalledWith('practice.resetSchedule', {
+      surface: 'dashboard',
+      problemSlug: 'binary-search',
+    })
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select Two Sum' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Select Binary Search' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Select 01 Matrix' }))
+    await user.click(
+      within(screen.getByRole('region', { name: 'Bulk actions' })).getByRole(
+        'button',
+        { name: 'Delete Problems' },
+      ),
+    )
+    const deleteDialog = screen.getByRole('dialog', {
+      name: 'Delete selected problems?',
+    })
+    await user.click(
+      within(deleteDialog).getByRole('button', { name: 'Delete Problems' }),
+    )
+
+    expect(sendMessage).toHaveBeenCalledWith('problems.bulkDelete', {
+      surface: 'dashboard',
+      problemSlugs: ['01-matrix', 'binary-search', 'two-sum'],
+    })
+    expect(
+      await screen.findByText(
+        'Deleted 1 problem. Skipped 1 protected problem. Skipped 0 missing problems.',
+      ),
+    ).toBeVisible()
+  })
 })
 
 function renderProblemLibrary() {
