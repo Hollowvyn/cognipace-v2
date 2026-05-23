@@ -15,6 +15,7 @@ export {
   ProblemDifficultyBadge,
 } from './components/problem-difficulty-badge'
 export { ProblemLibraryScreen } from './components/library/problem-library-screen'
+export { ProblemForm } from './components/form/problem-form'
 export {
   bulkDeleteProblemsViaRuntime,
   bulkUpdateProblemsViaRuntime,

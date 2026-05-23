@@ -5,7 +5,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
 import { defaultUserSettings } from '@/features/settings/domain'
-import { createProblemLibraryResponse } from '@/testing/problem-fixtures'
+import {
+  createProblemForEditResponse,
+  createProblemLibraryResponse,
+  createSerializedProblem,
+} from '@/testing/problem-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import {
@@ -40,6 +44,17 @@ describe('dashboard routes', () => {
         return Promise.resolve(createProblemLibraryResponse())
       }
 
+      if (method === 'problems.getProblemForEdit') {
+        return Promise.resolve(
+          createProblemForEditResponse({
+            problem: createSerializedProblem({
+              slug: 'two-sum',
+              title: 'Two Sum',
+            }),
+          }),
+        )
+      }
+
       return Promise.resolve(defaultUserSettings)
     })
   })
@@ -68,19 +83,20 @@ describe('dashboard routes', () => {
   })
 
   it.each([
-    ['/tracks/new', 'Tracks', 'New Track'],
-    ['/tracks/leetcode-75/edit', 'Tracks', 'Edit Track'],
-    ['/library/problems/new', 'Library', 'New Problem'],
-    ['/library/problems/two-sum/edit', 'Library', 'Edit Problem'],
+    ['/tracks/new', 'Tracks', 'New Track', 'Placeholder'],
+    ['/tracks/leetcode-75/edit', 'Tracks', 'Edit Track', 'Placeholder'],
+    ['/library/problems/new', 'Library', 'New Problem', 'Problem'],
+    ['/library/problems/two-sum/edit', 'Library', 'Edit Problem', 'Problem'],
   ])(
     'renders %s over the parent placeholder',
-    async (path, parentHeading, modalHeading) => {
+    async (path, parentHeading, modalHeading, eyebrow) => {
       renderDashboard(path)
 
       expect(
         await screen.findByRole('heading', { name: parentHeading }),
       ).toBeVisible()
       expect(screen.getByRole('dialog', { name: modalHeading })).toBeVisible()
+      expect(screen.getByText(eyebrow)).toBeVisible()
     },
   )
 

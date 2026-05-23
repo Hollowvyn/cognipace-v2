@@ -24,12 +24,14 @@ export function RouteModal({
   closeLabel = 'Close',
   closeTo,
   description,
+  eyebrow = 'Placeholder',
   title,
 }: {
   children?: ReactNode
   closeLabel?: string
   closeTo: DashboardModalClosePath
   description: string
+  eyebrow?: string
   title: string
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -113,7 +115,7 @@ export function RouteModal({
           <div className="flex min-w-0 items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="m-0 text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
-                Placeholder
+                {eyebrow}
               </p>
               <h2
                 className="mt-1 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground"

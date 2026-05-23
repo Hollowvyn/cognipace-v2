@@ -1,5 +1,11 @@
+import { useNavigate, useParams } from '@tanstack/react-router'
+
 import { RouteModal } from '@/app/dashboard/layout/route-modal'
-import { dashboardModalRouteMeta } from '@/app/dashboard/navigation/route-manifest'
+import {
+  dashboardModalRouteMeta,
+  dashboardPaths,
+} from '@/app/dashboard/navigation/route-manifest'
+import { ProblemForm } from '@/features/problems'
 
 export function NewTrackModalPage() {
   return <ModalPlaceholder content={dashboardModalRouteMeta.trackNew} />
@@ -10,11 +16,43 @@ export function EditTrackModalPage() {
 }
 
 export function NewProblemModalPage() {
-  return <ModalPlaceholder content={dashboardModalRouteMeta.problemNew} />
+  const closeToLibrary = useCloseToLibrary()
+
+  return (
+    <RouteModal
+      closeTo={dashboardModalRouteMeta.problemNew.closeTo}
+      description="Create a LeetCode problem in your Library."
+      eyebrow="Problem"
+      title={dashboardModalRouteMeta.problemNew.staticData.title}
+    >
+      <ProblemForm
+        mode="create"
+        onCancel={closeToLibrary}
+        onSaved={closeToLibrary}
+      />
+    </RouteModal>
+  )
 }
 
 export function EditProblemModalPage() {
-  return <ModalPlaceholder content={dashboardModalRouteMeta.problemEdit} />
+  const closeToLibrary = useCloseToLibrary()
+  const params = useParams({ from: dashboardPaths.problemEdit })
+
+  return (
+    <RouteModal
+      closeTo={dashboardModalRouteMeta.problemEdit.closeTo}
+      description="Edit this problem's core Library metadata."
+      eyebrow="Problem"
+      title={dashboardModalRouteMeta.problemEdit.staticData.title}
+    >
+      <ProblemForm
+        mode="edit"
+        onCancel={closeToLibrary}
+        onSaved={closeToLibrary}
+        problemSlug={params.problemSlug}
+      />
+    </RouteModal>
+  )
 }
 
 function ModalPlaceholder({
@@ -29,4 +67,12 @@ function ModalPlaceholder({
       title={content.staticData.title}
     />
   )
+}
+
+function useCloseToLibrary() {
+  const navigate = useNavigate()
+
+  return () => {
+    void navigate({ replace: true, to: dashboardPaths.library })
+  }
 }
