@@ -5,7 +5,7 @@ export type DashboardSection =
   | 'analytics'
   | 'settings'
 
-export type DashboardRoutePresentation = 'page' | 'modal-placeholder'
+export type DashboardRoutePresentation = 'page' | 'modal' | 'modal-placeholder'
 
 export interface DashboardRouteStaticData {
   navLabel?: string
@@ -60,7 +60,7 @@ interface DashboardModalRoute {
   description: string
   relativePath: string
   staticData: DashboardRouteStaticData & {
-    presentation: 'modal-placeholder'
+    presentation: 'modal' | 'modal-placeholder'
   }
 }
 
@@ -144,20 +144,20 @@ export const dashboardModalRouteMeta = {
   },
   problemNew: {
     closeTo: dashboardPaths.library,
-    description: 'Problem creation will be implemented in a later phase.',
+    description: 'Create a LeetCode problem in your Library.',
     relativePath: 'problems/new',
     staticData: {
-      presentation: 'modal-placeholder',
+      presentation: 'modal',
       section: 'library',
       title: 'New Problem',
     },
   },
   problemEdit: {
     closeTo: dashboardPaths.library,
-    description: 'Problem editing will be implemented in a later phase.',
+    description: "Edit this problem's core Library metadata.",
     relativePath: 'problems/$problemSlug/edit',
     staticData: {
-      presentation: 'modal-placeholder',
+      presentation: 'modal',
       section: 'library',
       title: 'Edit Problem',
     },

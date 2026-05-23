@@ -17,6 +17,7 @@ import {
   createDashboardRouter,
   dashboardPaths,
 } from './navigation/routes'
+import { dashboardModalRouteMeta } from './navigation/route-manifest'
 
 vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
@@ -88,7 +89,7 @@ describe('dashboard routes', () => {
     ['/library/problems/new', 'Library', 'New Problem', 'Problem'],
     ['/library/problems/two-sum/edit', 'Library', 'Edit Problem', 'Problem'],
   ])(
-    'renders %s over the parent placeholder',
+    'renders %s over the parent route',
     async (path, parentHeading, modalHeading, eyebrow) => {
       renderDashboard(path)
 
@@ -115,6 +116,21 @@ describe('dashboard routes', () => {
       expect(router.state.location.pathname).toBe(closePath)
     })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('does not mark implemented problem modals as placeholders', () => {
+    expect(dashboardModalRouteMeta.problemNew.staticData.presentation).toBe(
+      'modal',
+    )
+    expect(dashboardModalRouteMeta.problemEdit.staticData.presentation).toBe(
+      'modal',
+    )
+    expect(dashboardModalRouteMeta.problemNew.description).not.toMatch(
+      /later phase/i,
+    )
+    expect(dashboardModalRouteMeta.problemEdit.description).not.toMatch(
+      /later phase/i,
+    )
   })
 
   it('closes modal placeholders with Escape', async () => {

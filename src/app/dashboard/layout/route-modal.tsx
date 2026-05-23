@@ -1,10 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import {
-  useEffect,
-  useRef,
-  type KeyboardEvent,
-  type ReactNode,
-} from 'react'
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Surface } from '@/components/ui/surface'
@@ -24,7 +19,7 @@ export function RouteModal({
   closeLabel = 'Close',
   closeTo,
   description,
-  eyebrow = 'Placeholder',
+  eyebrow = 'Modal',
   title,
 }: {
   children?: ReactNode
