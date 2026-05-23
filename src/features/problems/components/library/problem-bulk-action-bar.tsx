@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react'
+import {
+  CirclePause,
+  CirclePlay,
+  Pencil,
+  RotateCcw,
+  Trash2,
+  X,
+} from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import { InlineStatus } from '@/components/ui/inline-status'
 import {
   useResetPracticeSchedule,
@@ -138,7 +146,7 @@ export function ProblemBulkActionBar({
   return (
     <section
       aria-label="Bulk actions"
-      className="grid gap-2 border-t border-border bg-muted/35 px-4 py-3 md:px-5"
+      className="flex min-w-0 flex-wrap items-center gap-2"
     >
       {error ? (
         <InlineStatus role="alert" tone="danger">
@@ -147,62 +155,69 @@ export function ProblemBulkActionBar({
       ) : null}
       {message ? <InlineStatus>{message}</InlineStatus> : null}
       {selectedRows.length > 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="font-semibold text-foreground">
+        <>
+          <span className="whitespace-nowrap font-semibold text-foreground">
             {selectedRows.length} selected
           </span>
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button
+          <div className="inline-flex items-center gap-1">
+            <IconButton
               disabled={isPending}
+              label="Suspend"
               onClick={() => setSelectedSuspended(true)}
-              size="sm"
+              tooltip="Suspend selected"
               variant="ghost"
             >
-              Suspend
-            </Button>
-            <Button
+              <CirclePause aria-hidden="true" />
+            </IconButton>
+            <IconButton
               disabled={isPending}
+              label="Resume"
               onClick={() => setSelectedSuspended(false)}
-              size="sm"
+              tooltip="Resume selected"
               variant="ghost"
             >
-              Resume
-            </Button>
-            <Button
+              <CirclePlay aria-hidden="true" />
+            </IconButton>
+            <IconButton
               disabled={isPending}
+              label="Reset Schedule"
               onClick={() => setConfirmation('reset')}
-              size="sm"
+              tooltip="Reset selected schedules"
               variant="ghost"
             >
-              Reset Schedule
-            </Button>
-            <Button
+              <RotateCcw aria-hidden="true" />
+            </IconButton>
+            <IconButton
               disabled={isPending}
+              label="Edit Metadata"
               onClick={() => setIsMetadataDialogOpen(true)}
-              size="sm"
+              tooltip="Edit selected metadata"
               variant="ghost"
             >
-              Edit Metadata
-            </Button>
-            <Button
+              <Pencil aria-hidden="true" />
+            </IconButton>
+            <IconButton
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
               disabled={isPending}
+              label="Delete Problems"
               onClick={() => setConfirmation('delete')}
-              size="sm"
+              tooltip="Delete selected problems"
               variant="ghost"
             >
-              Delete Problems
-            </Button>
-            <Button
-              className="px-0"
+              <Trash2 aria-hidden="true" />
+            </IconButton>
+            <IconButton
+              className="text-muted-foreground hover:text-foreground"
               disabled={isPending}
+              label="Clear selection"
               onClick={onClearSelection}
-              size="sm"
+              tooltip="Clear selection"
               variant="ghost"
             >
-              Clear selection
-            </Button>
+              <X aria-hidden="true" />
+            </IconButton>
           </div>
-        </div>
+        </>
       ) : null}
 
       {confirmation === 'reset' ? (

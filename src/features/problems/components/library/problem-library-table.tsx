@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react'
+import type { ReactNode } from 'react'
 import {
   flexRender,
   type Header,
@@ -34,11 +35,6 @@ export function ProblemLibraryTable({
 
   return (
     <>
-      <ProblemBulkActionBar
-        onClearSelection={() => table.resetRowSelection()}
-        options={options}
-        selectedRows={selectedRows}
-      />
       <div className="overflow-x-auto border-t border-border bg-card">
         <table className="w-full min-w-[58rem] border-collapse text-left text-[length:var(--cp-copy-font-size)]">
           <thead>
@@ -64,7 +60,16 @@ export function ProblemLibraryTable({
           </tbody>
         </table>
       </div>
-      <ProblemLibraryPagination table={table} />
+      <ProblemLibraryPagination
+        bulkActions={
+          <ProblemBulkActionBar
+            onClearSelection={() => table.resetRowSelection()}
+            options={options}
+            selectedRows={selectedRows}
+          />
+        }
+        table={table}
+      />
     </>
   )
 }
@@ -187,8 +192,10 @@ function getCellClassName(columnId: string) {
 }
 
 function ProblemLibraryPagination({
+  bulkActions,
   table,
 }: {
+  bulkActions: ReactNode
   table: Table<ProblemLibraryRow>
 }) {
   const filteredCount = table.getFilteredRowModel().rows.length
@@ -202,7 +209,7 @@ function ProblemLibraryPagination({
 
   return (
     <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-t border-border bg-card px-4 py-2 text-[length:var(--cp-copy-font-size)] text-muted-foreground md:px-5">
-      <div className="min-w-0"></div>
+      <div className="min-w-0 flex-1">{bulkActions}</div>
       <div className="flex flex-wrap items-center justify-end gap-3">
         <label className="inline-flex items-center gap-2">
           <span>Rows per page:</span>
