@@ -30,6 +30,10 @@ const backgroundMocks = vi.hoisted(() => {
     getActiveTrack: vi.fn(),
     getAppDb: vi.fn(),
     getAppShellData: vi.fn(),
+    getProblemLibrary: vi.fn(),
+    createProblem: vi.fn(),
+    bulkUpdateProblems: vi.fn(),
+    setPracticeSuspended: vi.fn(),
     getSettings: vi.fn(),
     toggleStudyMode: vi.fn(),
     onMessage: vi.fn(
@@ -58,6 +62,28 @@ vi.mock('@/extension/messaging', async (importOriginal) => {
 vi.mock('@/features/app-shell/server/app-shell-service', () => ({
   getAppShellData: backgroundMocks.getAppShellData,
 }))
+
+vi.mock('@/features/practice/server/practice-service', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/features/practice/server/practice-service')>()
+
+  return {
+    ...actual,
+    setPracticeSuspended: backgroundMocks.setPracticeSuspended,
+  }
+})
+
+vi.mock('@/features/problems/server/problems-service', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/features/problems/server/problems-service')>()
+
+  return {
+    ...actual,
+    getProblemLibrary: backgroundMocks.getProblemLibrary,
+    createProblem: backgroundMocks.createProblem,
+    bulkUpdateProblems: backgroundMocks.bulkUpdateProblems,
+  }
+})
 
 vi.mock('@/features/tracks/server/tracks-service', () => ({
   getActiveTrack: backgroundMocks.getActiveTrack,
@@ -90,6 +116,13 @@ describe('background handler registration', () => {
     backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
     backgroundMocks.flushDbSnapshot.mockResolvedValue(undefined)
     backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
+    backgroundMocks.getProblemLibrary.mockResolvedValue(problemLibraryResponse)
+    backgroundMocks.createProblem.mockResolvedValue(problemForEditResponse)
+    backgroundMocks.bulkUpdateProblems.mockResolvedValue({
+      updatedProblemSlugs: ['binary-search'],
+      missingProblemSlugs: [],
+    })
+    backgroundMocks.setPracticeSuspended.mockResolvedValue(practiceDetails)
     backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
     backgroundMocks.toggleStudyMode.mockResolvedValue(defaultUserSettings)
     backgroundMocks.updateSettings.mockResolvedValue(defaultUserSettings)
@@ -248,6 +281,128 @@ describe('background handler registration', () => {
     expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
     expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
   })
+
+  it('reads the Library without flushing or broadcasting invalidation', async () => {
+    const sender = { id: 'extension-id' }
+    const handler = readRegisteredHandler('problems.getLibrary')
+    const response = await handler({
+      data: {
+        surface: 'dashboard',
+        at: '2026-01-01T10:00:00.000Z',
+      },
+      sender,
+    })
+
+    expect(
+      backgroundMocks.assertCanSenderCallExtensionMethod,
+    ).toHaveBeenCalledWith('problems.getLibrary', 'dashboard', sender)
+    expect(backgroundMocks.getProblemLibrary).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      {
+        surface: 'dashboard',
+        at: '2026-01-01T10:00:00.000Z',
+      },
+    )
+    expect(response).toEqual(problemLibraryResponse)
+    expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
+  })
+
+  it('flushes and broadcasts problem invalidation after create writes', async () => {
+    const sender = { id: 'extension-id' }
+    const handler = readRegisteredHandler('problems.createProblem')
+    const response = await handler({
+      data: {
+        surface: 'dashboard',
+        slugOrUrl: 'binary-search',
+        title: 'Binary Search',
+        difficulty: 'easy',
+        isPremium: false,
+        topicLabels: [],
+        companyLabels: [],
+      },
+      sender,
+    })
+
+    expect(
+      backgroundMocks.assertCanSenderCallExtensionMethod,
+    ).toHaveBeenCalledWith('problems.createProblem', 'dashboard', sender)
+    expect(backgroundMocks.createProblem).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      {
+        surface: 'dashboard',
+        slugOrUrl: 'binary-search',
+        title: 'Binary Search',
+        difficulty: 'easy',
+        isPremium: false,
+        topicLabels: [],
+        companyLabels: [],
+      },
+    )
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      problemSlug: 'binary-search',
+      reason: 'problem-catalog-updated',
+      source: 'dashboard',
+      tags: ['problems'],
+    })
+    expectFlushBeforeBroadcast()
+    expect(response).toEqual(problemForEditResponse)
+  })
+
+  it('rejects invalid problem writes before mutation side effects', () => {
+    const handler = readRegisteredHandler('problems.bulkUpdateProblems')
+
+    expect(() =>
+      handler({
+        data: {
+          surface: 'dashboard',
+          problemSlugs: ['two-sum'],
+          set: {},
+        },
+        sender: { id: 'extension-id' },
+      }),
+    ).toThrow()
+    expect(backgroundMocks.bulkUpdateProblems).not.toHaveBeenCalled()
+    expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
+  })
+
+  it('includes problem invalidation for practice state that changes Library rows', async () => {
+    const sender = { id: 'extension-id' }
+    const handler = readRegisteredHandler('practice.setSuspended')
+    const response = await handler({
+      data: {
+        surface: 'dashboard',
+        problemSlug: 'two-sum',
+        suspended: true,
+      },
+      sender,
+    })
+
+    expect(
+      backgroundMocks.assertCanSenderCallExtensionMethod,
+    ).toHaveBeenCalledWith('practice.setSuspended', 'dashboard', sender)
+    expect(backgroundMocks.setPracticeSuspended).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      {
+        problemSlug: 'two-sum',
+        suspended: true,
+      },
+    )
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      problemSlug: 'two-sum',
+      reason: 'practice-updated',
+      source: 'dashboard',
+      tags: ['practice', 'problems', 'queue', 'app-shell'],
+    })
+    expectFlushBeforeBroadcast()
+    expect(response).toMatchObject({
+      problemSlug: 'two-sum',
+      summary: {
+        suspended: false,
+      },
+    })
+  })
 })
 
 describe('background handler serializers', () => {
@@ -405,3 +560,99 @@ function createActiveTrack(dueAt: Date | null): ActiveTrack {
     },
   }
 }
+
+const problemForEditResponse = {
+  problem: {
+    slug: 'binary-search',
+    title: 'Binary Search',
+    difficulty: 'easy',
+    isPremium: false,
+    isUserCreated: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  },
+  topics: [],
+  companies: [],
+  trackMemberships: [],
+  options: {
+    topics: [],
+    companies: [],
+    trackGroups: [],
+  },
+} as const
+
+const problemLibraryResponse = {
+  generatedAt: '2026-01-01T10:00:00.000Z',
+  summary: {
+    totalCount: 1,
+    filteredCount: 1,
+    dueCount: 0,
+    suspendedCount: 0,
+  },
+  options: {
+    topics: [],
+    companies: [],
+    trackGroups: [],
+  },
+  rows: [
+    {
+      problem: problemForEditResponse.problem,
+      status: 'not-started',
+      summary: {
+        phase: 'new',
+        nextReviewAt: null,
+        lastReviewedAt: null,
+        reviewCount: 0,
+        lapses: 0,
+        difficulty: null,
+        stability: null,
+        scheduledDays: null,
+        suspended: false,
+        isStarted: false,
+        isDue: false,
+        isOverdue: false,
+        overdueDays: 0,
+        retrievability: null,
+      },
+      nextReviewAt: null,
+      lastReviewedAt: null,
+      lastSolvedAt: null,
+      topics: [],
+      companies: [],
+      trackMemberships: [],
+    },
+  ],
+} as const
+
+const practiceDetails = {
+  problemSlug: 'two-sum',
+  cardId: 'two-sum:default',
+  practice: null,
+  card: null,
+  summary: {
+    phase: 'new',
+    nextReviewAt: null,
+    lastReviewedAt: null,
+    reviewCount: 0,
+    lapses: 0,
+    difficulty: null,
+    stability: null,
+    scheduledDays: null,
+    suspended: false,
+    isStarted: false,
+    isDue: false,
+    isOverdue: false,
+    overdueDays: 0,
+    retrievability: null,
+  },
+  currentLog: {
+    interviewPattern: null,
+    timeComplexity: null,
+    spaceComplexity: null,
+    languages: null,
+    notes: null,
+  },
+  recentAttempts: [],
+  latestAttempt: null,
+  canOverrideLatestReview: false,
+} as const

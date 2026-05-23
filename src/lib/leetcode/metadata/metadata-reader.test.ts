@@ -55,6 +55,44 @@ describe('fetchLeetCodeProblemMetadata', () => {
       },
     })
   })
+
+  it('uses GraphQL titleSlug as canonical location when LeetCode returns a redirected slug', async () => {
+    const fetcher = vi.fn(() =>
+      Promise.resolve(
+        Response.json({
+          data: {
+            question: {
+              title: 'Two Sum',
+              titleSlug: 'two-sum',
+              questionFrontendId: '1',
+              difficulty: 'Easy',
+              isPaidOnly: false,
+              topicTags: [],
+            },
+          },
+        }),
+      ),
+    )
+
+    await expect(
+      fetchLeetCodeProblemMetadata(
+        {
+          slug: 'old-two-sum',
+          url: 'https://leetcode.com/problems/old-two-sum/',
+          host: 'leetcode.com',
+        },
+        { fetch: fetcher },
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      metadata: {
+        location: {
+          slug: 'two-sum',
+          url: 'https://leetcode.com/problems/two-sum/',
+        },
+      },
+    })
+  })
 })
 
 describe('readLeetCodeProblemMetadata', () => {

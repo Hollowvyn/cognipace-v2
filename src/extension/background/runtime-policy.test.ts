@@ -96,6 +96,24 @@ describe('runtime-policy', () => {
     ).not.toThrow()
   })
 
+  it('keeps Library problem management dashboard-only', () => {
+    expect(canCallExtensionMethod('problems.getLibrary', 'dashboard')).toBe(
+      true,
+    )
+    expect(canCallExtensionMethod('problems.createProblem', 'dashboard')).toBe(
+      true,
+    )
+    expect(
+      canCallExtensionMethod('problems.bulkUpdateProblems', 'dashboard'),
+    ).toBe(true)
+    expect(
+      canCallExtensionMethod('problems.getLibrary', 'content-script'),
+    ).toBe(false)
+    expect(canCallExtensionMethod('problems.deleteProblem', 'popup')).toBe(
+      false,
+    )
+  })
+
   it('allows popup and dashboard senders to update study mode', () => {
     expect(canCallExtensionMethod('settings.toggleStudyMode', 'popup')).toBe(
       true,
