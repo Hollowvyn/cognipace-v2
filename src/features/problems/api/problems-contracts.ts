@@ -9,6 +9,11 @@ export const problemSlugSchema = z.string().trim().min(1)
 
 export const problemRuntimeSurfaceSchema = z.literal('dashboard')
 
+export const problemsUpsertFromPageSurfaceSchema = z.enum([
+  'content-script',
+  'dashboard',
+])
+
 export const serializedProblemSchema = z.object({
   slug: problemSlugSchema,
   title: z.string(),
@@ -169,16 +174,26 @@ export type ProblemsGetProblemForEditRequest = z.infer<
 
 const labelListSchema = z.array(z.string().trim().min(1)).default(() => [])
 
-const idListSchema = z.array(z.string().trim().min(1)).default(() => [])
-
 const problemMetadataInputSchema = z.object({
   title: z.string().trim().min(1),
   difficulty: problemDifficultySchema.default('unknown'),
   isPremium: z.boolean().default(false),
   topicLabels: labelListSchema,
   companyLabels: labelListSchema,
-  trackGroupIds: idListSchema,
 })
+
+export const problemsUpsertFromPageRequestSchema = z.object({
+  surface: problemsUpsertFromPageSurfaceSchema,
+  url: z.string(),
+  slug: problemSlugSchema.nullish(),
+  title: z.string().nullish(),
+  difficulty: z.string().nullish(),
+  isPremium: z.boolean().nullish(),
+})
+
+export type ProblemsUpsertFromPageRequest = z.infer<
+  typeof problemsUpsertFromPageRequestSchema
+>
 
 export const problemsCreateProblemRequestSchema =
   problemMetadataInputSchema.extend({
@@ -209,19 +224,25 @@ export type ProblemsDeleteProblemRequest = z.infer<
   typeof problemsDeleteProblemRequestSchema
 >
 
-export const problemsBulkUpdateMetadataRequestSchema = z.object({
+const problemsBulkUpdateSetSchema = z
+  .object({
+    difficulty: problemDifficultySchema.optional(),
+    isPremium: z.boolean().optional(),
+    topicLabels: z.array(z.string().trim().min(1)).optional(),
+    companyLabels: z.array(z.string().trim().min(1)).optional(),
+  })
+  .refine((set) => Object.keys(set).length > 0, {
+    message: 'At least one bulk update field is required.',
+  })
+
+export const problemsBulkUpdateProblemsRequestSchema = z.object({
   surface: problemRuntimeSurfaceSchema,
   problemSlugs: z.array(problemSlugSchema).min(1),
-  addTopicLabels: labelListSchema,
-  removeTopicIds: idListSchema,
-  addCompanyLabels: labelListSchema,
-  removeCompanyIds: idListSchema,
-  addTrackGroupIds: idListSchema,
-  removeTrackGroupIds: idListSchema,
+  set: problemsBulkUpdateSetSchema,
 })
 
-export type ProblemsBulkUpdateMetadataRequest = z.infer<
-  typeof problemsBulkUpdateMetadataRequestSchema
+export type ProblemsBulkUpdateProblemsRequest = z.infer<
+  typeof problemsBulkUpdateProblemsRequestSchema
 >
 
 export const problemsBulkDeleteRequestSchema = z.object({
@@ -241,11 +262,11 @@ export const problemDeleteResponseSchema = z.object({
 
 export type ProblemDeleteResponse = z.infer<typeof problemDeleteResponseSchema>
 
-export const problemBulkMetadataResponseSchema = z.object({
+export const problemBulkUpdateResponseSchema = z.object({
   updatedProblemSlugs: z.array(problemSlugSchema),
   missingProblemSlugs: z.array(problemSlugSchema),
 })
 
-export type ProblemBulkMetadataResponse = z.infer<
-  typeof problemBulkMetadataResponseSchema
+export type ProblemBulkUpdateResponse = z.infer<
+  typeof problemBulkUpdateResponseSchema
 >

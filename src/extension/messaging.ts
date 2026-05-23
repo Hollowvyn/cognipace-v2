@@ -26,7 +26,33 @@ import {
   problemDifficultySchema,
   problemSlugSchema,
   serializedProblemSchema,
+  type ProblemBulkUpdateResponse,
+  type ProblemDeleteResponse,
+  type ProblemForEditResponse,
+  type ProblemLibraryResponse,
+  type ProblemsBulkDeleteRequest,
+  type ProblemsBulkUpdateProblemsRequest,
+  type ProblemsCreateProblemRequest,
+  type ProblemsDeleteProblemRequest,
+  type ProblemsGetLibraryRequest,
+  type ProblemsGetProblemForEditRequest,
+  type ProblemsUpdateProblemRequest,
+  type ProblemsUpsertFromPageRequest,
   type SerializedProblem,
+} from '@/features/problems/api/problems-contracts'
+export {
+  problemBulkUpdateResponseSchema,
+  problemDeleteResponseSchema,
+  problemForEditResponseSchema,
+  problemLibraryResponseSchema,
+  problemsBulkDeleteRequestSchema,
+  problemsBulkUpdateProblemsRequestSchema,
+  problemsCreateProblemRequestSchema,
+  problemsDeleteProblemRequestSchema,
+  problemsGetLibraryRequestSchema,
+  problemsGetProblemForEditRequestSchema,
+  problemsUpdateProblemRequestSchema,
+  problemsUpsertFromPageRequestSchema,
 } from '@/features/problems/api/problems-contracts'
 export type { SerializedProblem } from '@/features/problems/api/problems-contracts'
 import type { UserSettings } from '@/features/settings'
@@ -159,19 +185,6 @@ export type PingResponse = {
   receivedAt: string
 }
 
-export const problemsUpsertFromPageRequestSchema = z.object({
-  surface: uiSurfaceSchema,
-  url: z.string(),
-  slug: problemSlugSchema.nullish(),
-  title: z.string().nullish(),
-  difficulty: z.string().nullish(),
-  isPremium: z.boolean().nullish(),
-})
-
-export type ProblemsUpsertFromPageRequest = z.infer<
-  typeof problemsUpsertFromPageRequestSchema
->
-
 export const queueRequestSchema = z.object({
   surface: z.enum(['popup', 'dashboard']),
   at: z.iso.datetime().optional(),
@@ -210,6 +223,27 @@ export interface ProtocolMap {
   'problems.upsertFromPage'(
     request: ProblemsUpsertFromPageRequest,
   ): SerializedProblem
+  'problems.getLibrary'(
+    request: ProblemsGetLibraryRequest,
+  ): ProblemLibraryResponse
+  'problems.getProblemForEdit'(
+    request: ProblemsGetProblemForEditRequest,
+  ): ProblemForEditResponse
+  'problems.createProblem'(
+    request: ProblemsCreateProblemRequest,
+  ): ProblemForEditResponse
+  'problems.updateProblem'(
+    request: ProblemsUpdateProblemRequest,
+  ): ProblemForEditResponse
+  'problems.deleteProblem'(
+    request: ProblemsDeleteProblemRequest,
+  ): ProblemDeleteResponse
+  'problems.bulkUpdateProblems'(
+    request: ProblemsBulkUpdateProblemsRequest,
+  ): ProblemBulkUpdateResponse
+  'problems.bulkDelete'(
+    request: ProblemsBulkDeleteRequest,
+  ): ProblemDeleteResponse
   'practice.saveReviewResult'(
     request: PracticeSaveReviewResultRequest,
   ): SerializedPracticeDetails

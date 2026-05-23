@@ -4,6 +4,17 @@ import {
   leetcodeSubmissionResultRemoteRuntimeRequestSchema,
   onMessage,
   pingRequestSchema,
+  problemBulkUpdateResponseSchema,
+  problemDeleteResponseSchema,
+  problemForEditResponseSchema,
+  problemLibraryResponseSchema,
+  problemsBulkDeleteRequestSchema,
+  problemsBulkUpdateProblemsRequestSchema,
+  problemsCreateProblemRequestSchema,
+  problemsDeleteProblemRequestSchema,
+  problemsGetLibraryRequestSchema,
+  problemsGetProblemForEditRequestSchema,
+  problemsUpdateProblemRequestSchema,
   problemsUpsertFromPageRequestSchema,
   queueRequestSchema,
   settingsRequestSchema,
@@ -47,7 +58,17 @@ import {
   updateCurrentPracticeLog,
 } from '@/features/practice/server/practice-service'
 import type { Problem } from '@/features/problems/domain'
-import { upsertProblemFromPage } from '@/features/problems/server/problems-service'
+import {
+  bulkDeleteProblems,
+  bulkUpdateProblems,
+  createProblem,
+  deleteProblem,
+  getProblemForEdit,
+  getProblemLibrary,
+  readProblemSlugFromSlugOrUrl,
+  updateProblem,
+  upsertProblemFromPage,
+} from '@/features/problems/server/problems-service'
 import type { TodayQueue } from '@/features/queue/domain'
 import { getTodayQueue } from '@/features/queue/server/queue-service'
 import type { UserSettings } from '@/features/settings/domain'
@@ -98,13 +119,144 @@ export function registerBackgroundHandlers() {
     )
     return runDbMutation(
       async (db) => {
-        const problem = await upsertProblemFromPage(db, request)
-
-        return serializeProblem(problem)
+        return upsertProblemFromPage(db, request)
       },
       (problem) =>
         broadcastCacheInvalidation({
           problemSlug: problem.slug,
+          reason: 'problem-catalog-updated',
+          source: request.surface,
+          tags: ['problems'],
+        }),
+    )
+  })
+
+  onMessage('problems.getLibrary', ({ data, sender }) => {
+    const request = problemsGetLibraryRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'problems.getLibrary',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      problemLibraryResponseSchema.parse(await getProblemLibrary(db, request)),
+    )
+  })
+
+  onMessage('problems.getProblemForEdit', ({ data, sender }) => {
+    const request = problemsGetProblemForEditRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'problems.getProblemForEdit',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      problemForEditResponseSchema.parse(await getProblemForEdit(db, request)),
+    )
+  })
+
+  onMessage('problems.createProblem', ({ data, sender }) => {
+    const request = problemsCreateProblemRequestSchema.parse(data)
+    const problemSlug = readProblemSlugFromSlugOrUrl(request.slugOrUrl)
+
+    assertCanSenderCallExtensionMethod(
+      'problems.createProblem',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) => problemForEditResponseSchema.parse(await createProblem(db, request)),
+      (problemForEdit) =>
+        broadcastCacheInvalidation({
+          problemSlug: problemForEdit.problem.slug ?? problemSlug ?? undefined,
+          reason: 'problem-catalog-updated',
+          source: request.surface,
+          tags: ['problems'],
+        }),
+    )
+  })
+
+  onMessage('problems.updateProblem', ({ data, sender }) => {
+    const request = problemsUpdateProblemRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'problems.updateProblem',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) => problemForEditResponseSchema.parse(await updateProblem(db, request)),
+      (problemForEdit) =>
+        broadcastCacheInvalidation({
+          problemSlug: problemForEdit.problem.slug,
+          reason: 'problem-catalog-updated',
+          source: request.surface,
+          tags: ['problems'],
+        }),
+    )
+  })
+
+  onMessage('problems.deleteProblem', ({ data, sender }) => {
+    const request = problemsDeleteProblemRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'problems.deleteProblem',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) => problemDeleteResponseSchema.parse(await deleteProblem(db, request)),
+      () =>
+        broadcastCacheInvalidation({
+          problemSlug: request.problemSlug,
+          reason: 'problem-catalog-updated',
+          source: request.surface,
+          tags: ['problems'],
+        }),
+    )
+  })
+
+  onMessage('problems.bulkUpdateProblems', ({ data, sender }) => {
+    const request = problemsBulkUpdateProblemsRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'problems.bulkUpdateProblems',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) =>
+        problemBulkUpdateResponseSchema.parse(
+          await bulkUpdateProblems(db, request),
+        ),
+      (result) =>
+        broadcastProblemCatalogInvalidation({
+          problemSlug: readSingleChangedProblemSlug(
+            result.updatedProblemSlugs,
+          ),
+          reason: 'problem-catalog-updated',
+          source: request.surface,
+          tags: ['problems'],
+        }),
+    )
+  })
+
+  onMessage('problems.bulkDelete', ({ data, sender }) => {
+    const request = problemsBulkDeleteRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'problems.bulkDelete',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) =>
+        problemDeleteResponseSchema.parse(await bulkDeleteProblems(db, request)),
+      (result) =>
+        broadcastProblemCatalogInvalidation({
+          problemSlug: readSingleChangedProblemSlug(result.deletedProblemSlugs),
           reason: 'problem-catalog-updated',
           source: request.surface,
           tags: ['problems'],
@@ -169,7 +321,7 @@ export function registerBackgroundHandlers() {
           problemSlug: request.problemSlug,
           reason: 'practice-updated',
           source: request.surface,
-          tags: ['practice', 'queue', 'app-shell'],
+          tags: ['practice', 'problems', 'queue', 'app-shell'],
         }),
     )
   })
@@ -204,7 +356,7 @@ export function registerBackgroundHandlers() {
           problemSlug: request.problemSlug,
           reason: 'practice-updated',
           source: request.surface,
-          tags: ['practice', 'queue', 'app-shell'],
+          tags: ['practice', 'problems', 'queue', 'app-shell'],
         }),
     )
   })
@@ -231,7 +383,7 @@ export function registerBackgroundHandlers() {
           problemSlug: request.problemSlug,
           reason: 'practice-updated',
           source: request.surface,
-          tags: ['practice', 'queue', 'app-shell'],
+          tags: ['practice', 'problems', 'queue', 'app-shell'],
         }),
     )
   })
@@ -258,7 +410,7 @@ export function registerBackgroundHandlers() {
           problemSlug: request.problemSlug,
           reason: 'practice-updated',
           source: request.surface,
-          tags: ['practice', 'queue', 'app-shell'],
+          tags: ['practice', 'problems', 'queue', 'app-shell'],
         }),
     )
   })
@@ -288,7 +440,7 @@ export function registerBackgroundHandlers() {
           problemSlug: request.problemSlug,
           reason: 'practice-updated',
           source: request.surface,
-          tags: ['practice', 'app-shell'],
+          tags: ['practice', 'problems', 'app-shell'],
         }),
     )
   })
@@ -458,6 +610,24 @@ function readReviewLogRequest(request: {
   }
 
   return request.notes === undefined ? undefined : { notes: request.notes }
+}
+
+function readSingleChangedProblemSlug(problemSlugs: readonly string[]) {
+  return problemSlugs.length === 1 ? problemSlugs[0] : undefined
+}
+
+function broadcastProblemCatalogInvalidation(input: {
+  problemSlug?: string | undefined
+  reason: 'problem-catalog-updated'
+  source: 'dashboard'
+  tags: ['problems']
+}) {
+  return broadcastCacheInvalidation({
+    ...(input.problemSlug ? { problemSlug: input.problemSlug } : {}),
+    reason: input.reason,
+    source: input.source,
+    tags: input.tags,
+  })
 }
 
 function serializeTodayQueue(queue: TodayQueue): SerializedTodayQueue {

@@ -23,6 +23,7 @@ export interface Problem {
 
 export interface UpsertProblemInput {
   slug: ProblemSlug
+  previousSlug?: string | null | undefined
   title?: string | null | undefined
   difficulty?: string | null | undefined
   isPremium?: boolean | null | undefined

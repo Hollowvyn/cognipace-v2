@@ -13,6 +13,10 @@ export const queryKeys = {
   },
   problems: {
     all: ['problems'] as const,
+    library: (at?: string | null) =>
+      [...queryKeys.problems.all, 'library', at ?? 'now'] as const,
+    edit: (problemSlug: string) =>
+      [...queryKeys.problems.all, 'edit', problemSlug] as const,
   },
   queue: {
     all: ['today-queue'] as const,

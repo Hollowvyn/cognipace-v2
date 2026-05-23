@@ -1,4 +1,5 @@
 import { parseLeetCodeDifficulty } from '../domain/difficulty'
+import { createLeetCodeProblemUrl, normalizeLeetCodeSlug } from '../domain/problem-url'
 import {
   requestLeetCodeGraphQl,
   type LeetCodeGraphQlFetch,
@@ -13,6 +14,7 @@ import type {
 
 type ParsedLeetCodeGraphQlQuestion = {
   title: string | null
+  titleSlug: string | null
   questionFrontendId: string | null
   difficulty: string | null
   isPaidOnly: boolean | null
@@ -71,7 +73,7 @@ export async function fetchLeetCodeProblemMetadata(
   return {
     ok: true,
     metadata: {
-      location,
+      location: createCanonicalLocation(location, parsedQuestionMetadata),
       title: parsedQuestionMetadata.title || location.slug,
       frontendId: parsedQuestionMetadata.questionFrontendId,
       difficulty: parseLeetCodeDifficulty(parsedQuestionMetadata.difficulty),
@@ -99,6 +101,7 @@ function readLeetCodeQuestionFromGraphQlPayload(
 
   return {
     title: readTrimmedString(questionRecord.title),
+    titleSlug: readTrimmedString(questionRecord.titleSlug),
     questionFrontendId: readTrimmedString(questionRecord.questionFrontendId),
     difficulty: readTrimmedString(questionRecord.difficulty),
     isPaidOnly:
@@ -106,6 +109,25 @@ function readLeetCodeQuestionFromGraphQlPayload(
         ? questionRecord.isPaidOnly
         : null,
     topicTags: readLeetCodeTopicTagsFromGraphQlValue(questionRecord.topicTags),
+  }
+}
+
+function createCanonicalLocation(
+  location: LeetCodeProblemLocation,
+  metadata: ParsedLeetCodeGraphQlQuestion,
+): LeetCodeProblemLocation {
+  const canonicalSlug = metadata.titleSlug
+    ? normalizeLeetCodeSlug(metadata.titleSlug)
+    : ''
+
+  if (!canonicalSlug || canonicalSlug === location.slug) {
+    return location
+  }
+
+  return {
+    ...location,
+    slug: canonicalSlug,
+    url: createLeetCodeProblemUrl(canonicalSlug),
   }
 }
 
