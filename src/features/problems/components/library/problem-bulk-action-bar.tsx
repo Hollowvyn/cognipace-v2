@@ -7,25 +7,37 @@ import {
   useSetPracticeSuspended,
 } from '@/features/practice'
 
-import { useBulkDeleteProblems } from '../../api/problems-api'
-import type { ProblemLibraryRow } from '../../api/problems-contracts'
+import {
+  useBulkDeleteProblems,
+  useBulkUpdateProblems,
+} from '../../api/problems-api'
+import type {
+  ProblemLibraryOptions,
+  ProblemLibraryRow,
+  ProblemsBulkUpdateProblemsRequest,
+} from '../../api/problems-contracts'
 import { ProblemConfirmationDialog } from './problem-confirmation-dialog'
+import { ProblemBulkMetadataDialog } from './problem-bulk-metadata-dialog'
 
 type BulkConfirmation = 'delete' | 'reset'
 
 export function ProblemBulkActionBar({
   onClearSelection,
+  options,
   selectedRows,
 }: {
   onClearSelection: () => void
+  options: ProblemLibraryOptions
   selectedRows: readonly ProblemLibraryRow[]
 }) {
   const bulkDelete = useBulkDeleteProblems()
+  const bulkUpdate = useBulkUpdateProblems()
   const resetSchedule = useResetPracticeSchedule()
   const setSuspended = useSetPracticeSuspended()
   const [confirmation, setConfirmation] = useState<BulkConfirmation | null>(
     null,
   )
+  const [isMetadataDialogOpen, setIsMetadataDialogOpen] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const selectedProblemSlugs = useMemo(
@@ -33,7 +45,10 @@ export function ProblemBulkActionBar({
     [selectedRows],
   )
   const isPending =
-    bulkDelete.isPending || resetSchedule.isPending || setSuspended.isPending
+    bulkDelete.isPending ||
+    bulkUpdate.isPending ||
+    resetSchedule.isPending ||
+    setSuspended.isPending
 
   if (selectedRows.length === 0 && !message && !error) {
     return null
@@ -95,7 +110,28 @@ export function ProblemBulkActionBar({
 
       setConfirmation(null)
       onClearSelection()
-      setMessage(formatBulkDeleteResult(deletedCount, protectedCount, missingCount))
+      setMessage(
+        formatBulkDeleteResult(deletedCount, protectedCount, missingCount),
+      )
+    })
+  }
+
+  async function updateMetadata(set: ProblemsBulkUpdateProblemsRequest['set']) {
+    await runAction(async () => {
+      const response = await bulkUpdate.mutateAsync({
+        surface: 'dashboard',
+        problemSlugs: selectedProblemSlugs,
+        set,
+      })
+
+      setIsMetadataDialogOpen(false)
+      onClearSelection()
+      setMessage(
+        `Updated ${response.updatedProblemSlugs.length} ${pluralize(
+          'problem',
+          response.updatedProblemSlugs.length,
+        )}.`,
+      )
     })
   }
 
@@ -142,6 +178,14 @@ export function ProblemBulkActionBar({
             </Button>
             <Button
               disabled={isPending}
+              onClick={() => setIsMetadataDialogOpen(true)}
+              size="sm"
+              variant="ghost"
+            >
+              Edit Metadata
+            </Button>
+            <Button
+              disabled={isPending}
               onClick={() => setConfirmation('delete')}
               size="sm"
               variant="ghost"
@@ -171,6 +215,18 @@ export function ProblemBulkActionBar({
           }}
           pending={isPending}
           title="Reset selected schedules?"
+        />
+      ) : null}
+
+      {isMetadataDialogOpen ? (
+        <ProblemBulkMetadataDialog
+          onCancel={() => setIsMetadataDialogOpen(false)}
+          onSubmit={(set) => {
+            void updateMetadata(set)
+          }}
+          options={options}
+          pending={isPending}
+          selectedCount={selectedRows.length}
         />
       ) : null}
 

@@ -122,7 +122,9 @@ describe('ProblemLibraryScreen', () => {
     expect(screen.queryByRole('columnheader', { name: 'Tracks' })).toBeNull()
 
     await user.click(screen.getByRole('checkbox', { name: 'Select Two Sum' }))
-    expect(screen.getByRole('checkbox', { name: 'Select Two Sum' })).toBeChecked()
+    expect(
+      screen.getByRole('checkbox', { name: 'Select Two Sum' }),
+    ).toBeChecked()
     expect(screen.getByText('1 selected')).toBeVisible()
 
     await user.click(
@@ -223,7 +225,9 @@ describe('ProblemLibraryScreen', () => {
     })
     renderProblemLibrary()
 
-    await user.click(await screen.findByRole('button', { name: 'Expand Two Sum' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'Expand Two Sum' }),
+    )
 
     expect(screen.getByRole('link', { name: 'Open LeetCode' })).toHaveAttribute(
       'href',
@@ -265,7 +269,9 @@ describe('ProblemLibraryScreen', () => {
     })
     renderProblemLibrary()
 
-    await user.click(await screen.findByRole('button', { name: 'Expand 01 Matrix' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'Expand 01 Matrix' }),
+    )
     await user.click(screen.getByRole('button', { name: 'Resume' }))
 
     expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
@@ -290,12 +296,16 @@ describe('ProblemLibraryScreen', () => {
     })
     renderProblemLibrary()
 
-    await user.click(await screen.findByRole('button', { name: 'Expand Two Sum' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'Expand Two Sum' }),
+    )
     expect(
       screen.queryByRole('button', { name: 'Delete Problem' }),
     ).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Expand Binary Search' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Expand Binary Search' }),
+    )
     await user.click(screen.getByRole('button', { name: 'Delete Problem' }))
     const deleteDialog = screen.getByRole('dialog', { name: 'Delete problem?' })
     expect(deleteDialog).toBeVisible()
@@ -324,7 +334,9 @@ describe('ProblemLibraryScreen', () => {
     })
     renderProblemLibrary()
 
-    await user.click(await screen.findByRole('button', { name: 'Expand Binary Search' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'Expand Binary Search' }),
+    )
     await user.click(screen.getByRole('button', { name: 'Delete Problem' }))
     await user.click(
       within(screen.getByRole('dialog', { name: 'Delete problem?' })).getByRole(
@@ -360,8 +372,12 @@ describe('ProblemLibraryScreen', () => {
     })
     renderProblemLibrary()
 
-    await user.click(await screen.findByRole('checkbox', { name: 'Select Two Sum' }))
-    await user.click(screen.getByRole('checkbox', { name: 'Select Binary Search' }))
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Select Two Sum' }),
+    )
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select Binary Search' }),
+    )
 
     const bulkBar = screen.getByRole('region', { name: 'Bulk actions' })
     expect(within(bulkBar).getByText('2 selected')).toBeVisible()
@@ -409,7 +425,9 @@ describe('ProblemLibraryScreen', () => {
     })
 
     await user.click(screen.getByRole('checkbox', { name: 'Select Two Sum' }))
-    await user.click(screen.getByRole('checkbox', { name: 'Select Binary Search' }))
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select Binary Search' }),
+    )
     await user.click(screen.getByRole('checkbox', { name: 'Select 01 Matrix' }))
     await user.click(
       within(screen.getByRole('region', { name: 'Bulk actions' })).getByRole(
@@ -433,6 +451,127 @@ describe('ProblemLibraryScreen', () => {
         'Deleted 1 problem. Skipped 1 protected problem. Skipped 0 missing problems.',
       ),
     ).toBeVisible()
+  })
+
+  it('bulk-edits metadata with explicit enabled replacement fields', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.resolve(libraryResponse)
+      }
+
+      if (method === 'problems.bulkUpdateProblems') {
+        return Promise.resolve({
+          updatedProblemSlugs: ['binary-search', 'two-sum'],
+          missingProblemSlugs: [],
+        })
+      }
+
+      return Promise.resolve(createSerializedPracticeDetails())
+    })
+    renderProblemLibrary()
+
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Select Two Sum' }),
+    )
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select Binary Search' }),
+    )
+    await user.click(
+      within(screen.getByRole('region', { name: 'Bulk actions' })).getByRole(
+        'button',
+        { name: 'Edit Metadata' },
+      ),
+    )
+    const dialog = screen.getByRole('dialog', {
+      name: 'Edit selected metadata',
+    })
+
+    expect(
+      within(dialog).getByRole('button', { name: 'Update Problems' }),
+    ).toBeDisabled()
+
+    await user.click(
+      within(dialog).getByRole('checkbox', { name: 'Set difficulty' }),
+    )
+    await user.selectOptions(
+      within(dialog).getByLabelText('Difficulty'),
+      'hard',
+    )
+    await user.click(
+      within(dialog).getByRole('checkbox', { name: 'Set premium' }),
+    )
+    await user.selectOptions(within(dialog).getByLabelText('Premium'), 'true')
+    await user.click(
+      within(dialog).getByRole('checkbox', { name: 'Set topics' }),
+    )
+    await addDialogLabel(user, dialog, 'Topics', 'array')
+    await addDialogLabel(user, dialog, 'Topics', 'Graph')
+    await user.click(
+      within(dialog).getByRole('checkbox', { name: 'Set companies' }),
+    )
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Update Problems' }),
+    )
+
+    expect(sendMessage).toHaveBeenCalledWith('problems.bulkUpdateProblems', {
+      surface: 'dashboard',
+      problemSlugs: ['binary-search', 'two-sum'],
+      set: {
+        difficulty: 'hard',
+        isPremium: true,
+        topicLabels: ['Array', 'Graph'],
+        companyLabels: [],
+      },
+    })
+    expect(await screen.findByText('Updated 2 problems.')).toBeVisible()
+  })
+
+  it('bulk metadata omits disabled fields and clears enabled empty labels', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.resolve(libraryResponse)
+      }
+
+      if (method === 'problems.bulkUpdateProblems') {
+        return Promise.resolve({
+          updatedProblemSlugs: ['two-sum'],
+          missingProblemSlugs: [],
+        })
+      }
+
+      return Promise.resolve(createSerializedPracticeDetails())
+    })
+    renderProblemLibrary()
+
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Select Two Sum' }),
+    )
+    await user.click(
+      within(screen.getByRole('region', { name: 'Bulk actions' })).getByRole(
+        'button',
+        { name: 'Edit Metadata' },
+      ),
+    )
+    const dialog = screen.getByRole('dialog', {
+      name: 'Edit selected metadata',
+    })
+
+    await user.click(
+      within(dialog).getByRole('checkbox', { name: 'Set topics' }),
+    )
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Update Problems' }),
+    )
+
+    expect(sendMessage).toHaveBeenCalledWith('problems.bulkUpdateProblems', {
+      surface: 'dashboard',
+      problemSlugs: ['two-sum'],
+      set: {
+        topicLabels: [],
+      },
+    })
   })
 })
 
@@ -491,6 +630,19 @@ function getProblemTitleOrder() {
   }
 
   return titles
+}
+
+async function addDialogLabel(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+  groupLabel: 'Companies' | 'Topics',
+  value: string,
+) {
+  await user.clear(within(dialog).getByLabelText(groupLabel))
+  await user.type(within(dialog).getByLabelText(groupLabel), value)
+  await user.click(
+    within(dialog).getByRole('button', { name: `Add ${groupLabel}` }),
+  )
 }
 
 const topicArray = { id: 'array', label: 'Array' }

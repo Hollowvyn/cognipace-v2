@@ -27,9 +27,7 @@ export function ProblemLibraryScreen({
   const library = libraryQuery.data
   const tableModel = useProblemLibraryTable(library?.rows ?? [])
   const table = tableModel.table
-  const filteredRows = getFilteredOriginalRows(
-    table.getFilteredRowModel().rows,
-  )
+  const filteredRows = getFilteredOriginalRows(table.getFilteredRowModel().rows)
   const summary = library
     ? summarizeVisibleLibraryRows(library, filteredRows)
     : {
@@ -94,6 +92,7 @@ export function ProblemLibraryScreen({
               <ProblemLibraryNoResults />
             ) : (
               <ProblemLibraryTable
+                options={library.options}
                 renderEditProblemAction={renderEditProblemAction}
                 table={table}
               />
