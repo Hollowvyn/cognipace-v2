@@ -50,10 +50,16 @@ describe('ProblemLabelInput', () => {
     renderLabelInput()
 
     await user.click(screen.getByLabelText('Topics'))
+
+    expect(screen.getByRole('option', { name: /Array/ })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    )
+
     await user.keyboard('{ArrowDown}{Enter}')
 
     expect(
-      screen.getByRole('button', { name: 'Remove topic Binary Search' }),
+      screen.getByRole('button', { name: 'Remove topic Array' }),
     ).toBeVisible()
   })
 

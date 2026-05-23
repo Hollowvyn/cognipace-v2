@@ -1,4 +1,4 @@
-import { Check, ChevronDown, X } from 'lucide-react'
+import { ChevronDown, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 
 import { Badge } from '@/components/ui/badge'
@@ -32,7 +32,7 @@ export function ProblemLabelInput({
   const listboxId = `${inputId}-listbox`
   const rootRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const [activeIndex, setActiveIndex] = useState(0)
+  const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const normalizedDraft = normalizeProblemLabel(draft)
@@ -45,11 +45,13 @@ export function ProblemLabelInput({
     visibleOptions.length === 0 &&
     !hasLabel(labels, readCanonicalLabel(draft, options))
   const optionCount = visibleOptions.length + (canAddDraft ? 1 : 0)
-  const selectedIndex =
-    optionCount === 0 ? 0 : Math.min(activeIndex, optionCount - 1)
+  const activeOptionIndex =
+    activeIndex === null || optionCount === 0
+      ? null
+      : Math.min(activeIndex, optionCount - 1)
   const activeOptionId =
-    isOpen && optionCount > 0
-      ? `${listboxId}-option-${selectedIndex}`
+    isOpen && activeOptionIndex !== null
+      ? `${listboxId}-option-${activeOptionIndex}`
       : undefined
 
   useEffect(() => {
@@ -86,8 +88,8 @@ export function ProblemLabelInput({
   }
 
   function commitDraft() {
-    if (isOpen && optionCount > 0) {
-      selectOption(selectedIndex)
+    if (isOpen && activeOptionIndex !== null) {
+      selectOption(activeOptionIndex)
       return
     }
 
@@ -138,7 +140,11 @@ export function ProblemLabelInput({
       event.preventDefault()
       setIsOpen(true)
       setActiveIndex((current) =>
-        optionCount === 0 ? 0 : (current + 1) % optionCount,
+        optionCount === 0
+          ? null
+          : current === null
+            ? 0
+            : (current + 1) % optionCount,
       )
       return
     }
@@ -147,7 +153,11 @@ export function ProblemLabelInput({
       event.preventDefault()
       setIsOpen(true)
       setActiveIndex((current) =>
-        optionCount === 0 ? 0 : (current - 1 + optionCount) % optionCount,
+        optionCount === 0
+          ? null
+          : current === null
+            ? optionCount - 1
+            : (current - 1 + optionCount) % optionCount,
       )
       return
     }
@@ -217,7 +227,7 @@ export function ProblemLabelInput({
               onChange={(event) => {
                 setDraft(event.target.value)
                 setIsOpen(true)
-                setActiveIndex(0)
+                setActiveIndex(null)
               }}
               onFocus={() => setIsOpen(true)}
               onClick={() => setIsOpen(true)}
@@ -271,11 +281,11 @@ export function ProblemLabelInput({
             role="listbox"
           >
             {visibleOptions.map((option, index) => {
-              const active = selectedIndex === index
+              const active = activeOptionIndex === index
 
               return (
                 <button
-                  aria-selected={active}
+                  aria-selected={false}
                   className={optionClassName(active)}
                   id={`${listboxId}-option-${index}`}
                   key={option.id}
@@ -284,16 +294,16 @@ export function ProblemLabelInput({
                   role="option"
                   type="button"
                 >
-                  <OptionCheck selected={active} />
+                  <OptionCheck />
                   <span className="min-w-0 truncate">{option.label}</span>
                 </button>
               )
             })}
             {canAddDraft ? (
               <button
-                aria-selected={selectedIndex === visibleOptions.length}
+                aria-selected={false}
                 className={optionClassName(
-                  selectedIndex === visibleOptions.length,
+                  activeOptionIndex === visibleOptions.length,
                 )}
                 id={`${listboxId}-option-${visibleOptions.length}`}
                 onClick={() => commitCreatedLabel()}
@@ -301,9 +311,7 @@ export function ProblemLabelInput({
                 role="option"
                 type="button"
               >
-                <OptionCheck
-                  selected={selectedIndex === visibleOptions.length}
-                />
+                <OptionCheck />
                 <span className="min-w-0 truncate">
                   Create "{normalizedDraft}"
                 </span>
@@ -340,24 +348,22 @@ function hasLabel(labels: readonly string[], label: string) {
   )
 }
 
-function optionClassName(selected: boolean) {
+function optionClassName(active: boolean) {
   return cn(
     'flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[calc(var(--cp-control-radius)-2px)] px-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-    selected && 'bg-muted text-foreground',
+    active && 'bg-muted text-foreground',
   )
 }
 
-function OptionCheck({ selected }: { selected: boolean }) {
+function OptionCheck() {
   return (
     <span
       aria-hidden="true"
       className={cn(
         'grid size-4 shrink-0 place-items-center rounded border border-border text-primary',
-        selected ? 'border-primary bg-primary/15' : 'opacity-60',
+        'opacity-60',
       )}
-    >
-      {selected ? <Check className="size-3" /> : null}
-    </span>
+    />
   )
 }
 
