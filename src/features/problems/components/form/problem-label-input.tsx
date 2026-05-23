@@ -32,13 +32,25 @@ export function ProblemLabelInput({
   const listboxId = `${inputId}-listbox`
   const rootRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const [activeIndex, setActiveIndex] = useState(0)
   const [draft, setDraft] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const normalizedDraft = normalizeProblemLabel(draft)
-  const visibleOptions = filterOptions(options, normalizedDraft)
+  const visibleOptions = filterOptions(
+    options.filter((option) => !hasLabel(labels, option.label)),
+    normalizedDraft,
+  )
   const canAddDraft =
     normalizedDraft.length > 0 &&
+    visibleOptions.length === 0 &&
     !hasLabel(labels, readCanonicalLabel(draft, options))
+  const optionCount = visibleOptions.length + (canAddDraft ? 1 : 0)
+  const selectedIndex =
+    optionCount === 0 ? 0 : Math.min(activeIndex, optionCount - 1)
+  const activeOptionId =
+    isOpen && optionCount > 0
+      ? `${listboxId}-option-${selectedIndex}`
+      : undefined
 
   useEffect(() => {
     if (!isOpen) {
@@ -66,22 +78,42 @@ export function ProblemLabelInput({
     onChange(normalizeProblemLabelList([...labels, normalizedLabel]))
     setDraft('')
     setIsOpen(false)
+    inputRef.current?.focus()
   }
 
   function removeLabel(labelToRemove: string) {
     onChange(labels.filter((currentLabel) => currentLabel !== labelToRemove))
   }
 
-  function toggleLabel(nextLabel: string) {
-    if (hasLabel(labels, nextLabel)) {
-      removeLabel(nextLabel)
+  function commitDraft() {
+    if (isOpen && optionCount > 0) {
+      selectOption(selectedIndex)
       return
     }
 
-    addLabel(nextLabel)
+    const nextLabel =
+      visibleOptions[0]?.label ??
+      (canAddDraft ? readCanonicalLabel(draft, options) : '')
+
+    if (nextLabel) {
+      addLabel(nextLabel)
+    }
   }
 
-  function commitDraft() {
+  function selectOption(index: number) {
+    const option = visibleOptions[index]
+
+    if (option) {
+      addLabel(option.label)
+      return
+    }
+
+    if (canAddDraft && index === visibleOptions.length) {
+      commitCreatedLabel()
+    }
+  }
+
+  function commitCreatedLabel() {
     const nextLabel = readCanonicalLabel(draft, options)
 
     if (nextLabel) {
@@ -103,7 +135,20 @@ export function ProblemLabelInput({
     }
 
     if (event.key === 'ArrowDown') {
+      event.preventDefault()
       setIsOpen(true)
+      setActiveIndex((current) =>
+        optionCount === 0 ? 0 : (current + 1) % optionCount,
+      )
+      return
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setIsOpen(true)
+      setActiveIndex((current) =>
+        optionCount === 0 ? 0 : (current - 1 + optionCount) % optionCount,
+      )
       return
     }
 
@@ -159,6 +204,7 @@ export function ProblemLabelInput({
             ))}
             <input
               aria-autocomplete="list"
+              aria-activedescendant={activeOptionId}
               aria-controls={listboxId}
               aria-expanded={isOpen}
               aria-labelledby={labelId}
@@ -171,8 +217,10 @@ export function ProblemLabelInput({
               onChange={(event) => {
                 setDraft(event.target.value)
                 setIsOpen(true)
+                setActiveIndex(0)
               }}
               onFocus={() => setIsOpen(true)}
+              onClick={() => setIsOpen(true)}
               onKeyDown={handleInputKeyDown}
               placeholder={
                 labels.length > 0 ? '' : `Choose ${label.toLowerCase()}...`
@@ -222,40 +270,48 @@ export function ProblemLabelInput({
             id={listboxId}
             role="listbox"
           >
-            {visibleOptions.map((option) => {
-              const selected = hasLabel(labels, option.label)
+            {visibleOptions.map((option, index) => {
+              const active = selectedIndex === index
 
               return (
                 <button
-                  aria-selected={selected}
-                  className={optionClassName(selected)}
+                  aria-selected={active}
+                  className={optionClassName(active)}
+                  id={`${listboxId}-option-${index}`}
                   key={option.id}
-                  onClick={() => toggleLabel(option.label)}
+                  onClick={() => addLabel(option.label)}
+                  onMouseEnter={() => setActiveIndex(index)}
                   role="option"
                   type="button"
                 >
-                  <OptionCheck selected={selected} />
+                  <OptionCheck selected={active} />
                   <span className="min-w-0 truncate">{option.label}</span>
                 </button>
               )
             })}
             {canAddDraft ? (
               <button
-                aria-selected={false}
-                className={optionClassName(false)}
-                onClick={() => commitDraft()}
+                aria-selected={selectedIndex === visibleOptions.length}
+                className={optionClassName(
+                  selectedIndex === visibleOptions.length,
+                )}
+                id={`${listboxId}-option-${visibleOptions.length}`}
+                onClick={() => commitCreatedLabel()}
+                onMouseEnter={() => setActiveIndex(visibleOptions.length)}
                 role="option"
                 type="button"
               >
-                <OptionCheck selected={false} />
+                <OptionCheck
+                  selected={selectedIndex === visibleOptions.length}
+                />
                 <span className="min-w-0 truncate">
-                  Add "{normalizedDraft}"
+                  Create "{normalizedDraft}"
                 </span>
               </button>
             ) : null}
             {visibleOptions.length === 0 && !canAddDraft ? (
               <p className="m-0 px-2 py-2 text-muted-foreground">
-                Type a label and press Enter.
+                No matching labels.
               </p>
             ) : null}
           </div>

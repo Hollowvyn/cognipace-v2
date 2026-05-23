@@ -1,5 +1,4 @@
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react'
-import type { MouseEvent } from 'react'
 import {
   flexRender,
   type Header,
@@ -123,16 +122,9 @@ function ProblemLibraryTableRow({
     <>
       <tr
         className={cn(
-          'cursor-pointer border-b border-border transition-colors hover:bg-muted/45',
+          'border-b border-border transition-colors hover:bg-muted/45',
           row.getIsExpanded() && 'bg-muted/55',
         )}
-        onClick={(event) => {
-          if (shouldIgnoreRowToggle(event)) {
-            return
-          }
-
-          row.toggleExpanded()
-        }}
       >
         {row.getVisibleCells().map((cell) =>
           cell.column.id === problemLibraryColumnIds.title ? (
@@ -164,19 +156,6 @@ function ProblemLibraryTableRow({
         </tr>
       ) : null}
     </>
-  )
-}
-
-function shouldIgnoreRowToggle(event: MouseEvent<HTMLTableRowElement>) {
-  const target = event.target
-
-  return (
-    target instanceof Element &&
-    Boolean(
-      target.closest(
-        'a, button, input, select, textarea, [role="button"], [data-no-row-toggle]',
-      ),
-    )
   )
 }
 

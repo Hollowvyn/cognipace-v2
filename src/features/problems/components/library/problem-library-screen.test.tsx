@@ -174,7 +174,7 @@ describe('ProblemLibraryScreen', () => {
     )
 
     await user.click(
-      screen.getByRole('checkbox', { name: 'Select visible problems' }),
+      screen.getByRole('checkbox', { name: 'Select current page' }),
     )
     expect(
       screen.getByRole('checkbox', { name: 'Select Binary Search' }),
@@ -229,11 +229,6 @@ describe('ProblemLibraryScreen', () => {
     expect(screen.queryByText('Tracks')).not.toBeInTheDocument()
     expect(
       screen.queryByText('LeetCode 75: Arrays and Hashing'),
-    ).not.toBeInTheDocument()
-
-    await user.click(getProblemRow('Two Sum'))
-    expect(
-      screen.queryByRole('button', { name: 'Collapse Two Sum' }),
     ).not.toBeInTheDocument()
 
     await user.click(getProblemRow('Two Sum'))
@@ -584,13 +579,18 @@ describe('ProblemLibraryScreen', () => {
     )
     await user.selectOptions(within(dialog).getByLabelText('Premium'), 'true')
     await user.click(
-      within(dialog).getByRole('checkbox', { name: 'Set topics' }),
+      within(dialog).getByRole('checkbox', { name: 'Replace topics' }),
     )
     await addDialogLabel(user, dialog, 'Topics', 'array')
     await addDialogLabel(user, dialog, 'Topics', 'Graph')
     await user.click(
-      within(dialog).getByRole('checkbox', { name: 'Set companies' }),
+      within(dialog).getByRole('checkbox', { name: 'Replace companies' }),
     )
+    expect(
+      within(dialog).getByText(
+        'No companies selected; this will clear companies.',
+      ),
+    ).toBeVisible()
     await user.click(
       within(dialog).getByRole('button', { name: 'Update Problems' }),
     )
@@ -640,8 +640,11 @@ describe('ProblemLibraryScreen', () => {
     })
 
     await user.click(
-      within(dialog).getByRole('checkbox', { name: 'Set topics' }),
+      within(dialog).getByRole('checkbox', { name: 'Replace topics' }),
     )
+    expect(
+      within(dialog).getByText('No topics selected; this will clear topics.'),
+    ).toBeVisible()
     await user.click(
       within(dialog).getByRole('button', { name: 'Update Problems' }),
     )

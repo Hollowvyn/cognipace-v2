@@ -27,7 +27,7 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
         <ProblemSelectionCheckbox
           checked={table.getIsAllPageRowsSelected()}
           indeterminate={table.getIsSomePageRowsSelected()}
-          label="Select visible problems"
+          label="Select current page"
           onChange={(checked) => table.toggleAllPageRowsSelected(checked)}
         />
       ),

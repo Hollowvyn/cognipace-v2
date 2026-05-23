@@ -162,32 +162,46 @@ export function ProblemBulkMetadataDialog({
 
           <BulkFieldToggle
             checked={enabledFields.topics}
-            label="Set topics"
+            label="Replace topics"
             onChange={(checked) => setEnabled('topics', checked)}
           />
           {enabledFields.topics ? (
-            <ProblemLabelInput
-              itemName="topic"
-              label="Topics"
-              labels={topicLabels}
-              onChange={setTopicLabels}
-              options={options.topics}
-            />
+            <div className="grid gap-2">
+              <ProblemLabelInput
+                itemName="topic"
+                label="Topics"
+                labels={topicLabels}
+                onChange={setTopicLabels}
+                options={options.topics}
+              />
+              {topicLabels.length === 0 ? (
+                <p className="m-0 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+                  No topics selected; this will clear topics.
+                </p>
+              ) : null}
+            </div>
           ) : null}
 
           <BulkFieldToggle
             checked={enabledFields.companies}
-            label="Set companies"
+            label="Replace companies"
             onChange={(checked) => setEnabled('companies', checked)}
           />
           {enabledFields.companies ? (
-            <ProblemLabelInput
-              itemName="company"
-              label="Companies"
-              labels={companyLabels}
-              onChange={setCompanyLabels}
-              options={options.companies}
-            />
+            <div className="grid gap-2">
+              <ProblemLabelInput
+                itemName="company"
+                label="Companies"
+                labels={companyLabels}
+                onChange={setCompanyLabels}
+                options={options.companies}
+              />
+              {companyLabels.length === 0 ? (
+                <p className="m-0 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+                  No companies selected; this will clear companies.
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </div>
 
