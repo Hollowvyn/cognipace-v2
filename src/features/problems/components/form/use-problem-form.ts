@@ -20,12 +20,12 @@ export function createProblemFormValues(
   } = {},
 ): ProblemFormValues {
   return {
-    companyLabels: [...(labels.companyLabels ?? [])],
+    companyLabels: normalizeProblemLabelList(labels.companyLabels ?? []),
     difficulty: problem?.difficulty ?? 'unknown',
     isPremium: problem?.isPremium ?? false,
     slugOrUrl: problem?.slug ?? '',
     title: problem?.title ?? '',
-    topicLabels: [...(labels.topicLabels ?? [])],
+    topicLabels: normalizeProblemLabelList(labels.topicLabels ?? []),
   }
 }
 
@@ -42,4 +42,27 @@ export function useProblemForm(initialValues: ProblemFormValues) {
     setField,
     values,
   }
+}
+
+export function normalizeProblemLabelList(labels: readonly string[]) {
+  const seenLabels = new Set<string>()
+  const normalizedLabels: string[] = []
+
+  for (const label of labels) {
+    const normalizedLabel = normalizeProblemLabel(label)
+    const key = normalizedLabel.toLowerCase()
+
+    if (!normalizedLabel || seenLabels.has(key)) {
+      continue
+    }
+
+    seenLabels.add(key)
+    normalizedLabels.push(normalizedLabel)
+  }
+
+  return normalizedLabels
+}
+
+export function normalizeProblemLabel(label: string) {
+  return label.trim().replace(/\s+/g, ' ')
 }

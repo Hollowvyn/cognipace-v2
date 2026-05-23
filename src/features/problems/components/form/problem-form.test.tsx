@@ -5,6 +5,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { sendMessage } from '@/extension/messaging'
 import {
   createProblemForEditResponse,
+  createProblemLibraryResponse,
   createSerializedProblem,
 } from '@/testing/problem-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
@@ -18,6 +19,21 @@ vi.mock('@/extension/messaging', () => ({
 describe('ProblemForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.resolve(
+          createProblemLibraryResponse({
+            options: {
+              topics: [{ id: 'array', label: 'Array' }],
+              companies: [{ id: 'meta', label: 'Meta' }],
+              trackGroups: [],
+            },
+          }),
+        )
+      }
+
+      return Promise.resolve(createProblemForEditResponse())
+    })
   })
 
   it('validates required create fields', async () => {
@@ -42,11 +58,6 @@ describe('ProblemForm', () => {
   it('creates a problem with a normalized LeetCode slug', async () => {
     const user = userEvent.setup()
     const onSaved = vi.fn()
-    vi.mocked(sendMessage).mockResolvedValueOnce(
-      createProblemForEditResponse({
-        problem: createSerializedProblem({ slug: 'two-sum', title: 'Two Sum' }),
-      }),
-    )
     renderProblemForm(
       <ProblemForm mode="create" onCancel={vi.fn()} onSaved={onSaved} />,
     )
@@ -130,6 +141,104 @@ describe('ProblemForm', () => {
     })
   })
 
+  it('creates with existing and new topic and company labels', async () => {
+    const user = userEvent.setup()
+    const onSaved = vi.fn()
+    renderProblemForm(
+      <ProblemForm mode="create" onCancel={vi.fn()} onSaved={onSaved} />,
+    )
+
+    await user.type(screen.getByLabelText('LeetCode URL or slug'), 'two-sum')
+    await user.type(screen.getByLabelText('Title'), 'Two Sum')
+    await addLabel(user, 'Topics', 'array')
+    await addLabel(user, 'Topics', 'Dynamic Programming')
+    await addLabel(user, 'Companies', 'Meta')
+    await addLabel(user, 'Companies', 'Netflix')
+    await user.click(screen.getByRole('button', { name: 'Save Problem' }))
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    expect(sendMessage).toHaveBeenCalledWith('problems.createProblem', {
+      surface: 'dashboard',
+      slugOrUrl: 'two-sum',
+      title: 'Two Sum',
+      difficulty: 'unknown',
+      isPremium: false,
+      topicLabels: ['Array', 'Dynamic Programming'],
+      companyLabels: ['Meta', 'Netflix'],
+    })
+  })
+
+  it('replaces and clears edit labels without duplicate submissions', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getProblemForEdit') {
+        return Promise.resolve(
+          createProblemForEditResponse({
+            problem: createSerializedProblem({
+              slug: 'two-sum',
+              title: 'Two Sum',
+            }),
+            topics: [{ id: 'array', label: 'Array' }],
+            companies: [{ id: 'meta', label: 'Meta' }],
+          }),
+        )
+      }
+
+      return Promise.resolve(createProblemForEditResponse())
+    })
+    renderProblemForm(
+      <ProblemForm
+        mode="edit"
+        onCancel={vi.fn()}
+        onSaved={vi.fn()}
+        problemSlug="two-sum"
+      />,
+    )
+
+    await screen.findByRole('button', { name: 'Remove topic Array' })
+    await user.click(screen.getByRole('button', { name: 'Remove topic Array' }))
+    await addLabel(user, 'Topics', 'Graph')
+    await addLabel(user, 'Topics', ' graph ')
+    await user.click(
+      screen.getByRole('button', { name: 'Remove company Meta' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Save Problem' }))
+
+    await waitFor(() => {
+      expect(sendMessage).toHaveBeenCalledWith('problems.updateProblem', {
+        surface: 'dashboard',
+        problemSlug: 'two-sum',
+        title: 'Two Sum',
+        difficulty: 'easy',
+        isPremium: false,
+        topicLabels: ['Graph'],
+        companyLabels: [],
+      })
+    })
+  })
+
+  it('keeps label edits visible after a failed save', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.resolve(createProblemLibraryResponse())
+      }
+
+      return Promise.reject(new Error('save failed'))
+    })
+    renderProblemForm(
+      <ProblemForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
+    )
+
+    await user.type(screen.getByLabelText('LeetCode URL or slug'), 'two-sum')
+    await user.type(screen.getByLabelText('Title'), 'Two Sum')
+    await addLabel(user, 'Topics', 'Array')
+    await user.click(screen.getByRole('button', { name: 'Save Problem' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('save failed')
+    expect(screen.getByText('Array')).toBeVisible()
+  })
+
   it('cancels without mutating', async () => {
     const user = userEvent.setup()
     const onCancel = vi.fn()
@@ -138,7 +247,10 @@ describe('ProblemForm', () => {
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
     expect(onCancel).toHaveBeenCalledTimes(1)
-    expect(sendMessage).not.toHaveBeenCalled()
+    expect(sendMessage).not.toHaveBeenCalledWith(
+      'problems.createProblem',
+      expect.anything(),
+    )
   })
 })
 
@@ -146,4 +258,14 @@ function renderProblemForm(ui: React.ReactElement) {
   const { wrapper } = createQueryTestHarness()
 
   return render(ui, { wrapper })
+}
+
+async function addLabel(
+  user: ReturnType<typeof userEvent.setup>,
+  groupLabel: 'Companies' | 'Topics',
+  value: string,
+) {
+  await user.clear(screen.getByLabelText(groupLabel))
+  await user.type(screen.getByLabelText(groupLabel), value)
+  await user.click(screen.getByRole('button', { name: `Add ${groupLabel}` }))
 }

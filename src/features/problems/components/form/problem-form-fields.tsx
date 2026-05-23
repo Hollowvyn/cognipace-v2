@@ -13,7 +13,12 @@ import {
 import { cn } from '@/utils/cn'
 
 import {
+  ProblemLabelInput,
+  type ProblemLabelOption,
+} from './problem-label-input'
+import {
   createProblemFormValues,
+  normalizeProblemLabelList,
   useProblemForm,
   type ProblemFormValues,
 } from './use-problem-form'
@@ -27,9 +32,12 @@ export function ProblemFormFields({
   onSubmit,
   pending,
   problem,
+  companyOptions = [],
   selectedCompanyLabels = [],
   selectedTopicLabels = [],
+  topicOptions = [],
 }: {
+  companyOptions?: readonly ProblemLabelOption[]
   mode: ProblemFormMode
   onCancel: () => void
   onSaved: () => void
@@ -38,6 +46,7 @@ export function ProblemFormFields({
   problem?: SerializedProblem | undefined
   selectedCompanyLabels?: readonly string[]
   selectedTopicLabels?: readonly string[]
+  topicOptions?: readonly ProblemLabelOption[]
 }) {
   const { setField, values } = useProblemForm(
     createProblemFormValues(problem, {
@@ -52,7 +61,8 @@ export function ProblemFormFields({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const validationError = validateProblemForm(values, mode)
+    const normalizedValues = normalizeProblemFormValues(values)
+    const validationError = validateProblemForm(normalizedValues, mode)
 
     if (validationError) {
       setError(validationError)
@@ -62,7 +72,7 @@ export function ProblemFormFields({
     setError(null)
 
     try {
-      await onSubmit(values)
+      await onSubmit(normalizedValues)
       onSaved()
     } catch (caughtError) {
       setError(
@@ -168,6 +178,22 @@ export function ProblemFormFields({
         <span>LeetCode Premium</span>
       </button>
 
+      <ProblemLabelInput
+        itemName="topic"
+        label="Topics"
+        labels={values.topicLabels}
+        onChange={(topicLabels) => setField('topicLabels', topicLabels)}
+        options={topicOptions}
+      />
+
+      <ProblemLabelInput
+        itemName="company"
+        label="Companies"
+        labels={values.companyLabels}
+        onChange={(companyLabels) => setField('companyLabels', companyLabels)}
+        options={companyOptions}
+      />
+
       <p className="m-0 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
         URL:{' '}
         {normalizedLocation
@@ -253,6 +279,16 @@ function validateProblemForm(values: ProblemFormValues, mode: ProblemFormMode) {
   }
 
   return null
+}
+
+function normalizeProblemFormValues(
+  values: ProblemFormValues,
+): ProblemFormValues {
+  return {
+    ...values,
+    companyLabels: normalizeProblemLabelList(values.companyLabels),
+    topicLabels: normalizeProblemLabelList(values.topicLabels),
+  }
 }
 
 function formatDifficultyOption(difficulty: ProblemDifficulty) {

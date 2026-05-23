@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react'
 import { InlineStatus } from '@/components/ui/inline-status'
 import {
   useCreateProblem,
+  useProblemLibrary,
   useProblemForEdit,
   useUpdateProblem,
 } from '@/features/problems/api/problems-api'
@@ -45,9 +46,14 @@ function CreateProblemForm({
   onSaved: () => void
 }) {
   const createProblem = useCreateProblem()
+  const libraryQuery = useProblemLibrary({ surface: 'dashboard' })
+  const labelOptions = libraryQuery.data?.options
+  const companyOptions = labelOptions?.companies ?? []
+  const topicOptions = labelOptions?.topics ?? []
 
   return (
     <ProblemFormFields
+      companyOptions={companyOptions}
       mode="create"
       onCancel={onCancel}
       onSaved={onSaved}
@@ -63,6 +69,7 @@ function CreateProblemForm({
         })
       }
       pending={createProblem.isPending}
+      topicOptions={topicOptions}
     />
   )
 }
@@ -101,6 +108,7 @@ function EditProblemForm({
 
   return (
     <ProblemFormFields
+      companyOptions={editQuery.data.options.companies}
       key={editQuery.data.problem.slug}
       mode="edit"
       onCancel={onCancel}
@@ -122,6 +130,7 @@ function EditProblemForm({
         (company) => company.label,
       )}
       selectedTopicLabels={editQuery.data.topics.map((topic) => topic.label)}
+      topicOptions={editQuery.data.options.topics}
     />
   )
 }
