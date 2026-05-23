@@ -743,7 +743,6 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
         slug: 'two-sum',
         title: 'Two Sum',
         difficulty: 'easy',
-        isUserCreated: false,
       }),
       status: 'due',
       summary: createSerializedPracticeSummary({
@@ -788,7 +787,6 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
         title: '01 Matrix',
         difficulty: 'medium',
         isPremium: true,
-        isUserCreated: false,
       }),
       status: 'suspended',
       summary: createSerializedPracticeSummary({

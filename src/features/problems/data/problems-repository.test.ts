@@ -87,7 +87,6 @@ describe('ProblemsRepository library data', () => {
 
     expect(created.problem).toMatchObject({
       slug: 'binary-search',
-      isUserCreated: true,
     })
     expect(edited).toMatchObject({
       problem: {
@@ -101,7 +100,6 @@ describe('ProblemsRepository library data', () => {
     expect(seededDuplicate.problem).toMatchObject({
       slug: 'two-sum',
       title: 'Two Sum Custom',
-      isUserCreated: false,
     })
   })
 
@@ -127,6 +125,7 @@ describe('ProblemsRepository library data', () => {
       surface: 'dashboard',
       problemSlug: 'two-sum',
     })
+    await saveSolvedReview(handle.db, 'binary-search')
     await bulkDeleteProblems(handle.db, {
       surface: 'dashboard',
       problemSlugs: ['binary-search', 'two-sum', 'missing-problem'],
@@ -153,6 +152,18 @@ describe('ProblemsRepository library data', () => {
         problemSlug: 'two-sum',
       }),
     ).rejects.toThrow(/was not found/)
+    expect(
+      await handle.db
+        .select()
+        .from(problemPractice)
+        .where(eq(problemPractice.problemSlug, 'binary-search')),
+    ).toEqual([])
+    expect(
+      await handle.db
+        .select()
+        .from(reviewAttempts)
+        .where(eq(reviewAttempts.problemSlug, 'binary-search')),
+    ).toEqual([])
   })
 
   it('migrates stale page slugs without losing relations or practice history', async () => {

@@ -51,7 +51,6 @@ const queueCandidateSelection = {
     title: problems.title,
     difficulty: problems.difficulty,
     isPremium: problems.isPremium,
-    isUserCreated: problems.isUserCreated,
     createdAt: problems.createdAt,
     updatedAt: problems.updatedAt,
   },
@@ -101,7 +100,6 @@ interface QueueProblemRow {
   title: string
   difficulty: string
   isPremium: boolean
-  isUserCreated: boolean
   createdAt: number
   updatedAt: number
 }
@@ -141,7 +139,6 @@ function mapProblem(row: QueueProblemRow): Problem {
     title: row.title,
     difficulty: normalizeProblemDifficulty(row.difficulty),
     isPremium: row.isPremium,
-    isUserCreated: row.isUserCreated,
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
   }

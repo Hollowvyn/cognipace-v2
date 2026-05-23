@@ -862,7 +862,6 @@ const problemRecord = {
   title: overlayProblem.title,
   difficulty: overlayProblem.difficulty,
   isPremium: overlayProblem.isPremium,
-  isUserCreated: false,
   createdAt: '2026-01-01T10:00:00.000Z',
   updatedAt: '2026-01-01T10:00:00.000Z',
 } as const

@@ -66,7 +66,6 @@ export class ProblemsRepository {
         title: input.title?.trim() || titleFromSlug(slug),
         difficulty: normalizeProblemDifficulty(input.difficulty),
         isPremium: input.isPremium ?? false,
-        isUserCreated: false,
         createdAt: timestamp,
         updatedAt: timestamp,
       } as const
@@ -132,7 +131,6 @@ export class ProblemsRepository {
           title: input.title.trim(),
           difficulty: normalizeProblemDifficulty(input.difficulty),
           isPremium: input.isPremium,
-          isUserCreated: true,
           createdAt: timestamp,
           updatedAt: timestamp,
         })
@@ -193,8 +191,7 @@ export class ProblemsRepository {
 
   async bulkUpdateProblems(input: BulkUpdateProblemsInput, now = new Date()) {
     const requestedSlugs = normalizeProblemSlugList(input.problemSlugs)
-    const existingRows = await this.readProblemOwnershipRows(requestedSlugs)
-    const existingRowSlugs = new Set(existingRows.map((row) => row.slug))
+    const existingRowSlugs = await this.readExistingProblemSlugs(requestedSlugs)
     const existingSlugs = requestedSlugs.filter((slug) =>
       existingRowSlugs.has(slug),
     )
@@ -395,18 +392,19 @@ export class ProblemsRepository {
     return rows[0] ?? null
   }
 
-  private async readProblemOwnershipRows(problemSlugs: readonly string[]) {
+  private async readExistingProblemSlugs(problemSlugs: readonly string[]) {
     if (problemSlugs.length === 0) {
-      return []
+      return new Set<string>()
     }
 
-    return this.db
+    const rows = await this.db
       .select({
         slug: problems.slug,
-        isUserCreated: problems.isUserCreated,
       })
       .from(problems)
       .where(inArray(problems.slug, [...problemSlugs]))
+
+    return new Set(rows.map((row) => row.slug))
   }
 
   private async readTrackMembershipsByProblem(
@@ -568,7 +566,6 @@ function mapProblem(row: ProblemRow): Problem {
     title: row.title,
     difficulty: normalizeProblemDifficulty(row.difficulty),
     isPremium: row.isPremium,
-    isUserCreated: row.isUserCreated,
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
   }

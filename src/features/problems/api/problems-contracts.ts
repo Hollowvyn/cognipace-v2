@@ -19,7 +19,6 @@ export const serializedProblemSchema = z.object({
   title: z.string(),
   difficulty: problemDifficultySchema,
   isPremium: z.boolean(),
-  isUserCreated: z.boolean(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 })

@@ -7,7 +7,7 @@ import { createTracksRepository } from '@/features/tracks/data/tracks-repository
 import migration0000 from '@/platform/db/migrations/0000_initial.sql?raw'
 import migration0001 from '@/platform/db/migrations/0001_lively_namor.sql?raw'
 import migration0002 from '@/platform/db/migrations/0002_add_track_due_at.sql?raw'
-import migration0003 from '@/platform/db/migrations/0003_problem_ownership_and_constraints.sql?raw'
+import migration0003 from '@/platform/db/migrations/0003_problem_slugs_and_constraints.sql?raw'
 import { createDb, createSqliteWasmLocator } from '@/platform/db'
 import { execProxy, isMutationStatement } from '@/platform/db/proxy'
 import { problemPractice, problems } from '@/platform/db/schema'
@@ -237,9 +237,14 @@ describe('db foundation', () => {
     expect(
       readSqliteRows(
         handle.rawDb,
-        'SELECT slug, difficulty, is_user_created FROM problems',
+        'SELECT slug, difficulty FROM problems',
       ),
-    ).toEqual([['two-sum', 'medium', 0]])
+    ).toEqual([['two-sum', 'medium']])
+    expect(
+      readSqliteRows(handle.rawDb, "PRAGMA table_info('problems')")
+        .map((row) => row[1])
+        .includes('is_user_created'),
+    ).toBe(false)
     expect(
       readSqliteRows(handle.rawDb, 'SELECT problem_slug FROM problem_topics'),
     ).toEqual([['two-sum']])

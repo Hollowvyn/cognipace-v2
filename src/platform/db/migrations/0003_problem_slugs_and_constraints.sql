@@ -22,7 +22,6 @@ CREATE TABLE `__new_problems` (
 	`title` text NOT NULL,
 	`difficulty` text NOT NULL,
 	`is_premium` integer DEFAULT false NOT NULL,
-	`is_user_created` integer DEFAULT false NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	CONSTRAINT "problems_difficulty_check" CHECK(`difficulty` in ('easy', 'medium', 'hard', 'unknown'))
@@ -33,7 +32,6 @@ INSERT INTO `__new_problems`(
 	"title",
 	"difficulty",
 	"is_premium",
-	"is_user_created",
 	"created_at",
 	"updated_at"
 )
@@ -45,7 +43,6 @@ SELECT
 		ELSE 'unknown'
 	END,
 	"is_premium",
-	false,
 	"created_at",
 	"updated_at"
 FROM `problems`;

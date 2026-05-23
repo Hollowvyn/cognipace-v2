@@ -16,7 +16,6 @@ export interface Problem {
   title: string
   difficulty: ProblemDifficulty
   isPremium: boolean
-  isUserCreated: boolean
   createdAt: Date
   updatedAt: Date
 }
