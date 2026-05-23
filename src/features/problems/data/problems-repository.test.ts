@@ -127,7 +127,7 @@ describe('ProblemsRepository library data', () => {
       surface: 'dashboard',
       problemSlug: 'two-sum',
     })
-    const deleteResult = await bulkDeleteProblems(handle.db, {
+    await bulkDeleteProblems(handle.db, {
       surface: 'dashboard',
       problemSlugs: ['binary-search', 'two-sum', 'missing-problem'],
     })
@@ -140,10 +140,6 @@ describe('ProblemsRepository library data', () => {
       problem: { difficulty: 'hard', isPremium: true },
       topics: [{ label: 'Dynamic Programming' }],
       companies: [],
-    })
-    expect(deleteResult).toEqual({
-      deletedProblemSlugs: ['binary-search', 'two-sum'],
-      missingProblemSlugs: ['missing-problem'],
     })
     await expect(
       getProblemForEdit(handle.db, {

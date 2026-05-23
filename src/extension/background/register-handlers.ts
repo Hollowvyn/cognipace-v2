@@ -244,9 +244,9 @@ export function registerBackgroundHandlers() {
     return runDbMutation(
       async (db) =>
         problemDeleteResponseSchema.parse(await bulkDeleteProblems(db, request)),
-      (result) =>
+      () =>
         broadcastProblemCatalogInvalidation({
-          problemSlug: readSingleChangedProblemSlug(result.deletedProblemSlugs),
+          problemSlug: readSingleChangedProblemSlug(request.problemSlugs),
           source: request.surface,
         }),
     )

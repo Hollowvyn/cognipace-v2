@@ -119,10 +119,7 @@ describe('problems API hooks', () => {
     })
     await expectProblemMutation({
       method: 'problems.deleteProblem',
-      response: {
-        deletedProblemSlugs: ['binary-search'],
-        missingProblemSlugs: [],
-      },
+      response: undefined,
       request: {
         surface: 'dashboard',
         problemSlug: 'binary-search',
@@ -144,10 +141,7 @@ describe('problems API hooks', () => {
     })
     await expectProblemMutation({
       method: 'problems.bulkDelete',
-      response: {
-        deletedProblemSlugs: ['binary-search'],
-        missingProblemSlugs: [],
-      },
+      response: undefined,
       request: {
         surface: 'dashboard',
         problemSlugs: ['binary-search'],

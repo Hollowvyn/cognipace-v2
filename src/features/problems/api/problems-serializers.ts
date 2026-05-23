@@ -2,19 +2,16 @@ import { serializePracticeSummary } from '@/features/practice/api/practice-seria
 
 import type {
   ProblemBulkUpdate,
-  ProblemDeleteResult,
   ProblemForEdit,
   ProblemLibrary,
 } from '../data/problems-repository'
 import type { Problem } from '../domain'
 import {
   problemBulkUpdateResponseSchema,
-  problemDeleteResponseSchema,
   problemForEditResponseSchema,
   problemLibraryResponseSchema,
   serializedProblemSchema,
   type ProblemBulkUpdateResponse,
-  type ProblemDeleteResponse,
   type ProblemForEditResponse,
   type ProblemLibraryResponse,
   type SerializedProblem,
@@ -52,12 +49,6 @@ export function serializeProblemForEdit(
     ...problemForEdit,
     problem: serializeProblem(problemForEdit.problem),
   })
-}
-
-export function serializeProblemDeleteResult(
-  result: ProblemDeleteResult,
-): ProblemDeleteResponse {
-  return problemDeleteResponseSchema.parse(result)
 }
 
 export function serializeProblemBulkUpdate(

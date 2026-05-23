@@ -369,17 +369,12 @@ describe('ProblemLibraryScreen', () => {
 
   it('deletes any library problem with confirmation', async () => {
     const user = userEvent.setup()
-    vi.mocked(sendMessage).mockImplementation((method, request) => {
+    vi.mocked(sendMessage).mockImplementation((method) => {
       if (method === 'problems.getLibrary') {
         return Promise.resolve(libraryResponse)
       }
 
-      const problemSlug = (request as { problemSlug?: string }).problemSlug
-
-      return Promise.resolve({
-        deletedProblemSlugs: problemSlug ? [problemSlug] : [],
-        missingProblemSlugs: [],
-      })
+      return Promise.resolve(undefined)
     })
     renderProblemLibrary()
 
@@ -400,39 +395,6 @@ describe('ProblemLibraryScreen', () => {
     })
   })
 
-  it('surfaces backend missing-delete refusal', async () => {
-    const user = userEvent.setup()
-    vi.mocked(sendMessage).mockImplementation((method) => {
-      if (method === 'problems.getLibrary') {
-        return Promise.resolve(libraryResponse)
-      }
-
-      return Promise.resolve({
-        deletedProblemSlugs: [],
-        missingProblemSlugs: ['binary-search'],
-      })
-    })
-    renderProblemLibrary()
-
-    await user.click(
-      await screen.findByRole('button', { name: 'Expand Binary Search' }),
-    )
-    await user.click(screen.getByRole('button', { name: 'Delete' }))
-    await user.click(
-      within(screen.getByRole('dialog', { name: 'Delete problem?' })).getByRole(
-        'button',
-        { name: 'Delete Problem' },
-      ),
-    )
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This problem no longer exists.',
-    )
-    expect(
-      screen.queryByRole('dialog', { name: 'Delete problem?' }),
-    ).not.toBeInTheDocument()
-  })
-
   it('runs bulk suspend, resume, reset, and delete actions for selected rows', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage).mockImplementation((method) => {
@@ -441,10 +403,7 @@ describe('ProblemLibraryScreen', () => {
       }
 
       if (method === 'problems.bulkDelete') {
-        return Promise.resolve({
-          deletedProblemSlugs: ['01-matrix', 'binary-search', 'two-sum'],
-          missingProblemSlugs: [],
-        })
+        return Promise.resolve(undefined)
       }
 
       return Promise.resolve(createSerializedPracticeDetails())
@@ -526,7 +485,7 @@ describe('ProblemLibraryScreen', () => {
       problemSlugs: ['01-matrix', 'binary-search', 'two-sum'],
     })
     expect(
-      await screen.findByText('Deleted 3 problems.'),
+      await screen.findByText('Deleted selected problems.'),
     ).toBeVisible()
   })
 

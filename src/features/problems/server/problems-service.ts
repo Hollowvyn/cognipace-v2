@@ -18,7 +18,6 @@ import type {
 import {
   serializeProblem,
   serializeProblemBulkUpdate,
-  serializeProblemDeleteResult,
   serializeProblemForEdit,
   serializeProblemLibrary,
 } from '../api/problems-serializers'
@@ -116,18 +115,14 @@ export async function deleteProblem(
   db: Db,
   request: ProblemsDeleteProblemRequest,
 ) {
-  return serializeProblemDeleteResult(
-    await createProblemsRepository(db).deleteProblems([request.problemSlug]),
-  )
+  await createProblemsRepository(db).deleteProblems([request.problemSlug])
 }
 
 export async function bulkDeleteProblems(
   db: Db,
   request: ProblemsBulkDeleteRequest,
 ) {
-  return serializeProblemDeleteResult(
-    await createProblemsRepository(db).deleteProblems(request.problemSlugs),
-  )
+  await createProblemsRepository(db).deleteProblems(request.problemSlugs)
 }
 
 export async function bulkUpdateProblems(

@@ -183,25 +183,12 @@ export class ProblemsRepository {
 
   async deleteProblems(problemSlugs: readonly string[]) {
     const requestedSlugs = normalizeProblemSlugList(problemSlugs)
-    const existingRows = await this.readProblemOwnershipRows(requestedSlugs)
-    const existingBySlug = new Map(existingRows.map((row) => [row.slug, row]))
-    const deletedProblemSlugs = requestedSlugs.filter((slug) =>
-      existingBySlug.has(slug),
-    )
-    const missingProblemSlugs = requestedSlugs.filter(
-      (slug) => !existingBySlug.has(slug),
-    )
 
-    if (deletedProblemSlugs.length > 0) {
+    if (requestedSlugs.length > 0) {
       await this.db
         .delete(problems)
-        .where(inArray(problems.slug, deletedProblemSlugs))
+        .where(inArray(problems.slug, requestedSlugs))
     }
-
-    return {
-      deletedProblemSlugs,
-      missingProblemSlugs,
-    } satisfies ProblemDeleteResult
   }
 
   async bulkUpdateProblems(input: BulkUpdateProblemsInput, now = new Date()) {
@@ -908,11 +895,6 @@ export interface BulkUpdateProblemsInput {
     topicLabels?: string[] | undefined
     companyLabels?: string[] | undefined
   }
-}
-
-export interface ProblemDeleteResult {
-  deletedProblemSlugs: string[]
-  missingProblemSlugs: string[]
 }
 
 export interface ProblemBulkUpdate {

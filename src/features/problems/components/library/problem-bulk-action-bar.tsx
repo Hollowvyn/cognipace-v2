@@ -108,16 +108,14 @@ export function ProblemBulkActionBar({
 
   async function confirmDelete() {
     await runAction(async () => {
-      const response = await bulkDelete.mutateAsync({
+      await bulkDelete.mutateAsync({
         surface: 'dashboard',
         problemSlugs: selectedProblemSlugs,
       })
-      const deletedCount = response.deletedProblemSlugs.length
-      const missingCount = response.missingProblemSlugs.length
 
       setConfirmation(null)
       onClearSelection()
-      setMessage(formatBulkDeleteResult(deletedCount, missingCount))
+      setMessage('Deleted selected problems.')
     })
   }
 
@@ -260,19 +258,4 @@ export function ProblemBulkActionBar({
 
 function pluralize(label: string, count: number) {
   return count === 1 ? label : `${label}s`
-}
-
-function formatBulkDeleteResult(
-  deletedCount: number,
-  missingCount: number,
-) {
-  const result = [`Deleted ${deletedCount} ${pluralize('problem', deletedCount)}.`]
-
-  if (missingCount > 0) {
-    result.push(
-      `Skipped ${missingCount} missing ${pluralize('problem', missingCount)}.`,
-    )
-  }
-
-  return result.join(' ')
 }

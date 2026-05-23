@@ -52,17 +52,10 @@ export function ProblemRowActions({
 
   async function confirmDelete() {
     await runAction(async () => {
-      const response = await deleteProblem.mutateAsync({
+      await deleteProblem.mutateAsync({
         surface: 'dashboard',
         problemSlug: row.problem.slug,
       })
-
-      if (response.missingProblemSlugs.includes(row.problem.slug)) {
-        setConfirmation(null)
-        setError('This problem no longer exists.')
-        return
-      }
-
       setConfirmation(null)
     })
   }
