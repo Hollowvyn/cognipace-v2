@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react'
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import {
   flexRender,
   type Header,
@@ -123,13 +123,22 @@ function ProblemLibraryTableRow({
   renderEditProblemAction: RenderProblemEditAction
   row: Row<ProblemLibraryRow>
 }) {
+  function handleRowClick(event: MouseEvent<HTMLTableRowElement>) {
+    if (shouldIgnoreRowExpansionClick(event.target)) {
+      return
+    }
+
+    row.toggleExpanded()
+  }
+
   return (
     <>
       <tr
         className={cn(
-          'border-b border-border transition-colors hover:bg-muted/45',
+          'cursor-pointer border-b border-border transition-colors hover:bg-muted/45',
           row.getIsExpanded() && 'bg-muted/55',
         )}
+        onClick={handleRowClick}
       >
         {row.getVisibleCells().map((cell) =>
           cell.column.id === problemLibraryColumnIds.title ? (
@@ -161,6 +170,18 @@ function ProblemLibraryTableRow({
         </tr>
       ) : null}
     </>
+  )
+}
+
+function shouldIgnoreRowExpansionClick(target: EventTarget) {
+  if (!(target instanceof Element)) {
+    return false
+  }
+
+  return Boolean(
+    target.closest(
+      'a,button,input,label,select,textarea,[role="button"],[role="link"]',
+    ),
   )
 }
 

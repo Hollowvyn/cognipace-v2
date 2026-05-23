@@ -216,7 +216,7 @@ describe('ProblemLibraryScreen', () => {
     expect(screen.getAllByText('Due').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Suspended').length).toBeGreaterThan(0)
 
-    await user.click(screen.getByRole('button', { name: 'Expand Two Sum' }))
+    await user.click(getProblemRow('Two Sum'))
 
     expect(screen.getByRole('heading', { name: 'Details' })).toBeVisible()
     expect(
@@ -232,6 +232,11 @@ describe('ProblemLibraryScreen', () => {
     ).not.toBeInTheDocument()
 
     await user.click(getProblemRow('Two Sum'))
+    expect(
+      screen.queryByRole('button', { name: 'Collapse Two Sum' }),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Expand Two Sum' }))
     expect(
       screen.getByRole('button', { name: 'Collapse Two Sum' }),
     ).toBeVisible()
