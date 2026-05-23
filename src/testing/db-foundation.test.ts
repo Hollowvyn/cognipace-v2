@@ -4,6 +4,10 @@ import { createPracticeRepository } from '@/features/practice/data/practice-repo
 import { createProblemsRepository } from '@/features/problems/data/problems-repository'
 import { getTodayQueue } from '@/features/queue/server/queue-service'
 import { createTracksRepository } from '@/features/tracks/data/tracks-repository'
+import migration0000 from '@/platform/db/migrations/0000_initial.sql?raw'
+import migration0001 from '@/platform/db/migrations/0001_lively_namor.sql?raw'
+import migration0002 from '@/platform/db/migrations/0002_add_track_due_at.sql?raw'
+import migration0003 from '@/platform/db/migrations/0003_problem_ownership_and_constraints.sql?raw'
 import { createDb, createSqliteWasmLocator } from '@/platform/db'
 import { execProxy, isMutationStatement } from '@/platform/db/proxy'
 import { problemPractice, problems } from '@/platform/db/schema'
@@ -35,25 +39,235 @@ describe('db foundation', () => {
     expect(indexNames).toEqual(
       expect.arrayContaining([
         'fsrs_cards_due_idx',
-        'fsrs_cards_problem_kind_unique',
+        'fsrs_cards_problem_slug_kind_unique',
         'companies_label_unique',
         'problem_companies_company_idx',
         'problem_practice_last_reviewed_idx',
         'problem_practice_status_idx',
         'problem_practice_suspended_idx',
         'problem_topics_topic_idx',
-        'problems_slug_idx',
-        'problems_slug_unique',
         'review_attempts_card_idx',
-        'review_attempts_problem_idx',
+        'review_attempts_problem_slug_idx',
         'review_attempts_reviewed_at_idx',
         'topics_label_unique',
-        'track_group_problems_problem_idx',
+        'track_group_problems_problem_slug_idx',
         'track_groups_track_idx',
         'tracks_active_idx',
         'tracks_slug_unique',
       ]),
     )
+  })
+
+  it('migrates legacy problem ids to slug-backed problem identity', async () => {
+    const handle = await createDb({
+      locateWasm: createSqliteWasmLocator(),
+    })
+
+    handle.rawDb.exec([migration0000, migration0001, migration0002].join('\n'))
+    handle.rawDb.exec(`
+      INSERT INTO problems (
+        id,
+        source,
+        external_id,
+        slug,
+        title,
+        difficulty,
+        url,
+        is_premium,
+        acceptance_rate,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        'leetcode:two-sum',
+        'leetcode',
+        '1',
+        'two-sum',
+        'Two Sum',
+        'Medium',
+        'https://leetcode.com/problems/two-sum/',
+        false,
+        55.5,
+        1000,
+        1000
+      );
+
+      INSERT INTO topics (id, label) VALUES ('array', 'Array');
+      INSERT INTO companies (id, label) VALUES ('meta', 'Meta');
+      INSERT INTO tracks (
+        id,
+        slug,
+        title,
+        description,
+        is_active,
+        created_at,
+        updated_at,
+        due_at
+      )
+      VALUES ('leetcode-75', 'leetcode-75', 'LeetCode 75', null, true, 1000, 1000, null);
+      INSERT INTO track_groups (
+        id,
+        track_id,
+        title,
+        position,
+        created_at,
+        updated_at
+      )
+      VALUES ('leetcode-75:arrays', 'leetcode-75', 'Arrays', 1, 1000, 1000);
+      INSERT INTO problem_topics (problem_id, topic_id)
+      VALUES ('leetcode:two-sum', 'array');
+      INSERT INTO problem_companies (problem_id, company_id)
+      VALUES ('leetcode:two-sum', 'meta');
+      INSERT INTO track_group_problems (track_group_id, problem_id, position)
+      VALUES ('leetcode-75:arrays', 'leetcode:two-sum', 1);
+      INSERT INTO problem_practice (
+        problem_id,
+        status,
+        first_seen_at,
+        last_seen_at,
+        last_reviewed_at,
+        last_rating,
+        last_elapsed_seconds,
+        best_elapsed_seconds,
+        interview_pattern,
+        time_complexity,
+        space_complexity,
+        languages,
+        notes,
+        solved_count,
+        attempt_count,
+        is_suspended,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        'leetcode:two-sum',
+        'review',
+        1000,
+        1000,
+        1000,
+        'good',
+        120,
+        120,
+        null,
+        null,
+        null,
+        null,
+        null,
+        1,
+        1,
+        false,
+        1000,
+        1000
+      );
+      INSERT INTO fsrs_cards (
+        id,
+        problem_id,
+        card_kind,
+        due_at,
+        stability,
+        difficulty,
+        elapsed_days,
+        scheduled_days,
+        learning_steps,
+        reps,
+        lapses,
+        state,
+        last_review_at,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        'legacy-card',
+        'leetcode:two-sum',
+        'recall',
+        1000,
+        1,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        'review',
+        1000,
+        1000,
+        1000
+      );
+      INSERT INTO review_attempts (
+        id,
+        problem_id,
+        card_id,
+        rating,
+        review_mode,
+        reviewed_at,
+        elapsed_seconds,
+        is_correct,
+        interview_pattern,
+        time_complexity,
+        space_complexity,
+        languages,
+        notes,
+        fsrs_review_log,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        'review-1',
+        'leetcode:two-sum',
+        'legacy-card',
+        'good',
+        'manual',
+        1000,
+        120,
+        true,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        1000,
+        1000
+      );
+    `)
+
+    handle.rawDb.exec(migration0003)
+
+    expect(
+      readSqliteRows(
+        handle.rawDb,
+        'SELECT slug, difficulty, is_user_created FROM problems',
+      ),
+    ).toEqual([['two-sum', 'medium', 0]])
+    expect(
+      readSqliteRows(handle.rawDb, 'SELECT problem_slug FROM problem_topics'),
+    ).toEqual([['two-sum']])
+    expect(
+      readSqliteRows(
+        handle.rawDb,
+        'SELECT problem_slug FROM problem_companies',
+      ),
+    ).toEqual([['two-sum']])
+    expect(
+      readSqliteRows(
+        handle.rawDb,
+        'SELECT problem_slug FROM track_group_problems',
+      ),
+    ).toEqual([['two-sum']])
+    expect(
+      readSqliteRows(handle.rawDb, 'SELECT problem_slug FROM problem_practice'),
+    ).toEqual([['two-sum']])
+    expect(
+      readSqliteRows(handle.rawDb, 'SELECT id, problem_slug FROM fsrs_cards'),
+    ).toEqual([['two-sum:recall', 'two-sum']])
+    expect(
+      readSqliteRows(
+        handle.rawDb,
+        'SELECT problem_slug, card_id FROM review_attempts',
+      ),
+    ).toEqual([['two-sum', 'two-sum:recall']])
+    expect(readSqliteRows(handle.rawDb, 'PRAGMA foreign_key_check')).toEqual([])
   })
 
   it('classifies snapshot-worthy sqlite statements without transaction noise', () => {
@@ -90,7 +304,7 @@ describe('db foundation', () => {
     expect(twoSum).not.toBeNull()
 
     const review = await practiceRepository.saveReviewResult({
-      problemId: twoSum?.id ?? '',
+      problemSlug: twoSum?.slug ?? '',
       rating: 'good',
       reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
       isCorrect: true,
@@ -101,11 +315,11 @@ describe('db foundation', () => {
       new Date('2026-01-01T10:01:00.000Z'),
     )
 
-    expect(review.problemId).toBe('leetcode:two-sum')
+    expect(review.problemSlug).toBe('two-sum')
     expect(review.dueAt.getTime()).toBeGreaterThan(
       new Date('2026-01-01T10:00:00.000Z').getTime(),
     )
-    expect(queue.items[0]?.slug).toBe('two-sum')
+    expect(queue.items[0]?.problemSlug).toBe('two-sum')
   })
 
   it('rolls back practice state when review history cannot be written', async () => {
@@ -114,15 +328,14 @@ describe('db foundation', () => {
     const reviewedAt = new Date('2026-01-01T10:00:00.000Z')
 
     await practiceRepository.saveReviewResult({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       rating: 'good',
       reviewedAt,
       isCorrect: true,
       reviewAttemptId: 'fixed-review-id',
     })
 
-    const cardBeforeFailure =
-      await practiceRepository.getCard('leetcode:two-sum')
+    const cardBeforeFailure = await practiceRepository.getCard('two-sum')
     const practiceBeforeFailure = await handle.db
       .select()
       .from(problemPractice)
@@ -130,7 +343,7 @@ describe('db foundation', () => {
 
     await expect(
       practiceRepository.saveReviewResult({
-        problemId: 'leetcode:two-sum',
+        problemSlug: 'two-sum',
         rating: 'easy',
         reviewedAt: new Date('2026-01-02T10:00:00.000Z'),
         isCorrect: true,
@@ -138,8 +351,7 @@ describe('db foundation', () => {
       }),
     ).rejects.toThrow()
 
-    const cardAfterFailure =
-      await practiceRepository.getCard('leetcode:two-sum')
+    const cardAfterFailure = await practiceRepository.getCard('two-sum')
     const practiceAfterFailure = await handle.db
       .select()
       .from(problemPractice)
@@ -159,7 +371,7 @@ describe('db foundation', () => {
     const timestamp = new Date('2026-01-01T00:00:00.000Z').getTime()
 
     await handle.db.insert(problemPractice).values({
-      problemId: 'leetcode:two-sum',
+      problemSlug: 'two-sum',
       status: 'mastered',
       firstSeenAt: timestamp,
       lastSeenAt: timestamp,
@@ -191,11 +403,9 @@ describe('db foundation', () => {
       slug: 'binary-search',
       title: 'Binary Search',
       difficulty: 'Easy',
-      url: 'https://leetcode.com/problems/binary-search/',
     })
 
     expect(problem).toMatchObject({
-      id: 'leetcode:binary-search',
       slug: 'binary-search',
       title: 'Binary Search',
       difficulty: 'easy',
@@ -204,12 +414,14 @@ describe('db foundation', () => {
 })
 
 function readSqliteIndexNames(rawDb: Parameters<typeof execProxy>[0]) {
-  const result = execProxy(
+  return readSqliteRows(
     rawDb,
     "SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_autoindex_%' ORDER BY name",
-    [],
-    'all',
-  )
+  ).map((row) => String(row[0]))
+}
 
-  return (result.rows as unknown[][]).map((row) => String(row[0]))
+function readSqliteRows(rawDb: Parameters<typeof execProxy>[0], sql: string) {
+  const result = execProxy(rawDb, sql, [], 'all')
+
+  return result.rows as unknown[][]
 }

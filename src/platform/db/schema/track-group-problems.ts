@@ -16,14 +16,14 @@ export const trackGroupProblems = sqliteTable(
     trackGroupId: text('track_group_id')
       .notNull()
       .references(() => trackGroups.id, { onDelete: 'cascade' }),
-    problemId: text('problem_id')
+    problemSlug: text('problem_slug')
       .notNull()
-      .references(() => problems.id, { onDelete: 'cascade' }),
+      .references(() => problems.slug, { onDelete: 'cascade' }),
     position: integer('position').notNull(),
   },
   (table) => [
-    primaryKey({ columns: [table.trackGroupId, table.problemId] }),
-    index('track_group_problems_problem_idx').on(table.problemId),
+    primaryKey({ columns: [table.trackGroupId, table.problemSlug] }),
+    index('track_group_problems_problem_slug_idx').on(table.problemSlug),
   ],
 )
 
@@ -35,8 +35,8 @@ export const trackGroupProblemsRelations = relations(
       references: [trackGroups.id],
     }),
     problem: one(problems, {
-      fields: [trackGroupProblems.problemId],
-      references: [problems.id],
+      fields: [trackGroupProblems.problemSlug],
+      references: [problems.slug],
     }),
   }),
 )

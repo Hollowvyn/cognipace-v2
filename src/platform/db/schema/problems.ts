@@ -1,11 +1,7 @@
-import { relations } from 'drizzle-orm'
-import {
-  index,
-  integer,
-  real,
-  sqliteTable,
-  text,
-} from 'drizzle-orm/sqlite-core'
+import { relations, sql } from 'drizzle-orm'
+import { check, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+
+import { problemDifficulties } from '@/lib/problem-catalog'
 
 import { problemCompanies } from './problem-companies'
 import { problemPractice } from './problem-practice'
@@ -15,29 +11,32 @@ import { trackGroupProblems } from './track-group-problems'
 export const problems = sqliteTable(
   'problems',
   {
-    id: text('id').primaryKey(),
-    source: text('source').notNull(),
-    externalId: text('external_id'),
-    slug: text('slug').notNull().unique(),
+    slug: text('slug').primaryKey(),
     title: text('title').notNull(),
-    difficulty: text('difficulty').notNull(),
-    url: text('url').notNull(),
+    difficulty: text('difficulty', { enum: problemDifficulties }).notNull(),
     isPremium: integer('is_premium', { mode: 'boolean' })
       .notNull()
       .default(false),
-    acceptanceRate: real('acceptance_rate'),
+    isUserCreated: integer('is_user_created', { mode: 'boolean' })
+      .notNull()
+      .default(false),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },
-  (table) => [index('problems_slug_idx').on(table.slug)],
+  (table) => [
+    check(
+      'problems_difficulty_check',
+      sql`${table.difficulty} in ('easy', 'medium', 'hard', 'unknown')`,
+    ),
+  ],
 )
 
 export const problemsRelations = relations(problems, ({ many, one }) => ({
   topics: many(problemTopics),
   companies: many(problemCompanies),
   practice: one(problemPractice, {
-    fields: [problems.id],
-    references: [problemPractice.problemId],
+    fields: [problems.slug],
+    references: [problemPractice.problemSlug],
   }),
   trackMemberships: many(trackGroupProblems),
 }))

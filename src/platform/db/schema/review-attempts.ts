@@ -9,9 +9,9 @@ export const reviewAttempts = sqliteTable(
   'review_attempts',
   {
     id: text('id').primaryKey(),
-    problemId: text('problem_id')
+    problemSlug: text('problem_slug')
       .notNull()
-      .references(() => problems.id, { onDelete: 'cascade' }),
+      .references(() => problems.slug, { onDelete: 'cascade' }),
     cardId: text('card_id')
       .notNull()
       .references(() => fsrsCards.id, { onDelete: 'cascade' }),
@@ -30,7 +30,7 @@ export const reviewAttempts = sqliteTable(
     updatedAt: integer('updated_at').notNull().default(0),
   },
   (table) => [
-    index('review_attempts_problem_idx').on(table.problemId),
+    index('review_attempts_problem_slug_idx').on(table.problemSlug),
     index('review_attempts_card_idx').on(table.cardId),
     index('review_attempts_reviewed_at_idx').on(table.reviewedAt),
   ],
@@ -38,12 +38,12 @@ export const reviewAttempts = sqliteTable(
 
 export const reviewAttemptsRelations = relations(reviewAttempts, ({ one }) => ({
   problem: one(problems, {
-    fields: [reviewAttempts.problemId],
-    references: [problems.id],
+    fields: [reviewAttempts.problemSlug],
+    references: [problems.slug],
   }),
   practice: one(problemPractice, {
-    fields: [reviewAttempts.problemId],
-    references: [problemPractice.problemId],
+    fields: [reviewAttempts.problemSlug],
+    references: [problemPractice.problemSlug],
   }),
   card: one(fsrsCards, {
     fields: [reviewAttempts.cardId],

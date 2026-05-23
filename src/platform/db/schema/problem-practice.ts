@@ -8,9 +8,9 @@ import { reviewAttempts } from './review-attempts'
 export const problemPractice = sqliteTable(
   'problem_practice',
   {
-    problemId: text('problem_id')
+    problemSlug: text('problem_slug')
       .primaryKey()
-      .references(() => problems.id, { onDelete: 'cascade' }),
+      .references(() => problems.slug, { onDelete: 'cascade' }),
     status: text('status').notNull(),
     firstSeenAt: integer('first_seen_at').notNull(),
     lastSeenAt: integer('last_seen_at'),
@@ -42,8 +42,8 @@ export const problemPracticeRelations = relations(
   problemPractice,
   ({ many, one }) => ({
     problem: one(problems, {
-      fields: [problemPractice.problemId],
-      references: [problems.id],
+      fields: [problemPractice.problemSlug],
+      references: [problems.slug],
     }),
     fsrsCards: many(fsrsCards),
     attempts: many(reviewAttempts),

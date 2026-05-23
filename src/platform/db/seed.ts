@@ -10,26 +10,16 @@ import {
 
 const seedProblems = [
   {
-    id: 'leetcode:two-sum',
-    source: 'leetcode',
-    externalId: '1',
     slug: 'two-sum',
     title: 'Two Sum',
     difficulty: 'easy',
-    url: 'https://leetcode.com/problems/two-sum/',
     isPremium: false,
-    acceptanceRate: null,
   },
   {
-    id: 'leetcode:valid-parentheses',
-    source: 'leetcode',
-    externalId: '20',
     slug: 'valid-parentheses',
     title: 'Valid Parentheses',
     difficulty: 'easy',
-    url: 'https://leetcode.com/problems/valid-parentheses/',
     isPremium: false,
-    acceptanceRate: null,
   },
 ] as const
 
@@ -74,12 +64,12 @@ const seedTrackGroups = [
 const seedTrackGroupProblems = [
   {
     trackGroupId: 'leetcode-75:arrays-hashing',
-    problemId: 'leetcode:two-sum',
+    problemSlug: 'two-sum',
     position: 1,
   },
   {
     trackGroupId: 'grind-75:stack',
-    problemId: 'leetcode:valid-parentheses',
+    problemSlug: 'valid-parentheses',
     position: 1,
   },
 ] as const

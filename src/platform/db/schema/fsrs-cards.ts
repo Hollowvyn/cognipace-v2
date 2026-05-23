@@ -16,9 +16,9 @@ export const fsrsCards = sqliteTable(
   'fsrs_cards',
   {
     id: text('id').primaryKey(),
-    problemId: text('problem_id')
+    problemSlug: text('problem_slug')
       .notNull()
-      .references(() => problems.id, { onDelete: 'cascade' }),
+      .references(() => problems.slug, { onDelete: 'cascade' }),
     cardKind: text('card_kind').notNull(),
     dueAt: integer('due_at').notNull(),
     stability: real('stability').notNull(),
@@ -35,8 +35,8 @@ export const fsrsCards = sqliteTable(
   },
   (table) => [
     index('fsrs_cards_due_idx').on(table.dueAt),
-    unique('fsrs_cards_problem_kind_unique').on(
-      table.problemId,
+    unique('fsrs_cards_problem_slug_kind_unique').on(
+      table.problemSlug,
       table.cardKind,
     ),
   ],
@@ -44,12 +44,12 @@ export const fsrsCards = sqliteTable(
 
 export const fsrsCardsRelations = relations(fsrsCards, ({ many, one }) => ({
   problem: one(problems, {
-    fields: [fsrsCards.problemId],
-    references: [problems.id],
+    fields: [fsrsCards.problemSlug],
+    references: [problems.slug],
   }),
   practice: one(problemPractice, {
-    fields: [fsrsCards.problemId],
-    references: [problemPractice.problemId],
+    fields: [fsrsCards.problemSlug],
+    references: [problemPractice.problemSlug],
   }),
   attempts: many(reviewAttempts),
 }))
