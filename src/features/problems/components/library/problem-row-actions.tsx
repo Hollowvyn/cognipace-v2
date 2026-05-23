@@ -1,4 +1,3 @@
-import { Trash2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -117,17 +116,20 @@ export function ProblemRowActions({
         >
           Reset Schedule
         </Button>
-        {row.problem.isUserCreated ? (
-          <Button
-            disabled={isPending}
-            onClick={() => setConfirmation('delete')}
-            size="sm"
-            variant="destructive"
-          >
-            <Trash2 aria-hidden="true" />
-            Delete
-          </Button>
-        ) : null}
+        <Button
+          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+          disabled={isPending || !row.problem.isUserCreated}
+          onClick={() => setConfirmation('delete')}
+          size="sm"
+          title={
+            row.problem.isUserCreated
+              ? undefined
+              : 'Only user-created problems can be deleted.'
+          }
+          variant="ghost"
+        >
+          Delete
+        </Button>
       </div>
 
       {confirmation === 'reset' ? (

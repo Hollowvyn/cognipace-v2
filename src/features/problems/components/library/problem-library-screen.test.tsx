@@ -357,7 +357,7 @@ describe('ProblemLibraryScreen', () => {
     })
   })
 
-  it('deletes user-created problems with confirmation and hides protected delete', async () => {
+  it('deletes user-created problems with confirmation and disables protected delete', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage).mockImplementation((method) => {
       if (method === 'problems.getLibrary') {
@@ -376,12 +376,13 @@ describe('ProblemLibraryScreen', () => {
       await screen.findByRole('button', { name: 'Expand Two Sum' }),
     )
     expect(
-      screen.queryByRole('button', { name: 'Delete' }),
-    ).not.toBeInTheDocument()
+      screen.getByRole('button', { name: 'Delete' }),
+    ).toBeDisabled()
 
     await user.click(
       screen.getByRole('button', { name: 'Expand Binary Search' }),
     )
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: 'Delete' }))
     const deleteDialog = screen.getByRole('dialog', { name: 'Delete problem?' })
     expect(deleteDialog).toBeVisible()
