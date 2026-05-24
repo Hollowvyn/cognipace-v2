@@ -524,9 +524,7 @@ describe('background handler registration', () => {
     expectFlushBeforeBroadcast()
     expect(response).toMatchObject({
       problemSlug: 'two-sum',
-      summary: {
-        suspended: false,
-      },
+      isSuspended: false,
     })
   })
 

@@ -16,8 +16,8 @@ import {
   createSerializedProblem,
 } from '@/testing/problem-fixtures'
 import {
+  createSerializedNormalizedPracticeState,
   createSerializedPracticeDetails,
-  createSerializedPracticeSummary,
 } from '@/testing/practice-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
@@ -804,12 +804,12 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
         difficulty: 'easy',
       }),
       status: 'due',
-      summary: createSerializedPracticeSummary({
+      state: createSerializedNormalizedPracticeState({
         phase: 'review',
         isDue: true,
         isStarted: true,
         lastReviewedAt: '2026-01-01T10:00:00.000Z',
-        nextReviewAt: '2026-01-01T10:00:00.000Z',
+        dueAt: '2026-01-01T10:00:00.000Z',
         retrievability: 83,
         reviewCount: 3,
         stability: 2.5,
@@ -828,10 +828,10 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
         difficulty: 'easy',
       }),
       status: 'scheduled',
-      summary: createSerializedPracticeSummary({
+      state: createSerializedNormalizedPracticeState({
         phase: 'review',
         isStarted: true,
-        nextReviewAt: '2026-01-04T10:00:00.000Z',
+        dueAt: '2026-01-04T10:00:00.000Z',
       }),
       nextReviewAt: '2026-01-04T10:00:00.000Z',
       lastReviewedAt: null,
@@ -848,8 +848,8 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
         isPremium: true,
       }),
       status: 'suspended',
-      summary: createSerializedPracticeSummary({
-        suspended: true,
+      state: createSerializedNormalizedPracticeState({
+        isSuspended: true,
       }),
       nextReviewAt: null,
       lastReviewedAt: null,

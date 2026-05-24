@@ -1,4 +1,4 @@
-import { serializePracticeSummary } from '@/features/practice/api/practice-serializers'
+import { serializeNormalizedPracticeState } from '@/features/practice/api/practice-serializers'
 
 import type {
   ProblemForEdit,
@@ -38,7 +38,7 @@ export function serializeProblemLibraryRow(row: DomainProblemLibraryRow) {
   return problemLibraryRowSchema.parse({
     ...row,
     problem: serializeProblem(row.problem),
-    summary: serializePracticeSummary(row.summary),
+    state: serializeNormalizedPracticeState(row.state),
     nextReviewAt: row.nextReviewAt?.toISOString() ?? null,
     lastReviewedAt: row.lastReviewedAt?.toISOString() ?? null,
     lastSolvedAt: row.lastSolvedAt?.toISOString() ?? null,

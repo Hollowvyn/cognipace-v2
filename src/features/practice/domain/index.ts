@@ -1,11 +1,13 @@
 export {
   derivePracticeSummary,
+  deriveNormalizedPracticeState,
   normalizeReviewLogFields,
   parsePracticeStatus,
   practicePhases,
   practiceStatuses,
   reviewModes,
   statusFromReview,
+  type NormalizedPracticeState,
   type OverrideLastReviewResultInput,
   type PracticeDetails,
   type PracticePhase,

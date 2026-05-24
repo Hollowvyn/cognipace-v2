@@ -76,14 +76,14 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
     },
     {
       id: problemLibraryColumnIds.retention,
-      accessorFn: (row) => row.summary.retrievability ?? undefined,
+      accessorFn: (row) => row.state.retrievability ?? undefined,
       header: 'Retention',
       sortDescFirst: false,
       sortUndefined: 'last',
       sortingFn: 'basic',
       cell: ({ row }) => (
         <span className="tabular-nums text-foreground">
-          {formatPercentMetric(row.original.summary.retrievability)}
+          {formatPercentMetric(row.original.state.retrievability)}
         </span>
       ),
     },

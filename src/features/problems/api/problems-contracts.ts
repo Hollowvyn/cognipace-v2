@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { practiceSummarySchema } from '@/features/practice/api/practice-contracts'
+import { normalizedPracticeStateSchema } from '@/features/practice/api/practice-contracts'
 import { problemDifficulties } from '@/lib/problem-catalog'
 
 export const problemDifficultySchema = z.enum(problemDifficulties)
@@ -65,7 +65,7 @@ export type ProblemLibraryStatus = z.infer<typeof problemLibraryStatusSchema>
 export const problemLibraryRowSchema = z.object({
   problem: serializedProblemSchema,
   status: problemLibraryStatusSchema,
-  summary: practiceSummarySchema,
+  state: normalizedPracticeStateSchema,
   nextReviewAt: z.iso.datetime().nullable(),
   lastReviewedAt: z.iso.datetime().nullable(),
   lastSolvedAt: z.iso.datetime().nullable(),

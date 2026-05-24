@@ -1,10 +1,10 @@
 import { and, asc, eq, inArray } from 'drizzle-orm'
 
 import {
-  derivePracticeSummary,
+  deriveNormalizedPracticeState,
   normalizeReviewLogFields,
   parsePracticeStatus,
-  type PracticeSummary,
+  type NormalizedPracticeState,
   type PracticeStateSnapshot,
 } from '@/features/practice/domain'
 import {
@@ -338,19 +338,24 @@ export class ProblemsRepository {
         ? mapProblemPracticeForLibrary(row.practice)
         : null
       const card = row.card ? mapFsrsCardForLibrary(row.card) : null
-      const summary = derivePracticeSummary({
+      const state = deriveNormalizedPracticeState({
+        problemSlug: problem.slug,
+        cardId: `${problem.slug}:${defaultFsrsCardKind}`,
         practice,
         card,
+        attempts: [],
         now: options.now,
-        targetRetention: options.targetRetention,
+        ...(options.targetRetention !== undefined
+          ? { targetRetention: options.targetRetention }
+          : {}),
       })
 
       return {
         problem,
-        status: deriveProblemLibraryStatus(summary),
-        summary,
-        nextReviewAt: summary.nextReviewAt,
-        lastReviewedAt: summary.lastReviewedAt,
+        status: deriveProblemLibraryStatus(state),
+        state,
+        nextReviewAt: state.dueAt,
+        lastReviewedAt: state.lastReviewedAt,
         lastSolvedAt: lastSolvedBySlug.get(problem.slug) ?? null,
         topics: topicsBySlug.get(problem.slug) ?? [],
         companies: companiesBySlug.get(problem.slug) ?? [],
@@ -527,17 +532,17 @@ function mapProblem(row: ProblemRow): Problem {
 }
 
 function deriveProblemLibraryStatus(
-  summary: PracticeSummary,
+  state: NormalizedPracticeState,
 ): ProblemLibraryStatus {
-  if (summary.suspended) {
+  if (state.isSuspended) {
     return 'suspended'
   }
 
-  if (summary.isDue) {
+  if (state.isDue) {
     return 'due'
   }
 
-  return summary.isStarted ? 'scheduled' : 'not-started'
+  return state.isStarted ? 'scheduled' : 'not-started'
 }
 
 function mapProblemPracticeForLibrary(
@@ -835,7 +840,7 @@ export interface ProblemLibraryOptions {
 export interface ProblemLibraryRow {
   problem: Problem
   status: ProblemLibraryStatus
-  summary: PracticeSummary
+  state: NormalizedPracticeState
   nextReviewAt: Date | null
   lastReviewedAt: Date | null
   lastSolvedAt: Date | null

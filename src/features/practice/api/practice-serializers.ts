@@ -1,4 +1,5 @@
 import type {
+  NormalizedPracticeState,
   PracticeDetails,
   PracticeLogFields,
   PracticeReviewAttemptSnapshot,
@@ -7,18 +8,34 @@ import type {
   ReviewResult,
 } from '../domain'
 import {
+  normalizedPracticeStateSchema,
   practiceDetailsSchema,
   practiceReviewResultSchema,
+  type SerializedNormalizedPracticeState,
   type SerializedPracticeDetails,
   type SerializedReviewResult,
 } from './practice-contracts'
+
+export function serializeNormalizedPracticeState(
+  state: NormalizedPracticeState,
+): SerializedNormalizedPracticeState {
+  return normalizedPracticeStateSchema.parse({
+    ...state,
+    dueAt: state.dueAt?.toISOString() ?? null,
+    lastReviewedAt: state.lastReviewedAt?.toISOString() ?? null,
+    reviewHistory: state.reviewHistory.map(serializePracticeAttempt),
+    recentAttempts: state.recentAttempts.map(serializePracticeAttempt),
+    latestAttempt: state.latestAttempt
+      ? serializePracticeAttempt(state.latestAttempt)
+      : null,
+  })
+}
 
 export function serializePracticeDetails(
   details: PracticeDetails,
 ): SerializedPracticeDetails {
   return practiceDetailsSchema.parse({
-    problemSlug: details.problemSlug,
-    cardId: details.cardId,
+    ...serializeNormalizedPracticeState(details),
     practice: details.practice
       ? serializePracticeState(details.practice)
       : null,
@@ -29,12 +46,7 @@ export function serializePracticeDetails(
           lastReviewAt: details.card.lastReviewAt?.toISOString() ?? null,
         }
       : null,
-    summary: serializePracticeSummary(details.summary),
     currentLog: serializePracticeLog(details.currentLog),
-    recentAttempts: details.recentAttempts.map(serializePracticeAttempt),
-    latestAttempt: details.latestAttempt
-      ? serializePracticeAttempt(details.latestAttempt)
-      : null,
     canOverrideLatestReview: details.canOverrideLatestReview,
   })
 }
@@ -49,11 +61,11 @@ export function serializeReviewResult(
     status: result.status,
     dueAt: result.dueAt.toISOString(),
     reviewedAt: result.reviewedAt.toISOString(),
-    summary: serializePracticeSummary(result.summary),
+    summary: serializePracticeResultSummary(result.summary),
   })
 }
 
-export function serializePracticeSummary(summary: PracticeSummary) {
+function serializePracticeResultSummary(summary: PracticeSummary) {
   return {
     ...summary,
     nextReviewAt: summary.nextReviewAt?.toISOString() ?? null,

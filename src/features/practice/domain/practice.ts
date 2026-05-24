@@ -145,16 +145,98 @@ export interface PracticeSummary {
   retrievability: number | null
 }
 
-export interface PracticeDetails {
+/**
+ * Superset of NormalizedPracticeState used by the overlay session.
+ * Adds raw `practice` and `card` snapshots needed by mutation logic
+ * (override last review, reset schedule, update log).
+ *
+ * Note: some fields are intentionally redundant — e.g. `lapses` (flat, from
+ * NormalizedPracticeState) and `card.lapses` (raw) are the same value.
+ * Prefer the flat fields for reads. Use raw objects only when passing to
+ * mutation functions that require them.
+ */
+export interface PracticeDetails extends NormalizedPracticeState {
+  practice: PracticeStateSnapshot | null
+  card: FsrsCardSnapshot | null
+  currentLog: Required<PracticeLogFields>
+  canOverrideLatestReview: boolean
+}
+
+/**
+ * Flat read contract for scheduling consumers: Queue, Analytics, Library, Tracks.
+ * All FSRS and practice facts are pre-computed here. Consumers typed to this
+ * interface never touch raw DB snapshots or FSRS card objects.
+ */
+export interface NormalizedPracticeState {
+  // Identity
+  problemSlug: ProblemSlug
+  cardId: string
+
+  // Status (from DB practice row)
+  status: PracticeStatus
+  isSuspended: boolean
+
+  // Scheduling (computed)
+  phase: PracticePhase
+  isStarted: boolean
+  isDue: boolean
+  isOverdue: boolean
+  overdueDays: number
+  dueAt: Date | null
+  lastReviewedAt: Date | null
+
+  // FSRS metrics (computed from card)
+  retrievability: number | null
+  stability: number | null
+  difficulty: number | null
+  scheduledDays: number | null
+  lapses: number
+  reviewCount: number
+
+  // History
+  reviewHistory: PracticeReviewAttemptSnapshot[] // full list
+  recentAttempts: PracticeReviewAttemptSnapshot[] // last 5
+  latestAttempt: PracticeReviewAttemptSnapshot | null
+}
+
+export function deriveNormalizedPracticeState(input: {
   problemSlug: ProblemSlug
   cardId: string
   practice: PracticeStateSnapshot | null
   card: FsrsCardSnapshot | null
-  summary: PracticeSummary
-  currentLog: Required<PracticeLogFields>
-  recentAttempts: PracticeReviewAttemptSnapshot[]
-  latestAttempt: PracticeReviewAttemptSnapshot | null
-  canOverrideLatestReview: boolean
+  attempts: PracticeReviewAttemptSnapshot[]
+  now?: Date
+  targetRetention?: number
+}): NormalizedPracticeState {
+  const summary = derivePracticeSummary({
+    practice: input.practice,
+    card: input.card,
+    now: input.now,
+    targetRetention: input.targetRetention,
+  })
+
+  return {
+    problemSlug: input.problemSlug,
+    cardId: input.cardId,
+    status: input.practice?.status ?? 'new',
+    isSuspended: summary.suspended,
+    phase: summary.phase,
+    isStarted: summary.isStarted,
+    isDue: summary.isDue,
+    isOverdue: summary.isOverdue,
+    overdueDays: summary.overdueDays,
+    dueAt: summary.nextReviewAt,
+    lastReviewedAt: summary.lastReviewedAt,
+    retrievability: summary.retrievability,
+    stability: summary.stability,
+    difficulty: summary.difficulty,
+    scheduledDays: summary.scheduledDays,
+    lapses: summary.lapses,
+    reviewCount: summary.reviewCount,
+    reviewHistory: input.attempts,
+    recentAttempts: input.attempts.slice(-5).reverse(),
+    latestAttempt: input.attempts.at(-1) ?? null,
+  }
 }
 
 export function statusFromReview(

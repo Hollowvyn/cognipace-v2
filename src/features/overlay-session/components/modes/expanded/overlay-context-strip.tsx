@@ -12,10 +12,9 @@ export function OverlayContextStrip({
   isSubmitted,
 }: OverlayContextStripProps) {
   const practice = context?.practice
-  const summary = practice?.summary
-  const sessionLabel = summary?.isStarted ? 'RECALL' : 'FIRST SOLVE'
-  const stateLabel = summary?.isStarted
-    ? formatPracticePhaseLabel(summary.phase)
+  const sessionLabel = practice?.isStarted ? 'RECALL' : 'FIRST SOLVE'
+  const stateLabel = practice?.isStarted
+    ? formatPracticePhaseLabel(practice.phase)
     : isSubmitted
       ? 'SAVED'
       : 'NEW PROBLEM'
@@ -37,11 +36,10 @@ export function OverlaySubmissionSummary({
   context: OverlayAppShellData['overlay'] | null
 }) {
   const practice = context?.practice
-  const summary = practice?.summary
   const lastSubmittedAt =
-    practice?.latestAttempt?.reviewedAt ?? summary?.lastReviewedAt ?? null
-  const nextReviewAt = summary?.nextReviewAt ?? null
-  const hasSubmission = Boolean(summary?.isStarted || lastSubmittedAt)
+    practice?.latestAttempt?.reviewedAt ?? practice?.lastReviewedAt ?? null
+  const nextReviewAt = practice?.dueAt ?? null
+  const hasSubmission = Boolean(practice?.isStarted || lastSubmittedAt)
 
   if (!hasSubmission) {
     return (
@@ -72,7 +70,7 @@ export function OverlaySubmissionSummary({
         label="Next due"
         value={formatOverlayDateTime(nextReviewAt)}
         tone={
-          summary?.isOverdue ? 'danger' : summary?.isDue ? 'warning' : 'neutral'
+          practice?.isOverdue ? 'danger' : practice?.isDue ? 'warning' : 'neutral'
         }
       />
     </section>
