@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react'
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -42,6 +43,12 @@ export function TrackConfirmationDialog({
       previouslyFocused?.focus()
     }
   }, [])
+
+  useEffect(() => {
+    if (pending) {
+      dialogRef.current?.focus()
+    }
+  }, [pending])
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === 'Escape' && !pending) {
@@ -93,10 +100,11 @@ export function TrackConfirmationDialog({
       }}
     >
       <section
+        aria-busy={pending || undefined}
         aria-describedby={error ? `${descriptionId} ${errorId}` : descriptionId}
         aria-labelledby={titleId}
         aria-modal="true"
-        className="grid w-full max-w-md gap-4 rounded-[var(--cp-panel-radius)] border border-border bg-card p-[var(--cp-panel-padding)] text-card-foreground shadow-surface"
+        className="grid w-full max-w-md gap-4 rounded-[var(--cp-panel-radius)] border border-border bg-card p-[var(--cp-panel-padding)] text-card-foreground shadow-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         ref={dialogRef}
         role="dialog"
         tabIndex={-1}
@@ -136,6 +144,12 @@ export function TrackConfirmationDialog({
             size="sm"
             variant="destructive"
           >
+            {pending ? (
+              <Loader2
+                aria-hidden="true"
+                className="animate-spin motion-reduce:animate-none"
+              />
+            ) : null}
             {confirmLabel}
           </Button>
         </div>

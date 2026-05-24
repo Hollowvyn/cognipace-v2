@@ -413,7 +413,11 @@ function createInstrumentedDb(
   const queries: CapturedQuery[] = []
   const db: Db = drizzle(
     (sql, params, method) => {
-      queries.push({ sql, params: [...params], method })
+      queries.push({
+        sql,
+        params: Array.from(params as readonly unknown[]),
+        method,
+      })
       return delegate(sql, params, method)
     },
     { schema },

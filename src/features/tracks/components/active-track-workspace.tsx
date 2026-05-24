@@ -122,11 +122,11 @@ function ActiveTrackHeader({
     <div className="grid gap-4 px-4 pb-4 pt-4 md:px-5 lg:px-7 lg:py-5">
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
         <div className="min-w-0">
-          <h2 className="m-0 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
+          <h2 className="m-0 break-words text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
             {activeTrack.track.title}
           </h2>
           {activeTrack.track.description ? (
-            <p className="m-0 mt-2 max-w-3xl text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
+            <p className="m-0 mt-2 max-w-3xl break-words text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
               {activeTrack.track.description}
             </p>
           ) : null}
@@ -299,7 +299,7 @@ function ActiveTrackGroups({
             <button
               aria-pressed={isActive}
               className={cn(
-                'min-w-0 rounded-[var(--cp-control-radius)] border px-3 py-2 text-[length:var(--cp-control-font-size)] font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                'inline-flex max-w-full min-w-0 items-center rounded-[var(--cp-control-radius)] border px-3 py-2 text-[length:var(--cp-control-font-size)] font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 isActive
                   ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-card text-card-foreground hover:bg-muted',
@@ -311,7 +311,9 @@ function ActiveTrackGroups({
               }}
               type="button"
             >
-              {group.title}
+              <span className="min-w-0 max-w-full truncate">
+                {group.title}
+              </span>
             </button>
           )
         })}

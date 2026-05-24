@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { createPracticeRepository } from '@/features/practice/data/practice-repository'
 import { createSettingsRepository } from '@/features/settings/data/settings-repository'
+import { recordActiveTrackProblemCompletion } from '@/features/tracks/server/tracks-service'
 import { tracks } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
 
@@ -84,6 +85,50 @@ describe('app-shell service', () => {
     const payload = await getPopupPayload(handle)
 
     expect(payload.activeTrack.dueAt).toBe(dueAt.toISOString())
+  })
+
+  it('uses the track ledger instead of global practice history for popup progress', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const practiceRepository = createPracticeRepository(handle.db)
+
+    await practiceRepository.saveReviewResult({
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: new Date(generatedAt),
+      reviewMode: 'manual',
+    })
+
+    const payloadAfterGlobalReview = await getPopupPayload(handle)
+
+    expect(payloadAfterGlobalReview.activeTrack).toMatchObject({
+      progress: {
+        completedCount: 0,
+        totalCount: 1,
+        percent: 0,
+      },
+      nextProblem: {
+        problemSlug: 'two-sum',
+      },
+    })
+
+    await recordActiveTrackProblemCompletion(handle.db, {
+      problemSlug: 'two-sum',
+      rating: 'good',
+      completedAt: new Date(generatedAt),
+    })
+
+    const payloadAfterLedgerCompletion = await getPopupPayload(handle)
+
+    expect(payloadAfterLedgerCompletion.activeTrack).toMatchObject({
+      progress: {
+        completedCount: 1,
+        totalCount: 1,
+        percent: 100,
+      },
+      nextProblem: null,
+    })
   })
 
   it('does not include active-track state in popup free practice mode', async () => {
@@ -213,6 +258,36 @@ describe('app-shell service', () => {
     expect(payload.overlay.nextStep).toMatchObject({
       kind: 'empty',
       problem: null,
+    })
+  })
+
+  it('falls back to the queue for overlay next step when active track has no next problem', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const practiceRepository = createPracticeRepository(handle.db)
+
+    await recordActiveTrackProblemCompletion(handle.db, {
+      problemSlug: 'two-sum',
+      rating: 'easy',
+      completedAt: new Date('2025-12-31T10:00:00.000Z'),
+    })
+    await practiceRepository.saveReviewResult({
+      problemSlug: 'valid-parentheses',
+      rating: 'again',
+      reviewedAt: new Date('2025-12-01T10:00:00.000Z'),
+      reviewMode: 'manual',
+    })
+
+    const payload = await getOverlayPayload(handle, 'two-sum')
+
+    expect(payload.overlay.nextStep).toMatchObject({
+      kind: 'recommendation',
+      title: 'Valid Parentheses',
+      problem: {
+        problemSlug: 'valid-parentheses',
+      },
+      category: 'due',
     })
   })
 

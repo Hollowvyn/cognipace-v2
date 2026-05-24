@@ -133,6 +133,70 @@ describe('TracksScreen', () => {
     expect(queryTrackProblemRow('Maximum Subarray')).not.toBeInTheDocument()
   })
 
+  it('lets long active track copy wrap before it can crowd header actions', async () => {
+    const longTitle = `Track ${'A'.repeat(80)}`
+    const longDescription = `Description ${'B'.repeat(100)}`
+    const activeTrack = twoGroupWorkspace.activeTrack
+
+    if (!activeTrack) {
+      throw new Error('Expected active track fixture.')
+    }
+
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...twoGroupWorkspace,
+      activeTrack: {
+        ...activeTrack,
+        track: {
+          ...activeTrack.track,
+          description: longDescription,
+          title: longTitle,
+        },
+      },
+    })
+    renderTracksScreen()
+
+    expect(
+      await screen.findByRole('heading', { name: longTitle }),
+    ).toHaveClass('break-words')
+    expect(screen.getByText(longDescription)).toHaveClass('break-words')
+  })
+
+  it('constrains long active group labels inside their buttons', async () => {
+    const longGroupTitle = `Group ${'D'.repeat(90)}`
+    const activeTrack = twoGroupWorkspace.activeTrack
+    const activeGroup = activeTrack?.activeGroup
+
+    if (!activeTrack || !activeGroup) {
+      throw new Error('Expected active group fixture.')
+    }
+
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...twoGroupWorkspace,
+      activeTrack: {
+        ...activeTrack,
+        activeGroup: {
+          ...activeGroup,
+          title: longGroupTitle,
+        },
+      },
+      activeTrackGroups: twoGroupWorkspace.activeTrackGroups.map((group) =>
+        group.id === activeGroup.id ? { ...group, title: longGroupTitle } : group,
+      ),
+    })
+    renderTracksScreen()
+
+    const activeGroupButton = await screen.findByRole('button', {
+      name: longGroupTitle,
+    })
+
+    expect(activeGroupButton).toHaveAttribute('aria-pressed', 'true')
+    expect(within(activeGroupButton).getByText(longGroupTitle)).toHaveClass(
+      'min-w-0',
+      'max-w-full',
+      'truncate',
+    )
+  })
+
   it('hides group tabs for a single-group track', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(createTrackWorkspaceResponse())
     renderTracksScreen()
@@ -344,6 +408,41 @@ describe('TracksScreen', () => {
       screen.queryByRole('dialog', { name: 'Reset track progress?' }),
     ).not.toBeInTheDocument()
     expect(resetButton).toHaveFocus()
+  })
+
+  it('keeps confirmation focus stable while an action is pending', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'tracks.getWorkspace') {
+        return Promise.resolve(twoGroupWorkspace)
+      }
+
+      if (method === 'tracks.resetTrackProgress') {
+        return new Promise(() => undefined)
+      }
+
+      return Promise.resolve(null)
+    })
+
+    renderTracksScreen()
+
+    await screen.findByRole('heading', { name: 'LeetCode 75' })
+    await user.click(screen.getByRole('button', { name: 'Reset Progress' }))
+
+    const resetDialog = screen.getByRole('dialog', {
+      name: 'Reset track progress?',
+    })
+    await user.click(
+      within(resetDialog).getByRole('button', { name: 'Reset Progress' }),
+    )
+
+    await waitFor(() => {
+      expect(resetDialog).toHaveAttribute('aria-busy', 'true')
+    })
+    expect(resetDialog).toHaveFocus()
+    expect(
+      within(resetDialog).getByRole('button', { name: 'Reset Progress' }),
+    ).toBeDisabled()
   })
 
   it('expands problem rows with reusable practice actions and no global Delete', async () => {

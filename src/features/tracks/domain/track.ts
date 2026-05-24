@@ -65,7 +65,7 @@ export interface TrackMutationInput {
   groups: TrackGroupInput[]
 }
 
-export interface CreateTrackInput extends TrackMutationInput {}
+export type CreateTrackInput = TrackMutationInput
 
 export interface UpdateTrackInput extends TrackMutationInput {
   trackId: string

@@ -138,6 +138,27 @@ describe('TrackForm', () => {
     })
   })
 
+  it('constrains long problem titles before form action controls', async () => {
+    const longTitle = `Problem ${'C'.repeat(90)}`
+    mockTrackFormRuntime(
+      createTrackForEditResponse({
+        track: null,
+        groups: [],
+        problemRows: [problemRow('long-problem', longTitle)],
+      }),
+    )
+
+    renderTrackForm(
+      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
+    )
+
+    expect(await screen.findByText(longTitle)).toHaveClass(
+      'min-w-0',
+      'max-w-full',
+      'truncate',
+    )
+  })
+
   it('keeps Cancel available while a create save is pending', async () => {
     const user = userEvent.setup()
     const onCancel = vi.fn()

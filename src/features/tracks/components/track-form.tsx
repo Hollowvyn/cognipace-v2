@@ -610,7 +610,7 @@ function ProblemSummary({
   return (
     <div className="min-w-0">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <span className="truncate text-[length:var(--cp-control-font-size)] font-bold text-foreground">
+        <span className="min-w-0 max-w-full truncate text-[length:var(--cp-control-font-size)] font-bold text-foreground">
           {title}
         </span>
         <ProblemDifficultyBadge difficulty={row?.problem.difficulty} />
