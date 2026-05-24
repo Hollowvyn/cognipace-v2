@@ -300,7 +300,7 @@ function TrackGroupList({
           variant="outline"
         >
           <Plus aria-hidden="true" />
-          Add group
+          New Group
         </Button>
       </div>
       <div className="grid gap-2" role="list">
@@ -311,92 +311,106 @@ function TrackGroupList({
 
           return (
             <div
+              aria-label={`${displayTitle}, ${formatProblemCount(
+                group.problemSlugs.length,
+              )}`}
               className={cn(
-                'grid min-w-0 gap-2 rounded-[var(--cp-control-radius)] border border-border p-2',
+                'grid min-w-0 gap-2 rounded-[var(--cp-control-radius)] border border-border px-2 py-1.5',
                 isSelected && 'border-primary bg-muted/45',
               )}
               key={group.key}
               role="listitem"
             >
-              <div className="flex min-w-0 items-center gap-2">
-                <Button
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                <button
+                  aria-label={`Select ${displayTitle}`}
                   aria-pressed={isSelected}
-                  className="min-w-0 flex-1 justify-start"
+                  className="grid min-w-0 justify-items-start gap-0.5 rounded-[var(--cp-control-radius)] px-2 py-1 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   onClick={() =>
                     dispatch({ groupKey: group.key, type: 'select-group' })
                   }
-                  size="sm"
                   type="button"
-                  variant={isSelected ? 'secondary' : 'ghost'}
-                  aria-label={`Select ${displayTitle}`}
                 >
-                  <span className="truncate">{displayTitle}</span>
-                </Button>
-                <IconButton
-                  disabled={index === 0}
-                  label={`Move ${displayTitle} up`}
-                  onClick={() =>
-                    dispatch({
-                      direction: 'up',
-                      groupKey: group.key,
-                      type: 'move-group',
-                    })
-                  }
-                  size="sm"
-                  tooltip="Move up"
-                  type="button"
-                  variant="ghost"
-                >
-                  <ArrowUp aria-hidden="true" />
-                </IconButton>
-                <IconButton
-                  disabled={index === groups.length - 1}
-                  label={`Move ${displayTitle} down`}
-                  onClick={() =>
-                    dispatch({
-                      direction: 'down',
-                      groupKey: group.key,
-                      type: 'move-group',
-                    })
-                  }
-                  size="sm"
-                  tooltip="Move down"
-                  type="button"
-                  variant="ghost"
-                >
-                  <ArrowDown aria-hidden="true" />
-                </IconButton>
-                <IconButton
-                  disabled={groups.length <= 1 || group.problemSlugs.length > 0}
-                  label={`Remove ${displayTitle}`}
-                  onClick={() =>
-                    dispatch({ groupKey: group.key, type: 'remove-group' })
-                  }
-                  size="sm"
-                  tooltip="Remove empty group"
-                  type="button"
-                  variant="ghost"
-                >
-                  <X aria-hidden="true" />
-                </IconButton>
+                  <span className="min-w-0 max-w-full truncate text-[length:var(--cp-control-font-size)] font-bold text-foreground">
+                    {displayTitle}
+                  </span>
+                  <span className="text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+                    {formatProblemCount(group.problemSlugs.length)}
+                  </span>
+                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <IconButton
+                    disabled={index === 0}
+                    label={`Move ${displayTitle} up`}
+                    onClick={() =>
+                      dispatch({
+                        direction: 'up',
+                        groupKey: group.key,
+                        type: 'move-group',
+                      })
+                    }
+                    size="sm"
+                    tooltip="Move up"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ArrowUp aria-hidden="true" />
+                  </IconButton>
+                  <IconButton
+                    disabled={index === groups.length - 1}
+                    label={`Move ${displayTitle} down`}
+                    onClick={() =>
+                      dispatch({
+                        direction: 'down',
+                        groupKey: group.key,
+                        type: 'move-group',
+                      })
+                    }
+                    size="sm"
+                    tooltip="Move down"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ArrowDown aria-hidden="true" />
+                  </IconButton>
+                  <IconButton
+                    disabled={
+                      groups.length <= 1 || group.problemSlugs.length > 0
+                    }
+                    label={`Remove ${displayTitle}`}
+                    onClick={() =>
+                      dispatch({ groupKey: group.key, type: 'remove-group' })
+                    }
+                    size="sm"
+                    tooltip="Remove empty group"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <X aria-hidden="true" />
+                  </IconButton>
+                </div>
               </div>
-              <TrackTextField
-                describedBy={
-                  showErrors && groupTitleError ? 'track-form-error' : undefined
-                }
-                invalid={showErrors && Boolean(groupTitleError)}
-                label={`Group ${index + 1} title`}
-                name={`track-group-${index + 1}-title`}
-                onChange={(title) =>
-                  dispatch({
-                    groupKey: group.key,
-                    title,
-                    type: 'rename-group',
-                  })
-                }
-                required
-                value={group.title}
-              />
+              {isSelected ? (
+                <TrackTextField
+                  describedBy={
+                    showErrors && groupTitleError
+                      ? 'track-form-error'
+                      : undefined
+                  }
+                  invalid={showErrors && Boolean(groupTitleError)}
+                  label="Group title"
+                  name={`track-group-${index + 1}-title`}
+                  onChange={(title) =>
+                    dispatch({
+                      groupKey: group.key,
+                      title,
+                      type: 'rename-group',
+                    })
+                  }
+                  required
+                  value={group.title}
+                />
+              ) : null}
             </div>
           )
         })}
@@ -714,6 +728,10 @@ function getFirstFieldError(fieldErrors: TrackFormFieldErrors) {
 
 function getGroupDisplayTitle(group: TrackFormGroupState, index: number) {
   return group.title.trim() || `Group ${index + 1}`
+}
+
+function formatProblemCount(count: number) {
+  return `${count} ${count === 1 ? 'problem' : 'problems'}`
 }
 
 function matchesProblemSearch(row: ProblemLibraryRow, searchQuery: string) {

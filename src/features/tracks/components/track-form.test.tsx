@@ -38,7 +38,7 @@ describe('TrackForm', () => {
     )
 
     expect(await screen.findByLabelText('Title')).toHaveValue('')
-    expect(screen.getByLabelText('Group 1 title')).toHaveValue('Main')
+    expect(screen.getByLabelText('Group title')).toHaveValue('Main')
 
     await user.click(screen.getByRole('button', { name: 'SAVE' }))
 
@@ -63,11 +63,11 @@ describe('TrackForm', () => {
     await user.type(screen.getByLabelText('Description'), 'Focused prep')
     await user.type(screen.getByLabelText('Target date'), '2026-06-15')
 
-    await user.click(screen.getByRole('button', { name: 'Add group' }))
-    await user.clear(screen.getByLabelText('Group 2 title'))
-    await user.type(
-      screen.getByLabelText('Group 2 title'),
-      'Dynamic Programming',
+    await user.click(screen.getByRole('button', { name: 'New Group' }))
+    await user.clear(screen.getByLabelText('Group title'))
+    await user.type(screen.getByLabelText('Group title'), 'Dynamic Programming')
+    await user.click(
+      screen.getByRole('button', { name: 'Select Dynamic Programming' }),
     )
     await user.click(
       screen.getByRole('button', { name: 'Move Dynamic Programming up' }),
@@ -75,7 +75,7 @@ describe('TrackForm', () => {
     await user.click(
       screen.getByRole('button', { name: 'Move Dynamic Programming down' }),
     )
-    await user.click(screen.getByRole('button', { name: 'Add group' }))
+    await user.click(screen.getByRole('button', { name: 'New Group' }))
     await user.click(screen.getByRole('button', { name: 'Remove Group 3' }))
 
     await user.click(screen.getByRole('button', { name: 'Select Main' }))
@@ -149,7 +149,7 @@ describe('TrackForm', () => {
     await user.type(await screen.findByLabelText('Title'), 'Interview Track')
     await user.type(screen.getByLabelText('Search Library problems'), 'two')
     await user.click(screen.getByRole('button', { name: 'Add Two Sum' }))
-    await user.click(screen.getByRole('button', { name: 'Add group' }))
+    await user.click(screen.getByRole('button', { name: 'New Group' }))
 
     expect(
       screen.queryByRole('button', { name: 'Add Two Sum' }),
@@ -220,6 +220,77 @@ describe('TrackForm', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Create failed')
   })
 
+  it('renders compact group rows and expands only the selected group title input', async () => {
+    const user = userEvent.setup()
+    mockTrackFormRuntime(createEditResponse())
+
+    renderTrackForm(
+      <TrackForm
+        mode="edit"
+        onCancel={vi.fn()}
+        onLoaded={vi.fn()}
+        onSaved={vi.fn()}
+        trackId="leetcode-75"
+      />,
+    )
+
+    expect(await screen.findByLabelText('Title')).toHaveValue('LeetCode 75')
+
+    const groups = screen.getByLabelText('Groups')
+    const arraysRow = within(groups).getByRole('listitem', {
+      name: /Arrays and Hashing/i,
+    })
+    const dynamicRow = within(groups).getByRole('listitem', {
+      name: /Dynamic Programming/i,
+    })
+
+    expect(within(arraysRow).getByText('2 problems')).toBeVisible()
+    expect(within(dynamicRow).getByText('1 problem')).toBeVisible()
+    expect(within(arraysRow).getByLabelText('Group title')).toHaveValue(
+      'Arrays and Hashing',
+    )
+    expect(within(dynamicRow).queryByLabelText('Group title')).toBeNull()
+
+    await user.click(
+      within(groups).getByRole('button', {
+        name: 'Select Dynamic Programming',
+      }),
+    )
+
+    expect(within(arraysRow).queryByLabelText('Group title')).toBeNull()
+    expect(within(dynamicRow).getByLabelText('Group title')).toHaveValue(
+      'Dynamic Programming',
+    )
+  })
+
+  it('keeps group removal disabled for non-empty groups and the final group', async () => {
+    const user = userEvent.setup()
+    mockTrackFormRuntime(createEditResponse())
+
+    renderTrackForm(
+      <TrackForm
+        mode="edit"
+        onCancel={vi.fn()}
+        onLoaded={vi.fn()}
+        onSaved={vi.fn()}
+        trackId="leetcode-75"
+      />,
+    )
+
+    const groups = await screen.findByLabelText('Groups')
+
+    expect(
+      within(groups).getByRole('button', { name: 'Remove Arrays and Hashing' }),
+    ).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'New Group' }))
+    const emptyGroup = within(groups).getByRole('listitem', { name: /Group 3/i })
+
+    expect(
+      within(emptyGroup).getByRole('button', { name: 'Remove Group 3' }),
+    ).toBeEnabled()
+  })
+
   it('loads existing metadata, groups, and memberships for edit submit replacement', async () => {
     const user = userEvent.setup()
     const onLoaded = vi.fn()
@@ -241,12 +312,12 @@ describe('TrackForm', () => {
       'Core interview practice.',
     )
     expect(screen.getByLabelText('Target date')).toHaveValue('2026-06-15')
-    expect(screen.getByLabelText('Group 1 title')).toHaveValue(
+    expect(screen.getByLabelText('Group title')).toHaveValue(
       'Arrays and Hashing',
     )
-    expect(screen.getByLabelText('Group 2 title')).toHaveValue(
-      'Dynamic Programming',
-    )
+    expect(
+      screen.getByRole('button', { name: 'Select Dynamic Programming' }),
+    ).toBeVisible()
     expect(
       within(screen.getByLabelText('Selected group problems')).getByText(
         'Two Sum',
