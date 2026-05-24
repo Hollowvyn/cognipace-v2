@@ -145,15 +145,20 @@ export interface PracticeSummary {
   retrievability: number | null
 }
 
-export interface PracticeDetails {
-  problemSlug: ProblemSlug
-  cardId: string
+/**
+ * Superset of NormalizedPracticeState used by the overlay session.
+ * Adds raw `practice` and `card` snapshots needed by mutation logic
+ * (override last review, reset schedule, update log).
+ *
+ * Note: some fields are intentionally redundant — e.g. `lapses` (flat, from
+ * NormalizedPracticeState) and `card.lapses` (raw) are the same value.
+ * Prefer the flat fields for reads. Use raw objects only when passing to
+ * mutation functions that require them.
+ */
+export interface PracticeDetails extends NormalizedPracticeState {
   practice: PracticeStateSnapshot | null
   card: FsrsCardSnapshot | null
-  summary: PracticeSummary
   currentLog: Required<PracticeLogFields>
-  recentAttempts: PracticeReviewAttemptSnapshot[]
-  latestAttempt: PracticeReviewAttemptSnapshot | null
   canOverrideLatestReview: boolean
 }
 
