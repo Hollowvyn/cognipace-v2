@@ -480,7 +480,11 @@ function SelectedGroupProblems({
           type="search"
           value={searchQuery}
         />
-        <div aria-label="Library problem results" className="grid gap-2">
+        <div
+          aria-label="Library problem results"
+          className="grid gap-2"
+          role="list"
+        >
           {filteredProblemRows.length > 0 ? (
             filteredProblemRows.map((row) => (
               <ProblemSearchResult

@@ -353,7 +353,9 @@ describe('TrackForm', () => {
     await user.clear(searchInput)
     await user.type(searchInput, 'maximum')
 
-    const results = screen.getByLabelText('Library problem results')
+    const results = screen.getByRole('list', {
+      name: 'Library problem results',
+    })
     const maximumSubarrayRow = within(results).getByRole('listitem', {
       name: 'Maximum Subarray',
     })
