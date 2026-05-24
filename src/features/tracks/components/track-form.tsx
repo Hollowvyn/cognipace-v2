@@ -518,23 +518,22 @@ function OrderedProblemList({
   }
 
   return (
-    <ol className="m-0 grid list-none gap-2 p-0">
+    <ol aria-label="Selected problems" className="m-0 grid list-none gap-1 p-0">
       {selectedGroup.problemSlugs.map((problemSlug, index) => {
         const row = problemRowsBySlug.get(problemSlug)
         const title = row?.problem.title ?? problemSlug
 
         return (
           <li
-            className="grid min-w-0 gap-2 rounded-[var(--cp-control-radius)] border border-border p-2"
+            aria-label={`${index + 1}. ${title}`}
+            className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--cp-control-radius)] border border-border px-2 py-1.5"
             key={problemSlug}
           >
-            <div className="flex min-w-0 items-start justify-between gap-2">
-              <ProblemSummary row={row} title={title} slug={problemSlug} />
-              <span className="shrink-0 text-[length:var(--cp-badge-font-size)] font-bold text-muted-foreground tabular-nums">
-                {index + 1}
-              </span>
-            </div>
-            <div className="flex flex-wrap justify-end gap-1">
+            <span className="text-[length:var(--cp-badge-font-size)] font-bold text-muted-foreground tabular-nums">
+              {index + 1}
+            </span>
+            <ProblemSummary compact row={row} title={title} slug={problemSlug} />
+            <div className="flex shrink-0 justify-end gap-1">
               <IconButton
                 disabled={index === 0}
                 label={`Move ${title} up`}
@@ -603,31 +602,38 @@ function ProblemSearchResult({
   row: ProblemLibraryRow
 }) {
   return (
-    <div className="grid min-w-0 gap-2 rounded-[var(--cp-control-radius)] border border-border p-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+    <div
+      aria-label={row.problem.title}
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--cp-control-radius)] border border-border px-2 py-1.5"
+      role="listitem"
+    >
       <ProblemSummary
+        compact
         row={row}
         slug={row.problem.slug}
         title={row.problem.title}
       />
-      <Button
-        aria-label={`Add ${row.problem.title}`}
+      <IconButton
+        label={`Add ${row.problem.title}`}
         onClick={onAdd}
         size="sm"
+        tooltip="Add"
         type="button"
-        variant="outline"
+        variant="ghost"
       >
         <Plus aria-hidden="true" />
-        Add
-      </Button>
+      </IconButton>
     </div>
   )
 }
 
 function ProblemSummary({
+  compact = false,
   row,
   slug,
   title,
 }: {
+  compact?: boolean | undefined
   row: ProblemLibraryRow | undefined
   slug: string
   title: string
@@ -640,9 +646,11 @@ function ProblemSummary({
         </span>
         <ProblemDifficultyBadge difficulty={row?.problem.difficulty} />
       </div>
-      <p className="m-0 mt-1 truncate text-[length:var(--cp-badge-font-size)] text-muted-foreground">
-        {slug}
-      </p>
+      {compact ? null : (
+        <p className="m-0 mt-1 truncate text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+          {slug}
+        </p>
+      )}
     </div>
   )
 }

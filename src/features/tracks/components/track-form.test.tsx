@@ -291,6 +291,81 @@ describe('TrackForm', () => {
     ).toBeEnabled()
   })
 
+  it('selected group problems render as dense rows with remove after move controls', async () => {
+    mockTrackFormRuntime(createEditResponse())
+
+    renderTrackForm(
+      <TrackForm
+        mode="edit"
+        onCancel={vi.fn()}
+        onLoaded={vi.fn()}
+        onSaved={vi.fn()}
+        trackId="leetcode-75"
+      />,
+    )
+
+    const selectedProblems = await screen.findByLabelText('Selected problems')
+    const twoSumRow = within(selectedProblems).getByRole('listitem', {
+      name: '1. Two Sum',
+    })
+
+    expect(twoSumRow).toHaveClass('grid-cols-[auto_minmax(0,1fr)_auto]')
+    expect(within(twoSumRow).getByText('Two Sum')).toHaveClass('truncate')
+    expectActionOrder(twoSumRow, [
+      'Move Two Sum up',
+      'Move Two Sum down',
+      'Remove Two Sum',
+    ])
+  })
+
+  it('compact search results exclude problems already in the track', async () => {
+    const user = userEvent.setup()
+    mockTrackFormRuntime(createEditResponse())
+
+    renderTrackForm(
+      <TrackForm
+        mode="edit"
+        onCancel={vi.fn()}
+        onLoaded={vi.fn()}
+        onSaved={vi.fn()}
+        trackId="leetcode-75"
+      />,
+    )
+
+    expect(await screen.findByLabelText('Title')).toHaveValue('LeetCode 75')
+
+    await user.click(
+      screen.getByRole('button', { name: 'Select Dynamic Programming' }),
+    )
+
+    const searchInput = screen.getByLabelText('Search Library problems')
+
+    await user.type(searchInput, 'two')
+
+    expect(
+      screen.queryByRole('button', { name: 'Add Two Sum' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('No matching Library problems.')).toBeVisible()
+
+    await user.click(
+      screen.getByRole('button', { name: 'Remove Maximum Subarray' }),
+    )
+    await user.clear(searchInput)
+    await user.type(searchInput, 'maximum')
+
+    const results = screen.getByLabelText('Library problem results')
+    const maximumSubarrayRow = within(results).getByRole('listitem', {
+      name: 'Maximum Subarray',
+    })
+
+    expect(maximumSubarrayRow).toHaveClass('grid-cols-[minmax(0,1fr)_auto]')
+    expect(
+      within(maximumSubarrayRow).getByRole('button', {
+        name: 'Add Maximum Subarray',
+      }),
+    ).toBeVisible()
+  })
+
   it('expands the first invalid group title on submit', async () => {
     const user = userEvent.setup()
     mockTrackFormRuntime(createEditResponse())
@@ -404,6 +479,16 @@ function renderTrackForm(ui: ReactElement) {
   const { wrapper } = createQueryTestHarness()
 
   return render(ui, { wrapper })
+}
+
+function expectActionOrder(container: HTMLElement, actions: readonly string[]) {
+  const buttons = within(container).getAllByRole('button')
+  const actionIndexes = actions.map((action) =>
+    buttons.findIndex((button) => button.getAttribute('aria-label') === action),
+  )
+
+  expect(actionIndexes).not.toContain(-1)
+  expect(actionIndexes).toEqual([...actionIndexes].sort((a, b) => a - b))
 }
 
 function mockTrackFormRuntime(
