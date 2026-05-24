@@ -243,6 +243,15 @@ function TrackFormFields({
         ) : null}
       </section>
 
+      <TrackProblemSearch
+        dispatch={dispatch}
+        groups={state.groups}
+        problemRows={source.problemRows}
+        searchQuery={searchQuery}
+        selectedGroup={selectedGroup}
+        setSearchQuery={setSearchQuery}
+      />
+
       <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(14rem,0.85fr)_minmax(0,1.15fr)]">
         <TrackGroupList
           dispatch={dispatch}
@@ -253,12 +262,8 @@ function TrackFormFields({
         />
         <SelectedGroupProblems
           dispatch={dispatch}
-          groups={state.groups}
-          problemRows={source.problemRows}
           problemRowsBySlug={problemRowsBySlug}
-          searchQuery={searchQuery}
           selectedGroup={selectedGroup}
-          setSearchQuery={setSearchQuery}
         />
       </div>
 
@@ -278,6 +283,85 @@ function TrackFormFields({
         </Button>
       </div>
     </form>
+  )
+}
+
+function TrackProblemSearch({
+  dispatch,
+  groups,
+  problemRows,
+  searchQuery,
+  selectedGroup,
+  setSearchQuery,
+}: {
+  dispatch: ReturnType<typeof useTrackForm>['dispatch']
+  groups: readonly TrackFormGroupState[]
+  problemRows: readonly ProblemLibraryRow[]
+  searchQuery: string
+  selectedGroup: TrackFormGroupState
+  setSearchQuery: (searchQuery: string) => void
+}) {
+  const normalizedSearchQuery = searchQuery.trim()
+  const hasSearchQuery = normalizedSearchQuery.length > 0
+  const selectedProblemSlugSet = new Set(
+    groups.flatMap((group) => group.problemSlugs),
+  )
+  const filteredProblemRows = hasSearchQuery
+    ? problemRows
+        .filter(
+          (row) =>
+            !selectedProblemSlugSet.has(row.problem.slug) &&
+            matchesProblemSearch(row, normalizedSearchQuery),
+        )
+        .slice(0, 4)
+    : []
+
+  return (
+    <section
+      aria-label="Track problem search"
+      className="relative z-20"
+    >
+      <TrackTextField
+        icon={<Search aria-hidden="true" />}
+        label="Search Library problems"
+        name="track-problem-search"
+        onChange={setSearchQuery}
+        type="search"
+        value={searchQuery}
+      />
+      {hasSearchQuery ? (
+        <div
+          aria-label="Library problem suggestions"
+          className="absolute left-0 right-0 top-full z-30 mt-2 max-h-56 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-popover p-2 text-popover-foreground shadow-lg"
+          role="region"
+        >
+          {filteredProblemRows.length > 0 ? (
+            <div
+              aria-label="Library problem results"
+              className="grid gap-2"
+              role="list"
+            >
+              {filteredProblemRows.map((row) => (
+                <ProblemSearchResult
+                  key={row.problem.slug}
+                  onAdd={() => {
+                    dispatch({
+                      groupKey: selectedGroup.key,
+                      problemSlug: row.problem.slug,
+                      type: 'add-problem',
+                    })
+                    setSearchQuery('')
+                  }}
+                  row={row}
+                />
+              ))}
+            </div>
+          ) : (
+            <InlineStatus>No matching Library problems.</InlineStatus>
+          )}
+        </div>
+      ) : null}
+    </section>
   )
 }
 
@@ -432,36 +516,13 @@ function TrackGroupList({
 
 function SelectedGroupProblems({
   dispatch,
-  groups,
-  problemRows,
   problemRowsBySlug,
-  searchQuery,
   selectedGroup,
-  setSearchQuery,
 }: {
   dispatch: ReturnType<typeof useTrackForm>['dispatch']
-  groups: readonly TrackFormGroupState[]
-  problemRows: readonly ProblemLibraryRow[]
   problemRowsBySlug: ReadonlyMap<string, ProblemLibraryRow>
-  searchQuery: string
   selectedGroup: TrackFormGroupState
-  setSearchQuery: (searchQuery: string) => void
 }) {
-  const normalizedSearchQuery = searchQuery.trim()
-  const hasSearchQuery = normalizedSearchQuery.length > 0
-  const selectedProblemSlugSet = new Set(
-    groups.flatMap((group) => group.problemSlugs),
-  )
-  const filteredProblemRows = hasSearchQuery
-    ? problemRows
-        .filter(
-          (row) =>
-            !selectedProblemSlugSet.has(row.problem.slug) &&
-            matchesProblemSearch(row, normalizedSearchQuery),
-        )
-        .slice(0, 4)
-    : []
-
   return (
     <section
       aria-label="Selected group problems"
@@ -481,47 +542,6 @@ function SelectedGroupProblems({
         problemRowsBySlug={problemRowsBySlug}
         selectedGroup={selectedGroup}
       />
-
-      <div className="grid gap-3 border-t border-border pt-4">
-        <TrackTextField
-          icon={<Search aria-hidden="true" />}
-          label="Search Library problems"
-          name="track-problem-search"
-          onChange={setSearchQuery}
-          type="search"
-          value={searchQuery}
-        />
-        <div
-          aria-label="Library problem suggestions"
-          className="h-40 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-background/40 p-2"
-          role="region"
-        >
-          {!hasSearchQuery ? null : filteredProblemRows.length > 0 ? (
-            <div
-              aria-label="Library problem results"
-              className="grid gap-2"
-              role="list"
-            >
-              {filteredProblemRows.map((row) => (
-                <ProblemSearchResult
-                  key={row.problem.slug}
-                  onAdd={() => {
-                    dispatch({
-                      groupKey: selectedGroup.key,
-                      problemSlug: row.problem.slug,
-                      type: 'add-problem',
-                    })
-                    setSearchQuery('')
-                  }}
-                  row={row}
-                />
-              ))}
-            </div>
-          ) : (
-            <InlineStatus>No matching Library problems.</InlineStatus>
-          )}
-        </div>
-      </div>
     </section>
   )
 }

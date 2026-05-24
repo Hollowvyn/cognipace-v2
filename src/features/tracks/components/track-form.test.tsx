@@ -368,16 +368,12 @@ describe('TrackForm', () => {
 
     const searchInput = screen.getByLabelText('Search Library problems')
 
-    const initialSuggestions = screen.getByRole('region', {
-      name: 'Library problem suggestions',
-    })
-
-    expect(initialSuggestions).toHaveClass('h-40', 'overflow-y-auto')
     expect(
-      within(initialSuggestions).queryByRole('list', {
-        name: 'Library problem results',
-      }),
-    ).toBeNull()
+      screen.getByRole('region', { name: 'Track problem search' }),
+    ).toHaveClass('relative', 'z-20')
+    expect(
+      screen.queryByRole('region', { name: 'Library problem suggestions' }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText('No matching Library problems.')).toBeNull()
 
     await user.type(searchInput, 'two')
@@ -386,7 +382,13 @@ describe('TrackForm', () => {
       name: 'Library problem suggestions',
     })
 
-    expect(emptySuggestions).toHaveClass('h-40', 'overflow-y-auto')
+    expect(emptySuggestions).toHaveClass(
+      'absolute',
+      'top-full',
+      'max-h-56',
+      'overflow-y-auto',
+      'bg-popover',
+    )
     expect(
       screen.queryByRole('button', { name: 'Add Two Sum' }),
     ).not.toBeInTheDocument()
@@ -403,7 +405,13 @@ describe('TrackForm', () => {
     })
     const resultRows = within(results).getAllByRole('listitem')
 
-    expect(suggestions).toHaveClass('h-40', 'overflow-y-auto')
+    expect(suggestions).toHaveClass(
+      'absolute',
+      'top-full',
+      'max-h-56',
+      'overflow-y-auto',
+      'bg-popover',
+    )
     expect(resultRows).toHaveLength(4)
     const binarySearchResult = within(results).getByRole('listitem', {
       name: 'Binary Search',
@@ -425,8 +433,8 @@ describe('TrackForm', () => {
 
     expect(searchInput).toHaveValue('')
     expect(
-      screen.getByRole('region', { name: 'Library problem suggestions' }),
-    ).toBeVisible()
+      screen.queryByRole('region', { name: 'Library problem suggestions' }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText('No matching Library problems.')).toBeNull()
   })
 
