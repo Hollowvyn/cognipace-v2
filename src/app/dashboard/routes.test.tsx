@@ -193,6 +193,16 @@ describe('dashboard routes', () => {
     })
   })
 
+  it('renders track form modals with a scroll-contained form body', async () => {
+    renderDashboard('/tracks/new')
+
+    const dialog = await screen.findByRole('dialog', { name: 'New Track' })
+    const modalBody = within(dialog).getByLabelText('Modal content')
+
+    expect(dialog).toHaveClass('max-h-[calc(100vh-2rem)]', 'overflow-hidden')
+    expect(modalBody).toHaveClass('min-h-0', 'overflow-y-auto')
+  })
+
   it('/tracks/$trackId/edit direct route loads existing track composition', async () => {
     renderDashboard('/tracks/leetcode-75/edit')
 
