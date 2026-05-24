@@ -61,7 +61,7 @@ export function buildAppShellRecommendation(
     detail: `${formatQueueCategory(item.category)} ${formatDifficulty(item.problem.difficulty)}.`,
     category: item.category,
     problem: item.problem,
-    dueAt: item.dueAt,
+    dueAt: item.state.dueAt,
   }
 }
 
@@ -112,7 +112,7 @@ function createPopupRecommendationView(
     problem,
     reason: readRecommendationReason(data.recommendation.category),
     difficulty: problem?.difficulty ?? null,
-    isOverdue: queueItem?.summary.isOverdue ?? false,
+    isOverdue: queueItem?.state.isOverdue ?? false,
   }
 }
 
