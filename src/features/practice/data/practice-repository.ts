@@ -37,7 +37,6 @@ import {
   type PracticeReviewAttemptSnapshot,
   type PracticeReadOptions,
   type PracticeStateSnapshot,
-  type PracticeSummary,
   type ReviewMode,
   type ReviewResult,
   type ResetPracticeScheduleInput,
@@ -352,8 +351,10 @@ export class PracticeRepository {
       practice,
       card,
       attempts: attemptSnapshots,
-      now: options.now,
-      targetRetention: options.targetRetention,
+      ...(options.now !== undefined && { now: options.now }),
+      ...(options.targetRetention !== undefined && {
+        targetRetention: options.targetRetention,
+      }),
     })
 
     return {
