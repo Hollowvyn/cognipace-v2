@@ -182,7 +182,7 @@ describe('dashboard routes', () => {
     const dialog = screen.getByRole('dialog', { name: 'New Track' })
     expect(dialog).toBeVisible()
     expect(await within(dialog).findByLabelText('Title')).toBeVisible()
-    expect(within(dialog).getByLabelText('Group 1 title')).toHaveValue('Main')
+    expect(within(dialog).getByLabelText('Group title')).toHaveValue('Main')
     expect(
       within(dialog).getByLabelText('Search Library problems'),
     ).toBeVisible()
@@ -220,7 +220,11 @@ describe('dashboard routes', () => {
     expect(within(dialog).getByLabelText('Target date')).toHaveValue(
       '2026-06-15',
     )
-    expect(within(dialog).getByLabelText('Group 1 title')).toHaveValue(
+    const groups = within(dialog).getByLabelText('Groups')
+    const arraysRow = within(groups).getByRole('listitem', {
+      name: /Arrays and Hashing, 1 problem/i,
+    })
+    expect(within(arraysRow).getByLabelText('Group title')).toHaveValue(
       'Arrays and Hashing',
     )
     expect(within(dialog).getByText('Two Sum')).toBeVisible()
