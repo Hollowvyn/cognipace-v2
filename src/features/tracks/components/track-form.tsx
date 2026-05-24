@@ -315,7 +315,7 @@ function TrackGroupList({
       </div>
       <div
         aria-label="Track groups"
-        className="grid h-80 gap-2 overflow-y-auto pr-1"
+        className="grid h-80 gap-2 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-background/40 p-2"
         role="list"
       >
         {groups.map((group, index) => {
@@ -543,7 +543,7 @@ function OrderedProblemList({
   return (
     <div
       aria-label="Selected problem rows"
-      className="h-64 overflow-y-auto pr-1"
+      className="h-64 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-background/40 p-2"
       role="region"
     >
       {selectedGroup.problemSlugs.length === 0 ? (

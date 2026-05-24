@@ -429,8 +429,20 @@ describe('TrackForm', () => {
       name: 'Selected problem rows',
     })
 
-    expect(groupRows).toHaveClass('h-80', 'overflow-y-auto')
-    expect(selectedProblemRows).toHaveClass('h-64', 'overflow-y-auto')
+    expect(groupRows).toHaveClass(
+      'h-80',
+      'overflow-y-auto',
+      'rounded-[var(--cp-control-radius)]',
+      'border',
+      'border-border',
+    )
+    expect(selectedProblemRows).toHaveClass(
+      'h-64',
+      'overflow-y-auto',
+      'rounded-[var(--cp-control-radius)]',
+      'border',
+      'border-border',
+    )
   })
 
   it('expands the first invalid group title on submit', async () => {
