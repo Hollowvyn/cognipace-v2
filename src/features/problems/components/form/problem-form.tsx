@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 import { InlineStatus } from '@/components/ui/inline-status'
 import type { SerializedProblem } from '@/features/problems/api/problems-contracts'
@@ -90,16 +90,20 @@ function EditProblemForm({
   problemSlug: string
 }) {
   const updateProblem = useUpdateProblem()
+  const loadedProblemSlugRef = useRef<string | null>(null)
   const editQuery = useProblemForEdit({
     surface: 'dashboard',
     problemSlug,
   })
 
   useEffect(() => {
-    if (editQuery.data) {
-      onLoaded?.(editQuery.data.problem)
+    const problem = editQuery.data?.problem
+
+    if (problem && loadedProblemSlugRef.current !== problem.slug) {
+      loadedProblemSlugRef.current = problem.slug
+      onLoaded?.(problem)
     }
-  }, [editQuery.data, onLoaded])
+  }, [editQuery.data?.problem, onLoaded])
 
   if (editQuery.isPending) {
     return (

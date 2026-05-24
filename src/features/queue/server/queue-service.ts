@@ -9,7 +9,7 @@ import {
   parsePracticeStatus,
   type PracticeStateSnapshot,
 } from '@/features/practice/domain'
-import { createSettingsRepository } from '@/features/settings/data/settings-repository'
+import { getSettings } from '@/features/settings/server/settings-service'
 import {
   defaultFsrsCardKind,
   parseFsrsCardState,
@@ -22,7 +22,7 @@ import { fsrsCards, problemPractice, problems } from '@/platform/db/schema'
 import { buildTodayQueue, type QueueCandidate } from '../domain'
 
 export async function getTodayQueue(db: Db, generatedAt = new Date()) {
-  const settings = await createSettingsRepository(db).getSettings()
+  const settings = await getSettings(db)
   const candidates = await readQueueCandidates(db)
 
   return buildTodayQueue(candidates, settings, generatedAt)

@@ -2,16 +2,21 @@ import { and, asc, eq, inArray } from 'drizzle-orm'
 
 import {
   derivePracticeSummary,
+  normalizeReviewLogFields,
   parsePracticeStatus,
   type PracticeSummary,
+  type PracticeStateSnapshot,
 } from '@/features/practice/domain'
 import {
-  mapFsrsCardRow,
-  mapProblemPracticeRow,
-  renamePracticeProblemReferences,
-} from '@/features/practice/data/practice-repository'
-import { defaultFsrsCardKind } from '@/lib/fsrs'
-import { normalizeLeetCodeSlug, parseLeetCodeProblemInput } from '@/lib/leetcode'
+  defaultFsrsCardKind,
+  parseFsrsCardState,
+  parseReviewRating,
+  type FsrsCardSnapshot,
+} from '@/lib/fsrs'
+import {
+  normalizeLeetCodeSlug,
+  parseLeetCodeProblemInput,
+} from '@/lib/leetcode'
 import type { Db } from '@/platform/db'
 import {
   companies,
@@ -25,7 +30,9 @@ import {
   trackGroupProblems,
   trackGroups,
   tracks,
+  type FsrsCardRow,
   type InsertProblemRow,
+  type ProblemPracticeRow,
   type ProblemRow,
 } from '@/platform/db/schema'
 
@@ -54,12 +61,6 @@ export class ProblemsRepository {
     }
 
     await this.db.transaction(async (transactionDb) => {
-      await this.renameProblemSlug(transactionDb, {
-        fromSlug: input.previousSlug,
-        toSlug: slug,
-        now,
-      })
-
       const timestamp = now.getTime()
       const problem = {
         slug: createLeetCodeProblemSlug(slug),
@@ -231,7 +232,6 @@ export class ProblemsRepository {
         }
       }
     })
-
   }
 
   async getBySlug(slug: string) {
@@ -311,8 +311,10 @@ export class ProblemsRepository {
 
     return baseRows.map((row) => {
       const problem = mapProblem(row.problem)
-      const practice = row.practice ? mapProblemPracticeRow(row.practice) : null
-      const card = row.card ? mapFsrsCardRow(row.card) : null
+      const practice = row.practice
+        ? mapProblemPracticeForLibrary(row.practice)
+        : null
+      const card = row.card ? mapFsrsCardForLibrary(row.card) : null
       const summary = derivePracticeSummary({
         practice,
         card,
@@ -416,7 +418,10 @@ export class ProblemsRepository {
         problemPosition: trackGroupProblems.position,
       })
       .from(trackGroupProblems)
-      .innerJoin(trackGroups, eq(trackGroups.id, trackGroupProblems.trackGroupId))
+      .innerJoin(
+        trackGroups,
+        eq(trackGroups.id, trackGroupProblems.trackGroupId),
+      )
       .innerJoin(tracks, eq(tracks.id, trackGroups.trackId))
       .where(inArray(trackGroupProblems.problemSlug, [...problemSlugs]))
       .orderBy(
@@ -475,77 +480,15 @@ export class ProblemsRepository {
   }
 
   private async readLibraryOptions(db: ProblemReadDb) {
-    const [topicOptions, companyOptions, trackGroupOptions] = await Promise.all([
+    const [topicOptions, companyOptions] = await Promise.all([
       readLabelOptions(db, 'topic'),
       readLabelOptions(db, 'company'),
-      db
-        .select({
-          trackId: tracks.id,
-          trackSlug: tracks.slug,
-          trackTitle: tracks.title,
-          groupId: trackGroups.id,
-          groupTitle: trackGroups.title,
-          groupPosition: trackGroups.position,
-        })
-        .from(trackGroups)
-        .innerJoin(tracks, eq(tracks.id, trackGroups.trackId))
-        .orderBy(asc(tracks.title), asc(trackGroups.position)),
     ])
 
     return {
       topics: topicOptions,
       companies: companyOptions,
-      trackGroups: trackGroupOptions,
     } satisfies ProblemLibraryOptions
-  }
-
-  private async renameProblemSlug(
-    db: ProblemWriteDb,
-    input: {
-      fromSlug?: string | null | undefined
-      toSlug: string
-      now: Date
-    },
-  ) {
-    const fromSlug = input.fromSlug ? normalizeLeetCodeSlug(input.fromSlug) : ''
-    const toSlug = normalizeLeetCodeSlug(input.toSlug)
-
-    if (!fromSlug || fromSlug === toSlug) {
-      return
-    }
-
-    const existingOldProblem = await this.readProblemRow(db, fromSlug)
-    const existingTargetProblem = await this.readProblemRow(db, toSlug)
-
-    if (!existingOldProblem || existingTargetProblem) {
-      return
-    }
-
-    const timestamp = input.now.getTime()
-    await db.insert(problems).values({
-      ...existingOldProblem,
-      slug: toSlug,
-      updatedAt: timestamp,
-    })
-    await db
-      .update(problemTopics)
-      .set({ problemSlug: toSlug })
-      .where(eq(problemTopics.problemSlug, fromSlug))
-    await db
-      .update(problemCompanies)
-      .set({ problemSlug: toSlug })
-      .where(eq(problemCompanies.problemSlug, fromSlug))
-    await db
-      .update(trackGroupProblems)
-      .set({ problemSlug: toSlug })
-      .where(eq(trackGroupProblems.problemSlug, fromSlug))
-    await renamePracticeProblemReferences(db, {
-      fromSlug,
-      toSlug,
-      now: input.now,
-    })
-
-    await db.delete(problems).where(eq(problems.slug, fromSlug))
   }
 }
 
@@ -572,6 +515,45 @@ function deriveProblemLibraryStatus(
   }
 
   return summary.isStarted ? 'scheduled' : 'not-started'
+}
+
+function mapProblemPracticeForLibrary(
+  row: ProblemPracticeRow,
+): PracticeStateSnapshot {
+  return {
+    status: parsePracticeStatus(row.status),
+    lastReviewedAt:
+      row.lastReviewedAt === null ? null : new Date(row.lastReviewedAt),
+    attemptCount: row.attemptCount,
+    solvedCount: row.solvedCount,
+    isSuspended: row.isSuspended,
+    lastRating:
+      row.lastRating === null ? null : parseReviewRating(row.lastRating),
+    lastElapsedSeconds: row.lastElapsedSeconds,
+    bestElapsedSeconds: row.bestElapsedSeconds,
+    log: normalizeReviewLogFields({
+      interviewPattern: row.interviewPattern,
+      timeComplexity: row.timeComplexity,
+      spaceComplexity: row.spaceComplexity,
+      languages: row.languages,
+      notes: row.notes,
+    }),
+  }
+}
+
+function mapFsrsCardForLibrary(row: FsrsCardRow): FsrsCardSnapshot {
+  return {
+    dueAt: new Date(row.dueAt),
+    stability: row.stability,
+    difficulty: row.difficulty,
+    elapsedDays: row.elapsedDays,
+    scheduledDays: row.scheduledDays,
+    learningSteps: row.learningSteps,
+    reps: row.reps,
+    lapses: row.lapses,
+    state: parseFsrsCardState(row.state),
+    lastReviewAt: row.lastReviewAt === null ? null : new Date(row.lastReviewAt),
+  }
 }
 
 function summarizeLibraryRows(rows: readonly ProblemLibraryRow[]) {
@@ -825,7 +807,6 @@ export interface ProblemTrackMembership {
 export interface ProblemLibraryOptions {
   topics: ProblemTaxonomyLabel[]
   companies: ProblemTaxonomyLabel[]
-  trackGroups: Omit<ProblemTrackMembership, 'problemPosition'>[]
 }
 
 export interface ProblemLibraryRow {
@@ -869,7 +850,10 @@ export interface CreateProblemInput {
   companyLabels: string[]
 }
 
-export interface UpdateProblemInput extends Omit<CreateProblemInput, 'slugOrUrl'> {
+export interface UpdateProblemInput extends Omit<
+  CreateProblemInput,
+  'slugOrUrl'
+> {
   problemSlug: string
 }
 

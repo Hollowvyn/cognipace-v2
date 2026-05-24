@@ -5,11 +5,7 @@ import {
   type ProblemSlug,
 } from '@/lib/problem-catalog'
 
-export {
-  problemDifficulties,
-  type ProblemDifficulty,
-  type ProblemSlug,
-}
+export { problemDifficulties, type ProblemDifficulty, type ProblemSlug }
 
 export interface Problem {
   slug: ProblemSlug
@@ -22,7 +18,6 @@ export interface Problem {
 
 export interface UpsertProblemInput {
   slug: ProblemSlug
-  previousSlug?: string | null | undefined
   title?: string | null | undefined
   difficulty?: string | null | undefined
   isPremium?: boolean | null | undefined

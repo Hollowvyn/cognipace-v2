@@ -36,14 +36,19 @@ export function ProblemLabelInput({
   const [draft, setDraft] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const normalizedDraft = normalizeProblemLabel(draft)
+  const selectedLabelKeys = new Set(
+    labels.map((currentLabel) => currentLabel.toLowerCase()),
+  )
   const visibleOptions = filterOptions(
-    options.filter((option) => !hasLabel(labels, option.label)),
-    normalizedDraft,
+    options.filter(
+      (option) => !selectedLabelKeys.has(option.label.toLowerCase()),
+    ),
+    normalizedDraft.toLowerCase(),
   )
   const canAddDraft =
     normalizedDraft.length > 0 &&
     visibleOptions.length === 0 &&
-    !hasLabel(labels, readCanonicalLabel(draft, options))
+    !selectedLabelKeys.has(readCanonicalLabel(draft, options).toLowerCase())
   const optionCount = visibleOptions.length + (canAddDraft ? 1 : 0)
   const activeOptionIndex =
     activeIndex === null || optionCount === 0
@@ -130,8 +135,9 @@ export function ProblemLabelInput({
       return
     }
 
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && isOpen) {
       event.preventDefault()
+      event.stopPropagation()
       setIsOpen(false)
       return
     }
@@ -331,20 +337,14 @@ export function ProblemLabelInput({
 
 function filterOptions(
   options: readonly ProblemLabelOption[],
-  normalizedDraft: string,
+  normalizedDraftKey: string,
 ) {
-  if (!normalizedDraft) {
+  if (!normalizedDraftKey) {
     return options
   }
 
   return options.filter((option) =>
-    option.label.toLowerCase().includes(normalizedDraft.toLowerCase()),
-  )
-}
-
-function hasLabel(labels: readonly string[], label: string) {
-  return labels.some(
-    (currentLabel) => currentLabel.toLowerCase() === label.toLowerCase(),
+    option.label.toLowerCase().includes(normalizedDraftKey),
   )
 }
 

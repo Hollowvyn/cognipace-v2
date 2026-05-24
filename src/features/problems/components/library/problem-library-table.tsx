@@ -29,9 +29,8 @@ export function ProblemLibraryTable({
   table: Table<ProblemLibraryRow>
 }) {
   const selectedRows = table
-    .getPrePaginationRowModel()
+    .getFilteredSelectedRowModel()
     .rows.map((row) => row.original)
-    .filter((row) => table.getState().rowSelection[row.problem.slug])
 
   return (
     <>

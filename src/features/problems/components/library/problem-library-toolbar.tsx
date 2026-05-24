@@ -65,12 +65,7 @@ export function ProblemLibraryToolbar({
             <ProblemLibraryFacetFilter
               allLabel="All difficulties"
               label="Difficulty"
-              options={[
-                ['easy', 'Easy'],
-                ['medium', 'Medium'],
-                ['hard', 'Hard'],
-                ['unknown', 'Unknown'],
-              ]}
+              options={difficultyOptions}
               value={filters.difficultyValues}
               onChange={(difficultyValues) =>
                 patchFilters({ difficultyValues })
@@ -79,37 +74,35 @@ export function ProblemLibraryToolbar({
             <ProblemLibraryFacetFilter
               allLabel="All statuses"
               label="Status"
-              options={[
-                ['not-started', 'Not started'],
-                ['due', 'Due'],
-                ['scheduled', 'Scheduled'],
-                ['suspended', 'Suspended'],
-              ]}
+              options={statusOptions}
               value={filters.statusValues}
               onChange={(statusValues) => patchFilters({ statusValues })}
             />
             <ProblemLibraryFacetFilter
-              allLabel="All topics"
-              label="Topics"
-              options={[
-                ...library.options.topics.map(
-                  (topic) => [topic.id, topic.label] as const,
-                ),
-              ]}
-              value={filters.topicIds}
-              onChange={(topicIds) => patchFilters({ topicIds })}
+              allLabel="All tracks"
+              label="Track"
+              options={createTrackOptions(library)}
+              value={filters.trackIds}
+              onChange={(trackIds) => patchFilters({ trackIds })}
             />
           </div>
 
-          <div className="grid gap-3 md:grid-cols-[minmax(12rem,22rem)_auto_auto] md:items-center md:justify-start">
+          <div className="grid gap-3 md:grid-cols-[minmax(12rem,22rem)_minmax(12rem,22rem)_auto_auto] md:items-center md:justify-start">
+            <ProblemLibraryFacetFilter
+              allLabel="All topics"
+              label="Topics"
+              options={library.options.topics.map(
+                (topic) => [topic.id, topic.label] as const,
+              )}
+              value={filters.topicIds}
+              onChange={(topicIds) => patchFilters({ topicIds })}
+            />
             <ProblemLibraryFacetFilter
               allLabel="All companies"
               label="Companies"
-              options={[
-                ...library.options.companies.map(
-                  (company) => [company.id, company.label] as const,
-                ),
-              ]}
+              options={library.options.companies.map(
+                (company) => [company.id, company.label] as const,
+              )}
               value={filters.companyIds}
               onChange={(companyIds) => patchFilters({ companyIds })}
             />
@@ -144,6 +137,37 @@ export function ProblemLibraryToolbar({
     </section>
   )
 }
+
+function createTrackOptions(library: ProblemLibraryResponse) {
+  const tracksById = new Map<string, { id: string; label: string }>()
+
+  for (const row of library.rows) {
+    for (const membership of row.trackMemberships) {
+      tracksById.set(membership.trackId, {
+        id: membership.trackId,
+        label: membership.trackTitle,
+      })
+    }
+  }
+
+  return [...tracksById.values()]
+    .sort((a, b) => a.label.localeCompare(b.label))
+    .map((track) => [track.id, track.label] as const)
+}
+
+const difficultyOptions = [
+  ['easy', 'Easy'],
+  ['medium', 'Medium'],
+  ['hard', 'Hard'],
+  ['unknown', 'Unknown'],
+] as const
+
+const statusOptions = [
+  ['not-started', 'Not started'],
+  ['due', 'Due'],
+  ['scheduled', 'Scheduled'],
+  ['suspended', 'Suspended'],
+] as const
 
 function ProblemLibraryFacetFilter<TValue extends string>({
   allLabel,

@@ -44,6 +44,9 @@ export function ProblemLibraryRowDetails({
           <ProblemDetailLine label="Companies">
             <ProblemChipList items={row.companies} limit={8} wrap />
           </ProblemDetailLine>
+          <ProblemDetailLine label="Tracks">
+            <ProblemChipList items={createTrackChips(row)} limit={8} wrap />
+          </ProblemDetailLine>
         </dl>
       </section>
       <section className="min-w-0">
@@ -84,6 +87,19 @@ export function ProblemLibraryRowDetails({
       </div>
     </div>
   )
+}
+
+function createTrackChips(row: ProblemLibraryRow) {
+  const tracksById = new Map<string, { id: string; label: string }>()
+
+  for (const membership of row.trackMemberships) {
+    tracksById.set(membership.trackId, {
+      id: membership.trackId,
+      label: membership.trackTitle,
+    })
+  }
+
+  return [...tracksById.values()]
 }
 
 function ProblemDetailLine({

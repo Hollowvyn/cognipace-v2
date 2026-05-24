@@ -49,7 +49,6 @@ export {
   problemRuntimeSurfaceSchema,
   problemSlugSchema,
   problemTopicSchema,
-  problemTrackGroupOptionSchema,
   problemTrackMembershipSchema,
   problemsBulkDeleteRequestSchema,
   problemsBulkUpdateProblemsRequestSchema,
@@ -80,6 +79,5 @@ export {
   type SerializedProblem,
   type SerializedProblemCompany,
   type SerializedProblemTopic,
-  type SerializedProblemTrackGroupOption,
   type SerializedProblemTrackMembership,
 } from './api/problems-contracts'

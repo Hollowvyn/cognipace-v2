@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
@@ -70,9 +70,41 @@ describe('ProblemLabelInput', () => {
     await user.click(screen.getByRole('button', { name: 'Remove topic Graph' }))
     expect(screen.queryByText('Graph')).not.toBeInTheDocument()
 
-    fireEvent.keyDown(screen.getByLabelText('Topics'), { key: 'Backspace' })
+    await user.click(screen.getByLabelText('Topics'))
+    await user.keyboard('{Backspace}')
 
-    expect(screen.queryByText('Array')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Remove topic Array' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps Escape scoped to the open label menu', async () => {
+    const user = userEvent.setup()
+    let parentEscapeCount = 0
+
+    render(
+      <div
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            parentEscapeCount += 1
+          }
+        }}
+      >
+        <ProblemLabelInput
+          itemName="topic"
+          label="Topics"
+          labels={[]}
+          onChange={() => undefined}
+          options={topicOptions}
+        />
+      </div>,
+    )
+
+    await user.click(screen.getByLabelText('Topics'))
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(parentEscapeCount).toBe(0)
   })
 })
 

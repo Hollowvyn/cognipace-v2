@@ -87,9 +87,9 @@ describe('ProblemLibraryScreen', () => {
 
     await user.click(screen.getByRole('button', { name: 'Expand filters' }))
     expect(
-      within(screen.getByRole('region', { name: 'Library filters' })).queryByText(
-        '3 problems',
-      ),
+      within(
+        screen.getByRole('region', { name: 'Library filters' }),
+      ).queryByText('3 problems'),
     ).not.toBeInTheDocument()
     await selectLibraryFacetOption(user, 'Difficulty', 'Medium')
     expect(getProblemRow('01 Matrix')).toBeVisible()
@@ -106,9 +106,10 @@ describe('ProblemLibraryScreen', () => {
     await selectLibraryFacetOption(user, 'Companies', 'Netflix')
     expect(screen.getByText('No problems match these filters.')).toBeVisible()
 
-    expect(
-      screen.queryByRole('button', { name: /Track/i }),
-    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
+    await selectLibraryFacetOption(user, 'Track', 'LeetCode 75')
+    expect(getProblemRow('Two Sum')).toBeVisible()
+    expect(queryProblemRow('Binary Search')).not.toBeInTheDocument()
   })
 
   it('allows multiple values in one facet filter', async () => {
@@ -231,10 +232,8 @@ describe('ProblemLibraryScreen', () => {
     expect(screen.getByText('Retrievability')).toBeVisible()
     expect(screen.getByText('Reps')).toBeVisible()
 
-    expect(screen.queryByText('Tracks')).not.toBeInTheDocument()
-    expect(
-      screen.queryByText('LeetCode 75: Arrays and Hashing'),
-    ).not.toBeInTheDocument()
+    expect(screen.getByText('Tracks')).toBeVisible()
+    expect(screen.getByText('LeetCode 75')).toBeVisible()
 
     await user.click(getProblemRow('Two Sum'))
     expect(
@@ -482,11 +481,9 @@ describe('ProblemLibraryScreen', () => {
 
     expect(sendMessage).toHaveBeenCalledWith('problems.bulkDelete', {
       surface: 'dashboard',
-      problemSlugs: ['01-matrix', 'binary-search', 'two-sum'],
+      problemSlugs: ['two-sum', 'binary-search', '01-matrix'],
     })
-    expect(
-      await screen.findByText('Deleted selected problems.'),
-    ).toBeVisible()
+    expect(await screen.findByText('Deleted selected problems.')).toBeVisible()
   })
 
   it('bulk-edits metadata with explicit enabled replacement fields', async () => {
@@ -554,7 +551,7 @@ describe('ProblemLibraryScreen', () => {
 
     expect(sendMessage).toHaveBeenCalledWith('problems.bulkUpdateProblems', {
       surface: 'dashboard',
-      problemSlugs: ['binary-search', 'two-sum'],
+      problemSlugs: ['two-sum', 'binary-search'],
       set: {
         difficulty: 'hard',
         isPremium: true,
@@ -720,16 +717,6 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
   options: {
     topics: [topicArray, topicSearch],
     companies: [companyMeta, companyNetflix],
-    trackGroups: [
-      {
-        trackId: trackMembership.trackId,
-        trackSlug: trackMembership.trackSlug,
-        trackTitle: trackMembership.trackTitle,
-        groupId: trackMembership.groupId,
-        groupTitle: trackMembership.groupTitle,
-        groupPosition: trackMembership.groupPosition,
-      },
-    ],
   },
   rows: [
     {

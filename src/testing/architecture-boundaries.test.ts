@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 const repoRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 const srcRoot = join(repoRoot, 'src')
 const featureDeepImportPattern =
-  /(?:\bfrom\s+|\bimport\s+|\bimport\()\s*['"](@\/features\/([^/'"]+)\/(?!(?:domain|api\/[^'"]*(?:contracts|serializers)|server\/[^'"]*service|data\/[^'"]*repository)(?:['"]|\/))[^'"]+)['"]/g
+  /(?:\bfrom\s+|\bimport\s+|\bimport\()\s*['"](@\/features\/([^/'"]+)\/(?!(?:domain|api\/[^'"]*(?:contracts|serializers)|server\/[^'"]*service)(?:['"]|\/))[^'"]+)['"]/g
 const featureIndexRuntimeExportPattern =
   /export\s+(?:type\s+)?(?:\{[\s\S]*?\}|\*)\s+from\s+['"]\.\/(?:data|server)(?:\/|['"])/
 const reviewSchedulingWritePattern =

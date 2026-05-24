@@ -31,7 +31,6 @@ export function createProblemForEditResponse(
     options: {
       topics: [],
       companies: [],
-      trackGroups: [],
     },
     ...overrides,
   }
@@ -53,7 +52,6 @@ export function createProblemLibraryResponse(
     options: {
       topics: [],
       companies: [],
-      trackGroups: [],
     },
     rows: [
       {

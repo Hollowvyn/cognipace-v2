@@ -29,8 +29,10 @@ export function createProblemFormValues(
   }
 }
 
-export function useProblemForm(initialValues: ProblemFormValues) {
-  const [values, setValues] = useState(initialValues)
+export function useProblemForm(
+  initialValues: ProblemFormValues | (() => ProblemFormValues),
+) {
+  const [values, setValues] = useState<ProblemFormValues>(initialValues)
   const setField = <TKey extends keyof ProblemFormValues>(
     key: TKey,
     value: ProblemFormValues[TKey],

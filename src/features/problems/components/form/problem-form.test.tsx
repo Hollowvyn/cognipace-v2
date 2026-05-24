@@ -26,7 +26,6 @@ describe('ProblemForm', () => {
             options: {
               topics: [{ id: 'array', label: 'Array' }],
               companies: [{ id: 'meta', label: 'Meta' }],
-              trackGroups: [],
             },
           }),
         )

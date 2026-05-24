@@ -1,8 +1,4 @@
-import type {
-  ColumnFiltersState,
-  FilterFn,
-  Row,
-} from '@tanstack/react-table'
+import type { ColumnFiltersState, FilterFn, Row } from '@tanstack/react-table'
 
 import type { ProblemDifficulty } from '@/lib/problem-catalog'
 
@@ -24,6 +20,7 @@ export const problemLibraryColumnIds = {
   selection: 'selection',
   status: 'status',
   title: 'title',
+  trackIds: 'trackIds',
   topicIds: 'topicIds',
 } as const
 
@@ -34,6 +31,7 @@ export interface ProblemLibraryFilters {
   hideSuspended: boolean
   search: string
   statusValues: ProblemLibraryStatus[]
+  trackIds: string[]
   topicIds: string[]
 }
 
@@ -44,6 +42,7 @@ export const defaultProblemLibraryFilters = {
   hideSuspended: false,
   search: '',
   statusValues: [],
+  trackIds: [],
   topicIds: [],
 } as const satisfies ProblemLibraryFilters
 
@@ -66,6 +65,11 @@ export function createProblemLibraryColumnFilters(
     columnFilters,
     problemLibraryColumnIds.topicIds,
     filters.topicIds,
+  )
+  pushArrayColumnFilter(
+    columnFilters,
+    problemLibraryColumnIds.trackIds,
+    filters.trackIds,
   )
   pushArrayColumnFilter(
     columnFilters,
@@ -104,6 +108,7 @@ export function hasProblemLibraryFilters(filters: ProblemLibraryFilters) {
     filters.search.trim().length > 0 ||
     filters.difficultyValues.length > 0 ||
     filters.statusValues.length > 0 ||
+    filters.trackIds.length > 0 ||
     filters.topicIds.length > 0 ||
     filters.companyIds.length > 0 ||
     filters.hidePremium ||
@@ -185,6 +190,8 @@ function createProblemSearchText(row: ProblemLibraryRow) {
       row.problem.difficulty,
       ...row.topics.map((topic) => topic.label),
       ...row.companies.map((company) => company.label),
+      ...row.trackMemberships.map((membership) => membership.trackTitle),
+      ...row.trackMemberships.map((membership) => membership.groupTitle),
     ].join(' '),
   )
 }

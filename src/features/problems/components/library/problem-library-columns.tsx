@@ -2,10 +2,10 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import type { ColumnDef, Row, SortingFn } from '@tanstack/react-table'
 
-import { ProblemDifficultyBadge } from '@/features/problems/components/problem-difficulty-badge'
 import { createLeetCodeProblemUrl } from '@/lib/leetcode'
 import { cn } from '@/utils/cn'
 
+import { ProblemDifficultyBadge } from '../problem-difficulty-badge'
 import type { ProblemLibraryRow } from '../../api/problems-contracts'
 import {
   formatDateCell,
@@ -124,6 +124,14 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
       filterFn: problemLibraryIncludesAnyFilter,
     },
     {
+      id: problemLibraryColumnIds.trackIds,
+      accessorFn: (row) =>
+        uniqueStrings(
+          row.trackMemberships.map((membership) => membership.trackId),
+        ),
+      filterFn: problemLibraryIncludesAnyFilter,
+    },
+    {
       id: problemLibraryColumnIds.isPremium,
       accessorFn: (row) => row.problem.isPremium,
       filterFn: problemLibraryExcludeTrueFilter,
@@ -238,3 +246,7 @@ const problemIsoDateSorting: SortingFn<ProblemLibraryRow> = (
   String(rowA.getValue<string | undefined>(columnId) ?? '').localeCompare(
     String(rowB.getValue<string | undefined>(columnId) ?? ''),
   )
+
+function uniqueStrings(values: readonly string[]) {
+  return [...new Set(values)]
+}

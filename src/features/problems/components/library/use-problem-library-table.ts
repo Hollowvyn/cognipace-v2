@@ -29,6 +29,7 @@ const hiddenFilterColumns = {
   [problemLibraryColumnIds.isPremium]: false,
   [problemLibraryColumnIds.isSuspended]: false,
   [problemLibraryColumnIds.topicIds]: false,
+  [problemLibraryColumnIds.trackIds]: false,
 } as const satisfies VisibilityState
 
 const defaultPagination = {
@@ -54,15 +55,12 @@ export function useProblemLibraryTable(rows: readonly ProblemLibraryRow[]) {
     [filters],
   )
 
-  const setFilters = useCallback(
-    (nextFilters: ProblemLibraryFilters) => {
-      setFiltersState(nextFilters)
-      setPagination((current) =>
-        current.pageIndex === 0 ? current : { ...current, pageIndex: 0 },
-      )
-    },
-    [],
-  )
+  const setFilters = useCallback((nextFilters: ProblemLibraryFilters) => {
+    setFiltersState(nextFilters)
+    setPagination((current) =>
+      current.pageIndex === 0 ? current : { ...current, pageIndex: 0 },
+    )
+  }, [])
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table owns table state and exposes non-memoizable handlers by design.
   const table = useReactTable({

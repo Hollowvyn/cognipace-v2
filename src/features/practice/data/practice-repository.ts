@@ -3,7 +3,6 @@ import { and, asc, eq } from 'drizzle-orm'
 import {
   createInitialFsrsCard,
   defaultFsrsCardKind,
-  parseFsrsCardKind,
   parseSerializedFsrsReviewLogSnapshot,
   parseFsrsCardState,
   parseReviewRating,
@@ -47,50 +46,6 @@ import {
 
 export function createPracticeRepository(db: Db) {
   return new PracticeRepository(db)
-}
-
-export async function renamePracticeProblemReferences(
-  db: PracticeWriteDb,
-  input: {
-    fromSlug: string
-    toSlug: string
-    now: Date
-  },
-) {
-  const timestamp = input.now.getTime()
-
-  await db
-    .update(problemPractice)
-    .set({ problemSlug: input.toSlug, updatedAt: timestamp })
-    .where(eq(problemPractice.problemSlug, input.fromSlug))
-
-  const cardRows = await db
-    .select()
-    .from(fsrsCards)
-    .where(eq(fsrsCards.problemSlug, input.fromSlug))
-
-  for (const card of cardRows) {
-    const nextCardId = createFsrsCardId(
-      input.toSlug,
-      parseFsrsCardKind(card.cardKind),
-    )
-
-    await db.insert(fsrsCards).values({
-      ...card,
-      id: nextCardId,
-      problemSlug: input.toSlug,
-      updatedAt: timestamp,
-    })
-    await db
-      .update(reviewAttempts)
-      .set({
-        problemSlug: input.toSlug,
-        cardId: nextCardId,
-        updatedAt: timestamp,
-      })
-      .where(eq(reviewAttempts.cardId, card.id))
-    await db.delete(fsrsCards).where(eq(fsrsCards.id, card.id))
-  }
 }
 
 export class PracticeRepository {

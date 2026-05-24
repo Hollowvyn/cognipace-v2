@@ -51,7 +51,7 @@ export function ProblemFormFields({
   selectedTopicLabels?: readonly string[]
   topicOptions?: readonly ProblemLabelOption[]
 }) {
-  const { setField, values } = useProblemForm(
+  const { setField, values } = useProblemForm(() =>
     createProblemFormValues(problem, {
       companyLabels: selectedCompanyLabels,
       topicLabels: selectedTopicLabels,
