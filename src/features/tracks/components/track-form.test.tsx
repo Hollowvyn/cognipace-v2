@@ -460,11 +460,23 @@ describe('TrackForm', () => {
 
     expect(await screen.findByLabelText('Title')).toHaveValue('LeetCode 75')
 
+    const groupHeader = screen.getByLabelText('Track groups header')
+    const selectedProblemHeader = screen.getByLabelText(
+      'Selected group problems header',
+    )
     const groupRows = screen.getByRole('list', { name: 'Track groups' })
     const selectedProblemRows = screen.getByRole('region', {
       name: 'Selected problem rows',
     })
 
+    expect(groupHeader).toHaveClass(
+      'min-h-[var(--cp-control-height-sm)]',
+      'items-center',
+    )
+    expect(selectedProblemHeader).toHaveClass(
+      'min-h-[var(--cp-control-height-sm)]',
+      'items-center',
+    )
     expect(groupRows).toHaveClass(
       'h-80',
       'overflow-y-auto',

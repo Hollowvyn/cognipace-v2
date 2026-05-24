@@ -380,7 +380,10 @@ function TrackGroupList({
 }) {
   return (
     <section className="grid min-w-0 content-start gap-3" aria-label="Groups">
-      <div className="flex min-w-0 items-center justify-between gap-3">
+      <div
+        aria-label="Track groups header"
+        className={cn(editorPaneHeaderClassName, 'justify-between')}
+      >
         <h3 className="m-0 text-[length:var(--cp-copy-font-size)] font-bold text-foreground">
           Groups
         </h3>
@@ -528,11 +531,14 @@ function SelectedGroupProblems({
       aria-label="Selected group problems"
       className="grid min-w-0 content-start gap-3"
     >
-      <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+      <div
+        aria-label="Selected group problems header"
+        className={cn(editorPaneHeaderClassName, 'flex-wrap gap-y-1')}
+      >
         <h3 className="m-0 truncate text-[length:var(--cp-copy-font-size)] font-bold text-foreground">
           {selectedGroup.title.trim() || 'Selected group'} problems
         </h3>
-        <p className="m-0 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+        <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-none text-muted-foreground">
           {selectedGroup.problemSlugs.length} selected
         </p>
       </div>
@@ -816,3 +822,6 @@ const floatingLabelClassName =
 
 const fieldClassName =
   'h-[var(--cp-control-height-lg)] w-full rounded-[var(--cp-control-radius)] border border-border bg-background px-3 pt-1 text-[length:var(--cp-control-font-size)] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-70'
+
+const editorPaneHeaderClassName =
+  'flex min-h-[var(--cp-control-height-sm)] min-w-0 items-center gap-3'
