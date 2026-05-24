@@ -117,16 +117,17 @@ function createPopupRecommendationView(
 }
 
 function createPopupStudyModeView(data: PopupAppShellData): PopupStudyModeView {
-  if (data.settings.practice.mode === 'freePractice') {
+  const activeTrack = data.activeTrack
+
+  if (activeTrack.state === 'disabled-free-practice') {
     return {
       kind: 'freePractice',
-      title: 'Free Practice',
-      body: 'Queue-first practice without track guidance.',
+      title: readActiveTrackTitle(data),
+      body: readActiveTrackBody(data),
       modeActionLabel: 'Start study mode',
     }
   }
 
-  const activeTrack = data.activeTrack
   const hasActiveTrack = activeTrack.trackId !== null
 
   return {

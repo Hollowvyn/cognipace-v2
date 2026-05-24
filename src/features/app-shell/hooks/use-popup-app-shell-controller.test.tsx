@@ -224,7 +224,7 @@ describe('usePopupAppShellController', () => {
           mode: 'freePractice',
         },
       },
-      activeTrack: createEmptyActiveTrack(),
+      activeTrack: createDisabledFreePracticeActiveTrack(),
     } satisfies PopupAppShellData
     act(() => {
       updateDeferred.resolve()
@@ -355,11 +355,11 @@ function createDeferred() {
   }
 }
 
-function createEmptyActiveTrack(): PopupAppShellData['activeTrack'] {
+function createDisabledFreePracticeActiveTrack(): PopupAppShellData['activeTrack'] {
   return {
-    state: 'no-active-track',
+    state: 'disabled-free-practice',
     trackId: null,
-    title: 'No active track',
+    title: 'Track guidance disabled',
     description: null,
     groupTitle: null,
     dueAt: null,
@@ -368,7 +368,7 @@ function createEmptyActiveTrack(): PopupAppShellData['activeTrack'] {
       totalCount: 0,
       percent: 0,
     },
-    detail: 'Choose a track to restore guided progression.',
+    detail: 'Free Practice uses queue recommendations only.',
     nextProblem: null,
   }
 }
