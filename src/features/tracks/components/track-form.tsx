@@ -265,7 +265,10 @@ function TrackFormFields({
         />
       </div>
 
-      <div className="-mx-[var(--cp-panel-padding)] mt-1 flex justify-end gap-3 border-t border-border px-[var(--cp-panel-padding)] py-4">
+      <div
+        aria-label="Track form actions"
+        className="-mx-[var(--cp-panel-padding)] sticky bottom-0 z-10 mt-1 flex justify-end gap-3 border-t border-border bg-card px-[var(--cp-panel-padding)] py-4"
+      >
         <Button onClick={onCancel} type="button" variant="ghost">
           CANCEL
         </Button>

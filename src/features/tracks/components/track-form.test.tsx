@@ -178,6 +178,24 @@ describe('TrackForm', () => {
     )
   })
 
+  it('keeps track form actions in a sticky footer', async () => {
+    mockTrackFormRuntime(createTrackDefaults())
+
+    renderTrackForm(
+      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
+    )
+
+    await screen.findByLabelText('Title')
+
+    const actions = screen.getByLabelText('Track form actions')
+
+    expect(actions).toHaveClass('sticky', 'bottom-0')
+    expect(
+      within(actions).getByRole('button', { name: 'CANCEL' }),
+    ).toBeVisible()
+    expect(within(actions).getByRole('button', { name: 'SAVE' })).toBeVisible()
+  })
+
   it('keeps Cancel available while a create save is pending', async () => {
     const user = userEvent.setup()
     const onCancel = vi.fn()
