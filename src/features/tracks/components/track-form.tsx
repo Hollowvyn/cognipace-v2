@@ -313,7 +313,11 @@ function TrackGroupList({
           New Group
         </Button>
       </div>
-      <div className="grid gap-2" role="list">
+      <div
+        aria-label="Track groups"
+        className="grid h-80 gap-2 overflow-y-auto pr-1"
+        role="list"
+      >
         {groups.map((group, index) => {
           const displayTitle = getGroupDisplayTitle(group, index)
           const isSelected = group.key === selectedGroupKey
@@ -536,84 +540,98 @@ function OrderedProblemList({
   problemRowsBySlug: ReadonlyMap<string, ProblemLibraryRow>
   selectedGroup: TrackFormGroupState
 }) {
-  if (selectedGroup.problemSlugs.length === 0) {
-    return <InlineStatus>No problems in this group.</InlineStatus>
-  }
-
   return (
-    <ol aria-label="Selected problems" className="m-0 grid list-none gap-1 p-0">
-      {selectedGroup.problemSlugs.map((problemSlug, index) => {
-        const row = problemRowsBySlug.get(problemSlug)
-        const title = row?.problem.title ?? problemSlug
+    <div
+      aria-label="Selected problem rows"
+      className="h-64 overflow-y-auto pr-1"
+      role="region"
+    >
+      {selectedGroup.problemSlugs.length === 0 ? (
+        <InlineStatus>No problems in this group.</InlineStatus>
+      ) : (
+        <ol
+          aria-label="Selected problems"
+          className="m-0 grid list-none gap-1 p-0"
+        >
+          {selectedGroup.problemSlugs.map((problemSlug, index) => {
+            const row = problemRowsBySlug.get(problemSlug)
+            const title = row?.problem.title ?? problemSlug
 
-        return (
-          <li
-            aria-label={`${index + 1}. ${title}`}
-            className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--cp-control-radius)] border border-border px-2 py-1.5"
-            key={problemSlug}
-          >
-            <span className="text-[length:var(--cp-badge-font-size)] font-bold text-muted-foreground tabular-nums">
-              {index + 1}
-            </span>
-            <ProblemSummary compact row={row} title={title} slug={problemSlug} />
-            <div className="flex shrink-0 justify-end gap-1">
-              <IconButton
-                disabled={index === 0}
-                label={`Move ${title} up`}
-                onClick={() =>
-                  dispatch({
-                    direction: 'up',
-                    groupKey: selectedGroup.key,
-                    problemSlug,
-                    type: 'move-problem',
-                  })
-                }
-                size="sm"
-                tooltip="Move up"
-                type="button"
-                variant="ghost"
+            return (
+              <li
+                aria-label={`${index + 1}. ${title}`}
+                className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--cp-control-radius)] border border-border px-2 py-1.5"
+                key={problemSlug}
               >
-                <ArrowUp aria-hidden="true" />
-              </IconButton>
-              <IconButton
-                disabled={index === selectedGroup.problemSlugs.length - 1}
-                label={`Move ${title} down`}
-                onClick={() =>
-                  dispatch({
-                    direction: 'down',
-                    groupKey: selectedGroup.key,
-                    problemSlug,
-                    type: 'move-problem',
-                  })
-                }
-                size="sm"
-                tooltip="Move down"
-                type="button"
-                variant="ghost"
-              >
-                <ArrowDown aria-hidden="true" />
-              </IconButton>
-              <IconButton
-                label={`Remove ${title}`}
-                onClick={() =>
-                  dispatch({
-                    groupKey: selectedGroup.key,
-                    problemSlug,
-                    type: 'remove-problem',
-                  })
-                }
-                size="sm"
-                tooltip="Remove"
-                type="button"
-                variant="ghost"
-              >
-                <X aria-hidden="true" />
-              </IconButton>
-            </div>
-          </li>
-        )
-      })}
-    </ol>
+                <span className="text-[length:var(--cp-badge-font-size)] font-bold text-muted-foreground tabular-nums">
+                  {index + 1}
+                </span>
+                <ProblemSummary
+                  compact
+                  row={row}
+                  title={title}
+                  slug={problemSlug}
+                />
+                <div className="flex shrink-0 justify-end gap-1">
+                  <IconButton
+                    disabled={index === 0}
+                    label={`Move ${title} up`}
+                    onClick={() =>
+                      dispatch({
+                        direction: 'up',
+                        groupKey: selectedGroup.key,
+                        problemSlug,
+                        type: 'move-problem',
+                      })
+                    }
+                    size="sm"
+                    tooltip="Move up"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ArrowUp aria-hidden="true" />
+                  </IconButton>
+                  <IconButton
+                    disabled={index === selectedGroup.problemSlugs.length - 1}
+                    label={`Move ${title} down`}
+                    onClick={() =>
+                      dispatch({
+                        direction: 'down',
+                        groupKey: selectedGroup.key,
+                        problemSlug,
+                        type: 'move-problem',
+                      })
+                    }
+                    size="sm"
+                    tooltip="Move down"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ArrowDown aria-hidden="true" />
+                  </IconButton>
+                  <IconButton
+                    label={`Remove ${title}`}
+                    onClick={() =>
+                      dispatch({
+                        groupKey: selectedGroup.key,
+                        problemSlug,
+                        type: 'remove-problem',
+                      })
+                    }
+                    size="sm"
+                    tooltip="Remove"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <X aria-hidden="true" />
+                  </IconButton>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </div>
   )
 }
 

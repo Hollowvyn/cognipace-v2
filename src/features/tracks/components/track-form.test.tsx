@@ -409,6 +409,30 @@ describe('TrackForm', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('keeps group and selected problem rows in internal scroll containers', async () => {
+    mockTrackFormRuntime(createEditResponse())
+
+    renderTrackForm(
+      <TrackForm
+        mode="edit"
+        onCancel={vi.fn()}
+        onLoaded={vi.fn()}
+        onSaved={vi.fn()}
+        trackId="leetcode-75"
+      />,
+    )
+
+    expect(await screen.findByLabelText('Title')).toHaveValue('LeetCode 75')
+
+    const groupRows = screen.getByRole('list', { name: 'Track groups' })
+    const selectedProblemRows = screen.getByRole('region', {
+      name: 'Selected problem rows',
+    })
+
+    expect(groupRows).toHaveClass('h-80', 'overflow-y-auto')
+    expect(selectedProblemRows).toHaveClass('h-64', 'overflow-y-auto')
+  })
+
   it('expands the first invalid group title on submit', async () => {
     const user = userEvent.setup()
     mockTrackFormRuntime(createEditResponse())
