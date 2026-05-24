@@ -114,7 +114,7 @@ describe('tracks API hooks', () => {
         surface: 'dashboard',
         trackId: 'leetcode-75',
       } satisfies TracksSetActiveTrackRequest,
-      response: activeTrack,
+      response: null,
       useHook: useSetActiveTrack,
       invalidatedQueryKeys: [['tracks'], ['app-shell-data']],
     })
@@ -125,7 +125,7 @@ describe('tracks API hooks', () => {
         trackId: 'leetcode-75',
         groupId: 'leetcode-75:arrays-hashing',
       } satisfies TracksSetActiveGroupRequest,
-      response: activeTrack,
+      response: null,
       useHook: useSetActiveGroup,
       invalidatedQueryKeys: [['tracks'], ['app-shell-data']],
     })
@@ -180,7 +180,7 @@ describe('tracks API hooks', () => {
         surface: 'dashboard',
         trackId: 'leetcode-75',
       } satisfies TracksDeleteTrackRequest,
-      response: undefined,
+      response: null,
       useHook: useDeleteTrack,
       invalidatedQueryKeys,
     })
@@ -190,7 +190,7 @@ describe('tracks API hooks', () => {
         surface: 'dashboard',
         trackId: 'leetcode-75',
       } satisfies TracksResetTrackProgressRequest,
-      response: activeTrack,
+      response: null,
       useHook: useResetTrackProgress,
       invalidatedQueryKeys,
     })

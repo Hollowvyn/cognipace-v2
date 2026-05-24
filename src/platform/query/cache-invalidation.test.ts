@@ -42,4 +42,14 @@ describe('cache invalidation query-key mapping', () => {
       ['tracks'],
     ])
   })
+
+  it('keeps track and problem invalidation linked for shared track rows', () => {
+    expect(readQueryKeysForInvalidation(['tracks'])).toContainEqual(['tracks'])
+    expect(readQueryKeysForInvalidation(['tracks'])).toContainEqual([
+      'app-shell-data',
+    ])
+    expect(readQueryKeysForInvalidation(['problems'])).toContainEqual([
+      'tracks',
+    ])
+  })
 })

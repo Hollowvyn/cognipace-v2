@@ -114,6 +114,23 @@ describe('runtime-policy', () => {
     )
   })
 
+  it('keeps track management methods dashboard-only', () => {
+    for (const method of [
+      'tracks.getWorkspace',
+      'tracks.getTrackForEdit',
+      'tracks.setActiveTrack',
+      'tracks.setActiveGroup',
+      'tracks.createTrack',
+      'tracks.updateTrack',
+      'tracks.deleteTrack',
+      'tracks.resetTrackProgress',
+    ]) {
+      expect(canCallExtensionMethod(method, 'dashboard')).toBe(true)
+      expect(canCallExtensionMethod(method, 'popup')).toBe(false)
+      expect(canCallExtensionMethod(method, 'content-script')).toBe(false)
+    }
+  })
+
   it('allows popup and dashboard senders to update study mode', () => {
     expect(canCallExtensionMethod('settings.toggleStudyMode', 'popup')).toBe(
       true,

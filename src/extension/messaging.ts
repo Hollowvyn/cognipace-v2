@@ -85,6 +85,7 @@ export {
   serializedActiveTrackSchema,
   trackDeleteResponseSchema,
   trackForEditResponseSchema,
+  tracksNullResponseSchema,
   tracksCreateTrackRequestSchema,
   tracksDeleteTrackRequestSchema,
   tracksGetActiveTrackRequestSchema,
@@ -263,18 +264,12 @@ export interface ProtocolMap {
   'tracks.getTrackForEdit'(
     request: TracksGetTrackForEditRequest,
   ): TrackForEditResponse
-  'tracks.setActiveTrack'(
-    request: TracksSetActiveTrackRequest,
-  ): SerializedActiveTrack
-  'tracks.setActiveGroup'(
-    request: TracksSetActiveGroupRequest,
-  ): SerializedActiveTrack
+  'tracks.setActiveTrack'(request: TracksSetActiveTrackRequest): null
+  'tracks.setActiveGroup'(request: TracksSetActiveGroupRequest): null
   'tracks.createTrack'(request: TracksCreateTrackRequest): TrackForEditResponse
   'tracks.updateTrack'(request: TracksUpdateTrackRequest): TrackForEditResponse
   'tracks.deleteTrack'(request: TracksDeleteTrackRequest): TrackDeleteResponse
-  'tracks.resetTrackProgress'(
-    request: TracksResetTrackProgressRequest,
-  ): SerializedActiveTrack
+  'tracks.resetTrackProgress'(request: TracksResetTrackProgressRequest): null
   'settings.getSettings'(request: SettingsRequest): UserSettings
   'settings.updateSettings'(request: SettingsUpdateRequest): UserSettings
   'settings.toggleStudyMode'(request: SettingsToggleStudyModeRequest): null

@@ -237,6 +237,10 @@ export type TracksResetTrackProgressRequest = z.infer<
   typeof tracksResetTrackProgressRequestSchema
 >
 
-export const trackDeleteResponseSchema = z.void()
+export const tracksNullResponseSchema = z.null()
 
-export type TrackDeleteResponse = z.infer<typeof trackDeleteResponseSchema>
+export type TracksNullResponse = z.infer<typeof tracksNullResponseSchema>
+
+export const trackDeleteResponseSchema = tracksNullResponseSchema
+
+export type TrackDeleteResponse = TracksNullResponse

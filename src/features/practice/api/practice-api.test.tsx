@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
 import { createSerializedPracticeDetails } from '@/testing/practice-fixtures'
@@ -15,7 +15,29 @@ vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
 }))
 
+const queryMocks = vi.hoisted(() => ({
+  invalidateTaggedQueries: vi.fn(),
+}))
+
+vi.mock('@/platform/query/cache-invalidation', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/platform/query/cache-invalidation')>()
+
+  queryMocks.invalidateTaggedQueries.mockImplementation(
+    actual.invalidateTaggedQueries,
+  )
+
+  return {
+    ...actual,
+    invalidateTaggedQueries: queryMocks.invalidateTaggedQueries,
+  }
+})
+
 describe('practice API hooks', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('sends saved reviews through the runtime mutation boundary', async () => {
     const { queryClient, wrapper } = createQueryTestHarness()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -82,6 +104,11 @@ async function expectPracticeMutation<TRequest>(input: {
   })
 
   expect(sendMessage).toHaveBeenCalledWith(input.method, input.request)
+  expect(queryMocks.invalidateTaggedQueries).toHaveBeenCalledWith(queryClient, [
+    'practice',
+    'problems',
+    'tracks',
+  ])
   expect(invalidateQueries.mock.calls.map(([call]) => call)).toEqual([
     { queryKey: ['practice-details'] },
     { queryKey: ['problems'] },

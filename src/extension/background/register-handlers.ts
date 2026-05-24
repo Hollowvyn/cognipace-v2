@@ -20,7 +20,18 @@ import {
   settingsToggleStudyModeRequestSchema,
   settingsUpdateRequestSchema,
   todayQueueSchema,
+  trackForEditResponseSchema,
+  tracksCreateTrackRequestSchema,
+  tracksDeleteTrackRequestSchema,
+  tracksGetTrackForEditRequestSchema,
+  tracksGetWorkspaceRequestSchema,
+  tracksNullResponseSchema,
+  tracksResetTrackProgressRequestSchema,
   tracksRequestSchema,
+  tracksSetActiveGroupRequestSchema,
+  tracksSetActiveTrackRequestSchema,
+  tracksUpdateTrackRequestSchema,
+  trackWorkspaceResponseSchema,
   type SerializedActiveTrack,
   type SerializedTodayQueue,
   type UiSurface,
@@ -74,15 +85,32 @@ import {
   toggleStudyMode,
   updateSettings,
 } from '@/features/settings/server/settings-service'
-import {
-  serializeActiveTrack as serializeActiveTrackContract,
-} from '@/features/tracks/api/tracks-serializers'
+import { serializeActiveTrack as serializeActiveTrackContract } from '@/features/tracks/api/tracks-serializers'
 import type { ActiveTrack } from '@/features/tracks/domain'
-import { getActiveTrack } from '@/features/tracks/server/tracks-service'
+import {
+  createTrack,
+  deleteTrack,
+  getActiveTrack,
+  getTrackForEdit,
+  getWorkspace,
+  recordActiveTrackProblemCompletion,
+  resetTrackProgress,
+  setActiveGroup,
+  setActiveTrack,
+  updateTrack,
+} from '@/features/tracks/server/tracks-service'
 import { flushDbSnapshot, getAppDb, type Db } from '@/platform/db'
 
 import { broadcastCacheInvalidation } from './cache-invalidation-broadcaster'
 import { assertCanSenderCallExtensionMethod } from './runtime-policy'
+
+const practiceTrackInvalidationTags = [
+  'practice',
+  'problems',
+  'queue',
+  'app-shell',
+  'tracks',
+] as const
 
 export function registerBackgroundHandlers() {
   onMessage('runtime.ping', ({ data, sender }) => {
@@ -241,7 +269,9 @@ export function registerBackgroundHandlers() {
     )
     return runDbMutation(
       async (db) =>
-        problemDeleteResponseSchema.parse(await bulkDeleteProblems(db, request)),
+        problemDeleteResponseSchema.parse(
+          await bulkDeleteProblems(db, request),
+        ),
       () =>
         broadcastProblemCatalogInvalidation({
           problemSlug: readSingleChangedProblemSlug(request.problemSlugs),
@@ -271,6 +301,7 @@ export function registerBackgroundHandlers() {
 
   onMessage('practice.saveReviewResult', ({ data, sender }) => {
     const request = practiceSaveReviewResultRequestSchema.parse(data)
+    let recordedTrackCompletion = false
 
     assertCanSenderCallExtensionMethod(
       'practice.saveReviewResult',
@@ -280,6 +311,9 @@ export function registerBackgroundHandlers() {
     return runDbMutation(
       async (db) => {
         const settings = await getSettings(db)
+        const reviewedAt = request.reviewedAt
+          ? new Date(request.reviewedAt)
+          : new Date()
         const reviewInput = {
           problemSlug: request.problemSlug,
           rating: request.rating,
@@ -291,11 +325,19 @@ export function registerBackgroundHandlers() {
 
         await saveReviewResult(db, {
           ...reviewInput,
-          ...(request.reviewedAt
-            ? { reviewedAt: new Date(request.reviewedAt) }
-            : {}),
+          reviewedAt,
           ...(request.reviewMode ? { reviewMode: request.reviewMode } : {}),
         })
+        if (isTrackCompletionRating(request.rating)) {
+          recordedTrackCompletion = await recordActiveTrackProblemCompletion(
+            db,
+            {
+              problemSlug: request.problemSlug,
+              rating: request.rating,
+              completedAt: reviewedAt,
+            },
+          )
+        }
         const details = await getPracticeDetails(db, request.problemSlug, {
           targetRetention: settings.review.targetRetention,
         })
@@ -306,6 +348,9 @@ export function registerBackgroundHandlers() {
         broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
           source: request.surface,
+          ...(recordedTrackCompletion
+            ? { tags: practiceTrackInvalidationTags }
+            : {}),
         }),
     )
   })
@@ -364,6 +409,7 @@ export function registerBackgroundHandlers() {
         broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
           source: request.surface,
+          tags: practiceTrackInvalidationTags,
         }),
     )
   })
@@ -389,6 +435,7 @@ export function registerBackgroundHandlers() {
         broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
           source: request.surface,
+          tags: practiceTrackInvalidationTags,
         }),
     )
   })
@@ -447,6 +494,158 @@ export function registerBackgroundHandlers() {
     )
     return getAppDb().then(async ({ db }) =>
       serializeActiveTrack(await getActiveTrack(db)),
+    )
+  })
+
+  onMessage('tracks.getWorkspace', ({ data, sender }) => {
+    const request = tracksGetWorkspaceRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'tracks.getWorkspace',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      trackWorkspaceResponseSchema.parse(await getWorkspace(db, request)),
+    )
+  })
+
+  onMessage('tracks.getTrackForEdit', ({ data, sender }) => {
+    const request = tracksGetTrackForEditRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'tracks.getTrackForEdit',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      trackForEditResponseSchema.parse(await getTrackForEdit(db, request)),
+    )
+  })
+
+  onMessage('tracks.setActiveTrack', ({ data, sender }) => {
+    const request = tracksSetActiveTrackRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'tracks.setActiveTrack',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) => {
+        await setActiveTrack(db, request)
+
+        return tracksNullResponseSchema.parse(null)
+      },
+      () =>
+        broadcastTracksInvalidation({
+          source: request.surface,
+          tags: ['tracks'],
+        }),
+    )
+  })
+
+  onMessage('tracks.setActiveGroup', ({ data, sender }) => {
+    const request = tracksSetActiveGroupRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'tracks.setActiveGroup',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) => {
+        await setActiveGroup(db, request)
+
+        return tracksNullResponseSchema.parse(null)
+      },
+      () =>
+        broadcastTracksInvalidation({
+          source: request.surface,
+          tags: ['tracks'],
+        }),
+    )
+  })
+
+  onMessage('tracks.createTrack', ({ data, sender }) => {
+    const request = tracksCreateTrackRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'tracks.createTrack',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) =>
+        trackForEditResponseSchema.parse(await createTrack(db, request)),
+      () =>
+        broadcastTracksInvalidation({
+          source: request.surface,
+          tags: ['tracks', 'problems'],
+        }),
+    )
+  })
+
+  onMessage('tracks.updateTrack', ({ data, sender }) => {
+    const request = tracksUpdateTrackRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'tracks.updateTrack',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) =>
+        trackForEditResponseSchema.parse(await updateTrack(db, request)),
+      () =>
+        broadcastTracksInvalidation({
+          source: request.surface,
+          tags: ['tracks', 'problems'],
+        }),
+    )
+  })
+
+  onMessage('tracks.deleteTrack', ({ data, sender }) => {
+    const request = tracksDeleteTrackRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'tracks.deleteTrack',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) => {
+        await deleteTrack(db, request)
+
+        return tracksNullResponseSchema.parse(null)
+      },
+      () =>
+        broadcastTracksInvalidation({
+          source: request.surface,
+          tags: ['tracks', 'problems'],
+        }),
+    )
+  })
+
+  onMessage('tracks.resetTrackProgress', ({ data, sender }) => {
+    const request = tracksResetTrackProgressRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'tracks.resetTrackProgress',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) => {
+        await resetTrackProgress(db, request)
+
+        return tracksNullResponseSchema.parse(null)
+      },
+      () =>
+        broadcastTracksInvalidation({
+          source: request.surface,
+          tags: ['tracks', 'problems'],
+        }),
     )
   })
 
@@ -608,6 +807,21 @@ function broadcastPracticeInvalidation(input: {
     source: input.source,
     tags: input.tags ?? ['practice', 'problems', 'queue', 'app-shell'],
   })
+}
+
+function broadcastTracksInvalidation(input: {
+  source: UiSurface
+  tags?: Parameters<typeof broadcastCacheInvalidation>[0]['tags']
+}) {
+  return broadcastCacheInvalidation({
+    reason: 'tracks-updated',
+    source: input.source,
+    tags: input.tags ?? ['tracks'],
+  })
+}
+
+function isTrackCompletionRating(rating: string) {
+  return rating === 'good' || rating === 'easy'
 }
 
 function serializeTodayQueue(queue: TodayQueue): SerializedTodayQueue {

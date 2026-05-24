@@ -3,6 +3,16 @@ import { describe, expect, it, beforeEach, vi } from 'vitest'
 import {
   activeTrackSchema,
   queueRequestSchema,
+  trackForEditResponseSchema,
+  tracksCreateTrackRequestSchema,
+  tracksDeleteTrackRequestSchema,
+  tracksGetTrackForEditRequestSchema,
+  tracksGetWorkspaceRequestSchema,
+  tracksResetTrackProgressRequestSchema,
+  tracksSetActiveGroupRequestSchema,
+  tracksSetActiveTrackRequestSchema,
+  tracksUpdateTrackRequestSchema,
+  trackWorkspaceResponseSchema,
   todayQueueSchema,
 } from '@/extension/messaging'
 import type { PopupAppShellData } from '@/features/app-shell/api/app-shell-contracts'
@@ -13,6 +23,10 @@ import {
   createProblemForEditResponse,
   createProblemLibraryResponse,
 } from '@/testing/problem-fixtures'
+import {
+  createTrackForEditResponse,
+  createTrackWorkspaceResponse,
+} from '@/testing/track-fixtures'
 
 import {
   registerBackgroundHandlers,
@@ -37,10 +51,22 @@ const backgroundMocks = vi.hoisted(() => {
     getAppShellData: vi.fn(),
     getProblemLibrary: vi.fn(),
     createProblem: vi.fn(),
+    createTrack: vi.fn(),
+    deleteTrack: vi.fn(),
     bulkUpdateProblems: vi.fn(),
+    getPracticeDetails: vi.fn(),
+    getTrackForEdit: vi.fn(),
+    getWorkspace: vi.fn(),
+    recordActiveTrackProblemCompletion: vi.fn(),
+    resetPracticeSchedule: vi.fn(),
+    resetTrackProgress: vi.fn(),
+    saveReviewResult: vi.fn(),
+    setActiveGroup: vi.fn(),
     setPracticeSuspended: vi.fn(),
+    setActiveTrack: vi.fn(),
     getSettings: vi.fn(),
     toggleStudyMode: vi.fn(),
+    updateTrack: vi.fn(),
     onMessage: vi.fn(
       (
         method: string,
@@ -69,30 +95,53 @@ vi.mock('@/features/app-shell/server/app-shell-service', () => ({
   getAppShellData: backgroundMocks.getAppShellData,
 }))
 
-vi.mock('@/features/practice/server/practice-service', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/features/practice/server/practice-service')>()
+vi.mock(
+  '@/features/practice/server/practice-service',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/features/practice/server/practice-service')
+      >()
 
-  return {
-    ...actual,
-    setPracticeSuspended: backgroundMocks.setPracticeSuspended,
-  }
-})
+    return {
+      ...actual,
+      getPracticeDetails: backgroundMocks.getPracticeDetails,
+      resetPracticeSchedule: backgroundMocks.resetPracticeSchedule,
+      saveReviewResult: backgroundMocks.saveReviewResult,
+      setPracticeSuspended: backgroundMocks.setPracticeSuspended,
+    }
+  },
+)
 
-vi.mock('@/features/problems/server/problems-service', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/features/problems/server/problems-service')>()
+vi.mock(
+  '@/features/problems/server/problems-service',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/features/problems/server/problems-service')
+      >()
 
-  return {
-    ...actual,
-    getProblemLibrary: backgroundMocks.getProblemLibrary,
-    createProblem: backgroundMocks.createProblem,
-    bulkUpdateProblems: backgroundMocks.bulkUpdateProblems,
-  }
-})
+    return {
+      ...actual,
+      getProblemLibrary: backgroundMocks.getProblemLibrary,
+      createProblem: backgroundMocks.createProblem,
+      bulkUpdateProblems: backgroundMocks.bulkUpdateProblems,
+    }
+  },
+)
 
 vi.mock('@/features/tracks/server/tracks-service', () => ({
+  createTrack: backgroundMocks.createTrack,
+  deleteTrack: backgroundMocks.deleteTrack,
   getActiveTrack: backgroundMocks.getActiveTrack,
+  getTrackForEdit: backgroundMocks.getTrackForEdit,
+  getWorkspace: backgroundMocks.getWorkspace,
+  recordActiveTrackProblemCompletion:
+    backgroundMocks.recordActiveTrackProblemCompletion,
+  resetTrackProgress: backgroundMocks.resetTrackProgress,
+  setActiveGroup: backgroundMocks.setActiveGroup,
+  setActiveTrack: backgroundMocks.setActiveTrack,
+  updateTrack: backgroundMocks.updateTrack,
 }))
 
 vi.mock('@/features/settings/server/settings-service', () => ({
@@ -124,8 +173,19 @@ describe('background handler registration', () => {
     backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
     backgroundMocks.getProblemLibrary.mockResolvedValue(problemLibraryResponse)
     backgroundMocks.createProblem.mockResolvedValue(problemForEditResponse)
+    backgroundMocks.createTrack.mockResolvedValue(trackForEditResponse)
+    backgroundMocks.deleteTrack.mockResolvedValue(undefined)
     backgroundMocks.bulkUpdateProblems.mockResolvedValue(undefined)
+    backgroundMocks.getPracticeDetails.mockResolvedValue(practiceDetails)
+    backgroundMocks.getTrackForEdit.mockResolvedValue(trackForEditResponse)
+    backgroundMocks.getWorkspace.mockResolvedValue(trackWorkspaceResponse)
+    backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValue(false)
+    backgroundMocks.resetPracticeSchedule.mockResolvedValue(practiceDetails)
+    backgroundMocks.resetTrackProgress.mockResolvedValue(undefined)
+    backgroundMocks.saveReviewResult.mockResolvedValue(undefined)
+    backgroundMocks.setActiveGroup.mockResolvedValue(undefined)
     backgroundMocks.setPracticeSuspended.mockResolvedValue(practiceDetails)
+    backgroundMocks.setActiveTrack.mockResolvedValue(undefined)
     backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
     backgroundMocks.toggleStudyMode.mockResolvedValue(defaultUserSettings)
     backgroundMocks.updateSettings.mockResolvedValue(defaultUserSettings)
@@ -181,6 +241,138 @@ describe('background handler registration', () => {
       nextProblem: {
         slug: 'two-sum',
       },
+    })
+  })
+
+  it('registers track workspace handling with request and response parsing', async () => {
+    const request = {
+      surface: 'dashboard',
+      at: '2026-01-01T10:00:00.000Z',
+    } as const
+
+    const response = await sendRuntimeMessage('tracks.getWorkspace', request)
+
+    expectRuntimePolicy('tracks.getWorkspace', 'dashboard')
+    expect(backgroundMocks.getWorkspace).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      tracksGetWorkspaceRequestSchema.parse(request),
+    )
+    expect(response).toEqual(trackWorkspaceResponseSchema.parse(response))
+
+    backgroundMocks.getWorkspace.mockResolvedValueOnce({
+      ...trackWorkspaceResponse,
+      generatedAt: 'not-a-date',
+    })
+    await expect(
+      sendRuntimeMessage('tracks.getWorkspace', request),
+    ).rejects.toThrow()
+  })
+
+  it('registers track edit handling for create and edit requests', async () => {
+    const createRequest = { surface: 'dashboard' } as const
+    const editRequest = {
+      surface: 'dashboard',
+      trackId: 'leetcode-75',
+    } as const
+
+    const createResponse = await sendRuntimeMessage(
+      'tracks.getTrackForEdit',
+      createRequest,
+    )
+    const editResponse = await sendRuntimeMessage(
+      'tracks.getTrackForEdit',
+      editRequest,
+    )
+
+    expectRuntimePolicy('tracks.getTrackForEdit', 'dashboard')
+    expectRuntimePolicy('tracks.getTrackForEdit', 'dashboard')
+    expect(backgroundMocks.getTrackForEdit).toHaveBeenNthCalledWith(
+      1,
+      backgroundMocks.db,
+      tracksGetTrackForEditRequestSchema.parse(createRequest),
+    )
+    expect(backgroundMocks.getTrackForEdit).toHaveBeenNthCalledWith(
+      2,
+      backgroundMocks.db,
+      tracksGetTrackForEditRequestSchema.parse(editRequest),
+    )
+    expect(createResponse).toEqual(
+      trackForEditResponseSchema.parse(createResponse),
+    )
+    expect(editResponse).toEqual(trackForEditResponseSchema.parse(editResponse))
+  })
+
+  it('flushes and broadcasts tracks invalidation after active selection writes', async () => {
+    await expectTrackWrite({
+      method: 'tracks.setActiveTrack',
+      request: {
+        surface: 'dashboard',
+        trackId: 'leetcode-75',
+      },
+      schema: tracksSetActiveTrackRequestSchema,
+      service: backgroundMocks.setActiveTrack,
+      expectedResponse: null,
+      expectedTags: ['tracks'],
+    })
+
+    await expectTrackWrite({
+      method: 'tracks.setActiveGroup',
+      request: {
+        surface: 'dashboard',
+        trackId: 'leetcode-75',
+        groupId: 'leetcode-75:arrays-hashing',
+      },
+      schema: tracksSetActiveGroupRequestSchema,
+      service: backgroundMocks.setActiveGroup,
+      expectedResponse: null,
+      expectedTags: ['tracks'],
+    })
+  })
+
+  it('flushes and broadcasts tracks plus problems invalidation after management writes', async () => {
+    await expectTrackWrite({
+      method: 'tracks.createTrack',
+      request: createTrackRequest(),
+      schema: tracksCreateTrackRequestSchema,
+      service: backgroundMocks.createTrack,
+      expectedResponse: parsedTrackForEditResponse,
+      expectedTags: ['tracks', 'problems'],
+    })
+
+    await expectTrackWrite({
+      method: 'tracks.updateTrack',
+      request: {
+        ...createTrackRequest(),
+        trackId: 'leetcode-75',
+      },
+      schema: tracksUpdateTrackRequestSchema,
+      service: backgroundMocks.updateTrack,
+      expectedResponse: parsedTrackForEditResponse,
+      expectedTags: ['tracks', 'problems'],
+    })
+
+    await expectTrackWrite({
+      method: 'tracks.deleteTrack',
+      request: {
+        surface: 'dashboard',
+        trackId: 'leetcode-75',
+      },
+      schema: tracksDeleteTrackRequestSchema,
+      service: backgroundMocks.deleteTrack,
+      expectedResponse: null,
+      expectedTags: ['tracks', 'problems'],
+    })
+
+    await expectTrackWrite({
+      method: 'tracks.resetTrackProgress',
+      request: {
+        surface: 'dashboard',
+        trackId: 'leetcode-75',
+      },
+      schema: tracksResetTrackProgressRequestSchema,
+      service: backgroundMocks.resetTrackProgress,
+      expectedResponse: null,
+      expectedTags: ['tracks', 'problems'],
     })
   })
 
@@ -256,13 +448,10 @@ describe('background handler registration', () => {
   })
 
   it('reads the Library without flushing or broadcasting invalidation', async () => {
-    const response = await sendRuntimeMessage(
-      'problems.getLibrary',
-      {
-        surface: 'dashboard',
-        at: '2026-01-01T10:00:00.000Z',
-      },
-    )
+    const response = await sendRuntimeMessage('problems.getLibrary', {
+      surface: 'dashboard',
+      at: '2026-01-01T10:00:00.000Z',
+    })
 
     expectRuntimePolicy('problems.getLibrary', 'dashboard')
     expect(backgroundMocks.getProblemLibrary).toHaveBeenCalledWith(
@@ -279,10 +468,7 @@ describe('background handler registration', () => {
 
   it('flushes and broadcasts problem invalidation after create writes', async () => {
     const request = binarySearchCreateRequest()
-    const response = await sendRuntimeMessage(
-      'problems.createProblem',
-      request,
-    )
+    const response = await sendRuntimeMessage('problems.createProblem', request)
 
     expectRuntimePolicy('problems.createProblem', 'dashboard')
     expect(backgroundMocks.createProblem).toHaveBeenCalledWith(
@@ -313,14 +499,11 @@ describe('background handler registration', () => {
   })
 
   it('includes problem invalidation for practice state that changes Library rows', async () => {
-    const response = await sendRuntimeMessage(
-      'practice.setSuspended',
-      {
-        surface: 'dashboard',
-        problemSlug: 'two-sum',
-        suspended: true,
-      },
-    )
+    const response = await sendRuntimeMessage('practice.setSuspended', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      suspended: true,
+    })
 
     expectRuntimePolicy('practice.setSuspended', 'dashboard')
     expect(backgroundMocks.setPracticeSuspended).toHaveBeenCalledWith(
@@ -334,7 +517,7 @@ describe('background handler registration', () => {
       problemSlug: 'two-sum',
       reason: 'practice-updated',
       source: 'dashboard',
-      tags: ['practice', 'problems', 'queue', 'app-shell'],
+      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
     })
     expectFlushBeforeBroadcast()
     expect(response).toMatchObject({
@@ -342,6 +525,112 @@ describe('background handler registration', () => {
       summary: {
         suspended: false,
       },
+    })
+  })
+
+  it('records active-track progress only for good and easy saved reviews', async () => {
+    await sendRuntimeMessage('practice.saveReviewResult', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      rating: 'hard',
+      reviewedAt: '2026-01-02T00:00:00.000Z',
+    })
+
+    expect(
+      backgroundMocks.recordActiveTrackProblemCompletion,
+    ).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      problemSlug: 'two-sum',
+      reason: 'practice-updated',
+      source: 'dashboard',
+      tags: ['practice', 'problems', 'queue', 'app-shell'],
+    })
+
+    vi.clearAllMocks()
+    backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
+    backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
+    backgroundMocks.flushDbSnapshot.mockResolvedValue(undefined)
+    backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
+    backgroundMocks.getPracticeDetails.mockResolvedValue(practiceDetails)
+    backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValueOnce(
+      true,
+    )
+
+    await sendRuntimeMessage('practice.saveReviewResult', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: '2026-01-02T00:00:00.000Z',
+    })
+
+    expect(
+      backgroundMocks.recordActiveTrackProblemCompletion,
+    ).toHaveBeenCalledWith(backgroundMocks.db, {
+      problemSlug: 'two-sum',
+      rating: 'good',
+      completedAt: new Date('2026-01-02T00:00:00.000Z'),
+    })
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      problemSlug: 'two-sum',
+      reason: 'practice-updated',
+      source: 'dashboard',
+      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
+    })
+  })
+
+  it('records active-track progress for easy saved reviews', async () => {
+    resetRuntimeMutationMocks()
+    backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValueOnce(
+      true,
+    )
+
+    await sendRuntimeMessage('practice.saveReviewResult', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      rating: 'easy',
+      reviewedAt: '2026-01-03T00:00:00.000Z',
+    })
+
+    expect(
+      backgroundMocks.recordActiveTrackProblemCompletion,
+    ).toHaveBeenCalledWith(backgroundMocks.db, {
+      problemSlug: 'two-sum',
+      rating: 'easy',
+      completedAt: new Date('2026-01-03T00:00:00.000Z'),
+    })
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      problemSlug: 'two-sum',
+      reason: 'practice-updated',
+      source: 'dashboard',
+      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
+    })
+  })
+
+  it('omits tracks invalidation when an eligible saved review records no track completion', async () => {
+    resetRuntimeMutationMocks()
+    backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValueOnce(
+      false,
+    )
+
+    await sendRuntimeMessage('practice.saveReviewResult', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: '2026-01-04T00:00:00.000Z',
+    })
+
+    expect(
+      backgroundMocks.recordActiveTrackProblemCompletion,
+    ).toHaveBeenCalledWith(backgroundMocks.db, {
+      problemSlug: 'two-sum',
+      rating: 'good',
+      completedAt: new Date('2026-01-04T00:00:00.000Z'),
+    })
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      problemSlug: 'two-sum',
+      reason: 'practice-updated',
+      source: 'dashboard',
+      tags: ['practice', 'problems', 'queue', 'app-shell'],
     })
   })
 })
@@ -413,6 +702,47 @@ function expectRuntimePolicy(
   ).toHaveBeenCalledWith(method, surface, sender)
 }
 
+function resetRuntimeMutationMocks() {
+  vi.clearAllMocks()
+  backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
+  backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
+  backgroundMocks.flushDbSnapshot.mockResolvedValue(undefined)
+  backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
+  backgroundMocks.getPracticeDetails.mockResolvedValue(practiceDetails)
+  backgroundMocks.saveReviewResult.mockResolvedValue(undefined)
+}
+
+async function expectTrackWrite<TRequest>(input: {
+  method: string
+  request: TRequest
+  schema: { parse: (value: unknown) => unknown }
+  service: ReturnType<typeof vi.fn>
+  expectedResponse: unknown
+  expectedTags: readonly string[]
+}) {
+  vi.clearAllMocks()
+  backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
+  backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
+  backgroundMocks.flushDbSnapshot.mockResolvedValue(undefined)
+  input.service.mockResolvedValue(input.expectedResponse ?? undefined)
+
+  const response = await sendRuntimeMessage(input.method, input.request)
+
+  expectRuntimePolicy(input.method, 'dashboard')
+  expect(input.service).toHaveBeenCalledWith(
+    backgroundMocks.db,
+    input.schema.parse(input.request),
+  )
+  expect(backgroundMocks.flushDbSnapshot).toHaveBeenCalledTimes(1)
+  expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+    reason: 'tracks-updated',
+    source: 'dashboard',
+    tags: input.expectedTags,
+  })
+  expectFlushBeforeBroadcast()
+  expect(response).toEqual(input.expectedResponse)
+}
+
 function binarySearchCreateRequest() {
   return {
     surface: 'dashboard',
@@ -422,6 +752,17 @@ function binarySearchCreateRequest() {
     isPremium: false,
     topicLabels: [],
     companyLabels: [],
+  } as const
+}
+
+function createTrackRequest() {
+  return {
+    surface: 'dashboard',
+    title: 'Interview Track',
+    description: null,
+    dueAt: null,
+    groups: [{ title: 'Arrays', problemSlugs: ['two-sum'] }],
+    setActive: true,
   } as const
 }
 
@@ -533,3 +874,7 @@ function createActiveTrack(dueAt: Date | null): ActiveTrack {
 const problemForEditResponse = createProblemForEditResponse()
 const problemLibraryResponse = createProblemLibraryResponse()
 const practiceDetails = createSerializedPracticeDetails()
+const trackForEditResponse = createTrackForEditResponse()
+const parsedTrackForEditResponse =
+  trackForEditResponseSchema.parse(trackForEditResponse)
+const trackWorkspaceResponse = createTrackWorkspaceResponse()

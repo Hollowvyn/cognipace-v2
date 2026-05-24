@@ -78,7 +78,7 @@ export function useSetPracticeSuspended() {
   return useMutation({
     mutationFn: setPracticeSuspendedViaRuntime,
     onSuccess: () => {
-      invalidateTaggedQueries(queryClient, ['practice', 'problems'])
+      invalidateTaggedQueries(queryClient, ['practice', 'problems', 'tracks'])
     },
   })
 }
@@ -89,7 +89,7 @@ export function useResetPracticeSchedule() {
   return useMutation({
     mutationFn: resetPracticeScheduleViaRuntime,
     onSuccess: () => {
-      invalidateTaggedQueries(queryClient, ['practice', 'problems'])
+      invalidateTaggedQueries(queryClient, ['practice', 'problems', 'tracks'])
     },
   })
 }
