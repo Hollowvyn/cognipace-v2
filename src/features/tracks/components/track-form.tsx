@@ -403,7 +403,7 @@ function TrackGroupList({
       </div>
       <div
         aria-label="Track groups"
-        className="grid h-80 gap-2 overflow-y-auto rounded-[var(--cp-control-radius)] border-2 border-border bg-card/50 p-3"
+        className="grid h-80 content-start gap-2 overflow-y-auto rounded-[var(--cp-control-radius)] border-2 border-border bg-card/50 p-3"
         role="list"
       >
         {groups.map((group, index) => {

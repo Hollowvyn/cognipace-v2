@@ -509,6 +509,7 @@ describe('TrackForm', () => {
     )
     expect(groupRows).toHaveClass(
       'h-80',
+      'content-start',
       'overflow-y-auto',
       'rounded-[var(--cp-control-radius)]',
       'border-2',
