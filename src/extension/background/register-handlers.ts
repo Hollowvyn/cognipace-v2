@@ -1,5 +1,4 @@
 import {
-  activeTrackSchema,
   leetcodeProblemRemoteRuntimeRequestSchema,
   leetcodeSubmissionResultRemoteRuntimeRequestSchema,
   onMessage,
@@ -23,7 +22,6 @@ import {
   todayQueueSchema,
   tracksRequestSchema,
   type SerializedActiveTrack,
-  type SerializedProblem,
   type SerializedTodayQueue,
   type UiSurface,
 } from '@/extension/messaging'
@@ -58,7 +56,6 @@ import {
   setPracticeSuspended,
   updateCurrentPracticeLog,
 } from '@/features/practice/server/practice-service'
-import type { Problem } from '@/features/problems/domain'
 import {
   bulkDeleteProblems,
   bulkUpdateProblems,
@@ -77,6 +74,9 @@ import {
   toggleStudyMode,
   updateSettings,
 } from '@/features/settings/server/settings-service'
+import {
+  serializeActiveTrack as serializeActiveTrackContract,
+} from '@/features/tracks/api/tracks-serializers'
 import type { ActiveTrack } from '@/features/tracks/domain'
 import { getActiveTrack } from '@/features/tracks/server/tracks-service'
 import { flushDbSnapshot, getAppDb, type Db } from '@/platform/db'
@@ -562,14 +562,6 @@ function runDbMutation<T>(
   return queued
 }
 
-function serializeProblem(problem: Problem): SerializedProblem {
-  return {
-    ...problem,
-    createdAt: problem.createdAt.toISOString(),
-    updatedAt: problem.updatedAt.toISOString(),
-  }
-}
-
 function readReviewLogRequest(request: {
   log?:
     | {
@@ -642,18 +634,5 @@ export function getAppShellRuntimeSurface(
 export function serializeActiveTrack(
   activeTrack: ActiveTrack | null,
 ): SerializedActiveTrack {
-  return activeTrackSchema.parse(
-    activeTrack
-      ? {
-          ...activeTrack,
-          track: {
-            ...activeTrack.track,
-            dueAt: activeTrack.track.dueAt?.toISOString() ?? null,
-          },
-          nextProblem: activeTrack.nextProblem
-            ? serializeProblem(activeTrack.nextProblem)
-            : null,
-        }
-      : null,
-  )
+  return serializeActiveTrackContract(activeTrack)
 }

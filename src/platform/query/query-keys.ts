@@ -30,5 +30,9 @@ export const queryKeys = {
     all: ['tracks'] as const,
     active: (surface?: string | null) =>
       [...queryKeys.tracks.all, 'active', surface ?? null] as const,
+    workspace: (at?: string | null) =>
+      [...queryKeys.tracks.all, 'workspace', at ?? 'now'] as const,
+    edit: (trackId?: string | null) =>
+      [...queryKeys.tracks.all, 'edit', trackId ?? 'new'] as const,
   },
 } as const

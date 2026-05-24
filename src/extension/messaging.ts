@@ -25,7 +25,6 @@ import {
 import {
   problemDifficultySchema,
   problemSlugSchema,
-  serializedProblemSchema,
   type ProblemBulkUpdateResponse,
   type ProblemDeleteResponse,
   type ProblemForEditResponse,
@@ -66,6 +65,52 @@ import {
   type SettingsToggleStudyModeRequest,
   type SettingsUpdateRequest,
 } from '@/features/settings/api/settings-contracts'
+import type {
+  SerializedActiveTrack,
+  TrackDeleteResponse,
+  TrackForEditResponse,
+  TracksCreateTrackRequest,
+  TracksDeleteTrackRequest,
+  TracksGetActiveTrackRequest,
+  TracksGetTrackForEditRequest,
+  TracksGetWorkspaceRequest,
+  TracksResetTrackProgressRequest,
+  TracksSetActiveGroupRequest,
+  TracksSetActiveTrackRequest,
+  TracksUpdateTrackRequest,
+  TrackWorkspaceResponse,
+} from '@/features/tracks/api/tracks-contracts'
+export {
+  activeTrackSchema,
+  serializedActiveTrackSchema,
+  trackDeleteResponseSchema,
+  trackForEditResponseSchema,
+  tracksCreateTrackRequestSchema,
+  tracksDeleteTrackRequestSchema,
+  tracksGetActiveTrackRequestSchema,
+  tracksGetTrackForEditRequestSchema,
+  tracksGetWorkspaceRequestSchema,
+  tracksResetTrackProgressRequestSchema,
+  tracksSetActiveGroupRequestSchema,
+  tracksSetActiveTrackRequestSchema,
+  tracksUpdateTrackRequestSchema,
+  trackWorkspaceResponseSchema,
+} from '@/features/tracks/api/tracks-contracts'
+export type {
+  SerializedActiveTrack,
+  TrackDeleteResponse,
+  TrackForEditResponse,
+  TracksCreateTrackRequest,
+  TracksDeleteTrackRequest,
+  TracksGetActiveTrackRequest,
+  TracksGetTrackForEditRequest,
+  TracksGetWorkspaceRequest,
+  TracksResetTrackProgressRequest,
+  TracksSetActiveGroupRequest,
+  TracksSetActiveTrackRequest,
+  TracksUpdateTrackRequest,
+  TrackWorkspaceResponse,
+} from '@/features/tracks/api/tracks-contracts'
 import { cacheInvalidationTags } from '@/platform/query/cache-invalidation'
 
 export const extensionSurfaceSchema = z.enum([
@@ -121,57 +166,6 @@ export const todayQueueSchema = z.object({
 
 export type SerializedTodayQueue = z.infer<typeof todayQueueSchema>
 
-export const activeTrackSchema = z
-  .object({
-    track: z.object({
-      id: z.string(),
-      slug: z.string(),
-      title: z.string(),
-      description: z.string().nullable(),
-      dueAt: z.iso.datetime().nullable(),
-    }),
-    activeGroup: z
-      .object({
-        id: z.string(),
-        trackId: z.string(),
-        title: z.string(),
-        position: z.number(),
-      })
-      .nullable(),
-    progress: z
-      .object({
-        completedCount: z.number().int().min(0),
-        totalCount: z.number().int().min(0),
-        percent: z.number().int().min(0).max(100),
-      })
-      .superRefine((progress, context) => {
-        if (progress.completedCount > progress.totalCount) {
-          context.addIssue({
-            code: 'custom',
-            message: 'completedCount cannot exceed totalCount',
-            path: ['completedCount'],
-          })
-        }
-
-        const expectedPercent =
-          progress.totalCount === 0
-            ? 0
-            : Math.round((progress.completedCount / progress.totalCount) * 100)
-
-        if (progress.percent !== expectedPercent) {
-          context.addIssue({
-            code: 'custom',
-            message: 'percent must match completedCount and totalCount',
-            path: ['percent'],
-          })
-        }
-      }),
-    nextProblem: serializedProblemSchema.nullable(),
-  })
-  .nullable()
-
-export type SerializedActiveTrack = z.infer<typeof activeTrackSchema>
-
 export const pingRequestSchema = z.object({
   surface: extensionSurfaceSchema,
 })
@@ -191,11 +185,9 @@ export const queueRequestSchema = z.object({
 
 export type QueueRequest = z.infer<typeof queueRequestSchema>
 
-export const tracksRequestSchema = z.object({
-  surface: z.enum(['popup', 'dashboard']),
-})
+export { tracksGetActiveTrackRequestSchema as tracksRequestSchema } from '@/features/tracks/api/tracks-contracts'
 
-export type TracksRequest = z.infer<typeof tracksRequestSchema>
+export type TracksRequest = TracksGetActiveTrackRequest
 
 export const leetcodeProblemRemoteRuntimeRequestSchema =
   leetcodeProblemRemoteRequestSchema.extend({
@@ -262,7 +254,27 @@ export interface ProtocolMap {
     request: PracticeUpdateCurrentLogRequest,
   ): SerializedPracticeDetails
   'queue.getTodayQueue'(request: QueueRequest): SerializedTodayQueue
-  'tracks.getActiveTrack'(request: TracksRequest): SerializedActiveTrack
+  'tracks.getActiveTrack'(
+    request: TracksGetActiveTrackRequest,
+  ): SerializedActiveTrack
+  'tracks.getWorkspace'(
+    request: TracksGetWorkspaceRequest,
+  ): TrackWorkspaceResponse
+  'tracks.getTrackForEdit'(
+    request: TracksGetTrackForEditRequest,
+  ): TrackForEditResponse
+  'tracks.setActiveTrack'(
+    request: TracksSetActiveTrackRequest,
+  ): SerializedActiveTrack
+  'tracks.setActiveGroup'(
+    request: TracksSetActiveGroupRequest,
+  ): SerializedActiveTrack
+  'tracks.createTrack'(request: TracksCreateTrackRequest): TrackForEditResponse
+  'tracks.updateTrack'(request: TracksUpdateTrackRequest): TrackForEditResponse
+  'tracks.deleteTrack'(request: TracksDeleteTrackRequest): TrackDeleteResponse
+  'tracks.resetTrackProgress'(
+    request: TracksResetTrackProgressRequest,
+  ): SerializedActiveTrack
   'settings.getSettings'(request: SettingsRequest): UserSettings
   'settings.updateSettings'(request: SettingsUpdateRequest): UserSettings
   'settings.toggleStudyMode'(request: SettingsToggleStudyModeRequest): null
