@@ -423,20 +423,25 @@ describe('TrackForm', () => {
     const binarySearchResult = within(results).getByRole('listitem', {
       name: 'Binary Search',
     })
+    const addBinarySearchButton = within(binarySearchResult).getByRole(
+      'button',
+      {
+        name: 'Add Binary Search',
+      },
+    )
 
-    expect(binarySearchResult).toHaveClass('grid-cols-[minmax(0,1fr)_auto]')
+    expect(addBinarySearchButton).toHaveClass(
+      'w-full',
+      'grid-cols-[minmax(0,1fr)_auto]',
+    )
     expect(within(binarySearchResult).getByText('Binary Search')).toHaveClass(
       'text-[length:var(--cp-copy-font-size)]',
     )
     expect(within(binarySearchResult).queryByText('Easy')).toBeNull()
-    expect(
-      within(results).getByRole('button', {
-        name: 'Add Binary Search',
-      }),
-    ).toBeVisible()
+    expect(addBinarySearchButton).toBeVisible()
     expect(screen.queryByText('Binary Tree Path Sum')).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: 'Add Binary Search' }))
+    await user.click(addBinarySearchButton)
 
     expect(searchInput).toHaveValue('')
     expect(

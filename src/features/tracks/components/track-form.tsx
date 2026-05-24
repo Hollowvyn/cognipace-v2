@@ -669,24 +669,22 @@ function ProblemSearchResult({
   return (
     <div
       aria-label={row.problem.title}
-      className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--cp-control-radius)] border border-border px-2 py-1.5"
+      className="min-w-0"
       role="listitem"
     >
-      <ProblemSummary
-        compact
-        slug={row.problem.slug}
-        title={row.problem.title}
-      />
-      <IconButton
-        label={`Add ${row.problem.title}`}
+      <button
+        aria-label={`Add ${row.problem.title}`}
+        className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--cp-control-radius)] border border-border px-3 py-2 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-popover"
         onClick={onAdd}
-        size="sm"
-        tooltip="Add"
         type="button"
-        variant="ghost"
       >
+        <ProblemSummary
+          compact
+          slug={row.problem.slug}
+          title={row.problem.title}
+        />
         <Plus aria-hidden="true" />
-      </IconButton>
+      </button>
     </div>
   )
 }
