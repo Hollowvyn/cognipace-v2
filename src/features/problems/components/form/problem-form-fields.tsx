@@ -8,7 +8,7 @@ import type { SerializedProblem } from '@/features/problems/api/problems-contrac
 import {
   problemDifficulties,
   type ProblemDifficulty,
-} from '@/lib/problem-catalog'
+} from '@/features/problems/domain'
 import {
   createLeetCodeProblemUrl,
   parseLeetCodeProblemInput,

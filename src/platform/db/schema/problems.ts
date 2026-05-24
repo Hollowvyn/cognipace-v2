@@ -1,19 +1,21 @@
 import { relations, sql } from 'drizzle-orm'
 import { check, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
-import { problemDifficulties } from '@/lib/problem-catalog'
-
 import { problemCompanies } from './problem-companies'
 import { problemPractice } from './problem-practice'
 import { problemTopics } from './problem-topics'
 import { trackGroupProblems } from './track-group-problems'
+
+const problemDifficultyValues = ['easy', 'medium', 'hard', 'unknown'] as const
 
 export const problems = sqliteTable(
   'problems',
   {
     slug: text('slug').primaryKey(),
     title: text('title').notNull(),
-    difficulty: text('difficulty', { enum: problemDifficulties }).notNull(),
+    difficulty: text('difficulty', {
+      enum: problemDifficultyValues,
+    }).notNull(),
     isPremium: integer('is_premium', { mode: 'boolean' })
       .notNull()
       .default(false),

@@ -37,8 +37,7 @@ generic.
   policy and handler registration.
 - `src/features`: product-owned feature modules.
 - `src/hooks`: shared React hooks that are not owned by one feature.
-- `src/lib`: product integrations such as FSRS, LeetCode readers, and problem
-  catalog code.
+- `src/lib`: product integrations such as FSRS and LeetCode readers.
 - `src/platform`: browser, database, query, and time infrastructure.
 - `src/styles`: shared styling support.
 - `src/testing`: shared fixtures, setup, helpers, and boundary tests.

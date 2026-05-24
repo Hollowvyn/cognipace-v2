@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import {
   problemDifficulties,
   type ProblemDifficulty,
-} from '@/lib/problem-catalog'
+} from '@/features/problems/domain'
 
 import type {
   ProblemLibraryOptions,

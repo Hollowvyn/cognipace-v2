@@ -1,6 +1,6 @@
 import type { ColumnFiltersState, FilterFn, Row } from '@tanstack/react-table'
 
-import type { ProblemDifficulty } from '@/lib/problem-catalog'
+import type { ProblemDifficulty } from '@/features/problems/domain'
 
 import type {
   ProblemLibraryResponse,
