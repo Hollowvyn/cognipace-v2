@@ -274,20 +274,39 @@ describe('TrackForm', () => {
       'text-[length:var(--cp-copy-font-size)]',
     )
     expect(within(dynamicRow).getByText('1 problem')).toBeVisible()
+    expect(dynamicRow).toHaveClass('cursor-pointer')
     expect(within(arraysRow).getByLabelText('Group title')).toHaveValue(
       'Arrays and Hashing',
     )
     expect(within(dynamicRow).queryByLabelText('Group title')).toBeNull()
 
     await user.click(
-      within(groups).getByRole('button', {
-        name: 'Select Dynamic Programming',
+      within(dynamicRow).getByRole('button', {
+        name: 'Move Dynamic Programming up',
       }),
     )
+
+    expect(within(arraysRow).getByLabelText('Group title')).toHaveValue(
+      'Arrays and Hashing',
+    )
+    expect(within(dynamicRow).queryByLabelText('Group title')).toBeNull()
+
+    await user.click(dynamicRow)
 
     expect(within(arraysRow).queryByLabelText('Group title')).toBeNull()
     expect(within(dynamicRow).getByLabelText('Group title')).toHaveValue(
       'Dynamic Programming',
+    )
+
+    await user.click(
+      within(groups).getByRole('button', {
+        name: 'Select Arrays and Hashing',
+      }),
+    )
+
+    expect(within(dynamicRow).queryByLabelText('Group title')).toBeNull()
+    expect(within(arraysRow).getByLabelText('Group title')).toHaveValue(
+      'Arrays and Hashing',
     )
   })
 

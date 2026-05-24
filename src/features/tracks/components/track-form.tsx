@@ -417,10 +417,17 @@ function TrackGroupList({
                 group.problemSlugs.length,
               )}`}
               className={cn(
-                'grid min-w-0 gap-2 rounded-[var(--cp-control-radius)] border border-border bg-background/30 px-3 py-2',
+                'grid min-w-0 cursor-pointer gap-2 rounded-[var(--cp-control-radius)] border border-border bg-background/30 px-3 py-2 transition-colors hover:bg-muted/45',
                 isSelected && 'border-primary bg-muted/45',
               )}
               key={group.key}
+              onClick={(event) => {
+                if (isFormCardControl(event.target)) {
+                  return
+                }
+
+                dispatch({ groupKey: group.key, type: 'select-group' })
+              }}
               role="listitem"
             >
               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
@@ -805,6 +812,13 @@ function getGroupDisplayTitle(group: TrackFormGroupState, index: number) {
 
 function formatProblemCount(count: number) {
   return `${count} ${count === 1 ? 'problem' : 'problems'}`
+}
+
+function isFormCardControl(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    Boolean(target.closest('button, input, textarea, select, label'))
+  )
 }
 
 function matchesProblemSearch(row: ProblemLibraryRow, searchQuery: string) {
