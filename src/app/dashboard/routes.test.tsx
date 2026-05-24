@@ -199,7 +199,11 @@ describe('dashboard routes', () => {
     const dialog = await screen.findByRole('dialog', { name: 'New Track' })
     const modalBody = within(dialog).getByLabelText('Modal content')
 
-    expect(dialog).toHaveClass('max-h-[calc(100vh-2rem)]', 'overflow-hidden')
+    expect(dialog).toHaveClass(
+      'max-h-[calc(100vh-5rem)]',
+      'sm:max-h-[calc(100vh-2rem)]',
+      'overflow-hidden',
+    )
     expect(modalBody).toHaveClass('min-h-0', 'overflow-y-auto')
   })
 

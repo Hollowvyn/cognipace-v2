@@ -141,7 +141,7 @@ export function RouteModal({
         className={cn(
           'w-full shadow-overlay',
           isFormVariant
-            ? 'flex max-h-[calc(100vh-2rem)] max-w-[46rem] flex-col overflow-hidden p-0'
+            ? 'flex max-h-[calc(100vh-5rem)] max-w-[46rem] flex-col overflow-hidden p-0 sm:max-h-[calc(100vh-2rem)]'
             : 'max-w-lg',
         )}
       >
