@@ -451,11 +451,11 @@ function SelectedGroupProblems({
   setSearchQuery: (searchQuery: string) => void
 }) {
   const normalizedSearchQuery = searchQuery.trim()
-  const showSearchResults = normalizedSearchQuery.length > 0
+  const hasSearchQuery = normalizedSearchQuery.length > 0
   const selectedProblemSlugSet = new Set(
     groups.flatMap((group) => group.problemSlugs),
   )
-  const filteredProblemRows = showSearchResults
+  const filteredProblemRows = hasSearchQuery
     ? problemRows
         .filter(
           (row) =>
@@ -494,38 +494,36 @@ function SelectedGroupProblems({
           type="search"
           value={searchQuery}
         />
-        {showSearchResults ? (
-          <div
-            aria-label="Library problem suggestions"
-            className="h-44 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-background/40 p-2"
-            role="region"
-          >
-            {filteredProblemRows.length > 0 ? (
-              <div
-                aria-label="Library problem results"
-                className="grid gap-2"
-                role="list"
-              >
-                {filteredProblemRows.map((row) => (
-                  <ProblemSearchResult
-                    key={row.problem.slug}
-                    onAdd={() => {
-                      dispatch({
-                        groupKey: selectedGroup.key,
-                        problemSlug: row.problem.slug,
-                        type: 'add-problem',
-                      })
-                      setSearchQuery('')
-                    }}
-                    row={row}
-                  />
-                ))}
-              </div>
-            ) : (
-              <InlineStatus>No matching Library problems.</InlineStatus>
-            )}
-          </div>
-        ) : null}
+        <div
+          aria-label="Library problem suggestions"
+          className="h-40 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-background/40 p-2"
+          role="region"
+        >
+          {!hasSearchQuery ? null : filteredProblemRows.length > 0 ? (
+            <div
+              aria-label="Library problem results"
+              className="grid gap-2"
+              role="list"
+            >
+              {filteredProblemRows.map((row) => (
+                <ProblemSearchResult
+                  key={row.problem.slug}
+                  onAdd={() => {
+                    dispatch({
+                      groupKey: selectedGroup.key,
+                      problemSlug: row.problem.slug,
+                      type: 'add-problem',
+                    })
+                    setSearchQuery('')
+                  }}
+                  row={row}
+                />
+              ))}
+            </div>
+          ) : (
+            <InlineStatus>No matching Library problems.</InlineStatus>
+          )}
+        </div>
       </div>
     </section>
   )
@@ -543,7 +541,7 @@ function OrderedProblemList({
   return (
     <div
       aria-label="Selected problem rows"
-      className="h-64 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-background/40 p-2"
+      className="h-56 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-background/40 p-2"
       role="region"
     >
       {selectedGroup.problemSlugs.length === 0 ? (
