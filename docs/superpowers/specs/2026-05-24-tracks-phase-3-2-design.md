@@ -27,6 +27,31 @@ Phase 3.2 optimizes for cross-surface active-track behavior first. Library filte
 - No planned schema migration. If implementation discovers a small supporting index is required for the resolver, that index must be justified in the implementation plan before code changes begin.
 - No append-only track progress event log.
 
+## Scope Guardrails
+
+Phase 3.2 should stay small. The implementation plan must include a scope checkpoint before code changes begin.
+
+Expected implementation size:
+
+- production code target: 150-300 net LOC
+- production code stop-and-reassess threshold: more than 350 net LOC
+- total code and tests target: 450-800 net LOC
+- total code and tests stop-and-reassess threshold: more than 1,000 net LOC
+- production file touch target: no more than 5-7 files, excluding tests
+
+If the implementation plan predicts crossing a stop-and-reassess threshold, pause and reduce scope before coding. The preferred reduction is to keep only the Tracks-owned resolver, Free Practice write guard, and app-shell consumption alignment, then defer lower-priority test expansion or nonessential contract reshaping.
+
+The following are explicit scope drift signals:
+
+- building new Overview UI
+- adding Library track creation or grouping flows
+- adding target-date countdown or pacing behavior
+- adding a new streaming transport
+- adding a new global client store
+- rewriting popup or overlay layout beyond the state text/actions required for the shared read model
+- changing schema beyond a justified small supporting index
+- moving unrelated Problems, Settings, or queue behavior
+
 ## Product Rules
 
 Study Plan mode is the only mode that participates in active-track guidance and active-track progression.
