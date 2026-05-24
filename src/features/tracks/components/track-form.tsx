@@ -446,14 +446,20 @@ function SelectedGroupProblems({
   selectedGroup: TrackFormGroupState
   setSearchQuery: (searchQuery: string) => void
 }) {
+  const normalizedSearchQuery = searchQuery.trim()
+  const showSearchResults = normalizedSearchQuery.length > 0
   const selectedProblemSlugSet = new Set(
     groups.flatMap((group) => group.problemSlugs),
   )
-  const filteredProblemRows = problemRows.filter(
-    (row) =>
-      !selectedProblemSlugSet.has(row.problem.slug) &&
-      matchesProblemSearch(row, searchQuery),
-  )
+  const filteredProblemRows = showSearchResults
+    ? problemRows
+        .filter(
+          (row) =>
+            !selectedProblemSlugSet.has(row.problem.slug) &&
+            matchesProblemSearch(row, normalizedSearchQuery),
+        )
+        .slice(0, 4)
+    : []
 
   return (
     <section
@@ -484,29 +490,38 @@ function SelectedGroupProblems({
           type="search"
           value={searchQuery}
         />
-        <div
-          aria-label="Library problem results"
-          className="grid gap-2"
-          role="list"
-        >
-          {filteredProblemRows.length > 0 ? (
-            filteredProblemRows.map((row) => (
-              <ProblemSearchResult
-                key={row.problem.slug}
-                onAdd={() =>
-                  dispatch({
-                    groupKey: selectedGroup.key,
-                    problemSlug: row.problem.slug,
-                    type: 'add-problem',
-                  })
-                }
-                row={row}
-              />
-            ))
-          ) : (
-            <InlineStatus>No matching Library problems.</InlineStatus>
-          )}
-        </div>
+        {showSearchResults ? (
+          <div
+            aria-label="Library problem suggestions"
+            className="h-44 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-background/40 p-2"
+            role="region"
+          >
+            {filteredProblemRows.length > 0 ? (
+              <div
+                aria-label="Library problem results"
+                className="grid gap-2"
+                role="list"
+              >
+                {filteredProblemRows.map((row) => (
+                  <ProblemSearchResult
+                    key={row.problem.slug}
+                    onAdd={() => {
+                      dispatch({
+                        groupKey: selectedGroup.key,
+                        problemSlug: row.problem.slug,
+                        type: 'add-problem',
+                      })
+                      setSearchQuery('')
+                    }}
+                    row={row}
+                  />
+                ))}
+              </div>
+            ) : (
+              <InlineStatus>No matching Library problems.</InlineStatus>
+            )}
+          </div>
+        ) : null}
       </div>
     </section>
   )

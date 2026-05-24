@@ -150,6 +150,7 @@ describe('TrackForm', () => {
     await user.type(screen.getByLabelText('Search Library problems'), 'two')
     await user.click(screen.getByRole('button', { name: 'Add Two Sum' }))
     await user.click(screen.getByRole('button', { name: 'New Group' }))
+    await user.type(screen.getByLabelText('Search Library problems'), 'two')
 
     expect(
       screen.queryByRole('button', { name: 'Add Two Sum' }),
@@ -158,6 +159,7 @@ describe('TrackForm', () => {
   })
 
   it('constrains long problem titles before form action controls', async () => {
+    const user = userEvent.setup()
     const longTitle = `Problem ${'C'.repeat(90)}`
     mockTrackFormRuntime(
       createTrackForEditResponse({
@@ -169,6 +171,11 @@ describe('TrackForm', () => {
 
     renderTrackForm(
       <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
+    )
+
+    await user.type(
+      await screen.findByLabelText('Search Library problems'),
+      'problem',
     )
 
     expect(await screen.findByText(longTitle)).toHaveClass(
@@ -336,9 +343,9 @@ describe('TrackForm', () => {
     ])
   })
 
-  it('compact search results exclude problems already in the track', async () => {
+  it('only shows up to four autocomplete results after searching', async () => {
     const user = userEvent.setup()
-    mockTrackFormRuntime(createEditResponse())
+    mockTrackFormRuntime(createAutocompleteResponse())
 
     renderTrackForm(
       <TrackForm
@@ -352,38 +359,54 @@ describe('TrackForm', () => {
 
     expect(await screen.findByLabelText('Title')).toHaveValue('LeetCode 75')
 
-    await user.click(
-      screen.getByRole('button', { name: 'Select Dynamic Programming' }),
-    )
-
     const searchInput = screen.getByLabelText('Search Library problems')
+
+    expect(
+      screen.queryByRole('region', { name: 'Library problem suggestions' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('No matching Library problems.')).toBeNull()
 
     await user.type(searchInput, 'two')
 
+    const emptySuggestions = screen.getByRole('region', {
+      name: 'Library problem suggestions',
+    })
+
+    expect(emptySuggestions).toHaveClass('h-44', 'overflow-y-auto')
     expect(
       screen.queryByRole('button', { name: 'Add Two Sum' }),
     ).not.toBeInTheDocument()
     expect(screen.getByText('No matching Library problems.')).toBeVisible()
 
-    await user.click(
-      screen.getByRole('button', { name: 'Remove Maximum Subarray' }),
-    )
     await user.clear(searchInput)
-    await user.type(searchInput, 'maximum')
+    await user.type(searchInput, 'binary')
 
-    const results = screen.getByRole('list', {
+    const suggestions = screen.getByRole('region', {
+      name: 'Library problem suggestions',
+    })
+    const results = within(suggestions).getByRole('list', {
       name: 'Library problem results',
     })
-    const maximumSubarrayRow = within(results).getByRole('listitem', {
-      name: 'Maximum Subarray',
-    })
+    const resultRows = within(results).getAllByRole('listitem')
 
-    expect(maximumSubarrayRow).toHaveClass('grid-cols-[minmax(0,1fr)_auto]')
+    expect(suggestions).toHaveClass('h-44', 'overflow-y-auto')
+    expect(resultRows).toHaveLength(4)
     expect(
-      within(maximumSubarrayRow).getByRole('button', {
-        name: 'Add Maximum Subarray',
+      within(results).getByRole('listitem', { name: 'Binary Search' }),
+    ).toHaveClass('grid-cols-[minmax(0,1fr)_auto]')
+    expect(
+      within(results).getByRole('button', {
+        name: 'Add Binary Search',
       }),
     ).toBeVisible()
+    expect(screen.queryByText('Binary Tree Path Sum')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Add Binary Search' }))
+
+    expect(searchInput).toHaveValue('')
+    expect(
+      screen.queryByRole('region', { name: 'Library problem suggestions' }),
+    ).not.toBeInTheDocument()
   })
 
   it('expands the first invalid group title on submit', async () => {
@@ -572,6 +595,38 @@ function createEditResponse() {
       problemRow('two-sum', 'Two Sum'),
       problemRow(),
       problemRow('maximum-subarray', 'Maximum Subarray', 'medium'),
+    ],
+  })
+}
+
+function createAutocompleteResponse() {
+  return createTrackForEditResponse({
+    track: createSerializedTrack({
+      id: 'leetcode-75',
+      slug: 'leetcode-75',
+      title: 'LeetCode 75',
+    }),
+    groups: [
+      {
+        id: 'leetcode-75:main',
+        trackId: 'leetcode-75',
+        title: 'Main',
+        position: 1,
+        problemSlugs: ['two-sum'],
+      },
+    ],
+    problemRows: [
+      problemRow('two-sum', 'Two Sum'),
+      problemRow('binary-search', 'Binary Search'),
+      problemRow('balanced-binary-tree', 'Balanced Binary Tree Validation'),
+      problemRow(
+        'binary-search-tree-validation',
+        'Binary Search Tree Validation',
+        'medium',
+      ),
+      problemRow('binary-tree-columns', 'Binary Tree Columns', 'medium'),
+      problemRow('binary-tree-symmetry', 'Binary Tree Symmetry', 'medium'),
+      problemRow('binary-tree-path-sum', 'Binary Tree Path Sum'),
     ],
   })
 }

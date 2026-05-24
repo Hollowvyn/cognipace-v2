@@ -176,17 +176,21 @@ describe('dashboard routes', () => {
   )
 
   it('/tracks/new renders the track form over Tracks and loads options', async () => {
-    renderDashboard('/tracks/new')
+    const { user } = renderDashboard('/tracks/new')
 
     expect(await screen.findByRole('heading', { name: 'Tracks' })).toBeVisible()
     const dialog = screen.getByRole('dialog', { name: 'New Track' })
     expect(dialog).toBeVisible()
     expect(await within(dialog).findByLabelText('Title')).toBeVisible()
     expect(within(dialog).getByLabelText('Group title')).toHaveValue('Main')
-    expect(
-      within(dialog).getByLabelText('Search Library problems'),
-    ).toBeVisible()
-    expect(within(dialog).getByText('Two Sum')).toBeVisible()
+    const searchInput = within(dialog).getByLabelText('Search Library problems')
+
+    expect(searchInput).toBeVisible()
+    expect(within(dialog).queryByText('Two Sum')).not.toBeInTheDocument()
+
+    await user.type(searchInput, 'two')
+
+    expect(await within(dialog).findByText('Two Sum')).toBeVisible()
     expect(within(dialog).queryByText('Placeholder')).not.toBeInTheDocument()
     expect(sendMessage).toHaveBeenCalledWith('tracks.getTrackForEdit', {
       surface: 'dashboard',
