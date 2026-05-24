@@ -1,23 +1,32 @@
-import type { SerializedPracticeDetails } from '@/features/practice/api/practice-contracts'
+import type {
+  SerializedNormalizedPracticeState,
+  SerializedPracticeDetails,
+} from '@/features/practice/api/practice-contracts'
 
-export function createSerializedPracticeSummary(
-  overrides: Partial<SerializedPracticeDetails['summary']> = {},
-): SerializedPracticeDetails['summary'] {
+export function createSerializedNormalizedPracticeState(
+  overrides: Partial<SerializedNormalizedPracticeState> = {},
+): SerializedNormalizedPracticeState {
   return {
+    problemSlug: 'two-sum',
+    cardId: 'two-sum:default',
+    status: 'new',
+    isSuspended: false,
     phase: 'new',
-    nextReviewAt: null,
-    lastReviewedAt: null,
-    reviewCount: 0,
-    lapses: 0,
-    difficulty: null,
-    stability: null,
-    scheduledDays: null,
-    suspended: false,
     isStarted: false,
     isDue: false,
     isOverdue: false,
     overdueDays: 0,
+    dueAt: null,
+    lastReviewedAt: null,
     retrievability: null,
+    stability: null,
+    difficulty: null,
+    scheduledDays: null,
+    lapses: 0,
+    reviewCount: 0,
+    reviewHistory: [],
+    recentAttempts: [],
+    latestAttempt: null,
     ...overrides,
   }
 }
@@ -26,11 +35,9 @@ export function createSerializedPracticeDetails(
   overrides: Partial<SerializedPracticeDetails> = {},
 ): SerializedPracticeDetails {
   return {
-    problemSlug: 'two-sum',
-    cardId: 'two-sum:default',
+    ...createSerializedNormalizedPracticeState(),
     practice: null,
     card: null,
-    summary: createSerializedPracticeSummary(),
     currentLog: {
       interviewPattern: null,
       timeComplexity: null,
@@ -38,8 +45,6 @@ export function createSerializedPracticeDetails(
       languages: null,
       notes: null,
     },
-    recentAttempts: [],
-    latestAttempt: null,
     canOverrideLatestReview: false,
     ...overrides,
   }
