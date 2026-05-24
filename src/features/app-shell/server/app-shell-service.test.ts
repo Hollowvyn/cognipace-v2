@@ -41,6 +41,7 @@ describe('app-shell service', () => {
         reinforcementCount: 0,
       },
       activeTrack: {
+        state: 'ready',
         trackId: 'leetcode-75',
         title: 'LeetCode 75',
         groupTitle: 'Arrays and Hashing',
@@ -131,6 +132,28 @@ describe('app-shell service', () => {
     })
   })
 
+  it('marks active track guidance exhausted instead of falling back to queue in popup data', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+
+    await recordActiveTrackProblemCompletion(handle.db, {
+      problemSlug: 'two-sum',
+      rating: 'good',
+      completedAt: new Date(generatedAt),
+    })
+
+    const payload = await getPopupPayload(handle)
+
+    expect(payload.activeTrack).toMatchObject({
+      state: 'exhausted',
+      trackId: 'leetcode-75',
+      detail: 'No more problems in track.',
+      nextProblem: null,
+    })
+    expect(payload.recommendation.problem).toBeNull()
+  })
+
   it('does not include active-track state in popup free practice mode', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
@@ -144,8 +167,9 @@ describe('app-shell service', () => {
 
     expect(payload.recommendation.problem).toBeNull()
     expect(payload.activeTrack).toMatchObject({
+      state: 'disabled-free-practice',
       trackId: null,
-      title: 'No active track',
+      title: 'Track guidance disabled',
       nextProblem: null,
     })
     expect(payload.settings.practice.mode).toBe('freePractice')

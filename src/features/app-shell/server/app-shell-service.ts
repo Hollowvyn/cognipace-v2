@@ -65,7 +65,7 @@ async function getMainAppShellData(db: Db, now: Date) {
     getSettings(db),
     getTodayQueue(db, now),
   ])
-  const activeTrack = await getActiveTrack(db)
+  const activeTrack = await getActiveTrack(db, now)
   const queueItems = queue.items.map(serializeQueueItem)
   const baseData = {
     generatedAt: now.toISOString(),
@@ -78,7 +78,7 @@ async function getMainAppShellData(db: Db, now: Date) {
       { label: 'Streak', value: '0 days' },
     ],
     recommendation: buildAppShellRecommendation(queueItems[0] ?? null),
-    activeTrack: serializeActiveTrack(activeTrack),
+    activeTrack: serializeActiveTrack(activeTrack, settings.practice.mode),
     queue: {
       dailyGoal: queue.dailyGoal,
       dueCount: queue.dueCount,
@@ -147,7 +147,7 @@ async function getOverlayPayload(
       targetRetention: settings.review.targetRetention,
     }),
     getTodayQueue(db, now),
-    getActiveTrack(db),
+    getActiveTrack(db, now),
   ])
   const queueItems = queue.items.map(serializeQueueItem)
   const currentProblem = serializeProblemSummary(context.problem)
@@ -219,9 +219,31 @@ function serializeOverlayNextStep(input: {
   }
 }
 
-function serializeActiveTrack(activeTrack: ActiveTrack | null) {
+function serializeActiveTrack(
+  activeTrack: ActiveTrack | null,
+  practiceMode: UserSettings['practice']['mode'],
+) {
+  if (practiceMode === 'freePractice') {
+    return {
+      state: 'disabled-free-practice' as const,
+      trackId: null,
+      title: 'Track guidance disabled',
+      description: null,
+      groupTitle: null,
+      dueAt: null,
+      progress: {
+        completedCount: 0,
+        totalCount: 0,
+        percent: 0,
+      },
+      detail: 'Free Practice uses queue recommendations only.',
+      nextProblem: null,
+    }
+  }
+
   if (!activeTrack) {
     return {
+      state: 'no-active-track' as const,
       trackId: null,
       title: 'No active track',
       description: null,
@@ -238,6 +260,9 @@ function serializeActiveTrack(activeTrack: ActiveTrack | null) {
   }
 
   return {
+    state: activeTrack.nextProblem
+      ? ('ready' as const)
+      : ('exhausted' as const),
     trackId: activeTrack.track.id,
     title: activeTrack.track.title,
     description: activeTrack.track.description,
@@ -256,7 +281,7 @@ function readActiveTrackDetail(activeTrack: ActiveTrack) {
     return `Next: ${activeTrack.nextProblem.title}`
   }
 
-  return 'No track preview problem is available yet.'
+  return 'No more problems in track.'
 }
 
 function serializeQueueItem(item: QueueItem): AppShellQueueItem {

@@ -831,6 +831,7 @@ function createPopupShellData(): PopupAppShellData {
       dueAt: null,
     },
     activeTrack: {
+      state: 'ready',
       trackId: 'leetcode-75',
       title: 'LeetCode 75',
       description: 'Focused starter track.',

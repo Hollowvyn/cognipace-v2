@@ -61,6 +61,7 @@ const popupData = {
     dueAt: null,
   },
   activeTrack: {
+    state: 'ready',
     trackId: 'leetcode-75',
     title: 'LeetCode 75',
     description: 'Focused starter track for interview patterns.',
@@ -356,6 +357,7 @@ function createDeferred() {
 
 function createEmptyActiveTrack(): PopupAppShellData['activeTrack'] {
   return {
+    state: 'no-active-track',
     trackId: null,
     title: 'No active track',
     description: null,

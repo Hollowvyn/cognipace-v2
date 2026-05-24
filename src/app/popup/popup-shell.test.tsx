@@ -44,6 +44,7 @@ const shellData = {
     dueAt: '2025-12-31T00:00:00.000Z',
   },
   activeTrack: {
+    state: 'ready',
     trackId: 'leetcode-75',
     title: 'LeetCode 75',
     description: 'Focused starter track for interview patterns.',
@@ -236,6 +237,7 @@ describe('PopupShell', () => {
               dueAt: null,
             },
             activeTrack: {
+              state: 'no-active-track',
               trackId: null,
               title: 'No active track',
               description: null,

@@ -67,6 +67,7 @@ const fallbackData = {
     dueAt: null,
   },
   activeTrack: {
+    state: 'no-active-track',
     trackId: null,
     title: 'Loading track',
     description: null,
