@@ -345,7 +345,9 @@ export class ProblemsRepository {
         card,
         attempts: [],
         now: options.now,
-        targetRetention: options.targetRetention,
+        ...(options.targetRetention !== undefined
+          ? { targetRetention: options.targetRetention }
+          : {}),
       })
 
       return {
