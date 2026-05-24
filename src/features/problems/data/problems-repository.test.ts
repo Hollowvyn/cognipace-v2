@@ -264,7 +264,7 @@ describe('ProblemsRepository library data', () => {
       status: 'scheduled',
       topics: [{ id: 'array', label: 'Array' }],
       companies: [{ id: 'netflix', label: 'Netflix' }],
-      summary: {
+      state: {
         isStarted: true,
         isDue: false,
         reviewCount: 1,
@@ -274,7 +274,7 @@ describe('ProblemsRepository library data', () => {
       lastSolvedAt: solvedAt,
     })
     expect(rows[0]?.nextReviewAt).toBeInstanceOf(Date)
-    expect(rows[0]?.summary.nextReviewAt).toEqual(rows[0]?.nextReviewAt)
+    expect(rows[0]?.state.dueAt).toEqual(rows[0]?.nextReviewAt)
   })
 
   it('uses settings target retention for service rows when target retention is omitted or undefined', async () => {
@@ -307,20 +307,20 @@ describe('ProblemsRepository library data', () => {
     expect(rowAtReviewTime[0]?.status).toBe('scheduled')
     expect(rowWithOmittedRetention[0]).toMatchObject({
       status: 'due',
-      summary: {
+      state: {
         isDue: true,
       },
     })
     expect(rowWithUndefinedRetention[0]).toMatchObject({
       status: 'due',
-      summary: {
+      state: {
         isDue: true,
       },
     })
     expect(
-      rowWithUndefinedRetention[0]?.summary.retrievability,
+      rowWithUndefinedRetention[0]?.state.retrievability,
     ).toBeGreaterThan(0.9)
-    expect(rowWithUndefinedRetention[0]?.summary.retrievability).toBeLessThan(
+    expect(rowWithUndefinedRetention[0]?.state.retrievability).toBeLessThan(
       0.97,
     )
   })

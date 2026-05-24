@@ -95,10 +95,8 @@ describe('practice core', () => {
       cardId: 'two-sum:default',
       canOverrideLatestReview: true,
       currentLog: { notes: 'Attempt 6' },
-      summary: {
-        isStarted: true,
-        reviewCount: 6,
-      },
+      isStarted: true,
+      reviewCount: 6,
     })
     expect(details.card?.reps).toBe(6)
     expect(details.latestAttempt?.id).toBe('review-6')
@@ -139,11 +137,9 @@ describe('practice core', () => {
       currentLog: {
         notes: 'Read the two-pointer variant.',
       },
-      summary: {
-        phase: 'new',
-        isStarted: false,
-        reviewCount: 0,
-      },
+      phase: 'new',
+      isStarted: false,
+      reviewCount: 0,
     })
     expect(details.recentAttempts).toEqual([])
   })
@@ -367,7 +363,7 @@ describe('practice core', () => {
       },
     )
     expect(details.latestAttempt?.id).toBe('review-2')
-    expect(details.summary.reviewCount).toBe(2)
+    expect(details.reviewCount).toBe(2)
   })
 
   it('suspends and resumes practice without deleting review history', async () => {
@@ -403,11 +399,9 @@ describe('practice core', () => {
         isSuspended: true,
         status: 'review',
       },
-      summary: {
-        phase: 'suspended',
-        suspended: true,
-        isDue: false,
-      },
+      phase: 'suspended',
+      isSuspended: true,
+      isDue: false,
     })
     expect(suspended.card?.reps).toBe(1)
     expect(suspended.latestAttempt?.id).toBe('review-1')
@@ -420,10 +414,8 @@ describe('practice core', () => {
         isSuspended: false,
         status: 'review',
       },
-      summary: {
-        phase: 'review',
-        suspended: false,
-      },
+      phase: 'review',
+      isSuspended: false,
     })
     expect(resumed.card?.reps).toBe(1)
   })
@@ -456,10 +448,8 @@ describe('practice core', () => {
         isSuspended: true,
         status: 'learning',
       },
-      summary: {
-        phase: 'suspended',
-        suspended: true,
-      },
+      phase: 'suspended',
+      isSuspended: true,
     })
   })
 
@@ -505,11 +495,9 @@ describe('practice core', () => {
         solvedCount: 0,
         isSuspended: false,
       },
-      summary: {
-        phase: 'new',
-        isStarted: false,
-        reviewCount: 0,
-      },
+      phase: 'new',
+      isStarted: false,
+      reviewCount: 0,
     })
   })
 
@@ -626,12 +614,10 @@ describe('practice core', () => {
         bestElapsedSeconds: null,
         isSuspended: true,
       },
-      summary: {
-        phase: 'suspended',
-        isStarted: false,
-        reviewCount: 0,
-        suspended: true,
-      },
+      phase: 'suspended',
+      isStarted: false,
+      reviewCount: 0,
+      isSuspended: true,
     })
   })
 

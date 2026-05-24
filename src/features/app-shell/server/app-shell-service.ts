@@ -1,6 +1,6 @@
 import {
+  serializeNormalizedPracticeState,
   serializePracticeDetails,
-  serializePracticeSummary,
 } from '@/features/practice/api/practice-serializers'
 import { getPracticeDetails } from '@/features/practice/server/practice-service'
 import type { Problem } from '@/features/problems/domain'
@@ -205,7 +205,7 @@ function serializeOverlayNextStep(input: {
       detail: `${formatQueueCategory(recommendation.category)} · ${formatDifficulty(recommendation.problem.difficulty)}`,
       problem: recommendation.problem,
       category: recommendation.category,
-      dueAt: recommendation.dueAt,
+      dueAt: recommendation.state.dueAt,
     }
   }
 
@@ -293,8 +293,7 @@ function serializeQueueItem(item: QueueItem): AppShellQueueItem {
       difficulty: item.difficulty,
       isPremium: item.isPremium,
     },
-    dueAt: item.dueAt?.toISOString() ?? null,
-    summary: serializePracticeSummary(item.summary),
+    state: serializeNormalizedPracticeState(item.state),
   }
 }
 

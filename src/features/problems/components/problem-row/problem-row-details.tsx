@@ -51,21 +51,21 @@ export function ProblemRowDetails({
         </h3>
         <dl>
           <ProblemDetailLine label="Stability">
-            {formatMetric(row.summary.stability, ' days')}
+            {formatMetric(row.state.stability, ' days')}
           </ProblemDetailLine>
           <ProblemDetailLine label="Difficulty">
-            {formatMetric(row.summary.difficulty, ' / 10')}
+            {formatMetric(row.state.difficulty, ' / 10')}
           </ProblemDetailLine>
           <ProblemDetailLine
             label="Retrievability"
             valueClassName={
-              row.summary.retrievability === null ? undefined : 'text-secondary'
+              row.state.retrievability === null ? undefined : 'text-secondary'
             }
           >
-            {formatPercentMetric(row.summary.retrievability)}
+            {formatPercentMetric(row.state.retrievability)}
           </ProblemDetailLine>
           <ProblemDetailLine label="Reps">
-            {row.summary.reviewCount}
+            {row.state.reviewCount}
           </ProblemDetailLine>
           <ProblemDetailLine label="Last reviewed">
             {formatDateCell(row.lastReviewedAt, 'Never reviewed')}

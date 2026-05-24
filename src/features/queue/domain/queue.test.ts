@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
+import {
+  deriveNormalizedPracticeState,
+  type PracticeStateSnapshot,
+} from '@/features/practice'
 import { defaultUserSettings } from '@/features/settings/domain'
 import type { FsrsCardSnapshot, ReviewRating } from '@/lib/fsrs'
 
@@ -176,26 +180,35 @@ describe('buildTodayQueue', () => {
 function candidate(input: {
   slug: string
   isPremium?: boolean
-  practice?: QueueCandidate['practice']
+  practice?: PracticeStateSnapshot | null
   card?: FsrsCardSnapshot | null
 }): QueueCandidate {
+  const problemSlug = input.slug
+  const cardId = `${problemSlug}:default`
+
   return {
     problem: {
       ...baseProblem,
-      slug: input.slug,
-      title: titleFromSlug(input.slug),
+      slug: problemSlug,
+      title: titleFromSlug(problemSlug),
       isPremium: input.isPremium ?? false,
     },
-    practice: input.practice ?? null,
-    card: input.card ?? null,
+    state: deriveNormalizedPracticeState({
+      problemSlug,
+      cardId,
+      practice: input.practice ?? null,
+      card: input.card ?? null,
+      attempts: [],
+      now: generatedAt,
+    }),
   }
 }
 
 function practice(input: {
   lastRating?: ReviewRating
   isSuspended?: boolean
-  status?: NonNullable<QueueCandidate['practice']>['status']
-}): NonNullable<QueueCandidate['practice']> {
+  status?: PracticeStateSnapshot['status']
+}): PracticeStateSnapshot {
   const lastRating = input.lastRating ?? 'good'
 
   return {

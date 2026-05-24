@@ -4,7 +4,7 @@ import type {
   SerializedProblem,
 } from '@/features/problems/api/problems-contracts'
 
-import { createSerializedPracticeSummary } from './practice-fixtures'
+import { createSerializedNormalizedPracticeState } from './practice-fixtures'
 
 export function createSerializedProblem(
   overrides: Partial<SerializedProblem> = {},
@@ -57,7 +57,7 @@ export function createProblemLibraryResponse(
       {
         problem,
         status: 'not-started',
-        summary: createSerializedPracticeSummary(),
+        state: createSerializedNormalizedPracticeState(),
         nextReviewAt: null,
         lastReviewedAt: null,
         lastSolvedAt: null,

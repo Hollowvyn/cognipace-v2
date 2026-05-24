@@ -57,8 +57,8 @@ import {
   practiceUpdateCurrentLogRequestSchema,
 } from '@/features/practice/api/practice-contracts'
 import {
+  serializeNormalizedPracticeState,
   serializePracticeDetails,
-  serializePracticeSummary,
 } from '@/features/practice/api/practice-serializers'
 import {
   getPracticeDetails,
@@ -854,9 +854,12 @@ function serializeTodayQueue(queue: TodayQueue): SerializedTodayQueue {
     newCount: queue.newCount,
     reinforcementCount: queue.reinforcementCount,
     items: queue.items.map((item) => ({
-      ...item,
-      dueAt: item.dueAt?.toISOString() ?? null,
-      summary: serializePracticeSummary(item.summary),
+      category: item.category,
+      problemSlug: item.problemSlug,
+      title: item.title,
+      difficulty: item.difficulty,
+      isPremium: item.isPremium,
+      state: serializeNormalizedPracticeState(item.state),
     })),
   })
 }

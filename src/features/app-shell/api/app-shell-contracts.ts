@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
 import {
+  normalizedPracticeStateSchema,
   practiceDetailsSchema,
-  practiceSummarySchema,
 } from '@/features/practice/api/practice-contracts'
 import {
   problemDifficultySchema,
@@ -36,8 +36,7 @@ const appShellProblemSummarySchema = z.object({
 const appShellQueueItemSchema = z.object({
   category: z.enum(['due', 'new', 'reinforcement']),
   problem: appShellProblemSummarySchema,
-  dueAt: z.iso.datetime().nullable(),
-  summary: practiceSummarySchema,
+  state: normalizedPracticeStateSchema,
 })
 
 const appShellRecommendationSchema = z.object({

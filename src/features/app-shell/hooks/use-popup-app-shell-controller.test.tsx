@@ -7,7 +7,7 @@ import {
   type PopupAppShellData,
 } from '@/features/app-shell'
 import { defaultUserSettings } from '@/features/settings/domain'
-import { createSerializedPracticeSummary } from '@/testing/practice-fixtures'
+import { createSerializedNormalizedPracticeState } from '@/testing/practice-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import { usePopupAppShellController } from './use-popup-app-shell-controller'
@@ -92,14 +92,12 @@ const popupData = {
       {
         category: 'new',
         problem: twoSum,
-        dueAt: null,
-        summary: createSerializedPracticeSummary(),
+        state: createSerializedNormalizedPracticeState(),
       },
       {
         category: 'new',
         problem: validParentheses,
-        dueAt: null,
-        summary: createSerializedPracticeSummary(),
+        state: createSerializedNormalizedPracticeState(),
       },
     ],
   },

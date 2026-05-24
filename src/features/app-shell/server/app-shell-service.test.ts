@@ -216,10 +216,8 @@ describe('app-shell service', () => {
             interviewPattern: 'Hash map',
             notes: 'Track complements.',
           },
-          summary: {
-            phase: 'new',
-            isStarted: false,
-          },
+          phase: 'new',
+          isStarted: false,
         },
         timing: {
           requireSolveTime: false,

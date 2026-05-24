@@ -5,6 +5,7 @@ import {
   type Problem,
 } from '@/features/problems/domain'
 import {
+  deriveNormalizedPracticeState,
   normalizeReviewLogFields,
   parsePracticeStatus,
   type PracticeStateSnapshot,
@@ -23,12 +24,15 @@ import { buildTodayQueue, type QueueCandidate } from '../domain'
 
 export async function getTodayQueue(db: Db, generatedAt = new Date()) {
   const settings = await getSettings(db)
-  const candidates = await readQueueCandidates(db)
+  const candidates = await readQueueCandidates(db, generatedAt)
 
   return buildTodayQueue(candidates, settings, generatedAt)
 }
 
-async function readQueueCandidates(db: Db): Promise<QueueCandidate[]> {
+async function readQueueCandidates(
+  db: Db,
+  now: Date,
+): Promise<QueueCandidate[]> {
   const rows = await db
     .select(queueCandidateSelection)
     .from(problems)
@@ -42,7 +46,7 @@ async function readQueueCandidates(db: Db): Promise<QueueCandidate[]> {
     )
     .orderBy(asc(problems.slug))
 
-  return rows.map(mapQueueCandidate)
+  return rows.map((row) => mapQueueCandidate(row, now))
 }
 
 const queueCandidateSelection = {
@@ -83,15 +87,29 @@ const queueCandidateSelection = {
   },
 } as const
 
-function mapQueueCandidate(row: {
-  problem: QueueProblemRow
-  practice: QueuePracticeRow | null
-  card: QueueCardRow | null
-}): QueueCandidate {
+function mapQueueCandidate(
+  row: {
+    problem: QueueProblemRow
+    practice: QueuePracticeRow | null
+    card: QueueCardRow | null
+  },
+  now: Date,
+): QueueCandidate {
+  const problemSlug = row.problem.slug
+  const cardId = `${problemSlug}:${defaultFsrsCardKind}`
+  const practice = mapPractice(row.practice)
+  const card = mapCard(row.card)
+
   return {
     problem: mapProblem(row.problem),
-    practice: mapPractice(row.practice),
-    card: mapCard(row.card),
+    state: deriveNormalizedPracticeState({
+      problemSlug,
+      cardId,
+      practice,
+      card,
+      attempts: [],
+      now,
+    }),
   }
 }
 

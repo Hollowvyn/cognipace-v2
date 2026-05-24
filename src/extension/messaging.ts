@@ -13,7 +13,7 @@ import {
   type SerializedLeetCodeSubmissionResultRemoteResponse,
 } from '@/features/leetcode-capture/api/leetcode-capture-contracts'
 import {
-  practiceSummarySchema,
+  normalizedPracticeStateSchema,
   type PracticeDetailsRequest,
   type PracticeOverrideLastReviewResultRequest,
   type PracticeResetScheduleRequest,
@@ -155,8 +155,7 @@ export const queueItemSchema = z.object({
   title: z.string(),
   difficulty: problemDifficultySchema,
   isPremium: z.boolean(),
-  dueAt: z.iso.datetime().nullable(),
-  summary: practiceSummarySchema,
+  state: normalizedPracticeStateSchema,
 })
 
 export const todayQueueSchema = z.object({

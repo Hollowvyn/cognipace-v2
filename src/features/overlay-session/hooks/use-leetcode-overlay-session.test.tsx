@@ -755,9 +755,24 @@ function createPracticeDetails(
   return {
     problemSlug: 'two-sum',
     cardId: 'fsrs:two-sum',
+    status: 'new',
+    isSuspended: false,
+    phase: 'new',
+    isStarted: false,
+    isDue: false,
+    isOverdue: false,
+    overdueDays: 0,
+    dueAt: null,
+    lastReviewedAt: null,
+    retrievability: null,
+    stability: null,
+    difficulty: null,
+    scheduledDays: null,
+    lapses: 0,
+    reviewCount: 0,
+    reviewHistory: [],
     practice: null,
     card: null,
-    summary: createSummary(),
     currentLog: emptyPracticeLog,
     recentAttempts: [],
     latestAttempt: null,
@@ -772,6 +787,16 @@ function createSavedPracticeDetails(options?: {
   const latestAttempt = createPracticeAttempt(options?.latestAttempt)
 
   return createPracticeDetails({
+    status: 'learning',
+    phase: 'learning',
+    dueAt: '2026-01-02T10:00:00.000Z',
+    lastReviewedAt: latestAttempt.reviewedAt,
+    reviewCount: 1,
+    difficulty: 5,
+    stability: 1,
+    scheduledDays: 1,
+    isStarted: true,
+    retrievability: 1,
     practice: {
       status: 'learning',
       lastReviewedAt: latestAttempt.reviewedAt,
@@ -783,17 +808,6 @@ function createSavedPracticeDetails(options?: {
       bestElapsedSeconds: latestAttempt.elapsedSeconds,
       log: latestAttempt.log,
     },
-    summary: createSummary({
-      phase: 'learning',
-      nextReviewAt: '2026-01-02T10:00:00.000Z',
-      lastReviewedAt: latestAttempt.reviewedAt,
-      reviewCount: 1,
-      difficulty: 5,
-      stability: 1,
-      scheduledDays: 1,
-      isStarted: true,
-      retrievability: 1,
-    }),
     currentLog: latestAttempt.log,
     recentAttempts: [latestAttempt],
     latestAttempt,
@@ -835,27 +849,6 @@ function createDeferred<T>() {
   }
 }
 
-function createSummary(
-  overrides: Partial<SerializedPracticeDetails['summary']> = {},
-): SerializedPracticeDetails['summary'] {
-  return {
-    phase: 'new',
-    nextReviewAt: null,
-    lastReviewedAt: null,
-    reviewCount: 0,
-    lapses: 0,
-    difficulty: null,
-    stability: null,
-    scheduledDays: null,
-    suspended: false,
-    isStarted: false,
-    isDue: false,
-    isOverdue: false,
-    overdueDays: 0,
-    retrievability: null,
-    ...overrides,
-  }
-}
 
 const problemRecord = {
   slug: overlayProblem.problemSlug,

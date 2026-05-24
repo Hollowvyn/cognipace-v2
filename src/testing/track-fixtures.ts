@@ -7,7 +7,7 @@ import type {
   TrackWorkspaceResponse,
 } from '@/features/tracks/api/tracks-contracts'
 
-import { createSerializedPracticeSummary } from './practice-fixtures'
+import { createSerializedNormalizedPracticeState } from './practice-fixtures'
 import { createSerializedProblem } from './problem-fixtures'
 
 export function createSerializedTrack(
@@ -57,7 +57,7 @@ export function createTrackProblemRow(
   return {
     problem: createSerializedProblem({ slug: 'two-sum', title: 'Two Sum' }),
     status: 'not-started',
-    summary: createSerializedPracticeSummary(),
+    state: createSerializedNormalizedPracticeState(),
     nextReviewAt: null,
     lastReviewedAt: null,
     lastSolvedAt: null,
