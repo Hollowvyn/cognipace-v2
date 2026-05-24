@@ -5,8 +5,14 @@ small, local-first, and easy to reason about.
 
 ## Working Agreement
 
-- Start from `README.md`, `CONTRIBUTING.md`, `design.md`, and the relevant
-  skill files in `.agents/skills`.
+- Start from `README.md` for orientation.
+- Read `docs/product.md` before product or behavior changes.
+- Read `docs/architecture.md` before runtime, database, routing,
+  feature-boundary, or state-flow changes.
+- Read `docs/testing.md` before manual validation or friend-facing QA.
+- Read `design.md` before visible UI changes.
+- Agents should read `AGENTS.md` and the relevant skill files in
+  `.agents/skills`.
 - Prefer the current architecture over generic framework advice.
 - Keep changes scoped to the feature or layer that owns the behavior.
 - Avoid adding ceremony unless it removes real duplication or prevents a real
@@ -88,7 +94,7 @@ Avoid by default:
 - global client stores
 - compound component APIs
 - broad context providers
-- Storybook or a separate design-system package
+- Storybook or a separate shared UI package
 - Next.js, Remix, SSR, RSC, Redux, Zustand, tRPC, or GraphQL
 
 Those tools can be added later only when the current app shape proves they are
@@ -159,15 +165,38 @@ the code they protect.
 - Avoid snapshots and CSS assertions unless they protect a meaningful contract.
 - Prefer one high-signal integration test over duplicated low-signal unit tests.
 
-Run before handing work off:
+Run before handing off substantial changes:
 
 ```sh
 npm run check
 npm run format
 ```
 
+For docs-only changes, run Prettier on the changed markdown files. Do not claim
+runtime validation unless `npm run check` or focused runtime tests were actually
+run.
+
 If an existing branch is already failing, state the exact failing command and
 test instead of hiding it.
+
+## Common Change Checklists
+
+Use `docs/architecture.md` for the full recipes.
+
+- Runtime method: feature contract, feature API sender/hook, protocol map,
+  runtime policy, handler registration, feature service, repository if needed,
+  invalidation tags, focused tests.
+- Database change: schema file, schema export, migration generation, seed update
+  if needed, repository tests, `npm run db:check`.
+- Dashboard route or modal: route manifest, route tree, screen file, route
+  tests, feature screen when behavior is feature-owned.
+- Feature mutation: Zod input, authorized runtime command, service rule,
+  repository write, snapshot-safe mutation path, invalidation tags,
+  service/handler/UI tests.
+- Popup change: app-shell read model or popup controller first, popup components
+  only for presentation, compact surface behavior preserved.
+- Overlay change: overlay-session state and hooks first, leetcode-capture or
+  `lib/leetcode` for page reads, collapsed/expanded/docked recovery preserved.
 
 ## Skill-Driven Agent Workflow
 
@@ -192,7 +221,8 @@ Recommended agent flow:
 3. Give each agent a read-only or disjoint write scope.
 4. Merge findings into a small implementation plan.
 5. Edit the minimum files needed.
-6. Run `npm run check` and `npm run format`.
+6. Run focused validation first, then `npm run check` and `npm run format` for
+   substantial changes.
 7. Summarize what changed, what owns it, and any remaining risk.
 
 Agent safety rules:
@@ -212,4 +242,4 @@ Agent safety rules:
 - Is UI state local unless it truly crosses components or surfaces?
 - Did tests cover behavior rather than implementation details?
 - Did the change avoid new ceremony for a small app?
-- Did `npm run check` and `npm run format` pass, or are failures documented?
+- Did the appropriate validation pass, or are failures documented?
