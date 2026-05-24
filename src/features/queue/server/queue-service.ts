@@ -5,6 +5,7 @@ import {
   type Problem,
 } from '@/features/problems/domain'
 import {
+  deriveNormalizedPracticeState,
   normalizeReviewLogFields,
   parsePracticeStatus,
   type PracticeStateSnapshot,
@@ -88,10 +89,20 @@ function mapQueueCandidate(row: {
   practice: QueuePracticeRow | null
   card: QueueCardRow | null
 }): QueueCandidate {
+  const problemSlug = row.problem.slug
+  const cardId = `${problemSlug}:${defaultFsrsCardKind}`
+  const practice = mapPractice(row.practice)
+  const card = mapCard(row.card)
+
   return {
     problem: mapProblem(row.problem),
-    practice: mapPractice(row.practice),
-    card: mapCard(row.card),
+    state: deriveNormalizedPracticeState({
+      problemSlug,
+      cardId,
+      practice,
+      card,
+      attempts: [],
+    }),
   }
 }
 

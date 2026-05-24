@@ -3,20 +3,14 @@ import type {
   ProblemDifficulty,
   ProblemSlug,
 } from '@/features/problems'
-import {
-  derivePracticeSummary,
-  type PracticeStateSnapshot,
-  type PracticeSummary,
-} from '@/features/practice'
+import { type NormalizedPracticeState } from '@/features/practice'
 import type { UserSettings } from '@/features/settings'
-import type { FsrsCardSnapshot } from '@/lib/fsrs'
 
 export type QueueItemCategory = 'due' | 'new' | 'reinforcement'
 
 export interface QueueCandidate {
   problem: Problem
-  practice: PracticeStateSnapshot | null
-  card: FsrsCardSnapshot | null
+  state: NormalizedPracticeState
 }
 
 export interface QueueItem {
@@ -25,8 +19,7 @@ export interface QueueItem {
   title: string
   difficulty: ProblemDifficulty
   isPremium: boolean
-  dueAt: Date | null
-  summary: PracticeSummary
+  state: NormalizedPracticeState
 }
 
 export interface TodayQueue {
@@ -44,11 +37,7 @@ export function buildTodayQueue(
   generatedAt = new Date(),
 ): TodayQueue {
   const dailyGoal = Math.max(0, Math.round(settings.practice.dailyGoal))
-  const partitioned = partitionQueueCandidates(
-    candidates,
-    settings,
-    generatedAt,
-  )
+  const partitioned = partitionQueueCandidates(candidates, settings)
   const dueItems = orderQueueItems(partitioned.due, settings.review.order)
   const newItems = orderQueueItems(partitioned.new, settings.review.order)
   const reinforcementItems = orderQueueItems(
@@ -74,7 +63,6 @@ export function buildTodayQueue(
 function partitionQueueCandidates(
   candidates: QueueCandidate[],
   settings: UserSettings,
-  generatedAt: Date,
 ) {
   const partitions: Record<QueueItemCategory, QueueItem[]> = {
     due: [],
@@ -87,25 +75,16 @@ function partitionQueueCandidates(
       continue
     }
 
-    const summary = derivePracticeSummary({
-      practice: candidate.practice,
-      card: candidate.card,
-      now: generatedAt,
-      targetRetention: settings.review.targetRetention,
-    })
-
-    if (summary.isDue) {
-      partitions.due.push(mapQueueItem(candidate, 'due', summary))
+    if (candidate.state.isDue) {
+      partitions.due.push(mapQueueItem(candidate, 'due'))
       continue
     }
 
-    if (!summary.isStarted) {
+    if (!candidate.state.isStarted) {
       continue
     }
 
-    partitions.reinforcement.push(
-      mapQueueItem(candidate, 'reinforcement', summary),
-    )
+    partitions.reinforcement.push(mapQueueItem(candidate, 'reinforcement'))
   }
 
   return partitions
@@ -116,9 +95,9 @@ function isEffectivelySuspended(
   settings: UserSettings,
 ) {
   return (
-    candidate.practice?.isSuspended === true ||
-    candidate.practice?.status === 'mastered' ||
-    candidate.practice?.status === 'suspended' ||
+    candidate.state.isSuspended === true ||
+    candidate.state.status === 'mastered' ||
+    candidate.state.status === 'suspended' ||
     (settings.practice.problemFilters.skipPremium &&
       candidate.problem.isPremium)
   )
@@ -127,7 +106,6 @@ function isEffectivelySuspended(
 function mapQueueItem(
   candidate: QueueCandidate,
   category: QueueItemCategory,
-  summary: PracticeSummary,
 ): QueueItem {
   return {
     category,
@@ -135,8 +113,7 @@ function mapQueueItem(
     title: candidate.problem.title,
     difficulty: candidate.problem.difficulty,
     isPremium: candidate.problem.isPremium,
-    dueAt: summary.nextReviewAt,
-    summary,
+    state: candidate.state,
   }
 }
 
@@ -157,7 +134,7 @@ function orderQueueItems(
 
 function sortByDueThenPosition(items: QueueItem[]) {
   return [...items].sort((left, right) => {
-    const dueComparison = compareDates(left.dueAt, right.dueAt)
+    const dueComparison = compareDates(left.state.dueAt, right.state.dueAt)
 
     if (dueComparison !== 0) {
       return dueComparison
@@ -169,12 +146,12 @@ function sortByDueThenPosition(items: QueueItem[]) {
 
 function sortByWeakest(items: QueueItem[]) {
   return [...items].sort((left, right) => {
-    if (right.summary.lapses !== left.summary.lapses) {
-      return right.summary.lapses - left.summary.lapses
+    if (right.state.lapses !== left.state.lapses) {
+      return right.state.lapses - left.state.lapses
     }
 
-    if ((right.summary.difficulty ?? 0) !== (left.summary.difficulty ?? 0)) {
-      return (right.summary.difficulty ?? 0) - (left.summary.difficulty ?? 0)
+    if ((right.state.difficulty ?? 0) !== (left.state.difficulty ?? 0)) {
+      return (right.state.difficulty ?? 0) - (left.state.difficulty ?? 0)
     }
 
     return sortByDueThenPosition([left, right])[0] === left ? -1 : 1
