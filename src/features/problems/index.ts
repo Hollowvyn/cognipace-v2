@@ -14,7 +14,14 @@ export {
   getProblemDifficultyTone,
   ProblemDifficultyBadge,
 } from './components/problem-difficulty-badge'
+export {
+  ProblemRowActionsBar,
+  ProblemRowPracticeActions,
+  type RenderProblemEditAction,
+} from './components/problem-row/problem-row-actions'
+export { ProblemRowDetails } from './components/problem-row/problem-row-details'
 export { ProblemLibraryScreen } from './components/library/problem-library-screen'
+export { ProblemStatusBadge } from './components/library/problem-status-badge'
 export { ProblemForm } from './components/form/problem-form'
 export {
   bulkDeleteProblemsViaRuntime,

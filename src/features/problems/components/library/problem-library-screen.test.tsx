@@ -1,11 +1,16 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Plus } from 'lucide-react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { Button } from '@/components/ui/button'
 import { sendMessage } from '@/extension/messaging'
-import type { ProblemLibraryResponse } from '@/features/problems'
+import {
+  ProblemRowActionsBar,
+  ProblemRowDetails,
+  ProblemRowPracticeActions,
+  type ProblemLibraryResponse,
+} from '@/features/problems'
 import {
   createProblemLibraryResponse,
   createSerializedProblem,
@@ -322,6 +327,11 @@ describe('ProblemLibraryScreen', () => {
       'href',
       '#/library/problems/two-sum/edit',
     )
+    expect(screen.getByRole('button', { name: 'Suspend' })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Reset Schedule' }),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'Suspend' }))
     expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
@@ -364,6 +374,74 @@ describe('ProblemLibraryScreen', () => {
       problemSlug: '01-matrix',
       suspended: false,
     })
+  })
+
+  it('disables delete while a practice row action is pending', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.resolve(libraryResponse)
+      }
+
+      if (method === 'practice.setSuspended') {
+        return new Promise(() => undefined)
+      }
+
+      return Promise.resolve(createSerializedPracticeDetails())
+    })
+    renderProblemLibrary()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Expand Two Sum' }),
+    )
+    const deleteButton = screen.getByRole('button', { name: 'Delete' })
+
+    expect(deleteButton).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Suspend' }))
+
+    await waitFor(() => expect(deleteButton).toBeDisabled())
+  })
+
+  it('renders reusable practice-only row details without delete', () => {
+    const { wrapper } = createQueryTestHarness()
+    const [row] = libraryResponse.rows
+
+    if (!row) {
+      throw new Error('Expected library response to include a problem row.')
+    }
+
+    render(
+      <ProblemRowDetails
+        actions={
+          <ProblemRowActionsBar>
+            <ProblemRowPracticeActions
+              renderEditProblemAction={(problem) => (
+                <Button asChild size="sm" variant="ghost">
+                  <a href={`#/tracks/problems/${problem.slug}`}>Edit</a>
+                </Button>
+              )}
+              row={row}
+            />
+          </ProblemRowActionsBar>
+        }
+        row={row}
+      />,
+      { wrapper },
+    )
+
+    expect(screen.getByRole('heading', { name: 'Details' })).toBeVisible()
+    expect(
+      screen.getByRole('heading', { name: 'Analytics and history' }),
+    ).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      '#/tracks/problems/two-sum',
+    )
+    expect(screen.getByRole('button', { name: 'Suspend' })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Reset Schedule' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
   })
 
   it('deletes any library problem with confirmation', async () => {
