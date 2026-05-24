@@ -1,6 +1,5 @@
 import {
   evaluateLeetCodeAssessment,
-  type AssessmentPracticeContext,
   type LeetCodeAssessmentDecision,
 } from '@/features/assessment'
 import {
@@ -14,11 +13,15 @@ import type { LeetCodeSubmissionResult } from '@/lib/leetcode'
 
 import {
   createOverlayDraftFromLog,
+  deriveOverlayAssessmentSessionContext,
   hasSubmittedSessionChanges,
   hasUnpersistedDraftChanges,
+  toAssessmentPracticeContext,
   toPracticeLogPatch,
+  type OverlayAssessmentSessionContext,
   type OverlayFeedback,
   type OverlaySessionState,
+  type OverlaySubmissionSource,
   type OverlaySubmittedSession,
 } from '../domain'
 import type { OverlaySessionAction } from '../domain/overlay-session-state'
@@ -64,6 +67,9 @@ export type OverlayReviewActions = {
   restartLocalSession: () => void
   selectRating: (rating: ReviewRating) => void
   openSettings: () => void
+  buildAssessmentSessionContext: (
+    submissionSource: OverlaySubmissionSource,
+  ) => OverlayAssessmentSessionContext
 }
 
 export function useOverlayReviewActions({
@@ -180,7 +186,9 @@ export function useOverlayReviewActions({
       difficulty: problem.difficulty,
       timing: currentContext.timing,
       elapsedSeconds: timer.readElapsedSeconds(),
-      context: buildAssessmentContext(currentContext.practice),
+      context: toAssessmentPracticeContext(
+        buildAssessmentSessionContext('collapsed-quick'),
+      ),
     })
 
     if (decision.status === 'blocked') {
@@ -206,7 +214,9 @@ export function useOverlayReviewActions({
       timing: currentContext.timing,
       selectedRating: overlayRef.current.selectedRating,
       elapsedSeconds: timer.readElapsedSeconds(),
-      context: buildAssessmentContext(currentContext.practice),
+      context: toAssessmentPracticeContext(
+        buildAssessmentSessionContext('manual-overlay'),
+      ),
     })
 
     if (decision.status === 'blocked') {
@@ -231,7 +241,9 @@ export function useOverlayReviewActions({
       difficulty: problem.difficulty,
       timing: currentContext.timing,
       elapsedSeconds: timer.readElapsedSeconds(),
-      context: buildAssessmentContext(currentContext.practice),
+      context: toAssessmentPracticeContext(
+        buildAssessmentSessionContext('manual-overlay'),
+      ),
     })
 
     if (decision.status === 'blocked') {
@@ -253,7 +265,9 @@ export function useOverlayReviewActions({
       return false
     }
 
-    const assessmentContext = buildAssessmentContext(currentContext.practice)
+    const assessmentContext = toAssessmentPracticeContext(
+      buildAssessmentSessionContext('leetcode-watcher'),
+    )
     const decision = evaluateLeetCodeAssessment(
       result.status === 'accepted'
         ? {
@@ -435,7 +449,19 @@ export function useOverlayReviewActions({
     })
   }
 
+  function buildAssessmentSessionContext(
+    submissionSource: OverlaySubmissionSource,
+  ): OverlayAssessmentSessionContext {
+    return deriveOverlayAssessmentSessionContext({
+      practice: contextRef.current?.practice ?? null,
+      submissionSource,
+      timerUsed: timer.readElapsedSeconds() > 0,
+      currentDraftHasChanges: hasUnpersistedDraftChanges(overlayRef.current),
+    })
+  }
+
   return {
+    buildAssessmentSessionContext,
     collapse,
     dock,
     expand,
@@ -451,28 +477,6 @@ export function useOverlayReviewActions({
     startTimer: timer.start,
     submitReview,
     updateReview,
-  }
-}
-
-function buildAssessmentContext(
-  practice: SerializedPracticeDetails | null,
-): AssessmentPracticeContext | null {
-  if (!practice) {
-    return null
-  }
-
-  const state = practice.practice
-  const hasPriorReview =
-    practice.summary.reviewCount > 0 || practice.latestAttempt !== null
-
-  return {
-    reviewMode: hasPriorReview ? 'recall' : 'first-solve',
-    previousRating: state?.lastRating ?? practice.latestAttempt?.rating ?? null,
-    previousBestSeconds: state?.bestElapsedSeconds ?? null,
-    previousElapsedSeconds:
-      state?.lastElapsedSeconds ??
-      practice.latestAttempt?.elapsedSeconds ??
-      null,
   }
 }
 

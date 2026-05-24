@@ -308,7 +308,6 @@ describe('assessment confidence, warnings, and practice context', () => {
           reviewMode: 'recall',
           previousRating: 'good',
           previousBestSeconds: 20 * secondsPerMinute,
-          previousElapsedSeconds: 20 * secondsPerMinute,
         },
       }),
     ).toMatchObject({
@@ -329,7 +328,6 @@ describe('assessment confidence, warnings, and practice context', () => {
           reviewMode: 'recall',
           previousRating: 'again',
           previousBestSeconds: null,
-          previousElapsedSeconds: null,
         },
       }),
     ).toMatchObject({

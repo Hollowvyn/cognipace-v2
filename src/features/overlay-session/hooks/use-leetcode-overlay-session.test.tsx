@@ -267,6 +267,83 @@ describe('useLeetCodeOverlaySession', () => {
     expect(result.current.overlay.ratingLockReason).toBe('failed')
   })
 
+  it('builds an assessment session context for the active overlay submission', async () => {
+    const startTime = Date.now()
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(startTime)
+    const { result } = await renderReadySession()
+
+    act(() => {
+      result.current.actions.startTimer()
+    })
+    nowSpy.mockReturnValue(startTime + 5 * 60 * 1000)
+    act(() => {
+      result.current.draft.setField('notes', 'Work in progress note.')
+    })
+
+    expect(
+      result.current.actions.buildAssessmentSessionContext('manual-overlay'),
+    ).toMatchObject({
+      sessionKind: 'first-solve',
+      submissionSource: 'manual-overlay',
+      timerUsed: true,
+      currentDraftHasChanges: true,
+    })
+  })
+
+  it('resets local session context on restart', async () => {
+    const startTime = Date.now()
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(startTime)
+    const { result } = await renderReadySession()
+
+    act(() => {
+      result.current.actions.startTimer()
+    })
+    nowSpy.mockReturnValue(startTime + 5 * 60 * 1000)
+    act(() => {
+      result.current.draft.setField('notes', 'Work in progress note.')
+    })
+
+    act(() => {
+      result.current.actions.restartLocalSession()
+    })
+
+    expect(
+      result.current.actions.buildAssessmentSessionContext('collapsed-quick'),
+    ).toMatchObject({
+      submissionSource: 'collapsed-quick',
+      timerUsed: false,
+      currentDraftHasChanges: false,
+    })
+  })
+
+  it('clears stale session context on SPA navigation', async () => {
+    const startTime = Date.now()
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(startTime)
+    const { result } = await renderReadySession()
+
+    act(() => {
+      result.current.actions.startTimer()
+    })
+    nowSpy.mockReturnValue(startTime + 3 * 60 * 1000)
+    act(() => {
+      result.current.draft.setField('notes', 'Stale note.')
+    })
+
+    emitNextPage()
+    await flushEffects()
+
+    expect(
+      result.current.actions.buildAssessmentSessionContext('manual-overlay'),
+    ).toMatchObject({
+      sessionKind: 'first-solve',
+      submissionSource: 'manual-overlay',
+      timerUsed: false,
+      currentDraftHasChanges: false,
+      previousRating: null,
+      latestAttemptId: null,
+    })
+  })
+
   it('ignores LeetCode submission results when auto-detect is disabled', async () => {
     await renderReadySession()
 

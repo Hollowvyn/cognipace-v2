@@ -56,7 +56,6 @@ export type AssessmentPracticeContext = {
   reviewMode: AssessmentReviewMode
   previousRating: ReviewRating | null
   previousBestSeconds: number | null
-  previousElapsedSeconds: number | null
 }
 
 type AssessmentInputBase = {

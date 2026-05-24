@@ -45,6 +45,7 @@ function createSession(
 ): LeetCodeOverlaySession {
   return {
     actions: {
+      buildAssessmentSessionContext: vi.fn(),
       collapse: vi.fn(),
       dock: vi.fn(),
       expand: vi.fn(),

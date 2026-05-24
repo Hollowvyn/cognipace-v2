@@ -1,3 +1,12 @@
+export {
+  deriveOverlayAssessmentSessionContext,
+  overlaySessionKinds,
+  overlaySubmissionSources,
+  toAssessmentPracticeContext,
+  type OverlayAssessmentSessionContext,
+  type OverlaySessionKind,
+  type OverlaySubmissionSource,
+} from './assessment-session-context'
 export { formatOverlayDateTime, formatOverlayDuration } from './overlay-format'
 export {
   createOverlayDraftFromLog,
