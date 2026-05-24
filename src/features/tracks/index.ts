@@ -1,5 +1,10 @@
 export type { ActiveTrack, Track, TrackGroup, TrackProgress } from './domain'
 export {
+  TracksScreen,
+  type RenderTrackEditAction,
+  type TracksScreenProps,
+} from './components/tracks-screen'
+export {
   createTrackViaRuntime,
   deleteTrackViaRuntime,
   getActiveTrackViaRuntime,

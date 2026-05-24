@@ -1,24 +1,59 @@
-import { Outlet } from '@tanstack/react-router'
+import { Link, Outlet } from '@tanstack/react-router'
+import { Pencil, Plus } from 'lucide-react'
 
-import { DashboardPlaceholderPage } from '@/app/dashboard/layout/dashboard-placeholder-page'
+import {
+  DashboardPage,
+  DashboardPageBody,
+  DashboardPageHeader,
+} from '@/app/dashboard/layout/dashboard-page'
 import {
   dashboardPaths,
   dashboardRouteMeta,
 } from '@/app/dashboard/navigation/route-manifest'
+import { Button } from '@/components/ui/button'
+import { TracksScreen } from '@/features/tracks'
 
 export function TracksPage() {
   return (
-    <>
-      <DashboardPlaceholderPage
-        action={{
-          label: 'New Track',
-          to: dashboardPaths.trackNew,
-        }}
-        description="Track catalog, active track, groups, and custom track create/edit flows will land here later."
-        panelCopy="This route is ready for future track management without adding catalog data or progression logic yet."
-        title={dashboardRouteMeta.tracks.staticData.title}
-      />
+    <DashboardPage className="mx-auto w-full max-w-[64rem]">
+      <DashboardPageHeader title={dashboardRouteMeta.tracks.staticData.title}>
+        Manage the active curriculum, groups, and ordered practice path.
+      </DashboardPageHeader>
+      <DashboardPageBody>
+        <TracksScreen
+          newTrackAction={
+            <Button asChild size="sm">
+              <Link to={dashboardPaths.trackNew}>
+                <Plus aria-hidden="true" />
+                New Track
+              </Link>
+            </Button>
+          }
+          renderEditProblemAction={(problem) => (
+            <Button asChild size="sm" variant="ghost">
+              <Link
+                params={{ problemSlug: problem.slug }}
+                to={dashboardPaths.problemEdit}
+              >
+                <Pencil aria-hidden="true" />
+                Edit
+              </Link>
+            </Button>
+          )}
+          renderEditTrackAction={(track) => (
+            <Button asChild size="sm" variant="ghost">
+              <Link
+                params={{ trackId: track.id }}
+                to={dashboardPaths.trackEdit}
+              >
+                <Pencil aria-hidden="true" />
+                Edit Track
+              </Link>
+            </Button>
+          )}
+        />
+      </DashboardPageBody>
       <Outlet />
-    </>
+    </DashboardPage>
   )
 }
