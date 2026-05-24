@@ -5,6 +5,7 @@ import {
   problemSlugSchema,
   serializedProblemSchema,
 } from '@/features/problems/api/problems-contracts'
+import { normalizeLeetCodeSlug } from '@/lib/leetcode'
 
 export const trackDashboardSurfaceSchema = z.literal('dashboard')
 
@@ -173,28 +174,36 @@ const trackGroupInputSchema = z.object({
 
 export type TrackGroupInput = z.infer<typeof trackGroupInputSchema>
 
-const trackMutationInputSchema = z.object({
+const trackMutationInputBaseSchema = z.object({
   title: z.string().trim().min(1),
   description: z.string().trim().nullable().default(null),
   dueAt: z.iso.datetime().nullable().default(null),
   groups: z.array(trackGroupInputSchema).min(1),
 })
 
+const trackMutationInputSchema = trackMutationInputBaseSchema.superRefine(
+  addDuplicateProblemSlugIssues,
+)
+
 export type TrackMutationInput = z.infer<typeof trackMutationInputSchema>
 
-export const tracksCreateTrackRequestSchema = trackMutationInputSchema.extend({
-  surface: trackDashboardSurfaceSchema,
-  setActive: z.boolean().optional(),
-})
+export const tracksCreateTrackRequestSchema = trackMutationInputBaseSchema
+  .extend({
+    surface: trackDashboardSurfaceSchema,
+    setActive: z.boolean().optional(),
+  })
+  .superRefine(addDuplicateProblemSlugIssues)
 
 export type TracksCreateTrackRequest = z.infer<
   typeof tracksCreateTrackRequestSchema
 >
 
-export const tracksUpdateTrackRequestSchema = trackMutationInputSchema.extend({
-  surface: trackDashboardSurfaceSchema,
-  trackId: trackIdSchema,
-})
+export const tracksUpdateTrackRequestSchema = trackMutationInputBaseSchema
+  .extend({
+    surface: trackDashboardSurfaceSchema,
+    trackId: trackIdSchema,
+  })
+  .superRefine(addDuplicateProblemSlugIssues)
 
 export type TracksUpdateTrackRequest = z.infer<
   typeof tracksUpdateTrackRequestSchema
@@ -238,6 +247,35 @@ export type TracksResetTrackProgressRequest = z.infer<
 >
 
 export const tracksNullResponseSchema = z.null()
+
+function addDuplicateProblemSlugIssues(
+  input: z.infer<typeof trackMutationInputBaseSchema>,
+  context: z.RefinementCtx,
+) {
+  const seenProblemSlugs = new Set<string>()
+
+  input.groups.forEach((group, groupIndex) => {
+    group.problemSlugs.forEach((problemSlug, problemIndex) => {
+      const normalizedSlug = normalizeLeetCodeSlug(problemSlug)
+
+      if (!normalizedSlug) {
+        return
+      }
+
+      if (seenProblemSlugs.has(normalizedSlug)) {
+        context.addIssue({
+          code: 'custom',
+          message: `Problem "${normalizedSlug}" can only appear once in a track.`,
+          path: ['groups', groupIndex, 'problemSlugs', problemIndex],
+        })
+
+        return
+      }
+
+      seenProblemSlugs.add(normalizedSlug)
+    })
+  })
+}
 
 export type TracksNullResponse = z.infer<typeof tracksNullResponseSchema>
 

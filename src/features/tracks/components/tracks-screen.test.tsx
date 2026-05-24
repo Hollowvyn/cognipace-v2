@@ -122,12 +122,16 @@ describe('TracksScreen', () => {
       screen.queryByRole('link', { name: 'Open Next' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'Arrays and Hashing' }),
-    ).toHaveAttribute('aria-pressed', 'true')
+      screen.getByRole('tab', {
+        name: 'Arrays and Hashing, 1 of 2 completed',
+      }),
+    ).toHaveAttribute('aria-selected', 'true')
     expect(
-      screen.getByRole('button', { name: 'Dynamic Programming' }),
+      screen.getByRole('tab', {
+        name: 'Dynamic Programming, 0 of 1 completed',
+      }),
     ).toBeVisible()
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+    expect(screen.getByRole('tablist', { name: 'Track groups' })).toBeVisible()
     expect(getTrackProblemRow('Two Sum')).toBeVisible()
     expect(getTrackProblemRow('Binary Search')).toBeVisible()
     expect(queryTrackProblemRow('Maximum Subarray')).not.toBeInTheDocument()
@@ -140,10 +144,16 @@ describe('TracksScreen', () => {
     expect(
       await screen.findByRole('heading', { name: 'LeetCode 75' }),
     ).toBeVisible()
-    expect(screen.getByRole('link', { name: 'New Track' })).toHaveAttribute(
-      'href',
-      '#/tracks/new',
-    )
+    const otherTrackActions = screen.getByLabelText('Other tracks actions')
+
+    expect(
+      within(otherTrackActions).getByRole('link', { name: 'New Track' }),
+    ).toHaveAttribute('href', '#/tracks/new')
+    expect(
+      within(otherTrackActions).getByRole('button', {
+        name: 'Show other tracks',
+      }),
+    ).toBeVisible()
   })
 
   it('formats date-only track due dates without local timezone drift', async () => {
@@ -239,9 +249,9 @@ describe('TracksScreen', () => {
     })
     renderTracksScreen()
 
-    expect(
-      await screen.findByRole('heading', { name: longTitle }),
-    ).toHaveClass('break-words')
+    expect(await screen.findByRole('heading', { name: longTitle })).toHaveClass(
+      'break-words',
+    )
     expect(screen.getByText(longDescription)).toHaveClass('break-words')
   })
 
@@ -264,21 +274,72 @@ describe('TracksScreen', () => {
         },
       },
       activeTrackGroups: twoGroupWorkspace.activeTrackGroups.map((group) =>
-        group.id === activeGroup.id ? { ...group, title: longGroupTitle } : group,
+        group.id === activeGroup.id
+          ? { ...group, title: longGroupTitle }
+          : group,
       ),
     })
     renderTracksScreen()
 
-    const activeGroupButton = await screen.findByRole('button', {
-      name: longGroupTitle,
+    const activeGroupButton = await screen.findByRole('tab', {
+      name: `${longGroupTitle}, 1 of 2 completed`,
     })
 
-    expect(activeGroupButton).toHaveAttribute('aria-pressed', 'true')
+    expect(activeGroupButton).toHaveAttribute('aria-selected', 'true')
     expect(within(activeGroupButton).getByText(longGroupTitle)).toHaveClass(
       'min-w-0',
       'max-w-full',
       'truncate',
     )
+  })
+
+  it('renders active groups as a single horizontally scrollable tab row', async () => {
+    const activeTrack = twoGroupWorkspace.activeTrack
+
+    if (!activeTrack) {
+      throw new Error('Expected active track fixture.')
+    }
+
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...twoGroupWorkspace,
+      activeTrackGroups: [
+        createSerializedTrackGroup({
+          id: 'leetcode-75:arrays-hashing',
+          title: 'Arrays and Hashing',
+          position: 1,
+        }),
+        createSerializedTrackGroup({
+          id: 'leetcode-75:dynamic-programming',
+          title: 'Dynamic Programming',
+          position: 2,
+        }),
+        createSerializedTrackGroup({
+          id: 'leetcode-75:graphs',
+          title: 'Graphs',
+          position: 3,
+        }),
+        createSerializedTrackGroup({
+          id: 'leetcode-75:binary-search',
+          title: 'Binary Search',
+          position: 4,
+        }),
+      ],
+    })
+    renderTracksScreen()
+
+    const tabList = await screen.findByRole('tablist', {
+      name: 'Track groups',
+    })
+    const tabs = within(tabList).getAllByRole('tab')
+
+    expect(tabList).toHaveClass('overflow-x-auto', 'flex-nowrap')
+    expect(tabs).toHaveLength(4)
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
+    expect(tabs[0]).toHaveClass('shrink-0')
+    expect(tabs[0]).toHaveClass('border-primary', 'text-primary')
+    expect(tabs[0]).toHaveTextContent('1/2')
+    expect(tabs[1]).toHaveAttribute('aria-selected', 'false')
+    expect(tabs[1]).toHaveTextContent('0/1')
   })
 
   it('hides group tabs for a single-group track', async () => {
@@ -302,7 +363,9 @@ describe('TracksScreen', () => {
     renderTracksScreen()
 
     await user.click(
-      await screen.findByRole('button', { name: 'Dynamic Programming' }),
+      await screen.findByRole('tab', {
+        name: 'Dynamic Programming, 0 of 1 completed',
+      }),
     )
 
     expect(sendMessage).toHaveBeenCalledWith('tracks.setActiveGroup', {

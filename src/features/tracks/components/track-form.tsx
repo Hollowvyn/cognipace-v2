@@ -250,6 +250,7 @@ function TrackFormFields({
         />
         <SelectedGroupProblems
           dispatch={dispatch}
+          groups={state.groups}
           problemRows={source.problemRows}
           problemRowsBySlug={problemRowsBySlug}
           searchQuery={searchQuery}
@@ -406,6 +407,7 @@ function TrackGroupList({
 
 function SelectedGroupProblems({
   dispatch,
+  groups,
   problemRows,
   problemRowsBySlug,
   searchQuery,
@@ -413,13 +415,16 @@ function SelectedGroupProblems({
   setSearchQuery,
 }: {
   dispatch: ReturnType<typeof useTrackForm>['dispatch']
+  groups: readonly TrackFormGroupState[]
   problemRows: readonly ProblemLibraryRow[]
   problemRowsBySlug: ReadonlyMap<string, ProblemLibraryRow>
   searchQuery: string
   selectedGroup: TrackFormGroupState
   setSearchQuery: (searchQuery: string) => void
 }) {
-  const selectedProblemSlugSet = new Set(selectedGroup.problemSlugs)
+  const selectedProblemSlugSet = new Set(
+    groups.flatMap((group) => group.problemSlugs),
+  )
   const filteredProblemRows = problemRows.filter(
     (row) =>
       !selectedProblemSlugSet.has(row.problem.slug) &&
@@ -698,6 +703,10 @@ function getFirstFieldError(fieldErrors: TrackFormFieldErrors) {
 
   if (fieldErrors.groups) {
     return fieldErrors.groups
+  }
+
+  if (fieldErrors.problemSlugs) {
+    return fieldErrors.problemSlugs
   }
 
   return Object.values(fieldErrors.groupTitles)[0] ?? null

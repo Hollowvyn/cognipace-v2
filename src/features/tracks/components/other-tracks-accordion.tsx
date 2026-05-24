@@ -44,34 +44,43 @@ export function OtherTracksAccordion({
   }
 
   return (
-    <section className="rounded-[var(--cp-panel-radius)] border border-border bg-card text-card-foreground shadow-surface">
-      <button
-        aria-label={isOpen ? 'Hide other tracks' : 'Show other tracks'}
-        aria-expanded={isOpen}
-        className="flex w-full min-w-0 items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:px-5"
-        onClick={() => setIsOpen((current) => !current)}
-        type="button"
-      >
+    <section
+      aria-label="Other tracks"
+      className="rounded-[var(--cp-panel-radius)] border border-border bg-card text-card-foreground shadow-surface"
+    >
+      <div className="grid min-w-0 gap-3 px-4 py-3 md:flex md:items-center md:justify-between md:px-5">
         <span className="min-w-0">
           <span className="block text-[length:var(--cp-copy-font-size)] font-bold text-foreground">
             {otherTracks.length}{' '}
             {otherTracks.length === 1 ? 'other track' : 'other tracks'}
           </span>
           <span className="block text-[length:var(--cp-badge-font-size)] text-muted-foreground">
-            {otherTracks.length === 0
-              ? 'Create another track'
-              : 'Summary only'}
+            {otherTracks.length === 0 ? 'Create another track' : 'Summary only'}
           </span>
         </span>
-        <span className="inline-flex shrink-0 items-center gap-2 text-[length:var(--cp-copy-font-size)] font-semibold text-primary">
-          {isOpen ? 'Hide other tracks' : 'Show other tracks'}
-          {isOpen ? (
-            <ChevronDown aria-hidden="true" className="size-4" />
-          ) : (
-            <ChevronRight aria-hidden="true" className="size-4" />
-          )}
-        </span>
-      </button>
+        <div
+          aria-label="Other tracks actions"
+          className="flex shrink-0 flex-wrap items-center gap-2 md:justify-end"
+        >
+          {newTrackAction}
+          {otherTracks.length > 0 ? (
+            <button
+              aria-label={isOpen ? 'Hide other tracks' : 'Show other tracks'}
+              aria-expanded={isOpen}
+              className="inline-flex min-h-[var(--cp-control-height-sm)] items-center gap-2 rounded-[var(--cp-control-radius)] px-2 text-[length:var(--cp-copy-font-size)] font-semibold text-primary transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={() => setIsOpen((current) => !current)}
+              type="button"
+            >
+              {isOpen ? 'Hide other tracks' : 'Show other tracks'}
+              {isOpen ? (
+                <ChevronDown aria-hidden="true" className="size-4" />
+              ) : (
+                <ChevronRight aria-hidden="true" className="size-4" />
+              )}
+            </button>
+          ) : null}
+        </div>
+      </div>
       {isOpen ? (
         <div className="border-t border-border">
           {error ? (
@@ -91,11 +100,6 @@ export function OtherTracksAccordion({
               />
             ))}
           </div>
-        </div>
-      ) : null}
-      {newTrackAction ? (
-        <div className="flex justify-end border-t border-border px-4 py-3 md:px-5">
-          {newTrackAction}
         </div>
       ) : null}
     </section>

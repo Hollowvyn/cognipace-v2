@@ -45,6 +45,7 @@ export interface TrackFormState {
 export interface TrackFormFieldErrors {
   groupTitles: Record<string, string>
   groups: string | null
+  problemSlugs: string | null
   title: string | null
 }
 
@@ -146,13 +147,14 @@ function trackFormReducer(
         ? { ...state, selectedGroupKey: action.groupKey }
         : state
     case 'add-problem':
+      if (hasProblemSlugInTrack(state.groups, action.problemSlug)) {
+        return state
+      }
+
       return {
         ...state,
         groups: state.groups.map((group) => {
-          if (
-            group.key !== action.groupKey ||
-            group.problemSlugs.includes(action.problemSlug)
-          ) {
+          if (group.key !== action.groupKey) {
             return group
           }
 
@@ -249,6 +251,7 @@ function createFallbackMainGroup(): TrackFormGroupState {
 
 function deriveFieldErrors(state: TrackFormState): TrackFormFieldErrors {
   const groupTitles: Record<string, string> = {}
+  const duplicateProblemSlug = findDuplicateProblemSlug(state.groups)
 
   for (const group of state.groups) {
     if (group.title.trim().length === 0) {
@@ -260,6 +263,9 @@ function deriveFieldErrors(state: TrackFormState): TrackFormFieldErrors {
     groupTitles,
     groups:
       state.groups.length === 0 ? 'At least one group is required.' : null,
+    problemSlugs: duplicateProblemSlug
+      ? `Problem "${duplicateProblemSlug}" can only appear once in a track.`
+      : null,
     title: state.title.trim().length === 0 ? 'Title is required.' : null,
   }
 }
@@ -268,6 +274,7 @@ function isFieldErrorFree(fieldErrors: TrackFormFieldErrors) {
   return (
     fieldErrors.title === null &&
     fieldErrors.groups === null &&
+    fieldErrors.problemSlugs === null &&
     Object.keys(fieldErrors.groupTitles).length === 0
   )
 }
@@ -302,6 +309,29 @@ function toNullableTrimmedValue(value: string) {
 
 function toDateInputValue(value: string | null) {
   return value ? value.slice(0, 10) : ''
+}
+
+function hasProblemSlugInTrack(
+  groups: readonly TrackFormGroupState[],
+  problemSlug: string,
+) {
+  return groups.some((group) => group.problemSlugs.includes(problemSlug))
+}
+
+function findDuplicateProblemSlug(groups: readonly TrackFormGroupState[]) {
+  const seenProblemSlugs = new Set<string>()
+
+  for (const group of groups) {
+    for (const problemSlug of group.problemSlugs) {
+      if (seenProblemSlugs.has(problemSlug)) {
+        return problemSlug
+      }
+
+      seenProblemSlugs.add(problemSlug)
+    }
+  }
+
+  return null
 }
 
 function moveArrayItem<T>(

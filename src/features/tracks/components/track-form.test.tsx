@@ -138,6 +138,25 @@ describe('TrackForm', () => {
     })
   })
 
+  it('does not offer a problem already selected in another group', async () => {
+    const user = userEvent.setup()
+    mockTrackFormRuntime(createTrackDefaults())
+
+    renderTrackForm(
+      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
+    )
+
+    await user.type(await screen.findByLabelText('Title'), 'Interview Track')
+    await user.type(screen.getByLabelText('Search Library problems'), 'two')
+    await user.click(screen.getByRole('button', { name: 'Add Two Sum' }))
+    await user.click(screen.getByRole('button', { name: 'Add group' }))
+
+    expect(
+      screen.queryByRole('button', { name: 'Add Two Sum' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('No matching Library problems.')).toBeVisible()
+  })
+
   it('constrains long problem titles before form action controls', async () => {
     const longTitle = `Problem ${'C'.repeat(90)}`
     mockTrackFormRuntime(

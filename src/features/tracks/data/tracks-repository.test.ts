@@ -547,6 +547,50 @@ describe('TracksRepository', () => {
     ])
   })
 
+  it('rejects duplicate problem slugs across groups when saving a track', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const repository = createTracksRepository(handle.db)
+
+    await expect(
+      repository.createTrack({
+        title: 'Duplicate Plan',
+        description: null,
+        dueAt: null,
+        groups: [
+          {
+            title: 'Arrays',
+            problemSlugs: ['two-sum'],
+          },
+          {
+            title: 'Hash Maps',
+            problemSlugs: ['Two Sum'],
+          },
+        ],
+      }),
+    ).rejects.toThrow('Problem "two-sum" can only appear once in a track.')
+    await expect(
+      repository.updateTrack({
+        trackId: 'leetcode-75',
+        title: 'LeetCode 75',
+        description: null,
+        dueAt: null,
+        groups: [
+          {
+            id: 'leetcode-75:arrays-hashing',
+            title: 'Arrays and Hashing',
+            problemSlugs: ['two-sum'],
+          },
+          {
+            title: 'Hash Maps',
+            problemSlugs: ['two-sum'],
+          },
+        ],
+      }),
+    ).rejects.toThrow('Problem "two-sum" can only appear once in a track.')
+  })
+
   it('moves completed progress when moving a problem out of an omitted group', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
@@ -609,187 +653,6 @@ describe('TracksRepository', () => {
         problemSlug: 'valid-parentheses',
         completedAt: timestamp,
         completedRating: 'easy',
-      },
-    ])
-  })
-
-  it('moves duplicate completed problem progress into separate desired memberships', async () => {
-    const handle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-    const firstCompletedAt = new Date('2026-01-01T08:00:00.000Z').getTime()
-    const secondCompletedAt = new Date('2026-01-01T09:00:00.000Z').getTime()
-    const timestamp = new Date('2026-01-01T10:00:00.000Z').getTime()
-    const repository = createTracksRepository(handle.db)
-
-    await handle.db.insert(trackGroups).values([
-      {
-        id: 'leetcode-75:old-a',
-        trackId: 'leetcode-75',
-        title: 'Old A',
-        position: 2,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      },
-      {
-        id: 'leetcode-75:old-b',
-        trackId: 'leetcode-75',
-        title: 'Old B',
-        position: 3,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      },
-    ])
-    await handle.db.insert(trackGroupProblems).values([
-      {
-        trackGroupId: 'leetcode-75:old-a',
-        problemSlug: 'two-sum',
-        position: 1,
-      },
-      {
-        trackGroupId: 'leetcode-75:old-b',
-        problemSlug: 'two-sum',
-        position: 1,
-      },
-    ])
-    await handle.db.insert(trackProblemProgress).values([
-      {
-        trackGroupId: 'leetcode-75:old-a',
-        problemSlug: 'two-sum',
-        completedAt: firstCompletedAt,
-        completedRating: 'good',
-        createdAt: firstCompletedAt,
-        updatedAt: firstCompletedAt,
-      },
-      {
-        trackGroupId: 'leetcode-75:old-b',
-        problemSlug: 'two-sum',
-        completedAt: secondCompletedAt,
-        completedRating: 'easy',
-        createdAt: secondCompletedAt,
-        updatedAt: secondCompletedAt,
-      },
-    ])
-
-    await repository.updateTrack({
-      trackId: 'leetcode-75',
-      title: 'LeetCode 75',
-      description: null,
-      dueAt: null,
-      groups: [
-        {
-          id: 'leetcode-75:arrays-hashing',
-          title: 'Arrays and Hashing',
-          problemSlugs: [],
-        },
-        {
-          title: 'New A',
-          problemSlugs: ['two-sum'],
-        },
-        {
-          title: 'New B',
-          problemSlugs: ['two-sum'],
-        },
-      ],
-    })
-
-    const progressRows = await handle.db
-      .select()
-      .from(trackProblemProgress)
-      .orderBy(
-        asc(trackProblemProgress.completedAt),
-        asc(trackProblemProgress.trackGroupId),
-      )
-
-    expect(progressRows).toMatchObject([
-      {
-        trackGroupId: 'leetcode-75:new-a',
-        problemSlug: 'two-sum',
-        completedAt: firstCompletedAt,
-        completedRating: 'good',
-      },
-      {
-        trackGroupId: 'leetcode-75:new-b',
-        problemSlug: 'two-sum',
-        completedAt: secondCompletedAt,
-        completedRating: 'easy',
-      },
-    ])
-  })
-
-  it('does not target a retained incomplete duplicate when moving completed progress', async () => {
-    const handle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-    const completedAt = new Date('2026-01-01T08:00:00.000Z').getTime()
-    const timestamp = new Date('2026-01-01T09:00:00.000Z').getTime()
-    const repository = createTracksRepository(handle.db)
-
-    await handle.db.insert(trackGroups).values({
-      id: 'leetcode-75:old-b',
-      trackId: 'leetcode-75',
-      title: 'Old B',
-      position: 2,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    })
-    await handle.db.insert(trackGroupProblems).values({
-      trackGroupId: 'leetcode-75:old-b',
-      problemSlug: 'two-sum',
-      position: 1,
-    })
-    await handle.db.insert(trackProblemProgress).values({
-      trackGroupId: 'leetcode-75:old-b',
-      problemSlug: 'two-sum',
-      completedAt,
-      completedRating: 'good',
-      createdAt: completedAt,
-      updatedAt: completedAt,
-    })
-
-    await repository.updateTrack({
-      trackId: 'leetcode-75',
-      title: 'LeetCode 75',
-      description: null,
-      dueAt: null,
-      groups: [
-        {
-          id: 'leetcode-75:arrays-hashing',
-          title: 'Arrays and Hashing',
-          problemSlugs: ['two-sum'],
-        },
-        {
-          title: 'New C',
-          problemSlugs: ['two-sum'],
-        },
-      ],
-    })
-
-    const memberships = await repository.getMemberships('leetcode-75')
-    const progressRows = await handle.db
-      .select()
-      .from(trackProblemProgress)
-      .orderBy(
-        asc(trackProblemProgress.trackGroupId),
-        asc(trackProblemProgress.problemSlug),
-      )
-
-    expect(
-      memberships.map((membership) => [
-        membership.groupId,
-        membership.problemSlug,
-        membership.completedAt,
-      ]),
-    ).toEqual([
-      ['leetcode-75:arrays-hashing', 'two-sum', null],
-      ['leetcode-75:new-c', 'two-sum', new Date(completedAt)],
-    ])
-    expect(progressRows).toMatchObject([
-      {
-        trackGroupId: 'leetcode-75:new-c',
-        problemSlug: 'two-sum',
-        completedAt,
-        completedRating: 'good',
       },
     ])
   })

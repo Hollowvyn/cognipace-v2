@@ -49,6 +49,7 @@ export function ActiveTrackWorkspace({
   const activeRows = activeGroupId
     ? rows.filter((row) => row.membership.groupId === activeGroupId)
     : rows
+  const groupProgressById = getGroupProgressById(groups, rows)
 
   return (
     <Surface className="grid w-full overflow-hidden p-0">
@@ -59,6 +60,7 @@ export function ActiveTrackWorkspace({
       />
       <ActiveTrackGroups
         activeGroupId={activeGroupId}
+        groupProgressById={groupProgressById}
         groups={groups}
         trackId={activeTrack.track.id}
       />
@@ -244,10 +246,12 @@ function ActiveTrackHeader({
 
 function ActiveTrackGroups({
   activeGroupId,
+  groupProgressById,
   groups,
   trackId,
 }: {
   activeGroupId: string | null
+  groupProgressById: ReadonlyMap<string, TrackGroupProgress>
   groups: readonly SerializedTrackGroup[]
   trackId: string
 }) {
@@ -281,7 +285,7 @@ function ActiveTrackGroups({
   }
 
   return (
-    <div className="border-t border-border px-4 py-3 md:px-5 lg:px-7">
+    <div className="min-w-0 border-t border-border px-4 py-3 md:px-5 lg:px-7">
       {error ? (
         <InlineStatus className="mb-3" role="alert" tone="danger">
           {error}
@@ -289,30 +293,41 @@ function ActiveTrackGroups({
       ) : null}
       <div
         aria-label="Track groups"
-        className="flex min-w-0 flex-wrap gap-2"
-        role="group"
+        aria-orientation="horizontal"
+        className="flex min-w-0 flex-nowrap gap-6 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        role="tablist"
       >
         {groups.map((group) => {
           const isActive = group.id === activeGroupId
+          const progress = groupProgressById.get(group.id) ?? emptyGroupProgress
 
           return (
             <button
-              aria-pressed={isActive}
+              aria-label={`${group.title}, ${progress.completedCount} of ${progress.totalCount} completed`}
+              aria-selected={isActive}
               className={cn(
-                'inline-flex max-w-full min-w-0 items-center rounded-[var(--cp-control-radius)] border px-3 py-2 text-[length:var(--cp-control-font-size)] font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                'inline-flex min-h-12 min-w-0 max-w-[min(18rem,72vw)] shrink-0 items-center gap-2 border-b-2 px-0 py-3 text-[length:var(--cp-badge-font-size)] font-bold uppercase leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 isActive
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-card text-card-foreground hover:bg-muted',
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
               )}
               disabled={setActiveGroup.isPending}
               key={group.id}
               onClick={() => {
                 void selectGroup(group.id)
               }}
+              role="tab"
               type="button"
             >
-              <span className="min-w-0 max-w-full truncate">
-                {group.title}
+              <span className="min-w-0 max-w-full truncate">{group.title}</span>
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'shrink-0 text-muted-foreground tabular-nums',
+                  isActive && 'text-primary/80',
+                )}
+              >
+                · {progress.completedCount}/{progress.totalCount}
               </span>
             </button>
           )
@@ -321,6 +336,47 @@ function ActiveTrackGroups({
     </div>
   )
 }
+
+type TrackGroupProgress = {
+  completedCount: number
+  totalCount: number
+}
+
+function getGroupProgressById(
+  groups: readonly SerializedTrackGroup[],
+  rows: readonly TrackProblemRow[],
+) {
+  const progressByGroup = new Map<string, TrackGroupProgress>(
+    groups.map((group) => [
+      group.id,
+      {
+        completedCount: 0,
+        totalCount: 0,
+      },
+    ]),
+  )
+
+  for (const row of rows) {
+    const progress = progressByGroup.get(row.membership.groupId)
+
+    if (!progress) {
+      continue
+    }
+
+    progress.totalCount += 1
+
+    if (row.membership.completedAt) {
+      progress.completedCount += 1
+    }
+  }
+
+  return progressByGroup
+}
+
+const emptyGroupProgress = {
+  completedCount: 0,
+  totalCount: 0,
+} satisfies TrackGroupProgress
 
 function MetricBlock({
   ariaLabel,
