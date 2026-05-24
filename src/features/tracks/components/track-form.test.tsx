@@ -333,11 +333,18 @@ describe('TrackForm', () => {
     )
 
     const selectedProblems = await screen.findByLabelText('Selected problems')
+    const selectedGroupProblems = screen.getByRole('region', {
+      name: 'Selected group problems',
+    })
     const twoSumRow = within(selectedProblems).getByRole('listitem', {
       name: '1. Two Sum',
     })
 
+    expect(
+      within(selectedGroupProblems).getByText('2 selected'),
+    ).toHaveClass('text-[length:var(--cp-badge-font-size)]')
     expect(twoSumRow).toHaveClass('grid-cols-[auto_minmax(0,1fr)_auto]')
+    expect(twoSumRow).toHaveClass('bg-background/30', 'px-3', 'py-2')
     expect(within(twoSumRow).getByText('Two Sum')).toHaveClass(
       'truncate',
       'text-[length:var(--cp-copy-font-size)]',
@@ -462,15 +469,17 @@ describe('TrackForm', () => {
       'h-80',
       'overflow-y-auto',
       'rounded-[var(--cp-control-radius)]',
-      'border',
+      'border-2',
       'border-border',
+      'p-3',
     )
     expect(selectedProblemRows).toHaveClass(
-      'h-56',
+      'h-80',
       'overflow-y-auto',
       'rounded-[var(--cp-control-radius)]',
-      'border',
+      'border-2',
       'border-border',
+      'p-3',
     )
   })
 

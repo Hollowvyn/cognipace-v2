@@ -396,7 +396,7 @@ function TrackGroupList({
       </div>
       <div
         aria-label="Track groups"
-        className="grid h-80 gap-2 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-background/40 p-2"
+        className="grid h-80 gap-2 overflow-y-auto rounded-[var(--cp-control-radius)] border-2 border-border bg-card/50 p-3"
         role="list"
       >
         {groups.map((group, index) => {
@@ -410,7 +410,7 @@ function TrackGroupList({
                 group.problemSlugs.length,
               )}`}
               className={cn(
-                'grid min-w-0 gap-2 rounded-[var(--cp-control-radius)] border border-border px-2 py-1.5',
+                'grid min-w-0 gap-2 rounded-[var(--cp-control-radius)] border border-border bg-background/30 px-3 py-2',
                 isSelected && 'border-primary bg-muted/45',
               )}
               key={group.key}
@@ -526,9 +526,9 @@ function SelectedGroupProblems({
   return (
     <section
       aria-label="Selected group problems"
-      className="grid min-w-0 content-start gap-4"
+      className="grid min-w-0 content-start gap-3"
     >
-      <div className="grid gap-1">
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
         <h3 className="m-0 truncate text-[length:var(--cp-copy-font-size)] font-bold text-foreground">
           {selectedGroup.title.trim() || 'Selected group'} problems
         </h3>
@@ -558,7 +558,7 @@ function OrderedProblemList({
   return (
     <div
       aria-label="Selected problem rows"
-      className="h-56 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-background/40 p-2"
+      className="h-80 overflow-y-auto rounded-[var(--cp-control-radius)] border-2 border-border bg-card/50 p-3"
       role="region"
     >
       {selectedGroup.problemSlugs.length === 0 ? (
@@ -566,7 +566,7 @@ function OrderedProblemList({
       ) : (
         <ol
           aria-label="Selected problems"
-          className="m-0 grid list-none gap-1 p-0"
+          className="m-0 grid list-none gap-2 p-0"
         >
           {selectedGroup.problemSlugs.map((problemSlug, index) => {
             const row = problemRowsBySlug.get(problemSlug)
@@ -575,7 +575,7 @@ function OrderedProblemList({
             return (
               <li
                 aria-label={`${index + 1}. ${title}`}
-                className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--cp-control-radius)] border border-border px-2 py-1.5"
+                className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--cp-control-radius)] border border-border bg-background/30 px-3 py-2"
                 key={problemSlug}
               >
                 <span className="text-[length:var(--cp-badge-font-size)] font-bold text-muted-foreground tabular-nums">
