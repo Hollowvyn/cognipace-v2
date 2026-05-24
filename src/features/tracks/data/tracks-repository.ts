@@ -6,6 +6,7 @@ import {
   problems,
   trackGroupProblems,
   trackGroups,
+  trackProblemProgress,
   tracks,
   trackSession,
   type TrackGroupRow,
@@ -28,9 +29,12 @@ export class TracksRepository {
       .where(eq(trackSession.id, 'active'))
       .limit(1)
     const session = sessionRows[0]
-    const track = session?.activeTrackId
-      ? await this.getTrackById(session.activeTrackId)
-      : await this.getFirstActiveTrack()
+
+    if (!session?.activeTrackId) {
+      return null
+    }
+
+    const track = await this.getTrackById(session.activeTrackId)
 
     if (!track) {
       return null
@@ -54,17 +58,6 @@ export class TracksRepository {
       .select()
       .from(tracks)
       .where(eq(tracks.id, id))
-      .limit(1)
-
-    return rows[0] ? mapTrack(rows[0]) : null
-  }
-
-  private async getFirstActiveTrack() {
-    const rows = await this.db
-      .select()
-      .from(tracks)
-      .where(eq(tracks.isActive, true))
-      .orderBy(asc(tracks.createdAt))
       .limit(1)
 
     return rows[0] ? mapTrack(rows[0]) : null
@@ -156,11 +149,19 @@ export class TracksRepository {
     const rows = await this.db
       .select({
         problemSlug: trackGroupProblems.problemSlug,
+        completedProblemSlug: trackProblemProgress.problemSlug,
       })
       .from(trackGroupProblems)
       .innerJoin(
         trackGroups,
         eq(trackGroups.id, trackGroupProblems.trackGroupId),
+      )
+      .leftJoin(
+        trackProblemProgress,
+        and(
+          eq(trackProblemProgress.trackGroupId, trackGroupProblems.trackGroupId),
+          eq(trackProblemProgress.problemSlug, trackGroupProblems.problemSlug),
+        ),
       )
       .where(eq(trackGroups.trackId, trackId))
 
@@ -170,10 +171,14 @@ export class TracksRepository {
       return emptyProgress()
     }
 
+    const completedCount = rows.filter(
+      (row) => row.completedProblemSlug !== null,
+    ).length
+
     return {
-      completedCount: 0,
+      completedCount,
       totalCount,
-      percent: 0,
+      percent: Math.round((completedCount / totalCount) * 100),
     }
   }
 }
@@ -193,7 +198,6 @@ function mapTrack(row: TrackRow): Track {
     title: row.title,
     description: row.description,
     dueAt: row.dueAt === null ? null : new Date(row.dueAt),
-    isActive: row.isActive,
   }
 }
 

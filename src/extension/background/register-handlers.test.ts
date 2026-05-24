@@ -507,7 +507,6 @@ function createActiveTrack(dueAt: Date | null): ActiveTrack {
       title: 'LeetCode 75',
       description: 'Focused starter track.',
       dueAt,
-      isActive: true,
     },
     activeGroup: {
       id: 'leetcode-75:arrays-hashing',

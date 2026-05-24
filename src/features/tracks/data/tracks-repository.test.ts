@@ -5,6 +5,7 @@ import {
   problemPractice,
   trackGroupProblems,
   trackGroups,
+  trackProblemProgress,
   trackSession,
   tracks,
 } from '@/platform/db/schema'
@@ -39,6 +40,34 @@ describe('TracksRepository', () => {
         slug: 'two-sum',
       },
     })
+  })
+
+  it('returns null when the active session has no active track', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+
+    await handle.db
+      .update(trackSession)
+      .set({
+        activeTrackId: null,
+        activeGroupId: null,
+      })
+      .where(eq(trackSession.id, 'active'))
+
+    const activeTrack = await createTracksRepository(handle.db).getActiveTrack()
+
+    expect(activeTrack).toBeNull()
+  })
+
+  it('does not expose legacy track active flags', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+
+    const activeTrack = await createTracksRepository(handle.db).getActiveTrack()
+
+    expect(activeTrack?.track).not.toHaveProperty('isActive')
   })
 
   it('maps track due date from storage', async () => {
@@ -104,6 +133,82 @@ describe('TracksRepository', () => {
     expect(activeTrack?.nextProblem).toMatchObject({
       slug: 'two-sum',
     })
+  })
+
+  it('counts completed track progress from the track ledger only', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const timestamp = new Date('2026-01-01T08:00:00.000Z').getTime()
+
+    await handle.db.insert(trackGroups).values({
+      id: 'leetcode-75:stack',
+      trackId: 'leetcode-75',
+      title: 'Stack',
+      position: 2,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+    await handle.db.insert(trackGroupProblems).values({
+      trackGroupId: 'leetcode-75:stack',
+      problemSlug: 'valid-parentheses',
+      position: 1,
+    })
+    await handle.db.insert(problemPractice).values({
+      problemSlug: 'valid-parentheses',
+      status: 'mastered',
+      firstSeenAt: timestamp,
+      lastSeenAt: timestamp,
+      lastReviewedAt: timestamp,
+      lastRating: 'easy',
+      solvedCount: 1,
+      attemptCount: 1,
+      isSuspended: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+    await handle.db.insert(trackProblemProgress).values({
+      trackGroupId: 'leetcode-75:arrays-hashing',
+      problemSlug: 'two-sum',
+      completedAt: timestamp,
+      completedRating: 'good',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+
+    const activeTrack = await createTracksRepository(handle.db).getActiveTrack()
+
+    expect(activeTrack?.progress).toEqual({
+      completedCount: 1,
+      totalCount: 2,
+      percent: 50,
+    })
+  })
+
+  it('deletes progress when deleting a track problem membership', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const timestamp = new Date('2026-01-01T08:00:00.000Z').getTime()
+
+    await handle.db.insert(trackProblemProgress).values({
+      trackGroupId: 'leetcode-75:arrays-hashing',
+      problemSlug: 'two-sum',
+      completedAt: timestamp,
+      completedRating: 'easy',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+
+    await handle.db
+      .delete(trackGroupProblems)
+      .where(
+        eq(trackGroupProblems.trackGroupId, 'leetcode-75:arrays-hashing'),
+      )
+
+    const rows = await handle.db.select().from(trackProblemProgress)
+
+    expect(rows).toEqual([])
   })
 
   it('restores the persisted active track and active group', async () => {

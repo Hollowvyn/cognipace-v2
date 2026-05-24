@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm'
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 import { trackGroups } from './track-groups'
 import { trackSession } from './track-session'
@@ -12,13 +12,9 @@ export const tracks = sqliteTable(
     title: text('title').notNull(),
     description: text('description'),
     dueAt: integer('due_at'),
-    isActive: integer('is_active', { mode: 'boolean' })
-      .notNull()
-      .default(false),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },
-  (table) => [index('tracks_active_idx').on(table.isActive)],
 )
 
 export const tracksRelations = relations(tracks, ({ many }) => ({

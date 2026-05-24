@@ -129,7 +129,6 @@ export const activeTrackSchema = z
       title: z.string(),
       description: z.string().nullable(),
       dueAt: z.iso.datetime().nullable(),
-      isActive: z.boolean(),
     }),
     activeGroup: z
       .object({

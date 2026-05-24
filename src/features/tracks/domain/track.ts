@@ -6,7 +6,6 @@ export interface Track {
   title: string
   description: string | null
   dueAt: Date | null
-  isActive: boolean
 }
 
 export interface TrackGroup {

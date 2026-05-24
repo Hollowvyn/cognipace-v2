@@ -35,14 +35,12 @@ const seedTracks = [
     slug: 'leetcode-75',
     title: 'LeetCode 75',
     description: 'Focused starter track for high-signal interview patterns.',
-    isActive: true,
   },
   {
     id: 'grind-75',
     slug: 'grind-75',
     title: 'Grind 75',
     description: 'Compact practice set for repeated algorithm review.',
-    isActive: false,
   },
 ] as const
 

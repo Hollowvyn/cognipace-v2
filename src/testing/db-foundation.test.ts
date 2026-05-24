@@ -8,6 +8,7 @@ import migration0000 from '@/platform/db/migrations/0000_initial.sql?raw'
 import migration0001 from '@/platform/db/migrations/0001_lively_namor.sql?raw'
 import migration0002 from '@/platform/db/migrations/0002_add_track_due_at.sql?raw'
 import migration0003 from '@/platform/db/migrations/0003_problem_slugs_and_constraints.sql?raw'
+import migration0004 from '@/platform/db/migrations/0004_tracks_phase_3.sql?raw'
 import { createDb, createSqliteWasmLocator } from '@/platform/db'
 import { execProxy, isMutationStatement } from '@/platform/db/proxy'
 import { fsrsCards, problemPractice, problems } from '@/platform/db/schema'
@@ -52,10 +53,84 @@ describe('db foundation', () => {
         'topics_label_unique',
         'track_group_problems_problem_slug_idx',
         'track_groups_track_idx',
-        'tracks_active_idx',
+        'track_problem_progress_problem_slug_idx',
         'tracks_slug_unique',
       ]),
     )
+  })
+
+  it('migrates track progress ledger state without losing active session', async () => {
+    const handle = await createDb({
+      locateWasm: createSqliteWasmLocator(),
+    })
+
+    handle.rawDb.exec(
+      [migration0000, migration0001, migration0002, migration0003].join('\n'),
+    )
+    handle.rawDb.exec(`
+      INSERT INTO problems (
+        slug,
+        title,
+        difficulty,
+        is_premium,
+        created_at,
+        updated_at
+      )
+      VALUES ('two-sum', 'Two Sum', 'easy', false, 1000, 1000);
+      INSERT INTO tracks (
+        id,
+        slug,
+        title,
+        description,
+        is_active,
+        created_at,
+        updated_at,
+        due_at
+      )
+      VALUES ('leetcode-75', 'leetcode-75', 'LeetCode 75', null, true, 1000, 1000, null);
+      INSERT INTO track_groups (
+        id,
+        track_id,
+        title,
+        position,
+        created_at,
+        updated_at
+      )
+      VALUES ('leetcode-75:arrays', 'leetcode-75', 'Arrays', 1, 1000, 1000);
+      INSERT INTO track_group_problems (track_group_id, problem_slug, position)
+      VALUES ('leetcode-75:arrays', 'two-sum', 1);
+      INSERT INTO track_session (
+        id,
+        active_track_id,
+        active_group_id,
+        started_at,
+        updated_at
+      )
+      VALUES ('active', 'leetcode-75', 'leetcode-75:arrays', 1000, 1000);
+    `)
+
+    handle.rawDb.exec(migration0004)
+
+    expect(
+      readSqliteRows(handle.rawDb, "PRAGMA table_info('tracks')")
+        .map((row) => row[1])
+        .includes('is_active'),
+    ).toBe(false)
+    expect(readSqliteRows(handle.rawDb, 'SELECT id FROM tracks')).toEqual([
+      ['leetcode-75'],
+    ])
+    expect(
+      readSqliteRows(
+        handle.rawDb,
+        'SELECT active_track_id, active_group_id FROM track_session',
+      ),
+    ).toEqual([['leetcode-75', 'leetcode-75:arrays']])
+    expect(
+      readSqliteRows(
+        handle.rawDb,
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'track_problem_progress'",
+      ),
+    ).toEqual([['track_problem_progress']])
   })
 
   it('migrates legacy problem ids to slug-backed problem identity', async () => {
