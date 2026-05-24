@@ -110,6 +110,23 @@ export class ProblemsRepository {
     } satisfies ProblemLibrary
   }
 
+  async getLibraryRowsBySlug(
+    problemSlugs: readonly string[],
+    options: ProblemLibraryReadOptions = {},
+  ): Promise<ProblemLibraryRow[]> {
+    const requestedSlugs = normalizeProblemSlugList(problemSlugs)
+
+    if (requestedSlugs.length === 0) {
+      return []
+    }
+
+    return this.readLibraryRows({
+      now: options.now ?? new Date(),
+      targetRetention: options.targetRetention,
+      problemSlugs: requestedSlugs,
+    })
+  }
+
   async getForEdit(problemSlug: string) {
     return this.readProblemForEdit(this.db, normalizeLeetCodeSlug(problemSlug))
   }
@@ -283,6 +300,7 @@ export class ProblemsRepository {
   private async readLibraryRows(options: {
     now: Date
     targetRetention?: number | undefined
+    problemSlugs?: readonly string[] | undefined
   }) {
     const baseRows = await this.db
       .select({
@@ -298,6 +316,11 @@ export class ProblemsRepository {
           eq(fsrsCards.problemSlug, problems.slug),
           eq(fsrsCards.cardKind, defaultFsrsCardKind),
         ),
+      )
+      .where(
+        options.problemSlugs
+          ? inArray(problems.slug, [...options.problemSlugs])
+          : undefined,
       )
       .orderBy(asc(problems.title), asc(problems.slug))
     const slugs = baseRows.map((row) => row.problem.slug)

@@ -5,7 +5,10 @@ import {
 } from '@/lib/leetcode'
 import type { Db } from '@/platform/db'
 
-import { createProblemsRepository } from '../data/problems-repository'
+import {
+  createProblemsRepository,
+  type ProblemLibraryReadOptions,
+} from '../data/problems-repository'
 import type {
   ProblemsBulkDeleteRequest,
   ProblemsBulkUpdateProblemsRequest,
@@ -19,6 +22,7 @@ import {
   serializeProblem,
   serializeProblemForEdit,
   serializeProblemLibrary,
+  serializeProblemLibraryRow,
 } from '../api/problems-serializers'
 import type { UpsertProblemInput } from '../domain'
 
@@ -70,6 +74,24 @@ export async function getProblemLibrary(
   })
 
   return serializeProblemLibrary(library)
+}
+
+export async function getProblemLibraryRowsBySlug(
+  db: Db,
+  problemSlugs: readonly string[],
+  options: ProblemLibraryReadOptions = {},
+) {
+  const settings = await getSettings(db)
+  const rows = await createProblemsRepository(db).getLibraryRowsBySlug(
+    problemSlugs,
+    {
+      now: options.now,
+      targetRetention:
+        options.targetRetention ?? settings.review.targetRetention,
+    },
+  )
+
+  return rows.map(serializeProblemLibraryRow)
 }
 
 export async function getProblemForEdit(

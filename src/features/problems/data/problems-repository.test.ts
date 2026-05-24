@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import { drizzle } from 'drizzle-orm/sqlite-proxy'
 import { describe, expect, it } from 'vitest'
 
 import { saveReviewResult } from '@/features/practice/server/practice-service'
@@ -8,9 +9,14 @@ import {
   createProblem,
   getProblemForEdit,
   getProblemLibrary,
+  getProblemLibraryRowsBySlug,
   updateProblem,
   upsertProblemFromPage,
 } from '@/features/problems/server/problems-service'
+import { updateSettings } from '@/features/settings/server/settings-service'
+import type { Db } from '@/platform/db'
+import { createProxyCallback } from '@/platform/db/proxy'
+import * as schema from '@/platform/db/schema'
 import {
   companies,
   problemCompanies,
@@ -197,9 +203,165 @@ describe('ProblemsRepository library data', () => {
       isPremium: true,
     })
   })
+
+  it('returns Library rows only for requested slugs', async () => {
+    const handle = await createTestDb()
+    const repository = createProblemsRepository(handle.db)
+
+    const rows = await repository.getLibraryRowsBySlug(['valid-parentheses'], {
+      now: new Date('2026-01-01T10:01:00.000Z'),
+    })
+
+    expect(rows.map((row) => row.problem.slug)).toEqual(['valid-parentheses'])
+  })
+
+  it('allows callers to preserve input order by mapping rows back by slug', async () => {
+    const handle = await createTestDb()
+    const repository = createProblemsRepository(handle.db)
+    const requestedSlugs = ['valid-parentheses', 'two-sum'] as const
+
+    const rows = await repository.getLibraryRowsBySlug(requestedSlugs, {
+      now: new Date('2026-01-01T10:01:00.000Z'),
+    })
+    const rowsBySlug = new Map(rows.map((row) => [row.problem.slug, row]))
+
+    expect(rows.map((row) => row.problem.slug)).toEqual([
+      'two-sum',
+      'valid-parentheses',
+    ])
+    expect(
+      requestedSlugs.map((slug) => rowsBySlug.get(slug)?.problem.slug),
+    ).toEqual(['valid-parentheses', 'two-sum'])
+  })
+
+  it('includes Library row details for requested slugs', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const repository = createProblemsRepository(handle.db)
+
+    await handle.db.insert(problemTopics).values({
+      problemSlug: 'two-sum',
+      topicId: 'array',
+    })
+    await handle.db.insert(companies).values({
+      id: 'netflix',
+      label: 'Netflix',
+    })
+    await handle.db.insert(problemCompanies).values({
+      problemSlug: 'two-sum',
+      companyId: 'netflix',
+    })
+    await saveSolvedReview(handle.db)
+
+    const rows = await repository.getLibraryRowsBySlug(['two-sum'], {
+      now: new Date('2026-01-01T10:01:00.000Z'),
+    })
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      problem: { slug: 'two-sum' },
+      status: 'scheduled',
+      topics: [{ id: 'array', label: 'Array' }],
+      companies: [{ id: 'netflix', label: 'Netflix' }],
+      summary: {
+        isStarted: true,
+        isDue: false,
+        reviewCount: 1,
+        lastReviewedAt: solvedAt,
+      },
+      lastReviewedAt: solvedAt,
+      lastSolvedAt: solvedAt,
+    })
+    expect(rows[0]?.nextReviewAt).toBeInstanceOf(Date)
+    expect(rows[0]?.summary.nextReviewAt).toEqual(rows[0]?.nextReviewAt)
+  })
+
+  it('uses settings target retention for service rows when target retention is omitted or undefined', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+
+    await updateSettings(handle.db, { review: { targetRetention: 0.97 } })
+    await saveSolvedReview(handle.db)
+
+    const rowAtReviewTime = await getProblemLibraryRowsBySlug(
+      handle.db,
+      ['two-sum'],
+      { now: solvedAt, targetRetention: undefined },
+    )
+    const rowWithOmittedRetention = await getProblemLibraryRowsBySlug(
+      handle.db,
+      ['two-sum'],
+      { now: serviceRetentionCheckAt },
+    )
+    const rowWithUndefinedRetention = await getProblemLibraryRowsBySlug(
+      handle.db,
+      ['two-sum'],
+      {
+        now: serviceRetentionCheckAt,
+        targetRetention: undefined,
+      },
+    )
+
+    expect(rowAtReviewTime[0]?.status).toBe('scheduled')
+    expect(rowWithOmittedRetention[0]).toMatchObject({
+      status: 'due',
+      summary: {
+        isDue: true,
+      },
+    })
+    expect(rowWithUndefinedRetention[0]).toMatchObject({
+      status: 'due',
+      summary: {
+        isDue: true,
+      },
+    })
+    expect(
+      rowWithUndefinedRetention[0]?.summary.retrievability,
+    ).toBeGreaterThan(0.9)
+    expect(rowWithUndefinedRetention[0]?.summary.retrievability).toBeLessThan(
+      0.97,
+    )
+  })
+
+  it('deduplicates duplicate input slugs before querying', async () => {
+    const handle = await createTestDb()
+    const { db, queries } = createInstrumentedDb(handle)
+    const repository = createProblemsRepository(db)
+
+    await repository.getLibraryRowsBySlug(
+      [
+        ' Two Sum!! ',
+        'two-sum',
+        'https://leetcode.com/problems/valid-parentheses/',
+        'valid-parentheses',
+      ],
+      { now: new Date('2026-01-01T10:01:00.000Z') },
+    )
+
+    const problemSelect = queries.find(
+      (query) =>
+        query.method === 'all' &&
+        query.sql.includes('from "problems"') &&
+        query.sql.includes('"problems"."slug" in'),
+    )
+
+    expect(problemSelect).toBeDefined()
+    if (!problemSelect) {
+      throw new Error('Expected the problem slug select query to be captured.')
+    }
+    expect(
+      problemSelect.params.filter((param) => param === 'two-sum'),
+    ).toHaveLength(1)
+    expect(
+      problemSelect.params.filter((param) => param === 'valid-parentheses'),
+    ).toHaveLength(1)
+  })
 })
 
 const solvedAt = new Date('2026-01-01T10:00:00.000Z')
+const serviceRetentionCheckAt = new Date('2026-01-02T10:00:00.000Z')
 
 function saveSolvedReview(
   db: Parameters<typeof saveReviewResult>[0],
@@ -242,4 +404,26 @@ function updateProblemInput(
     companyLabels: [],
     ...overrides,
   } satisfies Parameters<typeof updateProblem>[1]
+}
+
+function createInstrumentedDb(
+  handle: Awaited<ReturnType<typeof createTestDb>>,
+) {
+  const delegate = createProxyCallback(handle.rawDb)
+  const queries: CapturedQuery[] = []
+  const db: Db = drizzle(
+    (sql, params, method) => {
+      queries.push({ sql, params: [...params], method })
+      return delegate(sql, params, method)
+    },
+    { schema },
+  )
+
+  return { db, queries }
+}
+
+interface CapturedQuery {
+  sql: string
+  params: unknown[]
+  method: string
 }

@@ -1,10 +1,15 @@
 import { serializePracticeSummary } from '@/features/practice/api/practice-serializers'
 
-import type { ProblemForEdit, ProblemLibrary } from '../data/problems-repository'
+import type {
+  ProblemForEdit,
+  ProblemLibrary,
+  ProblemLibraryRow as DomainProblemLibraryRow,
+} from '../data/problems-repository'
 import type { Problem } from '../domain'
 import {
   problemForEditResponseSchema,
   problemLibraryResponseSchema,
+  problemLibraryRowSchema,
   serializedProblemSchema,
   type ProblemForEditResponse,
   type ProblemLibraryResponse,
@@ -25,14 +30,18 @@ export function serializeProblemLibrary(
   return problemLibraryResponseSchema.parse({
     ...library,
     generatedAt: library.generatedAt.toISOString(),
-    rows: library.rows.map((row) => ({
-      ...row,
-      problem: serializeProblem(row.problem),
-      summary: serializePracticeSummary(row.summary),
-      nextReviewAt: row.nextReviewAt?.toISOString() ?? null,
-      lastReviewedAt: row.lastReviewedAt?.toISOString() ?? null,
-      lastSolvedAt: row.lastSolvedAt?.toISOString() ?? null,
-    })),
+    rows: library.rows.map(serializeProblemLibraryRow),
+  })
+}
+
+export function serializeProblemLibraryRow(row: DomainProblemLibraryRow) {
+  return problemLibraryRowSchema.parse({
+    ...row,
+    problem: serializeProblem(row.problem),
+    summary: serializePracticeSummary(row.summary),
+    nextReviewAt: row.nextReviewAt?.toISOString() ?? null,
+    lastReviewedAt: row.lastReviewedAt?.toISOString() ?? null,
+    lastSolvedAt: row.lastSolvedAt?.toISOString() ?? null,
   })
 }
 
