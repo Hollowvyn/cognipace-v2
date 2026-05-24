@@ -6,37 +6,23 @@ and study pacing. It keeps two loops visible while a user studies:
 - what to review now, using FSRS-backed spaced repetition
 - what to study next, using the active curated track
 
-This repository is the v2 rebuild of the original `../CogniPace` extension. The
-product intent is the same: popup guidance, an in-page LeetCode overlay, a
-dashboard, local-first data, no account system, and no backend service. The
-difference is architectural: this codebase rebuilds the app around WXT,
-feature-owned modules, typed runtime messaging, Drizzle-backed local
-persistence, and enforceable boundaries.
+CogniPace v2 is a rebuild of the original CogniPace extension. In this local
+workspace, the old implementation lives at `../CogniPace` for historical
+comparison, but this repository is self-contained for development.
 
-CogniPace is intentionally a compact extension, not a SaaS app or a general
-React platform. The app runs as WXT entrypoints for the popup, dashboard,
-background service worker, and LeetCode content script.
-
-## Product Surfaces
-
-- Popup: immediate review-now and next-track guidance.
-- LeetCode overlay: timing, notes, submission capture, and review logging while
-  solving on LeetCode.
-- Dashboard: broader inspection and configuration for tracks, library,
-  analytics, settings, and future backup/reset workflows.
-- Background service worker: local database access, runtime authorization,
-  feature services, and cache invalidation.
+CogniPace is intentionally a browser extension, not a SaaS app or a general
+React dashboard. The main surfaces are the popup, the LeetCode overlay, the
+dashboard, and the background service worker.
 
 ## Stack
 
-- WXT + Chrome MV3 for extension packaging
-- React 19 + TypeScript for UI
-- TanStack Query for runtime/server state in extension surfaces
-- TanStack Router for the dashboard hash routes
-- Zod for runtime message and payload validation
-- SQLite WASM + Drizzle for local persistence
-- Vitest + React Testing Library for tests
-- Tailwind CSS tokens and small shared UI primitives for styling
+- WXT + Chrome MV3
+- React 19 + TypeScript
+- TanStack Query + TanStack Router
+- Zod
+- SQLite WASM + Drizzle
+- Vitest + React Testing Library
+- Tailwind CSS tokens
 
 ## Getting Started
 
@@ -77,23 +63,13 @@ npm run db:check
 - `npm run db:generate` generates Drizzle migrations after schema changes.
 - `npm run db:check` validates Drizzle schema/migration state.
 
-## Source Structure
+## Source Orientation
 
-```txt
-src/
-  entrypoints/   # WXT boot files only
-  app/           # providers, route shells, surface composition
-  components/    # shared UI primitives only
-  extension/     # typed messaging, runtime policy, background handlers
-  features/      # product feature modules
-  hooks/         # shared React hooks
-  lib/           # CogniPace-owned integrations
-  platform/      # Chrome, DB, query, and time adapters
-  styles/        # global tokens and surface styles
-  testing/       # test setup, architecture tests, helpers
-  types/         # project-wide type declarations
-  utils/         # shared utilities
-```
+Source lives in `src/`. WXT entrypoints boot the popup, dashboard, background
+service worker, and LeetCode content script. App composition lives under
+`src/app`, product-owned modules live under `src/features`, browser and data
+infrastructure live under `src/platform`, and product integrations live under
+`src/lib`.
 
 Dependency direction is deliberately simple:
 
@@ -101,102 +77,11 @@ Dependency direction is deliberately simple:
 entrypoints -> app -> features -> platform/lib/components
 ```
 
-Shared infrastructure must not import app or feature code. Feature modules own
-their domain and may expose narrow public surfaces. Background runtime handlers
-may call server/data surfaces; UI and content scripts communicate through typed
-runtime messages.
+## Project Docs
 
-## State And Data Flow
-
-CogniPace is local-first, and the local SQLite database is the source of truth
-for persisted application facts. Settings, practice state, queue inputs, track
-state, and app-shell read models should be derived from the database through
-feature services and typed runtime messages.
-
-The UI follows unidirectional data flow:
-
-```txt
-user action -> runtime command -> DB write -> invalidation -> query refetch -> render
-```
-
-Mutation calls should express intent, such as `settings.toggleStudyMode` or
-`practice.saveReviewResult`. They should not create long-lived client-side
-copies of DB-owned state. After a write succeeds, the app invalidates the
-affected query families and lets TanStack Query refetch DB-backed read models.
-This reactive path is what powers cross-surface updates between the popup,
-dashboard, overlay, and background service worker.
-
-Treat TanStack Query as server-cache state, not as an application store. Do not
-patch query data with `setQueryData` for persisted facts just to make the UI
-look updated. Prefer invalidation and refetch. If a mutation returns a DB
-snapshot, it may be used for local workflow state, such as a form baseline or
-overlay submission snapshot, but the shared app state still comes from the
-DB-backed query path.
-
-Local React state is still appropriate for non-persisted UI concerns:
-
-- Component state: open/closed UI, selected tabs, transient action errors.
-- Form state: local drafts, validation messages, dirty tracking.
-- Workflow state: overlay timer, visual mode, saving/error states.
-- URL state: dashboard route and route parameters.
-
-Do not move DB-owned state into Redux, Zustand, context, or another global
-store unless the ownership rule changes. A global store is only appropriate for
-true application UI state, such as a shared toast or modal controller.
-
-## Surface UX Model
-
-CogniPace is a Chrome extension, so each surface should be optimized for its
-actual runtime context rather than treated as one generic responsive website.
-
-- Dashboard: desktop-first extension management pages. Use compact app chrome,
-  constrained content widths, predictable rows/tables, keyboard accessibility,
-  and adaptive fallback for reduced browser widths. Do not design dashboard
-  screens as mobile-first landing pages.
-- Popup: constrained extension popup workflows. Prioritize immediate action,
-  short copy, stable card height, and DB-backed read models.
-- LeetCode overlay: embedded page UI. Prioritize non-disruptive placement,
-  fast controls, and compatibility with the host page.
-
-Dashboard screens should remain usable when the browser window is narrowed, but
-the primary target is desktop Chrome. Settings establishes the baseline pattern:
-one bounded working surface, compact setting rows, optional hint icons,
-visible validation, and a dirty-state action dock.
-
-## Feature Ownership
-
-- `app-shell`: popup, dashboard, and overlay read models plus popup controller
-  view mapping.
-- `overlay-session`: LeetCode overlay state, timer, draft, reducer, review
-  actions, and mode components.
-- `practice`: FSRS review state, review attempts, scheduling, and practice-log
-  writes.
-- `problems`: LeetCode problem identity, normalization, catalog upserts, and
-  problem context.
-- `queue`: daily recommendation queue composition.
-- `tracks`: active track, group progress, and next track problem.
-- `settings`: persisted user settings and settings patch validation.
-- `assessment`: solve-time and rating decision rules.
-- `leetcode-capture`: LeetCode page/background metadata, content, and
-  submission capture.
-
-`src/lib/fsrs` and `src/lib/leetcode` are product-owned integration libraries,
-not React feature modules. `src/platform/db` owns database construction,
-migrations, local snapshot persistence, and seed data.
-
-## Architecture Notes
-
-- React logic should favor custom hooks and controller/shell splits.
-- Presentational components should receive explicit `view` and `commands`
-  props when the state shape is non-trivial.
-- Use `useReducer` for real state machines, such as overlay review state.
-- Avoid HOCs, render-prop abstractions, global stores, and compound component
-  APIs unless repeated usage proves they reduce code.
-- Runtime boundaries use Zod schemas. TypeScript types alone are not enough for
-  extension messages or stored data.
-- Multi-table review writes belong in `features/practice/data` transactions.
-- This repo should borrow product behavior from the original app, not its older
-  architecture or tooling.
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full architecture and
-agent-assisted development workflow.
+- [Product](./docs/product.md): app purpose, current feature behavior, scope, non-goals, and future candidates.
+- [Architecture](./docs/architecture.md): source layout, ownership boundaries, runtime messaging, local data flow, and common change recipes.
+- [Testing](./docs/testing.md): local setup, Chrome loading, manual smoke flows, reset guidance, and validation commands.
+- [Contributing](./CONTRIBUTING.md): workflow, coding rules, review checklist, and validation expectations.
+- [Agent Guide](./AGENTS.md): required reading order and safety rules for AI agents.
+- [Design](./design.md): compact extension UI direction, surface-specific UX rules, and visual tokens.
