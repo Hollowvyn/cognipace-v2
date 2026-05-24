@@ -5,6 +5,7 @@ import { createSerializedActiveTrack } from '@/testing/track-fixtures'
 import {
   serializedActiveTrackSchema,
   trackCompletedRatingSchema,
+  tracksClearActiveTrackRequestSchema,
   tracksCreateTrackRequestSchema,
   tracksDeleteTrackRequestSchema,
   tracksGetWorkspaceRequestSchema,
@@ -141,5 +142,18 @@ describe('tracks runtime contracts', () => {
         }).success,
       ).toBe(false)
     }
+  })
+
+  it('requires dashboard surface when clearing the active track', () => {
+    expect(
+      tracksClearActiveTrackRequestSchema.safeParse({
+        surface: 'dashboard',
+      }).success,
+    ).toBe(true)
+    expect(
+      tracksClearActiveTrackRequestSchema.safeParse({
+        surface: 'popup',
+      }).success,
+    ).toBe(false)
   })
 })

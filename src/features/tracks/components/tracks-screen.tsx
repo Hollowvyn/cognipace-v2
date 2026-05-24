@@ -73,8 +73,13 @@ function TracksWorkspaceView({
   if (!workspace.activeTrack) {
     return (
       <TracksFrame>
-        <NoActiveTrackState newTrackAction={newTrackAction} />
-        <OtherTracksAccordion activeTrackId={null} tracks={workspace.tracks} />
+        <NoActiveTrackState />
+        <OtherTracksAccordion
+          activeTrackId={null}
+          newTrackAction={newTrackAction}
+          renderEditTrackAction={renderEditTrackAction}
+          tracks={workspace.tracks}
+        />
       </TracksFrame>
     )
   }
@@ -92,6 +97,7 @@ function TracksWorkspaceView({
       <OtherTracksAccordion
         activeTrackId={workspace.activeTrack.track.id}
         newTrackAction={newTrackAction}
+        renderEditTrackAction={renderEditTrackAction}
         tracks={workspace.tracks}
       />
     </TracksFrame>
@@ -145,7 +151,7 @@ function NoTracksState({ newTrackAction }: { newTrackAction: ReactNode }) {
   )
 }
 
-function NoActiveTrackState({ newTrackAction }: { newTrackAction: ReactNode }) {
+function NoActiveTrackState() {
   return (
     <Surface className="grid w-full gap-3">
       <div className="grid gap-1">
@@ -153,10 +159,9 @@ function NoActiveTrackState({ newTrackAction }: { newTrackAction: ReactNode }) {
           No active track selected.
         </h2>
         <p className="m-0 max-w-2xl text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
-          Pick an existing track below or create a new one.
+          Set a track active from the list below.
         </p>
       </div>
-      <div>{newTrackAction}</div>
     </Surface>
   )
 }

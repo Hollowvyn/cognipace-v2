@@ -6,6 +6,7 @@ import { queryKeys } from '@/platform/query/query-keys'
 
 import type {
   TracksCreateTrackRequest,
+  TracksClearActiveTrackRequest,
   TracksDeleteTrackRequest,
   TracksGetActiveTrackRequest,
   TracksGetTrackForEditRequest,
@@ -36,6 +37,12 @@ export function getTrackForEditViaRuntime(
 
 export function setActiveTrackViaRuntime(request: TracksSetActiveTrackRequest) {
   return sendMessage('tracks.setActiveTrack', request)
+}
+
+export function clearActiveTrackViaRuntime(
+  request: TracksClearActiveTrackRequest,
+) {
+  return sendMessage('tracks.clearActiveTrack', request)
 }
 
 export function setActiveGroupViaRuntime(request: TracksSetActiveGroupRequest) {
@@ -83,6 +90,10 @@ export function useTrackForEdit(request: TracksGetTrackForEditRequest) {
 
 export function useSetActiveTrack() {
   return useTrackMutation(setActiveTrackViaRuntime, ['tracks'])
+}
+
+export function useClearActiveTrack() {
+  return useTrackMutation(clearActiveTrackViaRuntime, ['tracks'])
 }
 
 export function useSetActiveGroup() {

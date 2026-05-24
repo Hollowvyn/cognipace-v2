@@ -4,6 +4,7 @@ import {
   activeTrackSchema,
   queueRequestSchema,
   trackForEditResponseSchema,
+  tracksClearActiveTrackRequestSchema,
   tracksCreateTrackRequestSchema,
   tracksDeleteTrackRequestSchema,
   tracksGetTrackForEditRequestSchema,
@@ -52,6 +53,7 @@ const backgroundMocks = vi.hoisted(() => {
     getProblemLibrary: vi.fn(),
     createProblem: vi.fn(),
     createTrack: vi.fn(),
+    clearActiveTrack: vi.fn(),
     deleteTrack: vi.fn(),
     bulkUpdateProblems: vi.fn(),
     getPracticeDetails: vi.fn(),
@@ -143,6 +145,7 @@ vi.mock('@/features/tracks/server/tracks-service', () => ({
   resetTrackProgress: backgroundMocks.resetTrackProgress,
   setActiveGroup: backgroundMocks.setActiveGroup,
   setActiveTrack: backgroundMocks.setActiveTrack,
+  clearActiveTrack: backgroundMocks.clearActiveTrack,
   updateTrack: backgroundMocks.updateTrack,
 }))
 
@@ -188,6 +191,7 @@ describe('background handler registration', () => {
     backgroundMocks.setActiveGroup.mockResolvedValue(undefined)
     backgroundMocks.setPracticeSuspended.mockResolvedValue(practiceDetails)
     backgroundMocks.setActiveTrack.mockResolvedValue(undefined)
+    backgroundMocks.clearActiveTrack.mockResolvedValue(undefined)
     backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
     backgroundMocks.toggleStudyMode.mockResolvedValue(defaultUserSettings)
     backgroundMocks.updateSettings.mockResolvedValue(defaultUserSettings)
@@ -326,6 +330,17 @@ describe('background handler registration', () => {
       },
       schema: tracksSetActiveGroupRequestSchema,
       service: backgroundMocks.setActiveGroup,
+      expectedResponse: null,
+      expectedTags: ['tracks'],
+    })
+
+    await expectTrackWrite({
+      method: 'tracks.clearActiveTrack',
+      request: {
+        surface: 'dashboard',
+      },
+      schema: tracksClearActiveTrackRequestSchema,
+      service: backgroundMocks.clearActiveTrack,
       expectedResponse: null,
       expectedTags: ['tracks'],
     })

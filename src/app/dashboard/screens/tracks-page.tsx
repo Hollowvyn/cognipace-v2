@@ -11,6 +11,7 @@ import {
   dashboardRouteMeta,
 } from '@/app/dashboard/navigation/route-manifest'
 import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import { TracksScreen } from '@/features/tracks'
 
 export function TracksPage() {
@@ -41,15 +42,19 @@ export function TracksPage() {
             </Button>
           )}
           renderEditTrackAction={(track) => (
-            <Button asChild size="sm" variant="ghost">
+            <IconButton
+              asChild
+              label="Edit Track"
+              tooltip="Edit Track"
+              variant="ghost"
+            >
               <Link
                 params={{ trackId: track.id }}
                 to={dashboardPaths.trackEdit}
               >
                 <Pencil aria-hidden="true" />
-                Edit Track
               </Link>
-            </Button>
+            </IconButton>
           )}
         />
       </DashboardPageBody>

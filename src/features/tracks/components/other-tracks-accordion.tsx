@@ -1,28 +1,33 @@
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
-import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { IconButton } from '@/components/ui/icon-button'
 import { InlineStatus } from '@/components/ui/inline-status'
 import { cn } from '@/utils/cn'
 
 import { useSetActiveTrack } from '../api/tracks-api'
 import type { SerializedTrackWorkspaceRow } from '../api/tracks-contracts'
+import { TrackActions, type RenderTrackEditAction } from './track-actions'
 
 export function OtherTracksAccordion({
   activeTrackId,
   newTrackAction,
+  renderEditTrackAction,
   tracks,
 }: {
   activeTrackId: string | null
   newTrackAction?: ReactNode
+  renderEditTrackAction: RenderTrackEditAction
   tracks: readonly SerializedTrackWorkspaceRow[]
 }) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isExpandedByUser, setIsExpandedByUser] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const setActiveTrack = useSetActiveTrack()
-  const otherTracks = tracks.filter((row) => row.track.id !== activeTrackId)
+  const isForcedOpen = activeTrackId === null
+  const isOpen = isForcedOpen || isExpandedByUser
 
-  if (otherTracks.length === 0 && !newTrackAction) {
+  if (tracks.length === 0 && !newTrackAction) {
     return null
   }
 
@@ -45,39 +50,52 @@ export function OtherTracksAccordion({
 
   return (
     <section
-      aria-label="Other tracks"
+      aria-label="All tracks"
       className="rounded-[var(--cp-panel-radius)] border border-border bg-card text-card-foreground shadow-surface"
     >
       <div className="grid min-w-0 gap-3 px-4 py-3 md:flex md:items-center md:justify-between md:px-5">
         <span className="min-w-0">
           <span className="block text-[length:var(--cp-copy-font-size)] font-bold text-foreground">
-            {otherTracks.length}{' '}
-            {otherTracks.length === 1 ? 'other track' : 'other tracks'}
+            All tracks
           </span>
-          <span className="block text-[length:var(--cp-badge-font-size)] text-muted-foreground">
-            {otherTracks.length === 0 ? 'Create another track' : 'Summary only'}
-          </span>
+          {tracks.length > 0 ? (
+            <span className="block text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+              {tracks.length} {tracks.length === 1 ? 'track' : 'tracks'}
+            </span>
+          ) : null}
         </span>
         <div
-          aria-label="Other tracks actions"
+          aria-label="All tracks actions"
           className="flex shrink-0 flex-wrap items-center gap-2 md:justify-end"
         >
           {newTrackAction}
-          {otherTracks.length > 0 ? (
-            <button
-              aria-label={isOpen ? 'Hide other tracks' : 'Show other tracks'}
+          {tracks.length > 0 ? (
+            <IconButton
               aria-expanded={isOpen}
-              className="inline-flex min-h-[var(--cp-control-height-sm)] items-center gap-2 rounded-[var(--cp-control-radius)] px-2 text-[length:var(--cp-copy-font-size)] font-semibold text-primary transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              onClick={() => setIsOpen((current) => !current)}
-              type="button"
+              disabled={isForcedOpen}
+              label={
+                isForcedOpen
+                  ? 'All tracks shown'
+                  : isOpen
+                    ? 'Hide all tracks'
+                    : 'Show all tracks'
+              }
+              onClick={() => setIsExpandedByUser((current) => !current)}
+              tooltip={
+                isForcedOpen
+                  ? 'All tracks shown'
+                  : isOpen
+                    ? 'Hide all tracks'
+                    : 'Show all tracks'
+              }
+              variant="ghost"
             >
-              {isOpen ? 'Hide other tracks' : 'Show other tracks'}
               {isOpen ? (
-                <ChevronDown aria-hidden="true" className="size-4" />
+                <ChevronUp aria-hidden="true" />
               ) : (
-                <ChevronRight aria-hidden="true" className="size-4" />
+                <ChevronDown aria-hidden="true" />
               )}
-            </button>
+            </IconButton>
           ) : null}
         </div>
       </div>
@@ -89,13 +107,15 @@ export function OtherTracksAccordion({
             </InlineStatus>
           ) : null}
           <div className="divide-y divide-border">
-            {otherTracks.map((row) => (
+            {tracks.map((row) => (
               <OtherTrackRow
                 key={row.track.id}
                 disabled={setActiveTrack.isPending}
+                isActive={row.track.id === activeTrackId}
                 onSetActive={() => {
                   void setActive(row.track.id)
                 }}
+                renderEditTrackAction={renderEditTrackAction}
                 row={row}
               />
             ))}
@@ -108,18 +128,27 @@ export function OtherTracksAccordion({
 
 function OtherTrackRow({
   disabled,
+  isActive,
   onSetActive,
+  renderEditTrackAction,
   row,
 }: {
   disabled: boolean
+  isActive: boolean
   onSetActive: () => void
+  renderEditTrackAction: RenderTrackEditAction
   row: SerializedTrackWorkspaceRow
 }) {
   return (
     <div className="grid min-w-0 gap-3 px-4 py-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:px-5">
       <div className="min-w-0">
-        <h3 className="m-0 truncate text-[length:var(--cp-copy-font-size)] font-bold leading-tight text-foreground">
-          {row.track.title}
+        <h3 className="m-0 flex min-w-0 items-center gap-2 text-[length:var(--cp-copy-font-size)] font-bold leading-tight text-foreground">
+          <span className="min-w-0 truncate">{row.track.title}</span>
+          {isActive ? (
+            <Badge className="shrink-0" tone="success" variant="outline">
+              Active
+            </Badge>
+          ) : null}
         </h3>
         {row.track.description ? (
           <p className="m-0 mt-1 line-clamp-2 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
@@ -134,15 +163,26 @@ function OtherTrackRow({
           ) : null}
         </div>
       </div>
-      <Button
-        aria-label={`Set ${row.track.title} active`}
-        disabled={disabled}
-        onClick={onSetActive}
-        size="sm"
-        variant="outline"
-      >
-        Set Active
-      </Button>
+      <TrackActions
+        ariaLabel={`${row.track.title} catalog actions`}
+        className="justify-start md:justify-end"
+        renderEditTrackAction={renderEditTrackAction}
+        setActiveAction={
+          isActive ? null : (
+            <IconButton
+              disabled={disabled}
+              label={`Set ${row.track.title} active`}
+              onClick={onSetActive}
+              tooltip="Set active"
+              variant="ghost"
+            >
+              <CheckCircle2 aria-hidden="true" />
+            </IconButton>
+          )
+        }
+        showClearActive={isActive}
+        track={row.track}
+      />
     </div>
   )
 }

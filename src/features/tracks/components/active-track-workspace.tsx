@@ -1,30 +1,19 @@
-import {
-  CalendarClock,
-  CheckCircle2,
-  ListChecks,
-  RefreshCw,
-  Trash2,
-} from 'lucide-react'
+import { CalendarClock, CheckCircle2, ListChecks } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
-import { Button } from '@/components/ui/button'
 import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
 import { createLeetCodeProblemUrl } from '@/lib/leetcode'
 import { cn } from '@/utils/cn'
 
-import {
-  useDeleteTrack,
-  useResetTrackProgress,
-  useSetActiveGroup,
-} from '../api/tracks-api'
+import { useSetActiveGroup } from '../api/tracks-api'
 import type {
   SerializedActiveTrack,
   SerializedTrack,
   SerializedTrackGroup,
   TrackProblemRow,
 } from '../api/tracks-contracts'
-import { TrackConfirmationDialog } from './track-confirmation-dialog'
+import { TrackActions } from './track-actions'
 import { TrackProblemTable } from './track-problem-table'
 import type { RenderProblemEditAction } from '@/features/problems'
 
@@ -87,39 +76,6 @@ function ActiveTrackHeader({
   dueCount: number
   renderEditTrackAction: RenderTrackEditAction
 }) {
-  const [confirmation, setConfirmation] = useState<
-    'delete' | 'reset-progress' | null
-  >(null)
-  const [error, setError] = useState<string | null>(null)
-  const deleteTrack = useDeleteTrack()
-  const resetProgress = useResetTrackProgress()
-  const isPending = deleteTrack.isPending || resetProgress.isPending
-
-  async function runAction(action: () => Promise<unknown>) {
-    setError(null)
-
-    try {
-      await action()
-      setConfirmation(null)
-    } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : 'Track action failed.',
-      )
-    }
-  }
-
-  function openConfirmation(nextConfirmation: 'delete' | 'reset-progress') {
-    setError(null)
-    setConfirmation(nextConfirmation)
-  }
-
-  function closeConfirmation() {
-    setError(null)
-    setConfirmation(null)
-  }
-
   return (
     <div className="grid gap-4 px-4 pb-4 pt-4 md:px-5 lg:px-7 lg:py-5">
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
@@ -138,28 +94,13 @@ function ActiveTrackHeader({
             </p>
           ) : null}
         </div>
-        <div className="flex flex-wrap justify-start gap-2 md:justify-end">
-          {renderEditTrackAction(activeTrack.track)}
-          <Button
-            disabled={isPending}
-            onClick={() => openConfirmation('reset-progress')}
-            size="sm"
-            variant="ghost"
-          >
-            <RefreshCw aria-hidden="true" />
-            Reset Progress
-          </Button>
-          <Button
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-            disabled={isPending}
-            onClick={() => openConfirmation('delete')}
-            size="sm"
-            variant="ghost"
-          >
-            <Trash2 aria-hidden="true" />
-            Delete Track
-          </Button>
-        </div>
+        <TrackActions
+          ariaLabel={`${activeTrack.track.title} track actions`}
+          className="justify-start md:justify-end"
+          renderEditTrackAction={renderEditTrackAction}
+          showClearActive
+          track={activeTrack.track}
+        />
       </div>
       <div className="grid gap-3 border-y border-border py-3 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-border">
         <MetricBlock
@@ -204,42 +145,6 @@ function ActiveTrackHeader({
           }
         />
       </div>
-      {confirmation === 'reset-progress' ? (
-        <TrackConfirmationDialog
-          confirmLabel="Reset Progress"
-          description="This clears completed progress for this track."
-          error={error}
-          onCancel={closeConfirmation}
-          onConfirm={() => {
-            void runAction(() =>
-              resetProgress.mutateAsync({
-                surface: 'dashboard',
-                trackId: activeTrack.track.id,
-              }),
-            )
-          }}
-          pending={isPending}
-          title="Reset track progress?"
-        />
-      ) : null}
-      {confirmation === 'delete' ? (
-        <TrackConfirmationDialog
-          confirmLabel="Delete Track"
-          description="This permanently deletes this track and its groups."
-          error={error}
-          onCancel={closeConfirmation}
-          onConfirm={() => {
-            void runAction(() =>
-              deleteTrack.mutateAsync({
-                surface: 'dashboard',
-                trackId: activeTrack.track.id,
-              }),
-            )
-          }}
-          pending={isPending}
-          title="Delete track?"
-        />
-      ) : null}
     </div>
   )
 }

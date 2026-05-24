@@ -24,6 +24,7 @@ import {
 } from '../api/tracks-serializers'
 import type {
   TracksCreateTrackRequest,
+  TracksClearActiveTrackRequest,
   TracksDeleteTrackRequest,
   TracksGetTrackForEditRequest,
   TracksGetWorkspaceRequest,
@@ -135,6 +136,15 @@ export async function setActiveTrack(
   request: TracksSetActiveTrackRequest,
 ): Promise<void> {
   await createTracksRepository(db).setActiveTrack(request.trackId)
+}
+
+export async function clearActiveTrack(
+  db: Db,
+  request: TracksClearActiveTrackRequest,
+): Promise<void> {
+  if (request.surface === 'dashboard') {
+    await createTracksRepository(db).clearActiveTrack()
+  }
 }
 
 export async function setActiveGroup(

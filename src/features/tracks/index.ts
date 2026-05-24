@@ -6,6 +6,7 @@ export {
   type TracksScreenProps,
 } from './components/tracks-screen'
 export {
+  clearActiveTrackViaRuntime,
   createTrackViaRuntime,
   deleteTrackViaRuntime,
   getActiveTrackViaRuntime,
@@ -17,6 +18,7 @@ export {
   tracksQueryKeys,
   updateTrackViaRuntime,
   useActiveTrack,
+  useClearActiveTrack,
   useCreateTrack,
   useDeleteTrack,
   useResetTrackProgress,
@@ -41,6 +43,7 @@ export {
   trackIdSchema,
   trackProblemRowSchema,
   tracksNullResponseSchema,
+  tracksClearActiveTrackRequestSchema,
   tracksCreateTrackRequestSchema,
   tracksDeleteTrackRequestSchema,
   tracksGetActiveTrackRequestSchema,
@@ -63,6 +66,7 @@ export {
   type TrackGroupInput,
   type TrackMutationInput,
   type TrackProblemRow,
+  type TracksClearActiveTrackRequest,
   type TracksCreateTrackRequest,
   type TracksDeleteTrackRequest,
   type TracksGetActiveTrackRequest,

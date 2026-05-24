@@ -69,6 +69,7 @@ import type {
   SerializedActiveTrack,
   TrackDeleteResponse,
   TrackForEditResponse,
+  TracksClearActiveTrackRequest,
   TracksCreateTrackRequest,
   TracksDeleteTrackRequest,
   TracksGetActiveTrackRequest,
@@ -86,6 +87,7 @@ export {
   trackDeleteResponseSchema,
   trackForEditResponseSchema,
   tracksNullResponseSchema,
+  tracksClearActiveTrackRequestSchema,
   tracksCreateTrackRequestSchema,
   tracksDeleteTrackRequestSchema,
   tracksGetActiveTrackRequestSchema,
@@ -101,6 +103,7 @@ export type {
   SerializedActiveTrack,
   TrackDeleteResponse,
   TrackForEditResponse,
+  TracksClearActiveTrackRequest,
   TracksCreateTrackRequest,
   TracksDeleteTrackRequest,
   TracksGetActiveTrackRequest,
@@ -265,6 +268,7 @@ export interface ProtocolMap {
     request: TracksGetTrackForEditRequest,
   ): TrackForEditResponse
   'tracks.setActiveTrack'(request: TracksSetActiveTrackRequest): null
+  'tracks.clearActiveTrack'(request: TracksClearActiveTrackRequest): null
   'tracks.setActiveGroup'(request: TracksSetActiveGroupRequest): null
   'tracks.createTrack'(request: TracksCreateTrackRequest): TrackForEditResponse
   'tracks.updateTrack'(request: TracksUpdateTrackRequest): TrackForEditResponse

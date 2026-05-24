@@ -201,6 +201,37 @@ export class TracksRepository {
     })
   }
 
+  async clearActiveTrack(now = new Date()): Promise<TrackSessionState> {
+    return this.db.transaction(async (transactionDb) => {
+      const timestamp = now.getTime()
+
+      await transactionDb
+        .insert(trackSession)
+        .values({
+          id: activeTrackSessionId,
+          activeTrackId: null,
+          activeGroupId: null,
+          startedAt: timestamp,
+          updatedAt: timestamp,
+        })
+        .onConflictDoUpdate({
+          target: trackSession.id,
+          set: {
+            activeTrackId: null,
+            activeGroupId: null,
+            updatedAt: timestamp,
+          },
+        })
+
+      return {
+        activeTrack: null,
+        activeGroup: null,
+        startedAt: new Date(timestamp),
+        updatedAt: new Date(timestamp),
+      }
+    })
+  }
+
   async setActiveGroup(
     groupId: string,
     now = new Date(),

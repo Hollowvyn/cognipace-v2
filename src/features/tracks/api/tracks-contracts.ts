@@ -181,11 +181,7 @@ const trackMutationInputBaseSchema = z.object({
   groups: z.array(trackGroupInputSchema).min(1),
 })
 
-const trackMutationInputSchema = trackMutationInputBaseSchema.superRefine(
-  addDuplicateProblemSlugIssues,
-)
-
-export type TrackMutationInput = z.infer<typeof trackMutationInputSchema>
+export type TrackMutationInput = z.infer<typeof trackMutationInputBaseSchema>
 
 export const tracksCreateTrackRequestSchema = trackMutationInputBaseSchema
   .extend({
@@ -216,6 +212,14 @@ export const tracksSetActiveTrackRequestSchema = z.object({
 
 export type TracksSetActiveTrackRequest = z.infer<
   typeof tracksSetActiveTrackRequestSchema
+>
+
+export const tracksClearActiveTrackRequestSchema = z.object({
+  surface: trackDashboardSurfaceSchema,
+})
+
+export type TracksClearActiveTrackRequest = z.infer<
+  typeof tracksClearActiveTrackRequestSchema
 >
 
 export const tracksSetActiveGroupRequestSchema = z.object({

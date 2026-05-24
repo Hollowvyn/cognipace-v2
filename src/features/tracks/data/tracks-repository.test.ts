@@ -430,6 +430,31 @@ describe('TracksRepository', () => {
     ])
   })
 
+  it('clears active track and group session ids', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const repository = createTracksRepository(handle.db)
+
+    await repository.setActiveTrack('leetcode-75')
+
+    const session = await repository.clearActiveTrack(
+      new Date('2026-01-02T00:00:00.000Z'),
+    )
+    const rows = await handle.db.select().from(trackSession)
+
+    expect(session).toMatchObject({
+      activeTrack: null,
+      activeGroup: null,
+    })
+    expect(rows).toMatchObject([
+      {
+        activeTrackId: null,
+        activeGroupId: null,
+      },
+    ])
+  })
+
   it('rejects setting an active group outside the current active track', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
