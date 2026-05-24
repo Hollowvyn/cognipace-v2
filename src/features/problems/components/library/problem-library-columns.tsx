@@ -83,7 +83,7 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
       sortingFn: 'basic',
       cell: ({ row }) => (
         <span className="tabular-nums text-foreground">
-          {formatPercentMetric(row.original.summary.retrievability)}
+          {formatPercentMetric(row.original.state.retrievability)}
         </span>
       ),
     },
