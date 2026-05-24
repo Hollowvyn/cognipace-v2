@@ -157,6 +157,83 @@ export interface PracticeDetails {
   canOverrideLatestReview: boolean
 }
 
+/**
+ * Flat read contract for scheduling consumers: Queue, Analytics, Library, Tracks.
+ * All FSRS and practice facts are pre-computed here. Consumers typed to this
+ * interface never touch raw DB snapshots or FSRS card objects.
+ */
+export interface NormalizedPracticeState {
+  // Identity
+  problemSlug: ProblemSlug
+  cardId: string
+
+  // Status (from DB practice row)
+  status: PracticeStatus
+  isSuspended: boolean
+
+  // Scheduling (computed)
+  phase: PracticePhase
+  isStarted: boolean
+  isDue: boolean
+  isOverdue: boolean
+  overdueDays: number
+  dueAt: Date | null
+  lastReviewedAt: Date | null
+
+  // FSRS metrics (computed from card)
+  retrievability: number | null
+  stability: number | null
+  difficulty: number | null
+  scheduledDays: number | null
+  lapses: number
+  reviewCount: number
+
+  // History
+  reviewHistory: PracticeReviewAttemptSnapshot[] // full list
+  recentAttempts: PracticeReviewAttemptSnapshot[] // last 5
+  latestAttempt: PracticeReviewAttemptSnapshot | null
+}
+
+export function deriveNormalizedPracticeState(input: {
+  problemSlug: ProblemSlug
+  cardId: string
+  practice: PracticeStateSnapshot | null
+  card: FsrsCardSnapshot | null
+  attempts: PracticeReviewAttemptSnapshot[]
+  now?: Date
+  targetRetention?: number
+}): NormalizedPracticeState {
+  const summary = derivePracticeSummary({
+    practice: input.practice,
+    card: input.card,
+    now: input.now,
+    targetRetention: input.targetRetention,
+  })
+
+  return {
+    problemSlug: input.problemSlug,
+    cardId: input.cardId,
+    status: input.practice?.status ?? 'new',
+    isSuspended: summary.suspended,
+    phase: summary.phase,
+    isStarted: summary.isStarted,
+    isDue: summary.isDue,
+    isOverdue: summary.isOverdue,
+    overdueDays: summary.overdueDays,
+    dueAt: summary.nextReviewAt,
+    lastReviewedAt: summary.lastReviewedAt,
+    retrievability: summary.retrievability,
+    stability: summary.stability,
+    difficulty: summary.difficulty,
+    scheduledDays: summary.scheduledDays,
+    lapses: summary.lapses,
+    reviewCount: summary.reviewCount,
+    reviewHistory: input.attempts,
+    recentAttempts: input.attempts.slice(-5).reverse(),
+    latestAttempt: input.attempts.at(-1) ?? null,
+  }
+}
+
 export function statusFromReview(
   rating: ReviewRating,
   card: FsrsCardSnapshot,

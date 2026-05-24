@@ -7,9 +7,11 @@ import {
 } from '@/lib/fsrs'
 
 import {
+  deriveNormalizedPracticeState,
   derivePracticeSummary,
   normalizeReviewLogFields,
   statusFromReview,
+  type PracticeReviewAttemptSnapshot,
   type PracticeStateSnapshot,
 } from './practice'
 
@@ -156,3 +158,127 @@ function practiceState(
 
 const reviewedAt = new Date('2026-01-01T10:00:00.000Z')
 const baseNow = new Date('2026-01-01T12:00:00.000Z')
+
+describe('deriveNormalizedPracticeState', () => {
+  it('returns a fully unstarted state when no practice, card, or attempts exist', () => {
+    const state = deriveNormalizedPracticeState({
+      problemSlug: 'two-sum',
+      cardId: 'two-sum:default',
+      practice: null,
+      card: null,
+      attempts: [],
+      now: baseNow,
+    })
+
+    expect(state).toMatchObject({
+      problemSlug: 'two-sum',
+      cardId: 'two-sum:default',
+      status: 'new',
+      isSuspended: false,
+      phase: 'new',
+      isStarted: false,
+      isDue: false,
+      isOverdue: false,
+      overdueDays: 0,
+      dueAt: null,
+      lastReviewedAt: null,
+      retrievability: null,
+      stability: null,
+      difficulty: null,
+      scheduledDays: null,
+      lapses: 0,
+      reviewCount: 0,
+      reviewHistory: [],
+      recentAttempts: [],
+      latestAttempt: null,
+    })
+  })
+
+  it('reflects status and isSuspended from practice row', () => {
+    const state = deriveNormalizedPracticeState({
+      problemSlug: 'two-sum',
+      cardId: 'two-sum:default',
+      practice: practiceState({ status: 'review', isSuspended: false }),
+      card: null,
+      attempts: [],
+      now: baseNow,
+    })
+
+    expect(state.status).toBe('review')
+    expect(state.isSuspended).toBe(false)
+  })
+
+  it('sets isSuspended from practice row suspended flag', () => {
+    const state = deriveNormalizedPracticeState({
+      problemSlug: 'two-sum',
+      cardId: 'two-sum:default',
+      practice: practiceState({ isSuspended: true, status: 'suspended' }),
+      card: reviewedFsrsCard(),
+      attempts: [],
+      now: new Date('2026-06-01T10:00:00.000Z'),
+    })
+
+    expect(state.isSuspended).toBe(true)
+    expect(state.phase).toBe('suspended')
+    expect(state.isDue).toBe(false)
+  })
+
+  it('populates reviewHistory and recentAttempts correctly', () => {
+    const attempt = makeAttempt('attempt-1')
+    const state = deriveNormalizedPracticeState({
+      problemSlug: 'two-sum',
+      cardId: 'two-sum:default',
+      practice: null,
+      card: null,
+      attempts: [attempt],
+      now: baseNow,
+    })
+
+    expect(state.reviewHistory).toEqual([attempt])
+    expect(state.recentAttempts).toEqual([attempt])
+    expect(state.latestAttempt).toEqual(attempt)
+  })
+
+  it('caps recentAttempts at 5 and reverses them, keeping reviewHistory full', () => {
+    const attempts = Array.from({ length: 7 }, (_, i) =>
+      makeAttempt(`attempt-${i + 1}`),
+    )
+    const state = deriveNormalizedPracticeState({
+      problemSlug: 'two-sum',
+      cardId: 'two-sum:default',
+      practice: null,
+      card: null,
+      attempts,
+      now: baseNow,
+    })
+
+    expect(state.reviewHistory).toHaveLength(7)
+    expect(state.recentAttempts).toHaveLength(5)
+    // recentAttempts should be the last 5, reversed (most recent first)
+    expect(state.recentAttempts[0]).toEqual(attempts[6])
+    expect(state.recentAttempts[4]).toEqual(attempts[2])
+    expect(state.latestAttempt).toEqual(attempts[6])
+  })
+})
+
+function makeAttempt(id: string): PracticeReviewAttemptSnapshot {
+  return {
+    id,
+    problemSlug: 'two-sum',
+    cardId: 'two-sum:default',
+    rating: 'good',
+    reviewMode: 'manual',
+    reviewedAt: reviewedAt,
+    elapsedSeconds: null,
+    isCorrect: null,
+    log: {
+      interviewPattern: null,
+      timeComplexity: null,
+      spaceComplexity: null,
+      languages: null,
+      notes: null,
+    },
+    createdAt: reviewedAt,
+    updatedAt: reviewedAt,
+  }
+}
