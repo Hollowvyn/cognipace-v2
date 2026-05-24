@@ -1,4 +1,5 @@
 export type { ActiveTrack, Track, TrackGroup, TrackProgress } from './domain'
+export { TrackForm } from './components/track-form'
 export {
   TracksScreen,
   type RenderTrackEditAction,

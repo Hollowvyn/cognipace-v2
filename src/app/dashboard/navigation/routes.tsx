@@ -11,16 +11,16 @@ import { DashboardShell } from '../dashboard-shell'
 import { dashboardModalRouteMeta, dashboardRouteMeta } from './route-manifest'
 import { AnalyticsPage } from '../screens/analytics-page'
 import { LibraryPage } from '../screens/library-page'
-import {
-  EditTrackModalPage,
-  NewTrackModalPage,
-} from '../screens/modal-placeholders'
 import { OverviewPage } from '../screens/overview-page'
 import {
   EditProblemModalPage,
   NewProblemModalPage,
 } from '../screens/problem-modal-pages'
 import { SettingsPage } from '../screens/settings-page'
+import {
+  EditTrackModalPage,
+  NewTrackModalPage,
+} from '../screens/track-modal-pages'
 import { TracksPage } from '../screens/tracks-page'
 export { dashboardPaths } from './route-manifest'
 

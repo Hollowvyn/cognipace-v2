@@ -124,20 +124,20 @@ export const dashboardTopLevelRoutes = [
 export const dashboardModalRouteMeta = {
   trackNew: {
     closeTo: dashboardPaths.tracks,
-    description: 'Custom track creation will be implemented in a later phase.',
+    description: 'Create a custom track from existing Library problems.',
     relativePath: 'new',
     staticData: {
-      presentation: 'modal-placeholder',
+      presentation: 'modal',
       section: 'tracks',
       title: 'New Track',
     },
   },
   trackEdit: {
     closeTo: dashboardPaths.tracks,
-    description: 'Custom track editing will be implemented in a later phase.',
+    description: "Edit this track's metadata, groups, and ordered problems.",
     relativePath: '$trackId/edit',
     staticData: {
-      presentation: 'modal-placeholder',
+      presentation: 'modal',
       section: 'tracks',
       title: 'Edit Track',
     },

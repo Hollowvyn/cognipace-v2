@@ -1,0 +1,335 @@
+import { useReducer } from 'react'
+
+import type {
+  TrackForEditResponse,
+  TrackGroupInput,
+  TrackMutationInput,
+} from '../api/tracks-contracts'
+
+export type TrackFormAction =
+  | { type: 'set-title'; title: string }
+  | { type: 'set-description'; description: string }
+  | { type: 'set-due-at'; dueAt: string }
+  | { type: 'set-active-after-create'; checked: boolean }
+  | { type: 'add-group' }
+  | { type: 'rename-group'; groupKey: string; title: string }
+  | { type: 'remove-group'; groupKey: string }
+  | { type: 'move-group'; groupKey: string; direction: 'up' | 'down' }
+  | { type: 'select-group'; groupKey: string }
+  | { type: 'add-problem'; groupKey: string; problemSlug: string }
+  | { type: 'remove-problem'; groupKey: string; problemSlug: string }
+  | {
+      type: 'move-problem'
+      groupKey: string
+      problemSlug: string
+      direction: 'up' | 'down'
+    }
+
+export interface TrackFormGroupState {
+  id?: string
+  key: string
+  problemSlugs: string[]
+  title: string
+}
+
+export interface TrackFormState {
+  description: string
+  dueAt: string
+  groups: TrackFormGroupState[]
+  nextGroupNumber: number
+  selectedGroupKey: string
+  setActiveAfterCreate: boolean
+  title: string
+}
+
+export interface TrackFormFieldErrors {
+  groupTitles: Record<string, string>
+  groups: string | null
+  title: string | null
+}
+
+export function useTrackForm(source: TrackForEditResponse) {
+  const [state, dispatch] = useReducer(
+    trackFormReducer,
+    source,
+    createInitialTrackFormState,
+  )
+  const fieldErrors = deriveFieldErrors(state)
+  const canSubmit = isFieldErrorFree(fieldErrors)
+  const payload = canSubmit ? createTrackMutationPayload(state) : null
+  const selectedGroup =
+    state.groups.find((group) => group.key === state.selectedGroupKey) ??
+    state.groups[0] ??
+    createFallbackMainGroup()
+
+  return {
+    canSubmit,
+    dispatch,
+    fieldErrors,
+    payload,
+    selectedGroup,
+    state,
+  }
+}
+
+function trackFormReducer(
+  state: TrackFormState,
+  action: TrackFormAction,
+): TrackFormState {
+  switch (action.type) {
+    case 'set-title':
+      return { ...state, title: action.title }
+    case 'set-description':
+      return { ...state, description: action.description }
+    case 'set-due-at':
+      return { ...state, dueAt: action.dueAt }
+    case 'set-active-after-create':
+      return { ...state, setActiveAfterCreate: action.checked }
+    case 'add-group': {
+      const nextGroup: TrackFormGroupState = {
+        key: `new-group-${state.nextGroupNumber}`,
+        problemSlugs: [],
+        title: `Group ${state.nextGroupNumber}`,
+      }
+
+      return {
+        ...state,
+        groups: [...state.groups, nextGroup],
+        nextGroupNumber: state.nextGroupNumber + 1,
+        selectedGroupKey: nextGroup.key,
+      }
+    }
+    case 'rename-group':
+      return {
+        ...state,
+        groups: state.groups.map((group) =>
+          group.key === action.groupKey
+            ? { ...group, title: action.title }
+            : group,
+        ),
+      }
+    case 'remove-group': {
+      const groupIndex = state.groups.findIndex(
+        (group) => group.key === action.groupKey,
+      )
+      const group = state.groups[groupIndex]
+
+      if (!group || state.groups.length <= 1 || group.problemSlugs.length > 0) {
+        return state
+      }
+
+      const groups = state.groups.filter((candidate) => candidate !== group)
+      const replacementGroup =
+        groups[Math.min(groupIndex, groups.length - 1)] ?? groups[0]
+
+      return {
+        ...state,
+        groups,
+        selectedGroupKey:
+          state.selectedGroupKey === action.groupKey && replacementGroup
+            ? replacementGroup.key
+            : state.selectedGroupKey,
+      }
+    }
+    case 'move-group': {
+      const groupIndex = state.groups.findIndex(
+        (group) => group.key === action.groupKey,
+      )
+
+      return {
+        ...state,
+        groups: moveArrayItem(state.groups, groupIndex, action.direction),
+      }
+    }
+    case 'select-group':
+      return state.groups.some((group) => group.key === action.groupKey)
+        ? { ...state, selectedGroupKey: action.groupKey }
+        : state
+    case 'add-problem':
+      return {
+        ...state,
+        groups: state.groups.map((group) => {
+          if (
+            group.key !== action.groupKey ||
+            group.problemSlugs.includes(action.problemSlug)
+          ) {
+            return group
+          }
+
+          return {
+            ...group,
+            problemSlugs: [...group.problemSlugs, action.problemSlug],
+          }
+        }),
+      }
+    case 'remove-problem':
+      return {
+        ...state,
+        groups: state.groups.map((group) =>
+          group.key === action.groupKey
+            ? {
+                ...group,
+                problemSlugs: group.problemSlugs.filter(
+                  (problemSlug) => problemSlug !== action.problemSlug,
+                ),
+              }
+            : group,
+        ),
+      }
+    case 'move-problem':
+      return {
+        ...state,
+        groups: state.groups.map((group) => {
+          if (group.key !== action.groupKey) {
+            return group
+          }
+
+          return {
+            ...group,
+            problemSlugs: moveArrayItem(
+              group.problemSlugs,
+              group.problemSlugs.indexOf(action.problemSlug),
+              action.direction,
+            ),
+          }
+        }),
+      }
+  }
+}
+
+function createInitialTrackFormState(
+  source: TrackForEditResponse,
+): TrackFormState {
+  const groups = createInitialGroups(source)
+  const firstGroup = groups[0] ?? createFallbackMainGroup()
+
+  return {
+    description: source.track?.description ?? '',
+    dueAt: toDateInputValue(source.track?.dueAt ?? null),
+    groups,
+    nextGroupNumber: groups.length + 1,
+    selectedGroupKey: firstGroup.key,
+    setActiveAfterCreate: false,
+    title: source.track?.title ?? '',
+  }
+}
+
+function createInitialGroups(source: TrackForEditResponse) {
+  const sortedGroups = [...source.groups].sort(
+    (groupA, groupB) => groupA.position - groupB.position,
+  )
+
+  if (sortedGroups.length === 0) {
+    return [createFallbackMainGroup()]
+  }
+
+  return sortedGroups.map((group, index) => {
+    const key = group.id ?? `group-${index + 1}`
+    const formGroup: TrackFormGroupState = {
+      key,
+      problemSlugs: [...group.problemSlugs],
+      title: group.title,
+    }
+
+    if (group.id) {
+      formGroup.id = group.id
+    }
+
+    return formGroup
+  })
+}
+
+function createFallbackMainGroup(): TrackFormGroupState {
+  return {
+    key: 'group-1',
+    problemSlugs: [],
+    title: 'Main',
+  }
+}
+
+function deriveFieldErrors(state: TrackFormState): TrackFormFieldErrors {
+  const groupTitles: Record<string, string> = {}
+
+  for (const group of state.groups) {
+    if (group.title.trim().length === 0) {
+      groupTitles[group.key] = 'Group title is required.'
+    }
+  }
+
+  return {
+    groupTitles,
+    groups:
+      state.groups.length === 0 ? 'At least one group is required.' : null,
+    title: state.title.trim().length === 0 ? 'Title is required.' : null,
+  }
+}
+
+function isFieldErrorFree(fieldErrors: TrackFormFieldErrors) {
+  return (
+    fieldErrors.title === null &&
+    fieldErrors.groups === null &&
+    Object.keys(fieldErrors.groupTitles).length === 0
+  )
+}
+
+function createTrackMutationPayload(state: TrackFormState): TrackMutationInput {
+  return {
+    description: toNullableTrimmedValue(state.description),
+    dueAt: state.dueAt ? `${state.dueAt}T00:00:00.000Z` : null,
+    groups: state.groups.map(createGroupInput),
+    title: state.title.trim(),
+  }
+}
+
+function createGroupInput(group: TrackFormGroupState): TrackGroupInput {
+  const input: TrackGroupInput = {
+    problemSlugs: [...group.problemSlugs],
+    title: group.title.trim(),
+  }
+
+  if (group.id) {
+    input.id = group.id
+  }
+
+  return input
+}
+
+function toNullableTrimmedValue(value: string) {
+  const trimmedValue = value.trim()
+
+  return trimmedValue.length > 0 ? trimmedValue : null
+}
+
+function toDateInputValue(value: string | null) {
+  return value ? value.slice(0, 10) : ''
+}
+
+function moveArrayItem<T>(
+  items: readonly T[],
+  itemIndex: number,
+  direction: 'up' | 'down',
+) {
+  const nextIndex = direction === 'up' ? itemIndex - 1 : itemIndex + 1
+
+  if (
+    itemIndex < 0 ||
+    nextIndex < 0 ||
+    itemIndex >= items.length ||
+    nextIndex >= items.length
+  ) {
+    return [...items]
+  }
+
+  const nextItems = [...items]
+  const item = nextItems[itemIndex]
+  const displacedItem = nextItems[nextIndex]
+
+  if (item === undefined || displacedItem === undefined) {
+    return nextItems
+  }
+
+  nextItems[itemIndex] = displacedItem
+  nextItems[nextIndex] = item
+
+  return nextItems
+}

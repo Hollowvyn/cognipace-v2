@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryHistory } from '@tanstack/react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -11,6 +11,12 @@ import {
   createSerializedProblem,
 } from '@/testing/problem-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
+import {
+  createSerializedTrack,
+  createTrackForEditResponse,
+  createTrackProblemRow,
+  createTrackWorkspaceResponse,
+} from '@/testing/track-fixtures'
 
 import {
   DashboardApp,
@@ -45,7 +51,66 @@ describe('dashboard routes', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(sendMessage).mockImplementation((method) => {
+    vi.mocked(sendMessage).mockImplementation((method, request) => {
+      if (method === 'tracks.getWorkspace') {
+        return Promise.resolve(createTrackWorkspaceResponse())
+      }
+
+      if (method === 'tracks.getTrackForEdit') {
+        if (
+          typeof request === 'object' &&
+          request !== null &&
+          'trackId' in request
+        ) {
+          return Promise.resolve(
+            createTrackForEditResponse({
+              track: createSerializedTrack({
+                dueAt: '2026-06-15T00:00:00.000Z',
+                id: 'leetcode-75',
+                slug: 'leetcode-75',
+                title: 'LeetCode 75',
+              }),
+              groups: [
+                {
+                  id: 'leetcode-75:arrays-hashing',
+                  trackId: 'leetcode-75',
+                  title: 'Arrays and Hashing',
+                  position: 1,
+                  problemSlugs: ['two-sum'],
+                },
+              ],
+              problemRows: [
+                createTrackProblemRow({
+                  problem: createSerializedProblem({
+                    slug: 'two-sum',
+                    title: 'Two Sum',
+                  }),
+                }),
+              ],
+            }),
+          )
+        }
+
+        return Promise.resolve(
+          createTrackForEditResponse({
+            track: null,
+            groups: [],
+            problemRows: [
+              createTrackProblemRow({
+                problem: createSerializedProblem({
+                  slug: 'two-sum',
+                  title: 'Two Sum',
+                }),
+              }),
+            ],
+          }),
+        )
+      }
+
+      if (method === 'tracks.createTrack' || method === 'tracks.updateTrack') {
+        return Promise.resolve(null)
+      }
+
       if (method === 'problems.getLibrary') {
         return Promise.resolve(createProblemLibraryResponse())
       }
@@ -77,7 +142,7 @@ describe('dashboard routes', () => {
 
   it.each([
     ['/', 'Overview', 'what should I do now'],
-    ['/tracks', 'Tracks', 'Track catalog'],
+    ['/tracks', 'Tracks', 'Core interview practice'],
     ['/library', 'Library', 'Total'],
     ['/analytics', 'Analytics', 'Queue, FSRS, and Analytics'],
     ['/settings', 'Settings', 'Daily goal'],
@@ -89,8 +154,8 @@ describe('dashboard routes', () => {
   })
 
   it.each([
-    ['/tracks/new', 'Tracks', /New Track/i, 'Placeholder'],
-    ['/tracks/leetcode-75/edit', 'Tracks', /Edit Track/i, 'Placeholder'],
+    ['/tracks/new', 'Tracks', /New Track/i, null],
+    ['/tracks/leetcode-75/edit', 'Tracks', /Edit/i, null],
     ['/library/problems/new', 'Library', /Add problem/i, null],
     ['/library/problems/two-sum/edit', 'Library', /Edit/i, null],
   ])(
@@ -108,6 +173,91 @@ describe('dashboard routes', () => {
       }
     },
   )
+
+  it('/tracks/new renders the track form over Tracks and loads options', async () => {
+    renderDashboard('/tracks/new')
+
+    expect(await screen.findByRole('heading', { name: 'Tracks' })).toBeVisible()
+    const dialog = screen.getByRole('dialog', { name: 'New Track' })
+    expect(dialog).toBeVisible()
+    expect(await within(dialog).findByLabelText('Title')).toBeVisible()
+    expect(within(dialog).getByLabelText('Group 1 title')).toHaveValue('Main')
+    expect(
+      within(dialog).getByLabelText('Search Library problems'),
+    ).toBeVisible()
+    expect(within(dialog).getByText('Two Sum')).toBeVisible()
+    expect(within(dialog).queryByText('Placeholder')).not.toBeInTheDocument()
+    expect(sendMessage).toHaveBeenCalledWith('tracks.getTrackForEdit', {
+      surface: 'dashboard',
+    })
+  })
+
+  it('/tracks/$trackId/edit direct route loads existing track composition', async () => {
+    renderDashboard('/tracks/leetcode-75/edit')
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Edit: LeetCode 75' }),
+    ).toBeVisible()
+    const dialog = screen.getByRole('dialog', { name: 'Edit: LeetCode 75' })
+    expect(within(dialog).getByLabelText('Title')).toHaveValue('LeetCode 75')
+    expect(within(dialog).getByLabelText('Target date')).toHaveValue(
+      '2026-06-15',
+    )
+    expect(within(dialog).getByLabelText('Group 1 title')).toHaveValue(
+      'Arrays and Hashing',
+    )
+    expect(within(dialog).getByText('Two Sum')).toBeVisible()
+  })
+
+  it('shows a Close link while track modal form data is loading', async () => {
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'tracks.getWorkspace') {
+        return Promise.resolve(createTrackWorkspaceResponse())
+      }
+
+      if (method === 'tracks.getTrackForEdit') {
+        return new Promise(() => undefined)
+      }
+
+      return Promise.resolve(defaultUserSettings)
+    })
+
+    renderDashboard('/tracks/new')
+
+    const dialog = await screen.findByRole('dialog', { name: 'New Track' })
+
+    expect(within(dialog).getByText('Loading track form…')).toBeVisible()
+    expect(within(dialog).getByRole('link', { name: 'Close' })).toHaveAttribute(
+      'href',
+      '/tracks',
+    )
+  })
+
+  it('shows a Close link when track modal form data fails to load', async () => {
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'tracks.getWorkspace') {
+        return Promise.resolve(createTrackWorkspaceResponse())
+      }
+
+      if (method === 'tracks.getTrackForEdit') {
+        return Promise.reject(new Error('load failed'))
+      }
+
+      return Promise.resolve(defaultUserSettings)
+    })
+
+    renderDashboard('/tracks/new')
+
+    const dialog = await screen.findByRole('dialog', { name: 'New Track' })
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Failed to load track form.',
+    )
+    expect(within(dialog).getByRole('link', { name: 'Close' })).toHaveAttribute(
+      'href',
+      '/tracks',
+    )
+  })
 
   it.each([
     ['/tracks/new', '/tracks'],
@@ -133,6 +283,12 @@ describe('dashboard routes', () => {
   })
 
   it('does not mark implemented problem modals as placeholders', () => {
+    expect(dashboardModalRouteMeta.trackNew.staticData.presentation).toBe(
+      'modal',
+    )
+    expect(dashboardModalRouteMeta.trackEdit.staticData.presentation).toBe(
+      'modal',
+    )
     expect(dashboardModalRouteMeta.problemNew.staticData.presentation).toBe(
       'modal',
     )
@@ -145,9 +301,15 @@ describe('dashboard routes', () => {
     expect(dashboardModalRouteMeta.problemEdit.description).not.toMatch(
       /later phase/i,
     )
+    expect(dashboardModalRouteMeta.trackNew.description).not.toMatch(
+      /later phase/i,
+    )
+    expect(dashboardModalRouteMeta.trackEdit.description).not.toMatch(
+      /later phase/i,
+    )
   })
 
-  it('closes modal placeholders with Escape', async () => {
+  it('closes route modals with Escape', async () => {
     const { router, user } = renderDashboard('/tracks/new')
 
     await screen.findByRole('dialog', { name: 'New Track' })
