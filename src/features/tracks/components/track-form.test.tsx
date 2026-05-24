@@ -291,6 +291,50 @@ describe('TrackForm', () => {
     ).toBeEnabled()
   })
 
+  it('expands the first invalid group title on submit', async () => {
+    const user = userEvent.setup()
+    mockTrackFormRuntime(createEditResponse())
+
+    renderTrackForm(
+      <TrackForm
+        mode="edit"
+        onCancel={vi.fn()}
+        onLoaded={vi.fn()}
+        onSaved={vi.fn()}
+        trackId="leetcode-75"
+      />,
+    )
+
+    expect(await screen.findByLabelText('Title')).toHaveValue('LeetCode 75')
+
+    const groups = screen.getByLabelText('Groups')
+    const dynamicRow = within(groups).getByRole('listitem', {
+      name: /Dynamic Programming/i,
+    })
+
+    await user.click(
+      within(groups).getByRole('button', {
+        name: 'Select Dynamic Programming',
+      }),
+    )
+    await user.clear(screen.getByLabelText('Group title'))
+    await user.click(
+      within(groups).getByRole('button', {
+        name: 'Select Arrays and Hashing',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'SAVE' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Group title is required.',
+    )
+
+    const groupTitle = within(dynamicRow).getByLabelText('Group title')
+
+    expect(groupTitle).toBeVisible()
+    expect(groupTitle).toBeInvalid()
+  })
+
   it('loads existing metadata, groups, and memberships for edit submit replacement', async () => {
     const user = userEvent.setup()
     const onLoaded = vi.fn()

@@ -144,6 +144,12 @@ function TrackFormFields({
     setSubmitError(null)
 
     if (!canSubmit || !payload) {
+      const firstInvalidGroupKey = Object.keys(fieldErrors.groupTitles)[0]
+
+      if (firstInvalidGroupKey) {
+        dispatch({ groupKey: firstInvalidGroupKey, type: 'select-group' })
+      }
+
       return
     }
 
