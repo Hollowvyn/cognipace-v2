@@ -111,7 +111,7 @@ describe('TracksScreen', () => {
     expect(screen.getByText('1 of 3')).toBeVisible()
     expect(screen.getByText('33%')).toBeVisible()
     const dueMetric = screen.getByLabelText('Due metric')
-    expect(within(dueMetric).getByText('Due')).toBeVisible()
+    expect(within(dueMetric).getByText('Due Reviews')).toBeVisible()
     expect(dueMetric).toHaveTextContent('2')
     expect(screen.getByText('Next')).toBeVisible()
     expect(screen.getAllByRole('link', { name: 'Two Sum' })[0]).toHaveAttribute(
@@ -184,6 +184,37 @@ describe('TracksScreen', () => {
     )
 
     expect(screen.getAllByText('Due Jun 15, 2026')).toHaveLength(2)
+  })
+
+  it('labels due count as due reviews instead of track target date', async () => {
+    const activeTrack = twoGroupWorkspace.activeTrack
+
+    if (!activeTrack) {
+      throw new Error('Expected active track fixture.')
+    }
+
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...twoGroupWorkspace,
+      generatedAt: '2026-06-01T12:00:00.000Z',
+      dueCount: 0,
+      activeTrack: {
+        ...activeTrack,
+        track: {
+          ...activeTrack.track,
+          dueAt: '2026-06-15T00:00:00.000Z',
+        },
+      },
+    })
+    renderTracksScreen()
+
+    const dueMetric = await screen.findByLabelText('Due metric')
+
+    expect(within(dueMetric).getByText('Due Reviews')).toBeVisible()
+    expect(dueMetric).toHaveTextContent('0')
+    expect(
+      within(dueMetric).queryByText('Jun 15, 2026'),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('Due Jun 15, 2026')).toBeVisible()
   })
 
   it('lets long active track copy wrap before it can crowd header actions', async () => {

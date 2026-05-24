@@ -156,6 +156,7 @@ describe('dashboard routes', () => {
   it.each([
     ['/tracks/new', 'Tracks', /New Track/i, null],
     ['/tracks/leetcode-75/edit', 'Tracks', /Edit/i, null],
+    ['/tracks/problems/two-sum/edit', 'Tracks', /Edit/i, null],
     ['/library/problems/new', 'Library', /Add problem/i, null],
     ['/library/problems/two-sum/edit', 'Library', /Edit/i, null],
   ])(
@@ -207,6 +208,30 @@ describe('dashboard routes', () => {
       'Arrays and Hashing',
     )
     expect(within(dialog).getByText('Two Sum')).toBeVisible()
+  })
+
+  it('opens problem edit from Tracks without replacing the Tracks workspace', async () => {
+    const { router, user } = renderDashboard('/tracks')
+
+    expect(await screen.findByRole('heading', { name: 'Tracks' })).toBeVisible()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Expand Two Sum' }),
+    )
+    await user.click(screen.getByRole('link', { name: 'Edit' }))
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(
+        '/tracks/problems/two-sum/edit',
+      )
+    })
+    expect(screen.getByRole('heading', { name: 'Tracks' })).toBeVisible()
+    expect(
+      screen.queryByRole('heading', { name: 'Library' }),
+    ).not.toBeInTheDocument()
+    expect(
+      await screen.findByRole('dialog', { name: 'Edit: Two Sum' }),
+    ).toBeVisible()
   })
 
   it('shows a Close link while track modal form data is loading', async () => {
@@ -262,6 +287,7 @@ describe('dashboard routes', () => {
   it.each([
     ['/tracks/new', '/tracks'],
     ['/tracks/leetcode-75/edit', '/tracks'],
+    ['/tracks/problems/two-sum/edit', '/tracks'],
     ['/library/problems/new', '/library'],
     ['/library/problems/two-sum/edit', '/library'],
   ])('closes %s to %s', async (path, closePath) => {
@@ -289,6 +315,9 @@ describe('dashboard routes', () => {
     expect(dashboardModalRouteMeta.trackEdit.staticData.presentation).toBe(
       'modal',
     )
+    expect(
+      dashboardModalRouteMeta.trackProblemEdit.staticData.presentation,
+    ).toBe('modal')
     expect(dashboardModalRouteMeta.problemNew.staticData.presentation).toBe(
       'modal',
     )
@@ -299,6 +328,9 @@ describe('dashboard routes', () => {
       /later phase/i,
     )
     expect(dashboardModalRouteMeta.problemEdit.description).not.toMatch(
+      /later phase/i,
+    )
+    expect(dashboardModalRouteMeta.trackProblemEdit.description).not.toMatch(
       /later phase/i,
     )
     expect(dashboardModalRouteMeta.trackNew.description).not.toMatch(
@@ -346,16 +378,22 @@ describe('dashboard routes', () => {
     expect(window.location.hash).toBe('#/library')
   })
 
-  it('keeps parent nav active for modal child routes', async () => {
-    renderDashboard('/library/problems/two-sum/edit')
+  it.each([
+    ['/library/problems/two-sum/edit', 'Library', 'Tracks'],
+    ['/tracks/problems/two-sum/edit', 'Tracks', 'Library'],
+  ])(
+    'keeps parent nav active for %s',
+    async (path, activeNavLabel, inactiveNavLabel) => {
+      renderDashboard(path)
 
-    expect(
-      await screen.findByRole('link', { name: 'Library' }),
-    ).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute(
-      'aria-current',
-    )
-  })
+      expect(
+        await screen.findByRole('link', { name: activeNavLabel }),
+      ).toHaveAttribute('aria-current', 'page')
+      expect(
+        screen.getByRole('link', { name: inactiveNavLabel }),
+      ).not.toHaveAttribute('aria-current')
+    },
+  )
 
   it('skips to dashboard content without changing the hash route', async () => {
     const { router, user } = renderDashboard('/library')

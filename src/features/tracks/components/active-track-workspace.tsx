@@ -179,7 +179,7 @@ function ActiveTrackHeader({
         <MetricBlock
           ariaLabel="Due metric"
           icon={<CalendarClock aria-hidden="true" />}
-          label="Due"
+          label="Due Reviews"
           value={<span className="tabular-nums">{dueCount}</span>}
         />
         <MetricBlock

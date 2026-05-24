@@ -33,7 +33,7 @@ export function TracksPage() {
             <Button asChild size="sm" variant="ghost">
               <Link
                 params={{ problemSlug: problem.slug }}
-                to={dashboardPaths.problemEdit}
+                to={dashboardPaths.trackProblemEdit}
               >
                 <Pencil aria-hidden="true" />
                 Edit

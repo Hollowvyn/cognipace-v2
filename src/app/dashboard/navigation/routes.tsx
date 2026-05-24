@@ -13,6 +13,7 @@ import { AnalyticsPage } from '../screens/analytics-page'
 import { LibraryPage } from '../screens/library-page'
 import { OverviewPage } from '../screens/overview-page'
 import {
+  EditProblemFromTracksModalPage,
   EditProblemModalPage,
   NewProblemModalPage,
 } from '../screens/problem-modal-pages'
@@ -56,6 +57,13 @@ const trackEditRoute = createRoute({
   staticData: dashboardModalRouteMeta.trackEdit.staticData,
 })
 
+const trackProblemEditRoute = createRoute({
+  getParentRoute: () => tracksRoute,
+  path: dashboardModalRouteMeta.trackProblemEdit.relativePath,
+  component: EditProblemFromTracksModalPage,
+  staticData: dashboardModalRouteMeta.trackProblemEdit.staticData,
+})
+
 const libraryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/library',
@@ -93,7 +101,11 @@ const settingsRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   overviewRoute,
-  tracksRoute.addChildren([trackNewRoute, trackEditRoute]),
+  tracksRoute.addChildren([
+    trackNewRoute,
+    trackEditRoute,
+    trackProblemEditRoute,
+  ]),
   libraryRoute.addChildren([problemNewRoute, problemEditRoute]),
   analyticsRoute,
   settingsRoute,

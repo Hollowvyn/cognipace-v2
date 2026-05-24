@@ -31,6 +31,7 @@ export const dashboardPaths = {
   settings: '/settings',
   trackNew: '/tracks/new',
   trackEdit: '/tracks/$trackId/edit',
+  trackProblemEdit: '/tracks/problems/$problemSlug/edit',
   problemNew: '/library/problems/new',
   problemEdit: '/library/problems/$problemSlug/edit',
 } as const satisfies Record<string, string>
@@ -140,6 +141,16 @@ export const dashboardModalRouteMeta = {
       presentation: 'modal',
       section: 'tracks',
       title: 'Edit Track',
+    },
+  },
+  trackProblemEdit: {
+    closeTo: dashboardPaths.tracks,
+    description: "Edit this problem's core Library metadata from Tracks.",
+    relativePath: 'problems/$problemSlug/edit',
+    staticData: {
+      presentation: 'modal',
+      section: 'tracks',
+      title: 'Edit Problem',
     },
   },
   problemNew: {
