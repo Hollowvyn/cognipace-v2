@@ -20,7 +20,7 @@ export const practiceLogSnapshotSchema = z.object({
 
 export const practiceLogPatchSchema = practiceLogSnapshotSchema.partial()
 
-export const practiceSummarySchema = z.object({
+const practiceSummarySchema = z.object({
   phase: z.enum(practicePhases),
   nextReviewAt: z.iso.datetime().nullable(),
   lastReviewedAt: z.iso.datetime().nullable(),
@@ -76,15 +76,36 @@ export const practiceReviewAttemptSchema = z.object({
   updatedAt: z.iso.datetime(),
 })
 
-export const practiceDetailsSchema = z.object({
+export const normalizedPracticeStateSchema = z.object({
   problemSlug: z.string(),
   cardId: z.string(),
-  practice: practiceStateSnapshotSchema.nullable(),
-  card: fsrsCardSnapshotSchema.nullable(),
-  summary: practiceSummarySchema,
-  currentLog: practiceLogSnapshotSchema,
+  status: z.enum(practiceStatuses),
+  isSuspended: z.boolean(),
+  phase: z.enum(practicePhases),
+  isStarted: z.boolean(),
+  isDue: z.boolean(),
+  isOverdue: z.boolean(),
+  overdueDays: z.number().int().min(0),
+  dueAt: z.iso.datetime().nullable(),
+  lastReviewedAt: z.iso.datetime().nullable(),
+  retrievability: z.number().nullable(),
+  stability: z.number().nullable(),
+  difficulty: z.number().nullable(),
+  scheduledDays: z.number().int().min(0).nullable(),
+  lapses: z.number().int().min(0),
+  reviewCount: z.number().int().min(0),
+  reviewHistory: z.array(practiceReviewAttemptSchema),
   recentAttempts: z.array(practiceReviewAttemptSchema),
   latestAttempt: practiceReviewAttemptSchema.nullable(),
+})
+
+export type SerializedNormalizedPracticeState = z.infer<typeof normalizedPracticeStateSchema>
+
+// Extends the normalized contract with overlay-session fields
+export const practiceDetailsSchema = normalizedPracticeStateSchema.extend({
+  practice: practiceStateSnapshotSchema.nullable(),
+  card: fsrsCardSnapshotSchema.nullable(),
+  currentLog: practiceLogSnapshotSchema,
   canOverrideLatestReview: z.boolean(),
 })
 
