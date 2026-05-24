@@ -1,0 +1,37 @@
+{
+  "run_id": "vitest-eval-without_skill",
+  "expectations": [
+    {
+      "text": "Uses createTestDb from @/platform/db/test-db",
+      "passed": true,
+      "evidence": "Imports createTestDb from '@/platform/db/test-db'"
+    },
+    {
+      "text": "Imports describe and it from vitest",
+      "passed": true,
+      "evidence": "import { describe, expect, it } from 'vitest'"
+    },
+    {
+      "text": "Covers at least 3 distinct test cases",
+      "passed": true,
+      "evidence": "7 distinct it() blocks across getActiveTrack, setActiveTrack, deleteTrack"
+    },
+    {
+      "text": "Uses toMatchObject or toBe assertions",
+      "passed": true,
+      "evidence": "toMatchObject, toBeNull, rejects.toThrow used throughout"
+    },
+    {
+      "text": "Creates TracksService not just the repository directly",
+      "passed": true,
+      "evidence": "Imports and calls getActiveTrack, setActiveTrack, deleteTrack from tracks-service"
+    },
+    {
+      "text": "API shape correctness: includes required surface field",
+      "passed": false,
+      "evidence": "setActiveTrack(handle.db, { trackId: 'grind-75' }) missing required surface field. deleteTrack(handle.db, { trackId: '...' }) also missing surface. TypeScript would reject these calls — TracksSetActiveTrackRequest and TracksDeleteTrackRequest both require surface via Zod schema."
+    }
+  ],
+  "pass_rate": 0.833,
+  "notes": "Without-skill output is well-structured and uses updateSettings helper for freePractice setup (cleaner approach), but critically misses the required surface field in setActiveTrack and deleteTrack calls. Would fail TypeScript compilation. Also imported updateSettings from settings-service which is a reasonable helper but adds cross-feature coupling to the test."
+}

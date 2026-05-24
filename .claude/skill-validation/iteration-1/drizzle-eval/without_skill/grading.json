@@ -1,0 +1,37 @@
+{
+  "run_id": "drizzle-eval-without_skill",
+  "expectations": [
+    {
+      "text": "Method is added to TracksRepository class",
+      "passed": true,
+      "evidence": "async getTracksByProblemSlug(problemSlug: string): Promise<Track[]>"
+    },
+    {
+      "text": "Uses Drizzle innerJoin for trackGroupProblems",
+      "passed": true,
+      "evidence": "Two innerJoin calls: tracks→trackGroups and trackGroups→trackGroupProblems"
+    },
+    {
+      "text": "Filters by problemSlug using eq()",
+      "passed": true,
+      "evidence": ".where(eq(trackGroupProblems.problemSlug, problemSlug))"
+    },
+    {
+      "text": "Returns typed Track[] not raw rows",
+      "passed": true,
+      "evidence": "Uses mapTrack(row.track) and returns result: Track[]"
+    },
+    {
+      "text": "Uses orderBy with asc()",
+      "passed": true,
+      "evidence": ".orderBy(asc(tracks.title))"
+    },
+    {
+      "text": "Deduplicates results across multiple groups",
+      "passed": true,
+      "evidence": "Set<string> deduplication with seen.has(row.track.id) check"
+    }
+  ],
+  "pass_rate": 1.0,
+  "notes": "Output is correct and idiomatic. Essentially identical to with-skill run — the drizzle skill did not add discriminating value for this straightforward join query since the existing codebase patterns were sufficient."
+}

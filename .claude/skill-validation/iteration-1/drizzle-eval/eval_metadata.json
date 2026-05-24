@@ -1,0 +1,27 @@
+{
+  "eval_id": 1,
+  "eval_name": "drizzle-tracks-repository-new-query",
+  "prompt": "Add a method `getTracksByProblemSlug(problemSlug: string): Promise<Track[]>` to the TracksRepository class in src/features/tracks/data/tracks-repository.ts. It should return all tracks that contain the given problem slug in any of their groups, ordered by title ascending. Use Drizzle ORM query patterns consistent with the existing methods (db.select().from(...).innerJoin(...).where(...).orderBy(...)).",
+  "assertions": [
+    {
+      "text": "Method is added to TracksRepository class",
+      "check": "grep -q 'getTracksByProblemSlug' output.ts"
+    },
+    {
+      "text": "Uses Drizzle innerJoin or join for trackGroupProblems",
+      "check": "grep -qE 'innerJoin|join' output.ts"
+    },
+    {
+      "text": "Filters by problemSlug using eq()",
+      "check": "grep -q 'eq(' output.ts"
+    },
+    {
+      "text": "Returns typed Track[] not raw rows",
+      "check": "grep -qE 'mapTrack|Track\\[\\]|Promise<Track' output.ts"
+    },
+    {
+      "text": "Uses orderBy with tracks.title or asc()",
+      "check": "grep -qE 'orderBy|asc(' output.ts"
+    }
+  ]
+}

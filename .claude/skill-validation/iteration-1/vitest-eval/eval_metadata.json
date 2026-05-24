@@ -1,0 +1,27 @@
+{
+  "eval_id": 0,
+  "eval_name": "vitest-tracks-service-tests",
+  "prompt": "Write Vitest tests for src/features/tracks/server/tracks-service.ts following the project's test conventions (createTestDb, describe/it blocks, toMatchObject). Cover: (1) getActiveTrack delegates to the repository and returns null when no active track, (2) setActiveTrack sets the session and returns the updated active track, (3) deleteTrack removes the track and clears the session. Use the real test database via createTestDb.",
+  "assertions": [
+    {
+      "text": "Uses createTestDb from @/platform/db/test-db",
+      "check": "grep -q 'createTestDb' output.ts"
+    },
+    {
+      "text": "Imports describe and it from vitest",
+      "check": "grep -q \"from 'vitest'\" output.ts"
+    },
+    {
+      "text": "Covers at least 3 distinct test cases",
+      "check": "grep -c \"it('\" output.ts | awk '{exit ($1 < 3)}'"
+    },
+    {
+      "text": "Uses toMatchObject or toBe assertions",
+      "check": "grep -qE 'toMatchObject|toBe|toEqual' output.ts"
+    },
+    {
+      "text": "Creates TracksService not just the repository directly",
+      "check": "grep -qE 'TracksService|createTracksService' output.ts"
+    }
+  ]
+}
