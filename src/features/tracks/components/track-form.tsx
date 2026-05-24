@@ -11,10 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
 import { InlineStatus } from '@/components/ui/inline-status'
-import {
-  ProblemDifficultyBadge,
-  type ProblemLibraryRow,
-} from '@/features/problems'
+import type { ProblemLibraryRow } from '@/features/problems'
 import { cn } from '@/utils/cn'
 
 import {
@@ -345,7 +342,7 @@ function TrackGroupList({
                   }
                   type="button"
                 >
-                  <span className="min-w-0 max-w-full truncate text-[length:var(--cp-control-font-size)] font-bold text-foreground">
+                  <span className="min-w-0 max-w-full truncate text-[length:var(--cp-copy-font-size)] font-bold text-foreground">
                     {displayTitle}
                   </span>
                   <span className="text-[length:var(--cp-badge-font-size)] text-muted-foreground">
@@ -566,7 +563,6 @@ function OrderedProblemList({
                 </span>
                 <ProblemSummary
                   compact
-                  row={row}
                   title={title}
                   slug={problemSlug}
                 />
@@ -648,7 +644,6 @@ function ProblemSearchResult({
     >
       <ProblemSummary
         compact
-        row={row}
         slug={row.problem.slug}
         title={row.problem.title}
       />
@@ -668,22 +663,19 @@ function ProblemSearchResult({
 
 function ProblemSummary({
   compact = false,
-  row,
   slug,
   title,
 }: {
   compact?: boolean | undefined
-  row: ProblemLibraryRow | undefined
   slug: string
   title: string
 }) {
   return (
     <div className="min-w-0">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <span className="min-w-0 max-w-full truncate text-[length:var(--cp-control-font-size)] font-bold text-foreground">
+        <span className="min-w-0 max-w-full truncate text-[length:var(--cp-copy-font-size)] font-bold text-foreground">
           {title}
         </span>
-        <ProblemDifficultyBadge difficulty={row?.problem.difficulty} />
       </div>
       {compact ? null : (
         <p className="m-0 mt-1 truncate text-[length:var(--cp-badge-font-size)] text-muted-foreground">

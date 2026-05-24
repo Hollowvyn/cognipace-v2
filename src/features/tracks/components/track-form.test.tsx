@@ -270,6 +270,9 @@ describe('TrackForm', () => {
     })
 
     expect(within(arraysRow).getByText('2 problems')).toBeVisible()
+    expect(within(arraysRow).getByText('Arrays and Hashing')).toHaveClass(
+      'text-[length:var(--cp-copy-font-size)]',
+    )
     expect(within(dynamicRow).getByText('1 problem')).toBeVisible()
     expect(within(arraysRow).getByLabelText('Group title')).toHaveValue(
       'Arrays and Hashing',
@@ -335,7 +338,11 @@ describe('TrackForm', () => {
     })
 
     expect(twoSumRow).toHaveClass('grid-cols-[auto_minmax(0,1fr)_auto]')
-    expect(within(twoSumRow).getByText('Two Sum')).toHaveClass('truncate')
+    expect(within(twoSumRow).getByText('Two Sum')).toHaveClass(
+      'truncate',
+      'text-[length:var(--cp-copy-font-size)]',
+    )
+    expect(within(twoSumRow).queryByText('Easy')).toBeNull()
     expectActionOrder(twoSumRow, [
       'Move Two Sum up',
       'Move Two Sum down',
@@ -398,9 +405,15 @@ describe('TrackForm', () => {
 
     expect(suggestions).toHaveClass('h-40', 'overflow-y-auto')
     expect(resultRows).toHaveLength(4)
-    expect(
-      within(results).getByRole('listitem', { name: 'Binary Search' }),
-    ).toHaveClass('grid-cols-[minmax(0,1fr)_auto]')
+    const binarySearchResult = within(results).getByRole('listitem', {
+      name: 'Binary Search',
+    })
+
+    expect(binarySearchResult).toHaveClass('grid-cols-[minmax(0,1fr)_auto]')
+    expect(within(binarySearchResult).getByText('Binary Search')).toHaveClass(
+      'text-[length:var(--cp-copy-font-size)]',
+    )
+    expect(within(binarySearchResult).queryByText('Easy')).toBeNull()
     expect(
       within(results).getByRole('button', {
         name: 'Add Binary Search',
