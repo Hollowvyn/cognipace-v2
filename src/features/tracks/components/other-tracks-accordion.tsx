@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { InlineStatus } from '@/components/ui/inline-status'
@@ -10,9 +10,11 @@ import type { SerializedTrackWorkspaceRow } from '../api/tracks-contracts'
 
 export function OtherTracksAccordion({
   activeTrackId,
+  newTrackAction,
   tracks,
 }: {
   activeTrackId: string | null
+  newTrackAction?: ReactNode
   tracks: readonly SerializedTrackWorkspaceRow[]
 }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -20,7 +22,7 @@ export function OtherTracksAccordion({
   const setActiveTrack = useSetActiveTrack()
   const otherTracks = tracks.filter((row) => row.track.id !== activeTrackId)
 
-  if (otherTracks.length === 0) {
+  if (otherTracks.length === 0 && !newTrackAction) {
     return null
   }
 
@@ -56,7 +58,9 @@ export function OtherTracksAccordion({
             {otherTracks.length === 1 ? 'other track' : 'other tracks'}
           </span>
           <span className="block text-[length:var(--cp-badge-font-size)] text-muted-foreground">
-            Summary only
+            {otherTracks.length === 0
+              ? 'Create another track'
+              : 'Summary only'}
           </span>
         </span>
         <span className="inline-flex shrink-0 items-center gap-2 text-[length:var(--cp-copy-font-size)] font-semibold text-primary">
@@ -87,6 +91,11 @@ export function OtherTracksAccordion({
               />
             ))}
           </div>
+        </div>
+      ) : null}
+      {newTrackAction ? (
+        <div className="flex justify-end border-t border-border px-4 py-3 md:px-5">
+          {newTrackAction}
         </div>
       ) : null}
     </section>
@@ -160,6 +169,7 @@ function formatDateCell(value: string) {
   return new Intl.DateTimeFormat(undefined, {
     day: 'numeric',
     month: 'short',
+    timeZone: 'UTC',
     year: 'numeric',
   }).format(new Date(value))
 }

@@ -91,6 +91,7 @@ function TracksWorkspaceView({
       />
       <OtherTracksAccordion
         activeTrackId={workspace.activeTrack.track.id}
+        newTrackAction={newTrackAction}
         tracks={workspace.tracks}
       />
     </TracksFrame>

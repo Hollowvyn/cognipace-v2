@@ -353,6 +353,7 @@ function formatDateCell(value: string) {
   return new Intl.DateTimeFormat(undefined, {
     day: 'numeric',
     month: 'short',
+    timeZone: 'UTC',
     year: 'numeric',
   }).format(new Date(value))
 }

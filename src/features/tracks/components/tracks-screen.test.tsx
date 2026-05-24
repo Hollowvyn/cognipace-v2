@@ -133,6 +133,59 @@ describe('TracksScreen', () => {
     expect(queryTrackProblemRow('Maximum Subarray')).not.toBeInTheDocument()
   })
 
+  it('keeps New Track reachable from the active workspace', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(twoGroupWorkspace)
+    renderTracksScreen()
+
+    expect(
+      await screen.findByRole('heading', { name: 'LeetCode 75' }),
+    ).toBeVisible()
+    expect(screen.getByRole('link', { name: 'New Track' })).toHaveAttribute(
+      'href',
+      '#/tracks/new',
+    )
+  })
+
+  it('formats date-only track due dates without local timezone drift', async () => {
+    const dueAt = '2026-06-15T00:00:00.000Z'
+    const activeTrack = twoGroupWorkspace.activeTrack
+
+    if (!activeTrack) {
+      throw new Error('Expected active track fixture.')
+    }
+
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...twoGroupWorkspace,
+      activeTrack: {
+        ...activeTrack,
+        track: {
+          ...activeTrack.track,
+          dueAt,
+        },
+      },
+      tracks: twoGroupWorkspace.tracks.map((row) =>
+        row.track.id === 'grind-75'
+          ? {
+              ...row,
+              track: {
+                ...row.track,
+                dueAt,
+              },
+            }
+          : row,
+      ),
+    })
+    renderTracksScreen()
+
+    expect(await screen.findByText('Due Jun 15, 2026')).toBeVisible()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Show other tracks' }),
+    )
+
+    expect(screen.getAllByText('Due Jun 15, 2026')).toHaveLength(2)
+  })
+
   it('lets long active track copy wrap before it can crowd header actions', async () => {
     const longTitle = `Track ${'A'.repeat(80)}`
     const longDescription = `Description ${'B'.repeat(100)}`

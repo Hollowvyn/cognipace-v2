@@ -301,7 +301,6 @@ export function registerBackgroundHandlers() {
 
   onMessage('practice.saveReviewResult', ({ data, sender }) => {
     const request = practiceSaveReviewResultRequestSchema.parse(data)
-    let recordedTrackCompletion = false
 
     assertCanSenderCallExtensionMethod(
       'practice.saveReviewResult',
@@ -329,14 +328,11 @@ export function registerBackgroundHandlers() {
           ...(request.reviewMode ? { reviewMode: request.reviewMode } : {}),
         })
         if (isTrackCompletionRating(request.rating)) {
-          recordedTrackCompletion = await recordActiveTrackProblemCompletion(
-            db,
-            {
-              problemSlug: request.problemSlug,
-              rating: request.rating,
-              completedAt: reviewedAt,
-            },
-          )
+          await recordActiveTrackProblemCompletion(db, {
+            problemSlug: request.problemSlug,
+            rating: request.rating,
+            completedAt: reviewedAt,
+          })
         }
         const details = await getPracticeDetails(db, request.problemSlug, {
           targetRetention: settings.review.targetRetention,
@@ -348,9 +344,7 @@ export function registerBackgroundHandlers() {
         broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
           source: request.surface,
-          ...(recordedTrackCompletion
-            ? { tags: practiceTrackInvalidationTags }
-            : {}),
+          tags: practiceTrackInvalidationTags,
         }),
     )
   })
@@ -384,6 +378,7 @@ export function registerBackgroundHandlers() {
         broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
           source: request.surface,
+          tags: practiceTrackInvalidationTags,
         }),
     )
   })

@@ -58,6 +58,7 @@ const backgroundMocks = vi.hoisted(() => {
     getTrackForEdit: vi.fn(),
     getWorkspace: vi.fn(),
     recordActiveTrackProblemCompletion: vi.fn(),
+    overrideLastReviewResult: vi.fn(),
     resetPracticeSchedule: vi.fn(),
     resetTrackProgress: vi.fn(),
     saveReviewResult: vi.fn(),
@@ -106,6 +107,7 @@ vi.mock(
     return {
       ...actual,
       getPracticeDetails: backgroundMocks.getPracticeDetails,
+      overrideLastReviewResult: backgroundMocks.overrideLastReviewResult,
       resetPracticeSchedule: backgroundMocks.resetPracticeSchedule,
       saveReviewResult: backgroundMocks.saveReviewResult,
       setPracticeSuspended: backgroundMocks.setPracticeSuspended,
@@ -543,7 +545,7 @@ describe('background handler registration', () => {
       problemSlug: 'two-sum',
       reason: 'practice-updated',
       source: 'dashboard',
-      tags: ['practice', 'problems', 'queue', 'app-shell'],
+      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
     })
 
     vi.clearAllMocks()
@@ -606,7 +608,7 @@ describe('background handler registration', () => {
     })
   })
 
-  it('omits tracks invalidation when an eligible saved review records no track completion', async () => {
+  it('invalidates tracks when an eligible saved review records no new track completion', async () => {
     resetRuntimeMutationMocks()
     backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValueOnce(
       false,
@@ -630,7 +632,32 @@ describe('background handler registration', () => {
       problemSlug: 'two-sum',
       reason: 'practice-updated',
       source: 'dashboard',
-      tags: ['practice', 'problems', 'queue', 'app-shell'],
+      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
+    })
+  })
+
+  it('invalidates tracks after overriding a saved review result', async () => {
+    resetRuntimeMutationMocks()
+    backgroundMocks.overrideLastReviewResult.mockResolvedValue(undefined)
+
+    await sendRuntimeMessage('practice.overrideLastReviewResult', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      rating: 'hard',
+    })
+
+    expect(backgroundMocks.overrideLastReviewResult).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      expect.objectContaining({
+        problemSlug: 'two-sum',
+        rating: 'hard',
+      }),
+    )
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      problemSlug: 'two-sum',
+      reason: 'practice-updated',
+      source: 'dashboard',
+      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
     })
   })
 })
