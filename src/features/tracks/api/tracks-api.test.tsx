@@ -148,6 +148,7 @@ describe('tracks API hooks', () => {
         description: null,
         dueAt: null,
         groups: [{ title: 'Arrays', problemSlugs: ['two-sum'] }],
+        setActive: true,
       } satisfies TracksCreateTrackRequest,
       response: trackForEditResponse,
       useHook: useCreateTrack,

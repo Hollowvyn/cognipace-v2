@@ -93,7 +93,9 @@ export function createTrackWorkspaceResponse(
         },
       },
     ],
-    rows: [createTrackProblemRow()],
+    activeTrackGroups: [createSerializedTrackGroup()],
+    activeTrackRows: [createTrackProblemRow()],
+    dueCount: 0,
     ...overrides,
   }
 }

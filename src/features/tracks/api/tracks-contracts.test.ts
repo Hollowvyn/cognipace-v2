@@ -69,6 +69,19 @@ describe('tracks runtime contracts', () => {
     ).toBe(false)
   })
 
+  it('accepts setActive on create requests', () => {
+    expect(
+      tracksCreateTrackRequestSchema.safeParse({
+        surface: 'dashboard',
+        title: 'Interview Track',
+        description: null,
+        dueAt: null,
+        groups: [{ title: 'Arrays', problemSlugs: ['two-sum'] }],
+        setActive: true,
+      }).success,
+    ).toBe(true)
+  })
+
   it('only accepts completed ratings that can complete track progress', () => {
     expect(trackCompletedRatingSchema.safeParse('good').success).toBe(true)
     expect(trackCompletedRatingSchema.safeParse('easy').success).toBe(true)

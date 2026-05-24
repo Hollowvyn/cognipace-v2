@@ -110,14 +110,20 @@ export const trackWorkspaceResponseSchema = z.object({
   generatedAt: z.iso.datetime(),
   activeTrack: serializedActiveTrackSchema,
   tracks: z.array(serializedTrackWorkspaceRowSchema),
-  rows: z.array(trackProblemRowSchema),
+  activeTrackGroups: z.array(serializedTrackGroupSchema),
+  activeTrackRows: z.array(trackProblemRowSchema),
+  dueCount: z.number().int().min(0),
 })
 
 export type TrackWorkspaceResponse = z.infer<
   typeof trackWorkspaceResponseSchema
 >
 
-const serializedTrackGroupForEditSchema = serializedTrackGroupSchema.extend({
+const serializedTrackGroupForEditSchema = z.object({
+  id: trackGroupIdSchema.optional(),
+  trackId: trackIdSchema.optional(),
+  title: z.string(),
+  position: z.number().int().min(1),
   problemSlugs: z.array(problemSlugSchema),
 })
 
@@ -128,7 +134,7 @@ export type SerializedTrackGroupForEdit = z.infer<
 export const trackForEditResponseSchema = z.object({
   track: serializedTrackSchema.nullable(),
   groups: z.array(serializedTrackGroupForEditSchema),
-  problemRows: z.array(trackProblemRowSchema),
+  problemRows: z.array(problemLibraryRowSchema),
 })
 
 export type TrackForEditResponse = z.infer<typeof trackForEditResponseSchema>
@@ -178,6 +184,7 @@ export type TrackMutationInput = z.infer<typeof trackMutationInputSchema>
 
 export const tracksCreateTrackRequestSchema = trackMutationInputSchema.extend({
   surface: trackDashboardSurfaceSchema,
+  setActive: z.boolean().optional(),
 })
 
 export type TracksCreateTrackRequest = z.infer<
