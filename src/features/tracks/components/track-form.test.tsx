@@ -460,6 +460,9 @@ describe('TrackForm', () => {
 
     expect(await screen.findByLabelText('Title')).toHaveValue('LeetCode 75')
 
+    const compositionEditor = screen.getByRole('group', {
+      name: 'Track composition editor',
+    })
     const groupHeader = screen.getByLabelText('Track groups header')
     const selectedProblemHeader = screen.getByLabelText(
       'Selected group problems header',
@@ -469,6 +472,9 @@ describe('TrackForm', () => {
       name: 'Selected problem rows',
     })
 
+    expect(compositionEditor).toHaveClass(
+      'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]',
+    )
     expect(groupHeader).toHaveClass(
       'min-h-[var(--cp-control-height-sm)]',
       'items-center',

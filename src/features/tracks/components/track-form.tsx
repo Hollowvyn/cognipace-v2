@@ -252,7 +252,11 @@ function TrackFormFields({
         setSearchQuery={setSearchQuery}
       />
 
-      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(14rem,0.85fr)_minmax(0,1.15fr)]">
+      <div
+        aria-label="Track composition editor"
+        className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+        role="group"
+      >
         <TrackGroupList
           dispatch={dispatch}
           fieldErrors={fieldErrors}
