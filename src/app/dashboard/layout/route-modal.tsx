@@ -201,6 +201,7 @@ export function RouteModal({
           {children ? (
             <div
               aria-label={isFormVariant ? 'Modal content' : undefined}
+              role={isFormVariant ? 'region' : undefined}
               className={cn(
                 'text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground',
                 isFormVariant

@@ -197,7 +197,9 @@ describe('dashboard routes', () => {
     renderDashboard('/tracks/new')
 
     const dialog = await screen.findByRole('dialog', { name: 'New Track' })
-    const modalBody = within(dialog).getByLabelText('Modal content')
+    const modalBody = within(dialog).getByRole('region', {
+      name: 'Modal content',
+    })
 
     expect(dialog).toHaveClass(
       'max-h-[calc(100vh-5rem)]',
