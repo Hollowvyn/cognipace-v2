@@ -25,10 +25,12 @@ import {
 
 import {
   derivePracticeSummary,
+  deriveNormalizedPracticeState,
   normalizeReviewLogFields,
   parsePracticeStatus,
   reviewModes,
   statusFromReview,
+  type NormalizedPracticeState,
   type OverrideLastReviewResultInput,
   type PracticeDetails,
   type PracticeLogFields,
@@ -343,34 +345,31 @@ export class PracticeRepository {
       this.getCard(problemSlug, cardKind),
       this.readReviewAttempts(this.db, { problemSlug, cardId }),
     ])
-    const summary = derivePracticeSummary({
-      practice,
-      card,
-      now: options.now,
-      targetRetention: options.targetRetention,
-    })
-    const latestAttempt = attempts.at(-1) ?? null
-
-    return {
+    const attemptSnapshots = attempts.map(toReviewAttemptSnapshot)
+    const normalized = deriveNormalizedPracticeState({
       problemSlug,
       cardId,
       practice,
       card,
-      summary,
+      attempts: attemptSnapshots,
+      now: options.now,
+      targetRetention: options.targetRetention,
+    })
+
+    return {
+      ...normalized,
+      practice,
+      card,
       currentLog: practice?.log ?? normalizeReviewLogFields(),
-      recentAttempts: attempts.slice(-5).reverse().map(toReviewAttemptSnapshot),
-      latestAttempt: latestAttempt
-        ? toReviewAttemptSnapshot(latestAttempt)
-        : null,
-      canOverrideLatestReview: latestAttempt !== null,
+      canOverrideLatestReview: normalized.latestAttempt !== null,
     }
   }
 
-  async getPracticeSummary(
+  async getNormalizedPracticeState(
     problemSlug: string,
     options: PracticeReadOptions = {},
-  ): Promise<PracticeSummary> {
-    return (await this.getPracticeDetails(problemSlug, options)).summary
+  ): Promise<NormalizedPracticeState> {
+    return this.getPracticeDetails(problemSlug, options)
   }
 
   async getCard(
