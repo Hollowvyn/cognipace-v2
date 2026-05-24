@@ -140,12 +140,15 @@ export function RouteModal({
         asChild
         className={cn(
           'w-full shadow-overlay',
-          isFormVariant ? 'max-w-[46rem] overflow-hidden p-0' : 'max-w-lg',
+          isFormVariant
+            ? 'flex max-h-[calc(100vh-5rem)] max-w-[46rem] flex-col overflow-hidden p-0 sm:max-h-[calc(100vh-2rem)]'
+            : 'max-w-lg',
         )}
       >
         <div
           aria-describedby={description ? descriptionId : undefined}
           aria-labelledby={titleId}
+          className={cn(isFormVariant && 'flex min-h-0 flex-col')}
           ref={dialogRef}
           role="dialog"
           aria-modal="true"
@@ -197,10 +200,12 @@ export function RouteModal({
           ) : null}
           {children ? (
             <div
+              aria-label={isFormVariant ? 'Modal content' : undefined}
+              role={isFormVariant ? 'region' : undefined}
               className={cn(
                 'text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground',
                 isFormVariant
-                  ? 'px-[var(--cp-panel-padding)] pt-[var(--cp-panel-padding)]'
+                  ? 'min-h-0 overflow-y-auto px-[var(--cp-panel-padding)] pt-[var(--cp-panel-padding)]'
                   : 'mt-4',
               )}
             >

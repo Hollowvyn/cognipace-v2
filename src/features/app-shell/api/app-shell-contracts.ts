@@ -76,7 +76,15 @@ const appShellTrackProgressSchema = z
     }
   })
 
+const appShellActiveTrackStateSchema = z.enum([
+  'disabled-free-practice',
+  'no-active-track',
+  'ready',
+  'exhausted',
+])
+
 const appShellActiveTrackSchema = z.object({
+  state: appShellActiveTrackStateSchema,
   trackId: z.string().nullable(),
   title: z.string(),
   description: z.string().nullable(),

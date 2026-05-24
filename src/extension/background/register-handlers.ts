@@ -21,6 +21,7 @@ import {
   settingsUpdateRequestSchema,
   todayQueueSchema,
   trackForEditResponseSchema,
+  tracksClearActiveTrackRequestSchema,
   tracksCreateTrackRequestSchema,
   tracksDeleteTrackRequestSchema,
   tracksGetTrackForEditRequestSchema,
@@ -88,6 +89,7 @@ import {
 import { serializeActiveTrack as serializeActiveTrackContract } from '@/features/tracks/api/tracks-serializers'
 import type { ActiveTrack } from '@/features/tracks/domain'
 import {
+  clearActiveTrack,
   createTrack,
   deleteTrack,
   getActiveTrack,
@@ -327,7 +329,10 @@ export function registerBackgroundHandlers() {
           reviewedAt,
           ...(request.reviewMode ? { reviewMode: request.reviewMode } : {}),
         })
-        if (isTrackCompletionRating(request.rating)) {
+        if (
+          settings.practice.mode === 'studyPlan' &&
+          isTrackCompletionRating(request.rating)
+        ) {
           await recordActiveTrackProblemCompletion(db, {
             problemSlug: request.problemSlug,
             rating: request.rating,
@@ -529,6 +534,28 @@ export function registerBackgroundHandlers() {
     return runDbMutation(
       async (db) => {
         await setActiveTrack(db, request)
+
+        return tracksNullResponseSchema.parse(null)
+      },
+      () =>
+        broadcastTracksInvalidation({
+          source: request.surface,
+          tags: ['tracks'],
+        }),
+    )
+  })
+
+  onMessage('tracks.clearActiveTrack', ({ data, sender }) => {
+    const request = tracksClearActiveTrackRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'tracks.clearActiveTrack',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) => {
+        await clearActiveTrack(db, request)
 
         return tracksNullResponseSchema.parse(null)
       },

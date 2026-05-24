@@ -201,6 +201,37 @@ export class TracksRepository {
     })
   }
 
+  async clearActiveTrack(now = new Date()): Promise<TrackSessionState> {
+    return this.db.transaction(async (transactionDb) => {
+      const timestamp = now.getTime()
+
+      await transactionDb
+        .insert(trackSession)
+        .values({
+          id: activeTrackSessionId,
+          activeTrackId: null,
+          activeGroupId: null,
+          startedAt: timestamp,
+          updatedAt: timestamp,
+        })
+        .onConflictDoUpdate({
+          target: trackSession.id,
+          set: {
+            activeTrackId: null,
+            activeGroupId: null,
+            updatedAt: timestamp,
+          },
+        })
+
+      return {
+        activeTrack: null,
+        activeGroup: null,
+        startedAt: new Date(timestamp),
+        updatedAt: new Date(timestamp),
+      }
+    })
+  }
+
   async setActiveGroup(
     groupId: string,
     now = new Date(),
@@ -1041,6 +1072,7 @@ function normalizeGroupInputs(options: {
       ? options.groups
       : [{ title: 'Main', problemSlugs: [] }]
   const unavailableGroupIds = new Set(options.existingGroupIds)
+  const usedProblemSlugs = new Set<string>()
   const usedGroupIds = new Set<string>()
 
   return sourceGroups.map((group, groupIndex) => {
@@ -1070,25 +1102,30 @@ function normalizeGroupInputs(options: {
       id,
       title,
       position: groupIndex + 1,
-      problemSlugs: normalizeProblemInputs(group.problemSlugs),
+      problemSlugs: normalizeProblemInputs(
+        group.problemSlugs,
+        usedProblemSlugs,
+      ),
     }
   })
 }
 
 function normalizeProblemInputs(
   problemInputs: readonly string[],
+  usedProblemSlugs: Set<string>,
 ): NormalizedTrackProblemInput[] {
-  const seenProblemSlugs = new Set<string>()
   const problemSlugs: NormalizedTrackProblemInput[] = []
 
   for (const problemInput of problemInputs) {
     const problemSlug = normalizeProblemInput(problemInput)
 
-    if (seenProblemSlugs.has(problemSlug)) {
-      throw new Error(`Duplicate problem slug "${problemSlug}" in track group.`)
+    if (usedProblemSlugs.has(problemSlug)) {
+      throw new Error(
+        `Problem "${problemSlug}" can only appear once in a track.`,
+      )
     }
 
-    seenProblemSlugs.add(problemSlug)
+    usedProblemSlugs.add(problemSlug)
     problemSlugs.push({
       problemSlug,
       position: problemSlugs.length + 1,

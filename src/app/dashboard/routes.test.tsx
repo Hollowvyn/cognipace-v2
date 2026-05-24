@@ -176,21 +176,41 @@ describe('dashboard routes', () => {
   )
 
   it('/tracks/new renders the track form over Tracks and loads options', async () => {
-    renderDashboard('/tracks/new')
+    const { user } = renderDashboard('/tracks/new')
 
     expect(await screen.findByRole('heading', { name: 'Tracks' })).toBeVisible()
     const dialog = screen.getByRole('dialog', { name: 'New Track' })
     expect(dialog).toBeVisible()
     expect(await within(dialog).findByLabelText('Title')).toBeVisible()
-    expect(within(dialog).getByLabelText('Group 1 title')).toHaveValue('Main')
-    expect(
-      within(dialog).getByLabelText('Search Library problems'),
-    ).toBeVisible()
-    expect(within(dialog).getByText('Two Sum')).toBeVisible()
+    expect(within(dialog).getByLabelText('Group title')).toHaveValue('Main')
+    const searchInput = within(dialog).getByLabelText('Search Library problems')
+
+    expect(searchInput).toBeVisible()
+    expect(within(dialog).queryByText('Two Sum')).not.toBeInTheDocument()
+
+    await user.type(searchInput, 'two')
+
+    expect(await within(dialog).findByText('Two Sum')).toBeVisible()
     expect(within(dialog).queryByText('Placeholder')).not.toBeInTheDocument()
     expect(sendMessage).toHaveBeenCalledWith('tracks.getTrackForEdit', {
       surface: 'dashboard',
     })
+  })
+
+  it('renders track form modals with a scroll-contained form body', async () => {
+    renderDashboard('/tracks/new')
+
+    const dialog = await screen.findByRole('dialog', { name: 'New Track' })
+    const modalBody = within(dialog).getByRole('region', {
+      name: 'Modal content',
+    })
+
+    expect(dialog).toHaveClass(
+      'max-h-[calc(100vh-5rem)]',
+      'sm:max-h-[calc(100vh-2rem)]',
+      'overflow-hidden',
+    )
+    expect(modalBody).toHaveClass('min-h-0', 'overflow-y-auto')
   })
 
   it('/tracks/$trackId/edit direct route loads existing track composition', async () => {
@@ -204,7 +224,11 @@ describe('dashboard routes', () => {
     expect(within(dialog).getByLabelText('Target date')).toHaveValue(
       '2026-06-15',
     )
-    expect(within(dialog).getByLabelText('Group 1 title')).toHaveValue(
+    const groups = within(dialog).getByLabelText('Groups')
+    const arraysRow = within(groups).getByRole('listitem', {
+      name: /Arrays and Hashing, 1 problem/i,
+    })
+    expect(within(arraysRow).getByLabelText('Group title')).toHaveValue(
       'Arrays and Hashing',
     )
     expect(within(dialog).getByText('Two Sum')).toBeVisible()

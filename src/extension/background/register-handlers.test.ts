@@ -4,6 +4,7 @@ import {
   activeTrackSchema,
   queueRequestSchema,
   trackForEditResponseSchema,
+  tracksClearActiveTrackRequestSchema,
   tracksCreateTrackRequestSchema,
   tracksDeleteTrackRequestSchema,
   tracksGetTrackForEditRequestSchema,
@@ -52,6 +53,7 @@ const backgroundMocks = vi.hoisted(() => {
     getProblemLibrary: vi.fn(),
     createProblem: vi.fn(),
     createTrack: vi.fn(),
+    clearActiveTrack: vi.fn(),
     deleteTrack: vi.fn(),
     bulkUpdateProblems: vi.fn(),
     getPracticeDetails: vi.fn(),
@@ -143,6 +145,7 @@ vi.mock('@/features/tracks/server/tracks-service', () => ({
   resetTrackProgress: backgroundMocks.resetTrackProgress,
   setActiveGroup: backgroundMocks.setActiveGroup,
   setActiveTrack: backgroundMocks.setActiveTrack,
+  clearActiveTrack: backgroundMocks.clearActiveTrack,
   updateTrack: backgroundMocks.updateTrack,
 }))
 
@@ -188,6 +191,7 @@ describe('background handler registration', () => {
     backgroundMocks.setActiveGroup.mockResolvedValue(undefined)
     backgroundMocks.setPracticeSuspended.mockResolvedValue(practiceDetails)
     backgroundMocks.setActiveTrack.mockResolvedValue(undefined)
+    backgroundMocks.clearActiveTrack.mockResolvedValue(undefined)
     backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
     backgroundMocks.toggleStudyMode.mockResolvedValue(defaultUserSettings)
     backgroundMocks.updateSettings.mockResolvedValue(defaultUserSettings)
@@ -326,6 +330,17 @@ describe('background handler registration', () => {
       },
       schema: tracksSetActiveGroupRequestSchema,
       service: backgroundMocks.setActiveGroup,
+      expectedResponse: null,
+      expectedTags: ['tracks'],
+    })
+
+    await expectTrackWrite({
+      method: 'tracks.clearActiveTrack',
+      request: {
+        surface: 'dashboard',
+      },
+      schema: tracksClearActiveTrackRequestSchema,
+      service: backgroundMocks.clearActiveTrack,
       expectedResponse: null,
       expectedTags: ['tracks'],
     })
@@ -606,6 +621,34 @@ describe('background handler registration', () => {
     })
   })
 
+  it('does not record active-track progress for free-practice saved reviews', async () => {
+    resetRuntimeMutationMocks()
+    backgroundMocks.getSettings.mockResolvedValueOnce({
+      ...defaultUserSettings,
+      practice: {
+        ...defaultUserSettings.practice,
+        mode: 'freePractice',
+      },
+    })
+
+    await sendRuntimeMessage('practice.saveReviewResult', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: '2026-01-05T00:00:00.000Z',
+    })
+
+    expect(
+      backgroundMocks.recordActiveTrackProblemCompletion,
+    ).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      problemSlug: 'two-sum',
+      reason: 'practice-updated',
+      source: 'dashboard',
+      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
+    })
+  })
+
   it('invalidates tracks when an eligible saved review records no new track completion', async () => {
     resetRuntimeMutationMocks()
     backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValueOnce(
@@ -829,6 +872,7 @@ function createPopupShellData(): PopupAppShellData {
       dueAt: null,
     },
     activeTrack: {
+      state: 'ready',
       trackId: 'leetcode-75',
       title: 'LeetCode 75',
       description: 'Focused starter track.',

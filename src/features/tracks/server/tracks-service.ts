@@ -1,5 +1,7 @@
 import type { Db } from '@/platform/db'
 
+import type { Problem } from '@/features/problems'
+import type { SerializedProblem } from '@/features/problems/api/problems-contracts'
 import {
   getProblemLibrary,
   getProblemLibraryRowsBySlug,
@@ -9,8 +11,11 @@ import { getSettings } from '@/features/settings/server/settings-service'
 import { createTracksRepository } from '../data/tracks-repository'
 import type { TrackProgress } from '../domain'
 import type {
+  Track,
   TrackCompletionInput,
+  TrackGroup,
   TrackProblemMembership,
+  TrackSessionState,
 } from '../domain/track'
 import {
   serializeTrackForEdit,
@@ -19,6 +24,7 @@ import {
 } from '../api/tracks-serializers'
 import type {
   TracksCreateTrackRequest,
+  TracksClearActiveTrackRequest,
   TracksDeleteTrackRequest,
   TracksGetTrackForEditRequest,
   TracksGetWorkspaceRequest,
@@ -30,14 +36,28 @@ import type {
   TrackWorkspaceResponse,
 } from '../api/tracks-contracts'
 
-export async function getActiveTrack(db: Db) {
+export async function getActiveTrack(db: Db, now = new Date()) {
   const settings = await getSettings(db)
 
   if (settings.practice.mode === 'freePractice') {
     return null
   }
 
-  return createTracksRepository(db).getActiveTrack()
+  const repository = createTracksRepository(db)
+  const guidance = await readActiveTrackGuidance(db, repository, now)
+
+  if (!guidance.activeTrack) {
+    return null
+  }
+
+  return {
+    track: guidance.activeTrack.track,
+    activeGroup: guidance.activeTrack.activeGroup,
+    progress: guidance.activeTrack.progress,
+    nextProblem: guidance.activeTrack.nextProblem
+      ? deserializeProblem(guidance.activeTrack.nextProblem)
+      : null,
+  }
 }
 
 export async function getWorkspace(
@@ -51,46 +71,18 @@ export async function getWorkspace(
     repository.getSession(),
   ])
 
-  if (!session.activeTrack) {
-    return serializeTrackWorkspace({
-      generatedAt,
-      activeTrack: null,
-      tracks: catalog,
-      activeTrackGroups: [],
-      activeTrackRows: [],
-      dueCount: 0,
-    })
-  }
-
-  const [activeTrackGroups, activeTrackMemberships] = await Promise.all([
-    repository.getGroups(session.activeTrack.id),
-    repository.getMemberships(session.activeTrack.id),
-  ])
-  const activeTrackRows = await readTrackProblemRows(
-    db,
-    activeTrackMemberships,
-    generatedAt,
-  )
-  const incompleteRows = activeTrackRows.filter(
-    (row) => !row.membership.completedAt,
-  )
-  const nextRow =
-    incompleteRows.find((row) => row.status === 'due') ??
-    incompleteRows.find((row) => row.status !== 'suspended') ??
-    null
+  const guidance = await readActiveTrackGuidance(db, repository, generatedAt, {
+    catalog,
+    session,
+  })
 
   return serializeTrackWorkspace({
     generatedAt,
-    activeTrack: {
-      track: session.activeTrack,
-      activeGroup: session.activeGroup ?? activeTrackGroups[0] ?? null,
-      progress: readCatalogProgress(catalog, session.activeTrack.id),
-      nextProblem: nextRow?.problem ?? null,
-    },
+    activeTrack: guidance.activeTrack,
     tracks: catalog,
-    activeTrackGroups,
-    activeTrackRows,
-    dueCount: incompleteRows.filter((row) => row.status === 'due').length,
+    activeTrackGroups: guidance.activeTrackGroups,
+    activeTrackRows: guidance.activeTrackRows,
+    dueCount: guidance.dueCount,
   })
 }
 
@@ -144,6 +136,15 @@ export async function setActiveTrack(
   request: TracksSetActiveTrackRequest,
 ): Promise<void> {
   await createTracksRepository(db).setActiveTrack(request.trackId)
+}
+
+export async function clearActiveTrack(
+  db: Db,
+  request: TracksClearActiveTrackRequest,
+): Promise<void> {
+  if (request.surface === 'dashboard') {
+    await createTracksRepository(db).clearActiveTrack()
+  }
 }
 
 export async function setActiveGroup(
@@ -237,6 +238,90 @@ export async function recordActiveTrackProblemCompletion(
   input: TrackCompletionInput,
 ): Promise<boolean> {
   return createTracksRepository(db).recordActiveTrackProblemCompletion(input)
+}
+
+type ActiveTrackGuidanceInput = {
+  catalog?: readonly { track: Track; progress: TrackProgress }[]
+  session?: TrackSessionState
+}
+
+type ActiveTrackGuidance = {
+  activeTrack: {
+    track: Track
+    activeGroup: TrackGroup | null
+    progress: TrackProgress
+    nextProblem: SerializedProblem | null
+  } | null
+  activeTrackGroups: TrackGroup[]
+  activeTrackRows: TrackProblemRowSerializationInput[]
+  dueCount: number
+}
+
+async function readActiveTrackGuidance(
+  db: Db,
+  repository: ReturnType<typeof createTracksRepository>,
+  generatedAt: Date,
+  input: ActiveTrackGuidanceInput = {},
+): Promise<ActiveTrackGuidance> {
+  const [catalog, session] = await Promise.all([
+    input.catalog ?? repository.getTrackCatalog(),
+    input.session ?? repository.getSession(),
+  ])
+
+  if (!session.activeTrack) {
+    return {
+      activeTrack: null,
+      activeTrackGroups: [],
+      activeTrackRows: [],
+      dueCount: 0,
+    }
+  }
+
+  const [activeTrackGroups, activeTrackMemberships] = await Promise.all([
+    repository.getGroups(session.activeTrack.id),
+    repository.getMemberships(session.activeTrack.id),
+  ])
+  const activeTrackRows = await readTrackProblemRows(
+    db,
+    activeTrackMemberships,
+    generatedAt,
+  )
+  const { nextRow, dueCount } = selectActiveTrackNextRow(activeTrackRows)
+
+  return {
+    activeTrack: {
+      track: session.activeTrack,
+      activeGroup: session.activeGroup ?? activeTrackGroups[0] ?? null,
+      progress: readCatalogProgress(catalog, session.activeTrack.id),
+      nextProblem: nextRow?.problem ?? null,
+    },
+    activeTrackGroups,
+    activeTrackRows,
+    dueCount,
+  }
+}
+
+function selectActiveTrackNextRow(
+  rows: readonly TrackProblemRowSerializationInput[],
+) {
+  const incompleteRows = rows.filter((row) => !row.membership.completedAt)
+  const nextRow =
+    incompleteRows.find((row) => row.status === 'due') ??
+    incompleteRows.find((row) => row.status !== 'suspended') ??
+    null
+
+  return {
+    nextRow,
+    dueCount: incompleteRows.filter((row) => row.status === 'due').length,
+  }
+}
+
+function deserializeProblem(problem: SerializedProblem): Problem {
+  return {
+    ...problem,
+    createdAt: new Date(problem.createdAt),
+    updatedAt: new Date(problem.updatedAt),
+  }
 }
 
 async function readTrackProblemRows(

@@ -5,7 +5,7 @@ import {
   type FsrsCardSnapshot,
   type ReviewRating,
 } from '@/lib/fsrs'
-import type { ProblemSlug } from '@/lib/problem-catalog'
+import type { ProblemSlug } from '@/features/problems/domain'
 
 export const practiceStatuses = [
   'new',

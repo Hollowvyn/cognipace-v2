@@ -11,10 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
 import { InlineStatus } from '@/components/ui/inline-status'
-import {
-  ProblemDifficultyBadge,
-  type ProblemLibraryRow,
-} from '@/features/problems'
+import type { ProblemLibraryRow } from '@/features/problems'
 import { cn } from '@/utils/cn'
 
 import {
@@ -144,6 +141,12 @@ function TrackFormFields({
     setSubmitError(null)
 
     if (!canSubmit || !payload) {
+      const firstInvalidGroupKey = Object.keys(fieldErrors.groupTitles)[0]
+
+      if (firstInvalidGroupKey) {
+        dispatch({ groupKey: firstInvalidGroupKey, type: 'select-group' })
+      }
+
       return
     }
 
@@ -240,7 +243,20 @@ function TrackFormFields({
         ) : null}
       </section>
 
-      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(14rem,0.85fr)_minmax(0,1.15fr)]">
+      <TrackProblemSearch
+        dispatch={dispatch}
+        groups={state.groups}
+        problemRows={source.problemRows}
+        searchQuery={searchQuery}
+        selectedGroup={selectedGroup}
+        setSearchQuery={setSearchQuery}
+      />
+
+      <div
+        aria-label="Track composition editor"
+        className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+        role="group"
+      >
         <TrackGroupList
           dispatch={dispatch}
           fieldErrors={fieldErrors}
@@ -250,15 +266,16 @@ function TrackFormFields({
         />
         <SelectedGroupProblems
           dispatch={dispatch}
-          problemRows={source.problemRows}
           problemRowsBySlug={problemRowsBySlug}
-          searchQuery={searchQuery}
           selectedGroup={selectedGroup}
-          setSearchQuery={setSearchQuery}
         />
       </div>
 
-      <div className="-mx-[var(--cp-panel-padding)] mt-1 flex justify-end gap-3 border-t border-border px-[var(--cp-panel-padding)] py-4">
+      <div
+        aria-label="Track form actions"
+        className="-mx-[var(--cp-panel-padding)] sticky bottom-0 z-10 mt-1 flex justify-end gap-3 border-t border-border bg-card px-[var(--cp-panel-padding)] py-4"
+        role="group"
+      >
         <Button onClick={onCancel} type="button" variant="ghost">
           CANCEL
         </Button>
@@ -270,6 +287,85 @@ function TrackFormFields({
         </Button>
       </div>
     </form>
+  )
+}
+
+function TrackProblemSearch({
+  dispatch,
+  groups,
+  problemRows,
+  searchQuery,
+  selectedGroup,
+  setSearchQuery,
+}: {
+  dispatch: ReturnType<typeof useTrackForm>['dispatch']
+  groups: readonly TrackFormGroupState[]
+  problemRows: readonly ProblemLibraryRow[]
+  searchQuery: string
+  selectedGroup: TrackFormGroupState
+  setSearchQuery: (searchQuery: string) => void
+}) {
+  const normalizedSearchQuery = searchQuery.trim()
+  const hasSearchQuery = normalizedSearchQuery.length > 0
+  const selectedProblemSlugSet = new Set(
+    groups.flatMap((group) => group.problemSlugs),
+  )
+  const filteredProblemRows = hasSearchQuery
+    ? problemRows
+        .filter(
+          (row) =>
+            !selectedProblemSlugSet.has(row.problem.slug) &&
+            matchesProblemSearch(row, normalizedSearchQuery),
+        )
+        .slice(0, 4)
+    : []
+
+  return (
+    <section
+      aria-label="Track problem search"
+      className="relative z-20"
+    >
+      <TrackTextField
+        icon={<Search aria-hidden="true" />}
+        label="Search Library problems"
+        name="track-problem-search"
+        onChange={setSearchQuery}
+        type="search"
+        value={searchQuery}
+      />
+      {hasSearchQuery ? (
+        <div
+          aria-label="Library problem suggestions"
+          className="absolute left-0 right-0 top-full z-30 mt-2 max-h-56 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-popover p-2 text-popover-foreground shadow-lg"
+          role="region"
+        >
+          {filteredProblemRows.length > 0 ? (
+            <div
+              aria-label="Library problem results"
+              className="grid gap-2"
+              role="list"
+            >
+              {filteredProblemRows.map((row) => (
+                <ProblemSearchResult
+                  key={row.problem.slug}
+                  onAdd={() => {
+                    dispatch({
+                      groupKey: selectedGroup.key,
+                      problemSlug: row.problem.slug,
+                      type: 'add-problem',
+                    })
+                    setSearchQuery('')
+                  }}
+                  row={row}
+                />
+              ))}
+            </div>
+          ) : (
+            <InlineStatus>No matching Library problems.</InlineStatus>
+          )}
+        </div>
+      ) : null}
+    </section>
   )
 }
 
@@ -288,7 +384,10 @@ function TrackGroupList({
 }) {
   return (
     <section className="grid min-w-0 content-start gap-3" aria-label="Groups">
-      <div className="flex min-w-0 items-center justify-between gap-3">
+      <div
+        aria-label="Track groups header"
+        className={cn(editorPaneHeaderClassName, 'justify-between')}
+      >
         <h3 className="m-0 text-[length:var(--cp-copy-font-size)] font-bold text-foreground">
           Groups
         </h3>
@@ -299,10 +398,14 @@ function TrackGroupList({
           variant="outline"
         >
           <Plus aria-hidden="true" />
-          Add group
+          New Group
         </Button>
       </div>
-      <div className="grid gap-2" role="list">
+      <div
+        aria-label="Track groups"
+        className="grid h-80 content-start gap-2 overflow-y-auto rounded-[var(--cp-control-radius)] border-2 border-border bg-card/50 p-3"
+        role="list"
+      >
         {groups.map((group, index) => {
           const displayTitle = getGroupDisplayTitle(group, index)
           const isSelected = group.key === selectedGroupKey
@@ -310,92 +413,113 @@ function TrackGroupList({
 
           return (
             <div
+              aria-label={`${displayTitle}, ${formatProblemCount(
+                group.problemSlugs.length,
+              )}`}
               className={cn(
-                'grid min-w-0 gap-2 rounded-[var(--cp-control-radius)] border border-border p-2',
+                'grid min-w-0 cursor-pointer gap-2 rounded-[var(--cp-control-radius)] border border-border bg-background/30 px-3 py-2 transition-colors hover:bg-muted/45',
                 isSelected && 'border-primary bg-muted/45',
               )}
               key={group.key}
+              onClick={(event) => {
+                if (isFormCardControl(event.target)) {
+                  return
+                }
+
+                dispatch({ groupKey: group.key, type: 'select-group' })
+              }}
               role="listitem"
             >
-              <div className="flex min-w-0 items-center gap-2">
-                <Button
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                <button
+                  aria-label={`Select ${displayTitle}`}
                   aria-pressed={isSelected}
-                  className="min-w-0 flex-1 justify-start"
+                  className="grid min-w-0 justify-items-start gap-0.5 rounded-[var(--cp-control-radius)] px-2 py-1 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   onClick={() =>
                     dispatch({ groupKey: group.key, type: 'select-group' })
                   }
-                  size="sm"
                   type="button"
-                  variant={isSelected ? 'secondary' : 'ghost'}
-                  aria-label={`Select ${displayTitle}`}
                 >
-                  <span className="truncate">{displayTitle}</span>
-                </Button>
-                <IconButton
-                  disabled={index === 0}
-                  label={`Move ${displayTitle} up`}
-                  onClick={() =>
-                    dispatch({
-                      direction: 'up',
-                      groupKey: group.key,
-                      type: 'move-group',
-                    })
-                  }
-                  size="sm"
-                  tooltip="Move up"
-                  type="button"
-                  variant="ghost"
-                >
-                  <ArrowUp aria-hidden="true" />
-                </IconButton>
-                <IconButton
-                  disabled={index === groups.length - 1}
-                  label={`Move ${displayTitle} down`}
-                  onClick={() =>
-                    dispatch({
-                      direction: 'down',
-                      groupKey: group.key,
-                      type: 'move-group',
-                    })
-                  }
-                  size="sm"
-                  tooltip="Move down"
-                  type="button"
-                  variant="ghost"
-                >
-                  <ArrowDown aria-hidden="true" />
-                </IconButton>
-                <IconButton
-                  disabled={groups.length <= 1 || group.problemSlugs.length > 0}
-                  label={`Remove ${displayTitle}`}
-                  onClick={() =>
-                    dispatch({ groupKey: group.key, type: 'remove-group' })
-                  }
-                  size="sm"
-                  tooltip="Remove empty group"
-                  type="button"
-                  variant="ghost"
-                >
-                  <X aria-hidden="true" />
-                </IconButton>
+                  <span className="min-w-0 max-w-full truncate text-[length:var(--cp-copy-font-size)] font-bold text-foreground">
+                    {displayTitle}
+                  </span>
+                  <span className="text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+                    {formatProblemCount(group.problemSlugs.length)}
+                  </span>
+                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <IconButton
+                    disabled={index === 0}
+                    label={`Move ${displayTitle} up`}
+                    onClick={() =>
+                      dispatch({
+                        direction: 'up',
+                        groupKey: group.key,
+                        type: 'move-group',
+                      })
+                    }
+                    size="sm"
+                    tooltip="Move up"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ArrowUp aria-hidden="true" />
+                  </IconButton>
+                  <IconButton
+                    disabled={index === groups.length - 1}
+                    label={`Move ${displayTitle} down`}
+                    onClick={() =>
+                      dispatch({
+                        direction: 'down',
+                        groupKey: group.key,
+                        type: 'move-group',
+                      })
+                    }
+                    size="sm"
+                    tooltip="Move down"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ArrowDown aria-hidden="true" />
+                  </IconButton>
+                  <IconButton
+                    disabled={
+                      groups.length <= 1 || group.problemSlugs.length > 0
+                    }
+                    label={`Remove ${displayTitle}`}
+                    onClick={() =>
+                      dispatch({ groupKey: group.key, type: 'remove-group' })
+                    }
+                    size="sm"
+                    tooltip="Remove empty group"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <X aria-hidden="true" />
+                  </IconButton>
+                </div>
               </div>
-              <TrackTextField
-                describedBy={
-                  showErrors && groupTitleError ? 'track-form-error' : undefined
-                }
-                invalid={showErrors && Boolean(groupTitleError)}
-                label={`Group ${index + 1} title`}
-                name={`track-group-${index + 1}-title`}
-                onChange={(title) =>
-                  dispatch({
-                    groupKey: group.key,
-                    title,
-                    type: 'rename-group',
-                  })
-                }
-                required
-                value={group.title}
-              />
+              {isSelected ? (
+                <TrackTextField
+                  describedBy={
+                    showErrors && groupTitleError
+                      ? 'track-form-error'
+                      : undefined
+                  }
+                  invalid={showErrors && Boolean(groupTitleError)}
+                  label="Group title"
+                  name={`track-group-${index + 1}-title`}
+                  onChange={(title) =>
+                    dispatch({
+                      groupKey: group.key,
+                      title,
+                      type: 'rename-group',
+                    })
+                  }
+                  required
+                  value={group.title}
+                />
+              ) : null}
             </div>
           )
         })}
@@ -406,36 +530,26 @@ function TrackGroupList({
 
 function SelectedGroupProblems({
   dispatch,
-  problemRows,
   problemRowsBySlug,
-  searchQuery,
   selectedGroup,
-  setSearchQuery,
 }: {
   dispatch: ReturnType<typeof useTrackForm>['dispatch']
-  problemRows: readonly ProblemLibraryRow[]
   problemRowsBySlug: ReadonlyMap<string, ProblemLibraryRow>
-  searchQuery: string
   selectedGroup: TrackFormGroupState
-  setSearchQuery: (searchQuery: string) => void
 }) {
-  const selectedProblemSlugSet = new Set(selectedGroup.problemSlugs)
-  const filteredProblemRows = problemRows.filter(
-    (row) =>
-      !selectedProblemSlugSet.has(row.problem.slug) &&
-      matchesProblemSearch(row, searchQuery),
-  )
-
   return (
     <section
       aria-label="Selected group problems"
-      className="grid min-w-0 content-start gap-4"
+      className="grid min-w-0 content-start gap-3"
     >
-      <div className="grid gap-1">
+      <div
+        aria-label="Selected group problems header"
+        className={cn(editorPaneHeaderClassName, 'flex-wrap gap-y-1')}
+      >
         <h3 className="m-0 truncate text-[length:var(--cp-copy-font-size)] font-bold text-foreground">
           {selectedGroup.title.trim() || 'Selected group'} problems
         </h3>
-        <p className="m-0 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+        <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-none text-muted-foreground">
           {selectedGroup.problemSlugs.length} selected
         </p>
       </div>
@@ -445,36 +559,6 @@ function SelectedGroupProblems({
         problemRowsBySlug={problemRowsBySlug}
         selectedGroup={selectedGroup}
       />
-
-      <div className="grid gap-3 border-t border-border pt-4">
-        <TrackTextField
-          icon={<Search aria-hidden="true" />}
-          label="Search Library problems"
-          name="track-problem-search"
-          onChange={setSearchQuery}
-          type="search"
-          value={searchQuery}
-        />
-        <div aria-label="Library problem results" className="grid gap-2">
-          {filteredProblemRows.length > 0 ? (
-            filteredProblemRows.map((row) => (
-              <ProblemSearchResult
-                key={row.problem.slug}
-                onAdd={() =>
-                  dispatch({
-                    groupKey: selectedGroup.key,
-                    problemSlug: row.problem.slug,
-                    type: 'add-problem',
-                  })
-                }
-                row={row}
-              />
-            ))
-          ) : (
-            <InlineStatus>No matching Library problems.</InlineStatus>
-          )}
-        </div>
-      </div>
     </section>
   )
 }
@@ -488,85 +572,97 @@ function OrderedProblemList({
   problemRowsBySlug: ReadonlyMap<string, ProblemLibraryRow>
   selectedGroup: TrackFormGroupState
 }) {
-  if (selectedGroup.problemSlugs.length === 0) {
-    return <InlineStatus>No problems in this group.</InlineStatus>
-  }
-
   return (
-    <ol className="m-0 grid list-none gap-2 p-0">
-      {selectedGroup.problemSlugs.map((problemSlug, index) => {
-        const row = problemRowsBySlug.get(problemSlug)
-        const title = row?.problem.title ?? problemSlug
+    <div
+      aria-label="Selected problem rows"
+      className="h-80 overflow-y-auto rounded-[var(--cp-control-radius)] border-2 border-border bg-card/50 p-3"
+      role="region"
+    >
+      {selectedGroup.problemSlugs.length === 0 ? (
+        <InlineStatus>No problems in this group.</InlineStatus>
+      ) : (
+        <ol
+          aria-label="Selected problems"
+          className="m-0 grid list-none gap-2 p-0"
+        >
+          {selectedGroup.problemSlugs.map((problemSlug, index) => {
+            const row = problemRowsBySlug.get(problemSlug)
+            const title = row?.problem.title ?? problemSlug
 
-        return (
-          <li
-            className="grid min-w-0 gap-2 rounded-[var(--cp-control-radius)] border border-border p-2"
-            key={problemSlug}
-          >
-            <div className="flex min-w-0 items-start justify-between gap-2">
-              <ProblemSummary row={row} title={title} slug={problemSlug} />
-              <span className="shrink-0 text-[length:var(--cp-badge-font-size)] font-bold text-muted-foreground tabular-nums">
-                {index + 1}
-              </span>
-            </div>
-            <div className="flex flex-wrap justify-end gap-1">
-              <IconButton
-                disabled={index === 0}
-                label={`Move ${title} up`}
-                onClick={() =>
-                  dispatch({
-                    direction: 'up',
-                    groupKey: selectedGroup.key,
-                    problemSlug,
-                    type: 'move-problem',
-                  })
-                }
-                size="sm"
-                tooltip="Move up"
-                type="button"
-                variant="ghost"
+            return (
+              <li
+                aria-label={`${index + 1}. ${title}`}
+                className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--cp-control-radius)] border border-border bg-background/30 px-3 py-2"
+                key={problemSlug}
               >
-                <ArrowUp aria-hidden="true" />
-              </IconButton>
-              <IconButton
-                disabled={index === selectedGroup.problemSlugs.length - 1}
-                label={`Move ${title} down`}
-                onClick={() =>
-                  dispatch({
-                    direction: 'down',
-                    groupKey: selectedGroup.key,
-                    problemSlug,
-                    type: 'move-problem',
-                  })
-                }
-                size="sm"
-                tooltip="Move down"
-                type="button"
-                variant="ghost"
-              >
-                <ArrowDown aria-hidden="true" />
-              </IconButton>
-              <IconButton
-                label={`Remove ${title}`}
-                onClick={() =>
-                  dispatch({
-                    groupKey: selectedGroup.key,
-                    problemSlug,
-                    type: 'remove-problem',
-                  })
-                }
-                size="sm"
-                tooltip="Remove"
-                type="button"
-                variant="ghost"
-              >
-                <X aria-hidden="true" />
-              </IconButton>
-            </div>
-          </li>
-        )
-      })}
-    </ol>
+                <span className="text-[length:var(--cp-badge-font-size)] font-bold text-muted-foreground tabular-nums">
+                  {index + 1}
+                </span>
+                <ProblemSummary
+                  compact
+                  title={title}
+                  slug={problemSlug}
+                />
+                <div className="flex shrink-0 justify-end gap-1">
+                  <IconButton
+                    disabled={index === 0}
+                    label={`Move ${title} up`}
+                    onClick={() =>
+                      dispatch({
+                        direction: 'up',
+                        groupKey: selectedGroup.key,
+                        problemSlug,
+                        type: 'move-problem',
+                      })
+                    }
+                    size="sm"
+                    tooltip="Move up"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ArrowUp aria-hidden="true" />
+                  </IconButton>
+                  <IconButton
+                    disabled={index === selectedGroup.problemSlugs.length - 1}
+                    label={`Move ${title} down`}
+                    onClick={() =>
+                      dispatch({
+                        direction: 'down',
+                        groupKey: selectedGroup.key,
+                        problemSlug,
+                        type: 'move-problem',
+                      })
+                    }
+                    size="sm"
+                    tooltip="Move down"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ArrowDown aria-hidden="true" />
+                  </IconButton>
+                  <IconButton
+                    label={`Remove ${title}`}
+                    onClick={() =>
+                      dispatch({
+                        groupKey: selectedGroup.key,
+                        problemSlug,
+                        type: 'remove-problem',
+                      })
+                    }
+                    size="sm"
+                    tooltip="Remove"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <X aria-hidden="true" />
+                  </IconButton>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </div>
   )
 }
 
@@ -578,46 +674,49 @@ function ProblemSearchResult({
   row: ProblemLibraryRow
 }) {
   return (
-    <div className="grid min-w-0 gap-2 rounded-[var(--cp-control-radius)] border border-border p-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-      <ProblemSummary
-        row={row}
-        slug={row.problem.slug}
-        title={row.problem.title}
-      />
-      <Button
+    <div
+      aria-label={row.problem.title}
+      className="min-w-0"
+      role="listitem"
+    >
+      <button
         aria-label={`Add ${row.problem.title}`}
+        className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--cp-control-radius)] border border-border px-3 py-2 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-popover"
         onClick={onAdd}
-        size="sm"
         type="button"
-        variant="outline"
       >
+        <ProblemSummary
+          compact
+          slug={row.problem.slug}
+          title={row.problem.title}
+        />
         <Plus aria-hidden="true" />
-        Add
-      </Button>
+      </button>
     </div>
   )
 }
 
 function ProblemSummary({
-  row,
+  compact = false,
   slug,
   title,
 }: {
-  row: ProblemLibraryRow | undefined
+  compact?: boolean | undefined
   slug: string
   title: string
 }) {
   return (
     <div className="min-w-0">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <span className="min-w-0 max-w-full truncate text-[length:var(--cp-control-font-size)] font-bold text-foreground">
+        <span className="min-w-0 max-w-full truncate text-[length:var(--cp-copy-font-size)] font-bold text-foreground">
           {title}
         </span>
-        <ProblemDifficultyBadge difficulty={row?.problem.difficulty} />
       </div>
-      <p className="m-0 mt-1 truncate text-[length:var(--cp-badge-font-size)] text-muted-foreground">
-        {slug}
-      </p>
+      {compact ? null : (
+        <p className="m-0 mt-1 truncate text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+          {slug}
+        </p>
+      )}
     </div>
   )
 }
@@ -700,11 +799,26 @@ function getFirstFieldError(fieldErrors: TrackFormFieldErrors) {
     return fieldErrors.groups
   }
 
+  if (fieldErrors.problemSlugs) {
+    return fieldErrors.problemSlugs
+  }
+
   return Object.values(fieldErrors.groupTitles)[0] ?? null
 }
 
 function getGroupDisplayTitle(group: TrackFormGroupState, index: number) {
   return group.title.trim() || `Group ${index + 1}`
+}
+
+function formatProblemCount(count: number) {
+  return `${count} ${count === 1 ? 'problem' : 'problems'}`
+}
+
+function isFormCardControl(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    Boolean(target.closest('button, input, textarea, select, label'))
+  )
 }
 
 function matchesProblemSearch(row: ProblemLibraryRow, searchQuery: string) {
@@ -724,3 +838,6 @@ const floatingLabelClassName =
 
 const fieldClassName =
   'h-[var(--cp-control-height-lg)] w-full rounded-[var(--cp-control-radius)] border border-border bg-background px-3 pt-1 text-[length:var(--cp-control-font-size)] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-70'
+
+const editorPaneHeaderClassName =
+  'flex min-h-[var(--cp-control-height-sm)] min-w-0 items-center gap-3'

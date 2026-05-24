@@ -1,11 +1,15 @@
 import { normalizeLeetCodeSlug, titleFromLeetCodeSlug } from '@/lib/leetcode'
-import {
-  problemDifficulties,
-  type ProblemDifficulty,
-  type ProblemSlug,
-} from '@/lib/problem-catalog'
 
-export { problemDifficulties, type ProblemDifficulty, type ProblemSlug }
+export type ProblemSlug = string
+
+export const problemDifficulties = [
+  'easy',
+  'medium',
+  'hard',
+  'unknown',
+] as const
+
+export type ProblemDifficulty = (typeof problemDifficulties)[number]
 
 export interface Problem {
   slug: ProblemSlug

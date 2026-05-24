@@ -117,16 +117,17 @@ function createPopupRecommendationView(
 }
 
 function createPopupStudyModeView(data: PopupAppShellData): PopupStudyModeView {
-  if (data.settings.practice.mode === 'freePractice') {
+  const activeTrack = data.activeTrack
+
+  if (activeTrack.state === 'disabled-free-practice') {
     return {
       kind: 'freePractice',
-      title: 'Free Practice',
-      body: 'Queue-first practice without track guidance.',
+      title: readActiveTrackTitle(data),
+      body: readActiveTrackBody(data),
       modeActionLabel: 'Start study mode',
     }
   }
 
-  const activeTrack = data.activeTrack
   const hasActiveTrack = activeTrack.trackId !== null
 
   return {
@@ -167,12 +168,16 @@ function readActiveTrackTitle(data: PopupAppShellData) {
 function readActiveTrackBody(data: PopupAppShellData) {
   const activeTrack = data.activeTrack
 
+  if (activeTrack.state === 'disabled-free-practice') {
+    return 'Queue-first practice without track guidance.'
+  }
+
   if (!activeTrack.trackId) {
     return 'Choose a track in the dashboard to restore guided progression.'
   }
 
-  if (!activeTrack.nextProblem) {
-    return 'No track preview problem is available yet.'
+  if (activeTrack.state === 'exhausted') {
+    return 'No more problems in track.'
   }
 
   return activeTrack.description ?? activeTrack.detail

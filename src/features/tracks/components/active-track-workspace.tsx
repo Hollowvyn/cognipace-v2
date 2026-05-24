@@ -1,30 +1,19 @@
-import {
-  CalendarClock,
-  CheckCircle2,
-  ListChecks,
-  RefreshCw,
-  Trash2,
-} from 'lucide-react'
+import { CalendarClock, CheckCircle2, ListChecks } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
-import { Button } from '@/components/ui/button'
 import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
 import { createLeetCodeProblemUrl } from '@/lib/leetcode'
 import { cn } from '@/utils/cn'
 
-import {
-  useDeleteTrack,
-  useResetTrackProgress,
-  useSetActiveGroup,
-} from '../api/tracks-api'
+import { useSetActiveGroup } from '../api/tracks-api'
 import type {
   SerializedActiveTrack,
   SerializedTrack,
   SerializedTrackGroup,
   TrackProblemRow,
 } from '../api/tracks-contracts'
-import { TrackConfirmationDialog } from './track-confirmation-dialog'
+import { TrackActions } from './track-actions'
 import { TrackProblemTable } from './track-problem-table'
 import type { RenderProblemEditAction } from '@/features/problems'
 
@@ -49,6 +38,7 @@ export function ActiveTrackWorkspace({
   const activeRows = activeGroupId
     ? rows.filter((row) => row.membership.groupId === activeGroupId)
     : rows
+  const groupProgressById = getGroupProgressById(groups, rows)
 
   return (
     <Surface className="grid w-full overflow-hidden p-0">
@@ -59,6 +49,7 @@ export function ActiveTrackWorkspace({
       />
       <ActiveTrackGroups
         activeGroupId={activeGroupId}
+        groupProgressById={groupProgressById}
         groups={groups}
         trackId={activeTrack.track.id}
       />
@@ -85,39 +76,6 @@ function ActiveTrackHeader({
   dueCount: number
   renderEditTrackAction: RenderTrackEditAction
 }) {
-  const [confirmation, setConfirmation] = useState<
-    'delete' | 'reset-progress' | null
-  >(null)
-  const [error, setError] = useState<string | null>(null)
-  const deleteTrack = useDeleteTrack()
-  const resetProgress = useResetTrackProgress()
-  const isPending = deleteTrack.isPending || resetProgress.isPending
-
-  async function runAction(action: () => Promise<unknown>) {
-    setError(null)
-
-    try {
-      await action()
-      setConfirmation(null)
-    } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : 'Track action failed.',
-      )
-    }
-  }
-
-  function openConfirmation(nextConfirmation: 'delete' | 'reset-progress') {
-    setError(null)
-    setConfirmation(nextConfirmation)
-  }
-
-  function closeConfirmation() {
-    setError(null)
-    setConfirmation(null)
-  }
-
   return (
     <div className="grid gap-4 px-4 pb-4 pt-4 md:px-5 lg:px-7 lg:py-5">
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
@@ -136,28 +94,13 @@ function ActiveTrackHeader({
             </p>
           ) : null}
         </div>
-        <div className="flex flex-wrap justify-start gap-2 md:justify-end">
-          {renderEditTrackAction(activeTrack.track)}
-          <Button
-            disabled={isPending}
-            onClick={() => openConfirmation('reset-progress')}
-            size="sm"
-            variant="ghost"
-          >
-            <RefreshCw aria-hidden="true" />
-            Reset Progress
-          </Button>
-          <Button
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-            disabled={isPending}
-            onClick={() => openConfirmation('delete')}
-            size="sm"
-            variant="ghost"
-          >
-            <Trash2 aria-hidden="true" />
-            Delete Track
-          </Button>
-        </div>
+        <TrackActions
+          ariaLabel={`${activeTrack.track.title} track actions`}
+          className="justify-start md:justify-end"
+          renderEditTrackAction={renderEditTrackAction}
+          showClearActive
+          track={activeTrack.track}
+        />
       </div>
       <div className="grid gap-3 border-y border-border py-3 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-border">
         <MetricBlock
@@ -202,52 +145,18 @@ function ActiveTrackHeader({
           }
         />
       </div>
-      {confirmation === 'reset-progress' ? (
-        <TrackConfirmationDialog
-          confirmLabel="Reset Progress"
-          description="This clears completed progress for this track."
-          error={error}
-          onCancel={closeConfirmation}
-          onConfirm={() => {
-            void runAction(() =>
-              resetProgress.mutateAsync({
-                surface: 'dashboard',
-                trackId: activeTrack.track.id,
-              }),
-            )
-          }}
-          pending={isPending}
-          title="Reset track progress?"
-        />
-      ) : null}
-      {confirmation === 'delete' ? (
-        <TrackConfirmationDialog
-          confirmLabel="Delete Track"
-          description="This permanently deletes this track and its groups."
-          error={error}
-          onCancel={closeConfirmation}
-          onConfirm={() => {
-            void runAction(() =>
-              deleteTrack.mutateAsync({
-                surface: 'dashboard',
-                trackId: activeTrack.track.id,
-              }),
-            )
-          }}
-          pending={isPending}
-          title="Delete track?"
-        />
-      ) : null}
     </div>
   )
 }
 
 function ActiveTrackGroups({
   activeGroupId,
+  groupProgressById,
   groups,
   trackId,
 }: {
   activeGroupId: string | null
+  groupProgressById: ReadonlyMap<string, TrackGroupProgress>
   groups: readonly SerializedTrackGroup[]
   trackId: string
 }) {
@@ -281,7 +190,7 @@ function ActiveTrackGroups({
   }
 
   return (
-    <div className="border-t border-border px-4 py-3 md:px-5 lg:px-7">
+    <div className="min-w-0 border-t border-border px-4 py-3 md:px-5 lg:px-7">
       {error ? (
         <InlineStatus className="mb-3" role="alert" tone="danger">
           {error}
@@ -289,30 +198,41 @@ function ActiveTrackGroups({
       ) : null}
       <div
         aria-label="Track groups"
-        className="flex min-w-0 flex-wrap gap-2"
-        role="group"
+        aria-orientation="horizontal"
+        className="flex min-w-0 flex-nowrap gap-6 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        role="tablist"
       >
         {groups.map((group) => {
           const isActive = group.id === activeGroupId
+          const progress = groupProgressById.get(group.id) ?? emptyGroupProgress
 
           return (
             <button
-              aria-pressed={isActive}
+              aria-label={`${group.title}, ${progress.completedCount} of ${progress.totalCount} completed`}
+              aria-selected={isActive}
               className={cn(
-                'inline-flex max-w-full min-w-0 items-center rounded-[var(--cp-control-radius)] border px-3 py-2 text-[length:var(--cp-control-font-size)] font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                'inline-flex min-h-12 min-w-0 max-w-[min(18rem,72vw)] shrink-0 items-center gap-2 border-b-2 px-0 py-3 text-[length:var(--cp-badge-font-size)] font-bold uppercase leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 isActive
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-card text-card-foreground hover:bg-muted',
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
               )}
               disabled={setActiveGroup.isPending}
               key={group.id}
               onClick={() => {
                 void selectGroup(group.id)
               }}
+              role="tab"
               type="button"
             >
-              <span className="min-w-0 max-w-full truncate">
-                {group.title}
+              <span className="min-w-0 max-w-full truncate">{group.title}</span>
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'shrink-0 text-muted-foreground tabular-nums',
+                  isActive && 'text-primary/80',
+                )}
+              >
+                · {progress.completedCount}/{progress.totalCount}
               </span>
             </button>
           )
@@ -321,6 +241,47 @@ function ActiveTrackGroups({
     </div>
   )
 }
+
+type TrackGroupProgress = {
+  completedCount: number
+  totalCount: number
+}
+
+function getGroupProgressById(
+  groups: readonly SerializedTrackGroup[],
+  rows: readonly TrackProblemRow[],
+) {
+  const progressByGroup = new Map<string, TrackGroupProgress>(
+    groups.map((group) => [
+      group.id,
+      {
+        completedCount: 0,
+        totalCount: 0,
+      },
+    ]),
+  )
+
+  for (const row of rows) {
+    const progress = progressByGroup.get(row.membership.groupId)
+
+    if (!progress) {
+      continue
+    }
+
+    progress.totalCount += 1
+
+    if (row.membership.completedAt) {
+      progress.completedCount += 1
+    }
+  }
+
+  return progressByGroup
+}
+
+const emptyGroupProgress = {
+  completedCount: 0,
+  totalCount: 0,
+} satisfies TrackGroupProgress
 
 function MetricBlock({
   ariaLabel,

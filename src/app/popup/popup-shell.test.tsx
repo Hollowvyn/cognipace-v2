@@ -44,6 +44,7 @@ const shellData = {
     dueAt: '2025-12-31T00:00:00.000Z',
   },
   activeTrack: {
+    state: 'ready',
     trackId: 'leetcode-75',
     title: 'LeetCode 75',
     description: 'Focused starter track for interview patterns.',
@@ -192,6 +193,21 @@ describe('PopupShell', () => {
                 mode: 'freePractice',
               },
             },
+            activeTrack: {
+              state: 'disabled-free-practice',
+              trackId: null,
+              title: 'Track guidance disabled',
+              description: null,
+              groupTitle: null,
+              dueAt: null,
+              progress: {
+                completedCount: 0,
+                totalCount: 0,
+                percent: 0,
+              },
+              detail: 'Free Practice uses queue recommendations only.',
+              nextProblem: null,
+            },
           },
           studyMode: 'freePractice',
         })}
@@ -199,7 +215,7 @@ describe('PopupShell', () => {
     )
 
     expect(
-      screen.getByRole('heading', { name: 'Free Practice' }),
+      screen.getByRole('heading', { name: 'Track guidance disabled' }),
     ).toBeInTheDocument()
     expect(screen.getByText('Freestyle Mode')).toBeInTheDocument()
     expect(
@@ -213,6 +229,32 @@ describe('PopupShell', () => {
     expect(screen.queryByText('Up Next')).toBeNull()
     expect(screen.queryByText('Two Sum')).toBeNull()
     expect(screen.queryByText('Arrays and Hashing')).toBeNull()
+  })
+
+  it('derives the study card from active-track state when settings mode is stale', () => {
+    render(
+      <PopupShell
+        controller={createController({
+          data: {
+            ...shellData,
+            settings: {
+              ...shellData.settings,
+              practice: {
+                ...shellData.settings.practice,
+                mode: 'freePractice',
+              },
+            },
+          },
+        })}
+      />,
+    )
+
+    expect(
+      screen.getByRole('heading', { name: 'LeetCode 75' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Free Practice' }),
+    ).not.toBeInTheDocument()
   })
 
   it('disables the mode action while study mode is saving', () => {
@@ -241,6 +283,7 @@ describe('PopupShell', () => {
               dueAt: null,
             },
             activeTrack: {
+              state: 'no-active-track',
               trackId: null,
               title: 'No active track',
               description: null,

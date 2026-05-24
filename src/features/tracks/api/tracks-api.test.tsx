@@ -12,6 +12,7 @@ import { createQueryTestHarness } from '@/testing/query-test-harness'
 import {
   tracksQueryKeys,
   useActiveTrack,
+  useClearActiveTrack,
   useCreateTrack,
   useDeleteTrack,
   useResetTrackProgress,
@@ -127,6 +128,15 @@ describe('tracks API hooks', () => {
       } satisfies TracksSetActiveGroupRequest,
       response: null,
       useHook: useSetActiveGroup,
+      invalidatedQueryKeys: [['tracks'], ['app-shell-data']],
+    })
+    await expectTrackMutation({
+      method: 'tracks.clearActiveTrack',
+      request: {
+        surface: 'dashboard',
+      },
+      response: null,
+      useHook: useClearActiveTrack,
       invalidatedQueryKeys: [['tracks'], ['app-shell-data']],
     })
   })

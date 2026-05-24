@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import type { SerializedProblem } from '@/features/problems/api/problems-contracts'
-import type { ProblemDifficulty } from '@/lib/problem-catalog'
+import type { ProblemDifficulty } from '@/features/problems/domain'
 
 export interface ProblemFormValues {
   companyLabels: string[]

@@ -5,6 +5,7 @@ import { createSerializedActiveTrack } from '@/testing/track-fixtures'
 import {
   serializedActiveTrackSchema,
   trackCompletedRatingSchema,
+  tracksClearActiveTrackRequestSchema,
   tracksCreateTrackRequestSchema,
   tracksDeleteTrackRequestSchema,
   tracksGetWorkspaceRequestSchema,
@@ -82,6 +83,34 @@ describe('tracks runtime contracts', () => {
     ).toBe(true)
   })
 
+  it('rejects duplicate problem slugs across groups for create and update requests', () => {
+    expect(
+      tracksCreateTrackRequestSchema.safeParse({
+        surface: 'dashboard',
+        title: 'Interview Track',
+        description: null,
+        dueAt: null,
+        groups: [
+          { title: 'Arrays', problemSlugs: ['two-sum'] },
+          { title: 'Hash Maps', problemSlugs: ['Two Sum'] },
+        ],
+      }).success,
+    ).toBe(false)
+    expect(
+      tracksUpdateTrackRequestSchema.safeParse({
+        surface: 'dashboard',
+        trackId: 'leetcode-75',
+        title: 'Interview Track',
+        description: null,
+        dueAt: null,
+        groups: [
+          { title: 'Arrays', problemSlugs: ['two-sum'] },
+          { title: 'Hash Maps', problemSlugs: ['two-sum'] },
+        ],
+      }).success,
+    ).toBe(false)
+  })
+
   it('only accepts completed ratings that can complete track progress', () => {
     expect(trackCompletedRatingSchema.safeParse('good').success).toBe(true)
     expect(trackCompletedRatingSchema.safeParse('easy').success).toBe(true)
@@ -113,5 +142,18 @@ describe('tracks runtime contracts', () => {
         }).success,
       ).toBe(false)
     }
+  })
+
+  it('requires dashboard surface when clearing the active track', () => {
+    expect(
+      tracksClearActiveTrackRequestSchema.safeParse({
+        surface: 'dashboard',
+      }).success,
+    ).toBe(true)
+    expect(
+      tracksClearActiveTrackRequestSchema.safeParse({
+        surface: 'popup',
+      }).success,
+    ).toBe(false)
   })
 })
