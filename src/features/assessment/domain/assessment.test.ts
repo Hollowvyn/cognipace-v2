@@ -186,6 +186,197 @@ describe('assessment policy', () => {
   })
 })
 
+describe('assessment confidence, warnings, and practice context', () => {
+  const mediumTarget = 35 * secondsPerMinute
+  const fastSolveSeconds = 10 * secondsPerMinute
+  const moderateSolveSeconds = 25 * secondsPerMinute
+  const overtimeSeconds = 40 * secondsPerMinute
+
+  it('locks a failed submission to Again with high confidence', () => {
+    expect(
+      evaluateLeetCodeAssessment({
+        intent: 'fail',
+        difficulty: 'medium',
+        elapsedSeconds: moderateSolveSeconds,
+        timing,
+      }),
+    ).toMatchObject({
+      status: 'accepted',
+      rating: 'again',
+      isCorrect: false,
+      lockReason: 'failed',
+      reason: 'failed',
+      confidence: 'high',
+      warnings: [],
+    })
+  })
+
+  it('locks a hard-mode overtime accept to Again with high confidence', () => {
+    expect(
+      evaluateLeetCodeAssessment(
+        leetcodeAccepted(overtimeSeconds, { strictTiming: true }),
+      ),
+    ).toMatchObject({
+      status: 'accepted',
+      rating: 'again',
+      isCorrect: false,
+      isOverTarget: true,
+      lockReason: 'hard-mode-overtime',
+      reason: 'hard-mode-overtime',
+      confidence: 'high',
+    })
+  })
+
+  it('recommends Easy for a clearly fast and clean accept', () => {
+    expect(
+      evaluateLeetCodeAssessment(leetcodeAccepted(fastSolveSeconds)),
+    ).toMatchObject({
+      status: 'accepted',
+      rating: 'easy',
+      reason: 'leetcode-easy-fast',
+      confidence: 'high',
+      isOverTarget: false,
+      targetSeconds: mediumTarget,
+    })
+  })
+
+  it('keeps a moderately fast accept at Good with medium confidence', () => {
+    expect(
+      evaluateLeetCodeAssessment(leetcodeAccepted(moderateSolveSeconds)),
+    ).toMatchObject({
+      status: 'accepted',
+      rating: 'good',
+      reason: 'leetcode-good',
+      confidence: 'medium',
+    })
+  })
+
+  it('returns Hard for an overtime accept when hard mode is off', () => {
+    expect(
+      evaluateLeetCodeAssessment(leetcodeAccepted(overtimeSeconds)),
+    ).toMatchObject({
+      status: 'accepted',
+      rating: 'hard',
+      reason: 'leetcode-hard-overtime',
+      isOverTarget: true,
+      confidence: 'high',
+    })
+  })
+
+  it('allows an untimed accept with low confidence and a missing-solve-time warning', () => {
+    expect(evaluateLeetCodeAssessment(leetcodeAccepted(null))).toMatchObject({
+      status: 'accepted',
+      rating: 'good',
+      elapsedSeconds: null,
+      confidence: 'low',
+      warnings: ['missing-solve-time'],
+    })
+  })
+
+  it('flags solve-time-required when a timer is required but missing', () => {
+    expect(
+      evaluateLeetCodeAssessment(
+        leetcodeAccepted(null, { requireSolveTime: true }),
+      ),
+    ).toMatchObject({
+      status: 'accepted',
+      rating: 'good',
+      confidence: 'low',
+      warnings: ['missing-solve-time', 'solve-time-required'],
+    })
+  })
+
+  it('quick-submit also promotes a fast clean solve to Easy', () => {
+    expect(
+      evaluateLeetCodeAssessment(quickSubmit(fastSolveSeconds)),
+    ).toMatchObject({
+      status: 'accepted',
+      rating: 'easy',
+      reason: 'quick-easy-fast',
+      confidence: 'high',
+    })
+  })
+
+  it('promotes a fast clean recall solve to Easy', () => {
+    expect(
+      evaluateLeetCodeAssessment({
+        intent: 'leetcode-accepted',
+        difficulty: 'medium',
+        elapsedSeconds: fastSolveSeconds,
+        timing,
+        context: {
+          reviewMode: 'recall',
+          previousRating: 'good',
+          previousBestSeconds: 20 * secondsPerMinute,
+          previousElapsedSeconds: 20 * secondsPerMinute,
+        },
+      }),
+    ).toMatchObject({
+      status: 'accepted',
+      rating: 'easy',
+      reason: 'leetcode-easy-fast',
+    })
+  })
+
+  it('keeps a fast recall solve at Good while recovering from a recent failure', () => {
+    expect(
+      evaluateLeetCodeAssessment({
+        intent: 'leetcode-accepted',
+        difficulty: 'medium',
+        elapsedSeconds: fastSolveSeconds,
+        timing,
+        context: {
+          reviewMode: 'recall',
+          previousRating: 'again',
+          previousBestSeconds: null,
+          previousElapsedSeconds: null,
+        },
+      }),
+    ).toMatchObject({
+      status: 'accepted',
+      rating: 'good',
+      reason: 'leetcode-good',
+    })
+  })
+
+  it('preserves a manual rating but warns when it conflicts with overtime', () => {
+    expect(
+      evaluateLeetCodeAssessment({
+        intent: 'selected-rating',
+        difficulty: 'medium',
+        selectedRating: 'easy',
+        elapsedSeconds: overtimeSeconds,
+        timing,
+      }),
+    ).toMatchObject({
+      status: 'accepted',
+      rating: 'easy',
+      reason: 'selected-rating',
+      isOverTarget: true,
+      confidence: 'high',
+      warnings: ['selected-rating-conflict'],
+    })
+  })
+
+  it('preserves a manual rating without warnings when it matches the timing', () => {
+    expect(
+      evaluateLeetCodeAssessment({
+        intent: 'selected-rating',
+        difficulty: 'medium',
+        selectedRating: 'hard',
+        elapsedSeconds: moderateSolveSeconds,
+        timing,
+      }),
+    ).toMatchObject({
+      status: 'accepted',
+      rating: 'hard',
+      reason: 'selected-rating',
+      confidence: 'high',
+      warnings: [],
+    })
+  })
+})
+
 function quickSubmit(
   elapsedSeconds: number | null | undefined,
   timingPatch?: Partial<AssessmentTimingSettings>,

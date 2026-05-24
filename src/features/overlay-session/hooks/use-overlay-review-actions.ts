@@ -1,5 +1,6 @@
 import {
   evaluateLeetCodeAssessment,
+  type AssessmentPracticeContext,
   type LeetCodeAssessmentDecision,
 } from '@/features/assessment'
 import {
@@ -179,6 +180,7 @@ export function useOverlayReviewActions({
       difficulty: problem.difficulty,
       timing: currentContext.timing,
       elapsedSeconds: timer.readElapsedSeconds(),
+      context: buildAssessmentContext(currentContext.practice),
     })
 
     if (decision.status === 'blocked') {
@@ -204,6 +206,7 @@ export function useOverlayReviewActions({
       timing: currentContext.timing,
       selectedRating: overlayRef.current.selectedRating,
       elapsedSeconds: timer.readElapsedSeconds(),
+      context: buildAssessmentContext(currentContext.practice),
     })
 
     if (decision.status === 'blocked') {
@@ -228,6 +231,7 @@ export function useOverlayReviewActions({
       difficulty: problem.difficulty,
       timing: currentContext.timing,
       elapsedSeconds: timer.readElapsedSeconds(),
+      context: buildAssessmentContext(currentContext.practice),
     })
 
     if (decision.status === 'blocked') {
@@ -249,6 +253,7 @@ export function useOverlayReviewActions({
       return false
     }
 
+    const assessmentContext = buildAssessmentContext(currentContext.practice)
     const decision = evaluateLeetCodeAssessment(
       result.status === 'accepted'
         ? {
@@ -256,12 +261,14 @@ export function useOverlayReviewActions({
             difficulty: problem.difficulty,
             timing: currentContext.timing,
             elapsedSeconds: timer.readElapsedSeconds(),
+            context: assessmentContext,
           }
         : {
             intent: 'fail',
             difficulty: problem.difficulty,
             timing: currentContext.timing,
             elapsedSeconds: timer.readElapsedSeconds(),
+            context: assessmentContext,
           },
     )
 
@@ -444,6 +451,28 @@ export function useOverlayReviewActions({
     startTimer: timer.start,
     submitReview,
     updateReview,
+  }
+}
+
+function buildAssessmentContext(
+  practice: SerializedPracticeDetails | null,
+): AssessmentPracticeContext | null {
+  if (!practice) {
+    return null
+  }
+
+  const state = practice.practice
+  const hasPriorReview =
+    practice.summary.reviewCount > 0 || practice.latestAttempt !== null
+
+  return {
+    reviewMode: hasPriorReview ? 'recall' : 'first-solve',
+    previousRating: state?.lastRating ?? practice.latestAttempt?.rating ?? null,
+    previousBestSeconds: state?.bestElapsedSeconds ?? null,
+    previousElapsedSeconds:
+      state?.lastElapsedSeconds ??
+      practice.latestAttempt?.elapsedSeconds ??
+      null,
   }
 }
 
