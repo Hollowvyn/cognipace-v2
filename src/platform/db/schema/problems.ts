@@ -17,9 +17,6 @@ export const problems = sqliteTable(
     isPremium: integer('is_premium', { mode: 'boolean' })
       .notNull()
       .default(false),
-    isUserCreated: integer('is_user_created', { mode: 'boolean' })
-      .notNull()
-      .default(false),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },

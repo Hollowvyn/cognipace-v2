@@ -11,7 +11,6 @@ const baseProblem = {
   title: 'Two Sum',
   difficulty: 'easy' as const,
   isPremium: false,
-  isUserCreated: false,
   createdAt: new Date('2026-01-01T00:00:00.000Z'),
   updatedAt: new Date('2026-01-01T00:00:00.000Z'),
 }

@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import { createPracticeRepository } from '@/features/practice/data/practice-repository'
+import { saveReviewResult } from '@/features/practice/server/practice-service'
 import { createProblemsRepository } from '@/features/problems/data/problems-repository'
 import { getTodayQueue } from '@/features/queue/server/queue-service'
 import { createTracksRepository } from '@/features/tracks/data/tracks-repository'
 import migration0000 from '@/platform/db/migrations/0000_initial.sql?raw'
 import migration0001 from '@/platform/db/migrations/0001_lively_namor.sql?raw'
 import migration0002 from '@/platform/db/migrations/0002_add_track_due_at.sql?raw'
-import migration0003 from '@/platform/db/migrations/0003_problem_ownership_and_constraints.sql?raw'
+import migration0003 from '@/platform/db/migrations/0003_problem_slugs_and_constraints.sql?raw'
 import { createDb, createSqliteWasmLocator } from '@/platform/db'
 import { execProxy, isMutationStatement } from '@/platform/db/proxy'
-import { problemPractice, problems } from '@/platform/db/schema'
+import { fsrsCards, problemPractice, problems } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
 
 import { deserializeDb, serializeDb } from '@/platform/db/snapshot'
@@ -235,11 +235,13 @@ describe('db foundation', () => {
     handle.rawDb.exec(migration0003)
 
     expect(
-      readSqliteRows(
-        handle.rawDb,
-        'SELECT slug, difficulty, is_user_created FROM problems',
-      ),
-    ).toEqual([['two-sum', 'medium', 0]])
+      readSqliteRows(handle.rawDb, 'SELECT slug, difficulty FROM problems'),
+    ).toEqual([['two-sum', 'medium']])
+    expect(
+      readSqliteRows(handle.rawDb, "PRAGMA table_info('problems')")
+        .map((row) => row[1])
+        .includes('is_user_created'),
+    ).toBe(false)
     expect(
       readSqliteRows(handle.rawDb, 'SELECT problem_slug FROM problem_topics'),
     ).toEqual([['two-sum']])
@@ -298,12 +300,11 @@ describe('db foundation', () => {
   it('saves a review result and updates the queue from data state', async () => {
     const handle = await createTestDb()
     const problemsRepository = createProblemsRepository(handle.db)
-    const practiceRepository = createPracticeRepository(handle.db)
     const twoSum = await problemsRepository.getBySlug('two-sum')
 
     expect(twoSum).not.toBeNull()
 
-    const review = await practiceRepository.saveReviewResult({
+    const review = await saveReviewResult(handle.db, {
       problemSlug: twoSum?.slug ?? '',
       rating: 'good',
       reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
@@ -324,10 +325,9 @@ describe('db foundation', () => {
 
   it('rolls back practice state when review history cannot be written', async () => {
     const handle = await createTestDb()
-    const practiceRepository = createPracticeRepository(handle.db)
     const reviewedAt = new Date('2026-01-01T10:00:00.000Z')
 
-    await practiceRepository.saveReviewResult({
+    await saveReviewResult(handle.db, {
       problemSlug: 'two-sum',
       rating: 'good',
       reviewedAt,
@@ -335,14 +335,14 @@ describe('db foundation', () => {
       reviewAttemptId: 'fixed-review-id',
     })
 
-    const cardBeforeFailure = await practiceRepository.getCard('two-sum')
+    const cardBeforeFailure = await handle.db.select().from(fsrsCards).limit(1)
     const practiceBeforeFailure = await handle.db
       .select()
       .from(problemPractice)
       .limit(1)
 
     await expect(
-      practiceRepository.saveReviewResult({
+      saveReviewResult(handle.db, {
         problemSlug: 'two-sum',
         rating: 'easy',
         reviewedAt: new Date('2026-01-02T10:00:00.000Z'),
@@ -351,13 +351,13 @@ describe('db foundation', () => {
       }),
     ).rejects.toThrow()
 
-    const cardAfterFailure = await practiceRepository.getCard('two-sum')
+    const cardAfterFailure = await handle.db.select().from(fsrsCards).limit(1)
     const practiceAfterFailure = await handle.db
       .select()
       .from(problemPractice)
       .limit(1)
 
-    expect(cardAfterFailure?.reps).toBe(cardBeforeFailure?.reps)
+    expect(cardAfterFailure[0]?.reps).toBe(cardBeforeFailure[0]?.reps)
     expect(practiceAfterFailure[0]?.attemptCount).toBe(
       practiceBeforeFailure[0]?.attemptCount,
     )

@@ -212,7 +212,6 @@ function mapProblem(row: typeof problems.$inferSelect): Problem {
     title: row.title,
     difficulty: normalizeProblemDifficulty(row.difficulty),
     isPremium: row.isPremium,
-    isUserCreated: row.isUserCreated,
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
   }

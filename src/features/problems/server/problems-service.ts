@@ -17,15 +17,15 @@ import type {
 } from '../api/problems-contracts'
 import {
   serializeProblem,
-  serializeProblemBulkUpdate,
-  serializeProblemDeleteResult,
   serializeProblemForEdit,
   serializeProblemLibrary,
 } from '../api/problems-serializers'
 import type { UpsertProblemInput } from '../domain'
 
-export interface UpsertProblemFromPageInput
-  extends Omit<UpsertProblemInput, 'slug'> {
+export interface UpsertProblemFromPageInput extends Omit<
+  UpsertProblemInput,
+  'slug'
+> {
   slug?: string | null | undefined
   url: string
 }
@@ -46,7 +46,6 @@ export async function upsertProblemFromPage(
     await createProblemsRepository(db).upsertFromLeetCode(
       {
         slug,
-        previousSlug: location?.slug,
         title: input.title,
         difficulty: input.difficulty,
         isPremium: input.isPremium,
@@ -101,9 +100,8 @@ export async function updateProblem(
   db: Db,
   request: ProblemsUpdateProblemRequest,
 ) {
-  const problemForEdit = await createProblemsRepository(db).updateProblem(
-    request,
-  )
+  const problemForEdit =
+    await createProblemsRepository(db).updateProblem(request)
 
   if (!problemForEdit) {
     throw new Error(`Problem "${request.problemSlug}" was not found.`)
@@ -116,27 +114,21 @@ export async function deleteProblem(
   db: Db,
   request: ProblemsDeleteProblemRequest,
 ) {
-  return serializeProblemDeleteResult(
-    await createProblemsRepository(db).deleteProblems([request.problemSlug]),
-  )
+  await createProblemsRepository(db).deleteProblems([request.problemSlug])
 }
 
 export async function bulkDeleteProblems(
   db: Db,
   request: ProblemsBulkDeleteRequest,
 ) {
-  return serializeProblemDeleteResult(
-    await createProblemsRepository(db).deleteProblems(request.problemSlugs),
-  )
+  await createProblemsRepository(db).deleteProblems(request.problemSlugs)
 }
 
 export async function bulkUpdateProblems(
   db: Db,
   request: ProblemsBulkUpdateProblemsRequest,
 ) {
-  return serializeProblemBulkUpdate(
-    await createProblemsRepository(db).bulkUpdateProblems(request),
-  )
+  await createProblemsRepository(db).bulkUpdateProblems(request)
 }
 
 export function readProblemSlugFromSlugOrUrl(slugOrUrl: string) {

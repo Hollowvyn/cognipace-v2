@@ -14,7 +14,6 @@ export function createSerializedProblem(
     title: 'Binary Search',
     difficulty: 'easy',
     isPremium: false,
-    isUserCreated: true,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -32,7 +31,6 @@ export function createProblemForEditResponse(
     options: {
       topics: [],
       companies: [],
-      trackGroups: [],
     },
     ...overrides,
   }
@@ -54,7 +52,6 @@ export function createProblemLibraryResponse(
     options: {
       topics: [],
       companies: [],
-      trackGroups: [],
     },
     rows: [
       {

@@ -5,6 +5,8 @@
   --color-foreground: var(--cp-color-foreground);
   --color-card: var(--cp-color-card);
   --color-card-foreground: var(--cp-color-card-foreground);
+  --color-popover: var(--cp-color-popover);
+  --color-popover-foreground: var(--cp-color-popover-foreground);
   --color-muted: var(--cp-color-muted);
   --color-muted-foreground: var(--cp-color-muted-foreground);
   --color-border: var(--cp-color-border);
@@ -38,6 +40,8 @@
     --cp-color-foreground: #16181f;
     --cp-color-card: #ffffff;
     --cp-color-card-foreground: #16181f;
+    --cp-color-popover: #ffffff;
+    --cp-color-popover-foreground: #16181f;
     --cp-color-muted: #eef1f5;
     --cp-color-muted-foreground: #616977;
     --cp-color-border: #d9dee7;
@@ -121,6 +125,8 @@
     --cp-color-foreground: #dfe3e2;
     --cp-color-card: #1c2020;
     --cp-color-card-foreground: #eef2f1;
+    --cp-color-popover: #202525;
+    --cp-color-popover-foreground: #eef2f1;
     --cp-color-muted: #262b2b;
     --cp-color-muted-foreground: #b6c0ba;
     --cp-color-border: #414943;
@@ -183,6 +189,8 @@
       --cp-color-foreground: #dfe3e2;
       --cp-color-card: #1c2020;
       --cp-color-card-foreground: #eef2f1;
+      --cp-color-popover: #202525;
+      --cp-color-popover-foreground: #eef2f1;
       --cp-color-muted: #262b2b;
       --cp-color-muted-foreground: #b6c0ba;
       --cp-color-border: #414943;

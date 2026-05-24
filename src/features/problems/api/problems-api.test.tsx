@@ -119,11 +119,7 @@ describe('problems API hooks', () => {
     })
     await expectProblemMutation({
       method: 'problems.deleteProblem',
-      response: {
-        deletedProblemSlugs: ['binary-search'],
-        protectedProblemSlugs: [],
-        missingProblemSlugs: [],
-      },
+      response: undefined,
       request: {
         surface: 'dashboard',
         problemSlug: 'binary-search',
@@ -132,10 +128,7 @@ describe('problems API hooks', () => {
     })
     await expectProblemMutation({
       method: 'problems.bulkUpdateProblems',
-      response: {
-        updatedProblemSlugs: ['binary-search'],
-        missingProblemSlugs: [],
-      },
+      response: undefined,
       request: {
         surface: 'dashboard',
         problemSlugs: ['binary-search'],
@@ -145,11 +138,7 @@ describe('problems API hooks', () => {
     })
     await expectProblemMutation({
       method: 'problems.bulkDelete',
-      response: {
-        deletedProblemSlugs: ['binary-search'],
-        protectedProblemSlugs: [],
-        missingProblemSlugs: [],
-      },
+      response: undefined,
       request: {
         surface: 'dashboard',
         problemSlugs: ['binary-search'],

@@ -5,7 +5,11 @@ import { sendMessage } from '@/extension/messaging'
 import { createSerializedPracticeDetails } from '@/testing/practice-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
-import { useSaveReviewResult } from './practice-api'
+import {
+  useResetPracticeSchedule,
+  useSaveReviewResult,
+  useSetPracticeSuspended,
+} from './practice-api'
 
 vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
@@ -35,8 +39,54 @@ describe('practice API hooks', () => {
     })
     expect(invalidateQueries).not.toHaveBeenCalled()
   })
+
+  it('invalidates practice-backed queries after suspend and reset writes', async () => {
+    await expectPracticeMutation({
+      method: 'practice.setSuspended',
+      request: {
+        surface: 'dashboard',
+        problemSlug: 'two-sum',
+        suspended: true,
+      },
+      useHook: useSetPracticeSuspended,
+    })
+    await expectPracticeMutation({
+      method: 'practice.resetSchedule',
+      request: {
+        surface: 'dashboard',
+        problemSlug: 'two-sum',
+      },
+      useHook: useResetPracticeSchedule,
+    })
+  })
 })
 
 const practiceDetails = createSerializedPracticeDetails({
   cardId: 'fsrs:two-sum',
 })
+
+async function expectPracticeMutation<TRequest>(input: {
+  method: string
+  request: TRequest
+  useHook: () => {
+    mutateAsync: (request: TRequest) => Promise<unknown>
+  }
+}) {
+  const { queryClient, wrapper } = createQueryTestHarness()
+  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+  vi.mocked(sendMessage).mockResolvedValue(practiceDetails)
+  const { result } = renderHook(() => input.useHook(), { wrapper })
+
+  await act(async () => {
+    await result.current.mutateAsync(input.request)
+  })
+
+  expect(sendMessage).toHaveBeenCalledWith(input.method, input.request)
+  expect(invalidateQueries.mock.calls.map(([call]) => call)).toEqual([
+    { queryKey: ['practice-details'] },
+    { queryKey: ['problems'] },
+    { queryKey: ['app-shell-data'] },
+    { queryKey: ['today-queue'] },
+    { queryKey: ['tracks'] },
+  ])
+}

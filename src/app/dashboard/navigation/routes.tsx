@@ -8,19 +8,18 @@ import {
 } from '@tanstack/react-router'
 
 import { DashboardShell } from '../dashboard-shell'
-import {
-  dashboardModalRouteMeta,
-  dashboardRouteMeta,
-} from './route-manifest'
+import { dashboardModalRouteMeta, dashboardRouteMeta } from './route-manifest'
 import { AnalyticsPage } from '../screens/analytics-page'
 import { LibraryPage } from '../screens/library-page'
 import {
-  EditProblemModalPage,
   EditTrackModalPage,
-  NewProblemModalPage,
   NewTrackModalPage,
 } from '../screens/modal-placeholders'
 import { OverviewPage } from '../screens/overview-page'
+import {
+  EditProblemModalPage,
+  NewProblemModalPage,
+} from '../screens/problem-modal-pages'
 import { SettingsPage } from '../screens/settings-page'
 import { TracksPage } from '../screens/tracks-page'
 export { dashboardPaths } from './route-manifest'

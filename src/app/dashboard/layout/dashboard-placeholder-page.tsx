@@ -12,7 +12,7 @@ import { PlaceholderPanel } from './placeholder-panel'
 
 interface DashboardPlaceholderAction {
   label: string
-  to: typeof dashboardPaths.trackNew | typeof dashboardPaths.problemNew
+  to: typeof dashboardPaths.trackNew
 }
 
 export interface DashboardPlaceholderPageProps {

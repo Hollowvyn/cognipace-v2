@@ -15,6 +15,7 @@ export {
   ProblemDifficultyBadge,
 } from './components/problem-difficulty-badge'
 export { ProblemLibraryScreen } from './components/library/problem-library-screen'
+export { ProblemForm } from './components/form/problem-form'
 export {
   bulkDeleteProblemsViaRuntime,
   bulkUpdateProblemsViaRuntime,
@@ -48,7 +49,6 @@ export {
   problemRuntimeSurfaceSchema,
   problemSlugSchema,
   problemTopicSchema,
-  problemTrackGroupOptionSchema,
   problemTrackMembershipSchema,
   problemsBulkDeleteRequestSchema,
   problemsBulkUpdateProblemsRequestSchema,
@@ -79,6 +79,5 @@ export {
   type SerializedProblem,
   type SerializedProblemCompany,
   type SerializedProblemTopic,
-  type SerializedProblemTrackGroupOption,
   type SerializedProblemTrackMembership,
 } from './api/problems-contracts'

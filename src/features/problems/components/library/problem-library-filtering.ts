@@ -1,116 +1,94 @@
+import type { ColumnFiltersState, FilterFn, Row } from '@tanstack/react-table'
+
+import type { ProblemDifficulty } from '@/lib/problem-catalog'
+
 import type {
   ProblemLibraryResponse,
   ProblemLibraryRow,
   ProblemLibraryStatus,
 } from '../../api/problems-contracts'
 
-export type ProblemDifficultyFilter =
-  | 'all'
-  | 'easy'
-  | 'medium'
-  | 'hard'
-  | 'unknown'
-export type ProblemStatusFilter = 'all' | ProblemLibraryStatus
-export type ProblemPremiumFilter = 'all' | 'free' | 'premium'
-export type ProblemLibrarySortDirection = 'asc' | 'desc'
-export type ProblemLibrarySortKey =
-  | 'difficulty'
-  | 'lastSolvedAt'
-  | 'nextReviewAt'
-  | 'status'
-  | 'title'
+export const problemLibraryColumnIds = {
+  companyIds: 'companyIds',
+  difficulty: 'difficulty',
+  expander: 'expander',
+  isPremium: 'isPremium',
+  isSuspended: 'isSuspended',
+  lastReviewedAt: 'lastReviewedAt',
+  nextReviewAt: 'nextReviewAt',
+  retention: 'retention',
+  selection: 'selection',
+  status: 'status',
+  title: 'title',
+  trackIds: 'trackIds',
+  topicIds: 'topicIds',
+} as const
 
 export interface ProblemLibraryFilters {
-  companyId: string
-  difficulty: ProblemDifficultyFilter
-  premium: ProblemPremiumFilter
+  companyIds: string[]
+  difficultyValues: ProblemDifficulty[]
+  hidePremium: boolean
+  hideSuspended: boolean
   search: string
-  status: ProblemStatusFilter
-  topicId: string
-  trackGroupId: string
-}
-
-export interface ProblemLibrarySort {
-  direction: ProblemLibrarySortDirection
-  key: ProblemLibrarySortKey
+  statusValues: ProblemLibraryStatus[]
+  trackIds: string[]
+  topicIds: string[]
 }
 
 export const defaultProblemLibraryFilters = {
-  companyId: 'all',
-  difficulty: 'all',
-  premium: 'all',
+  companyIds: [],
+  difficultyValues: [],
+  hidePremium: false,
+  hideSuspended: false,
   search: '',
-  status: 'all',
-  topicId: 'all',
-  trackGroupId: 'all',
+  statusValues: [],
+  trackIds: [],
+  topicIds: [],
 } as const satisfies ProblemLibraryFilters
 
-export const defaultProblemLibrarySort = {
-  direction: 'asc',
-  key: 'title',
-} as const satisfies ProblemLibrarySort
-
-export function filterProblemLibraryRows(
-  rows: readonly ProblemLibraryRow[],
+export function createProblemLibraryColumnFilters(
   filters: ProblemLibraryFilters,
-) {
-  const search = normalizeSearch(filters.search)
+): ColumnFiltersState {
+  const columnFilters: ColumnFiltersState = []
 
-  return rows.filter((row) => {
-    if (filters.difficulty !== 'all') {
-      if (row.problem.difficulty !== filters.difficulty) {
-        return false
-      }
-    }
+  pushArrayColumnFilter(
+    columnFilters,
+    problemLibraryColumnIds.difficulty,
+    filters.difficultyValues,
+  )
+  pushArrayColumnFilter(
+    columnFilters,
+    problemLibraryColumnIds.status,
+    filters.statusValues,
+  )
+  pushArrayColumnFilter(
+    columnFilters,
+    problemLibraryColumnIds.topicIds,
+    filters.topicIds,
+  )
+  pushArrayColumnFilter(
+    columnFilters,
+    problemLibraryColumnIds.trackIds,
+    filters.trackIds,
+  )
+  pushArrayColumnFilter(
+    columnFilters,
+    problemLibraryColumnIds.companyIds,
+    filters.companyIds,
+  )
 
-    if (filters.status !== 'all' && row.status !== filters.status) {
-      return false
-    }
+  if (filters.hidePremium) {
+    columnFilters.push({ id: problemLibraryColumnIds.isPremium, value: true })
+  }
 
-    if (filters.premium === 'free' && row.problem.isPremium) {
-      return false
-    }
+  if (filters.hideSuspended) {
+    columnFilters.push({
+      id: problemLibraryColumnIds.isSuspended,
+      value: true,
+    })
+  }
 
-    if (filters.premium === 'premium' && !row.problem.isPremium) {
-      return false
-    }
-
-    if (
-      filters.topicId !== 'all' &&
-      !row.topics.some((topic) => topic.id === filters.topicId)
-    ) {
-      return false
-    }
-
-    if (
-      filters.companyId !== 'all' &&
-      !row.companies.some((company) => company.id === filters.companyId)
-    ) {
-      return false
-    }
-
-    if (
-      filters.trackGroupId !== 'all' &&
-      !row.trackMemberships.some(
-        (membership) => membership.groupId === filters.trackGroupId,
-      )
-    ) {
-      return false
-    }
-
-    return !search || createProblemSearchText(row).includes(search)
-  })
-}
-
-export function sortProblemLibraryRows(
-  rows: readonly ProblemLibraryRow[],
-  sort: ProblemLibrarySort,
-) {
-  return [...rows].sort((left, right) => {
-    const result = compareProblemRows(left, right, sort.key)
-
-    return sort.direction === 'asc' ? result : result * -1
-  })
+  return columnFilters
 }
 
 export function summarizeVisibleLibraryRows(
@@ -126,9 +104,82 @@ export function summarizeVisibleLibraryRows(
 }
 
 export function hasProblemLibraryFilters(filters: ProblemLibraryFilters) {
-  return Object.entries(defaultProblemLibraryFilters).some(
-    ([key, value]) => filters[key as keyof ProblemLibraryFilters] !== value,
+  return (
+    filters.search.trim().length > 0 ||
+    filters.difficultyValues.length > 0 ||
+    filters.statusValues.length > 0 ||
+    filters.trackIds.length > 0 ||
+    filters.topicIds.length > 0 ||
+    filters.companyIds.length > 0 ||
+    filters.hidePremium ||
+    filters.hideSuspended
   )
+}
+
+export const problemLibraryGlobalFilter: FilterFn<ProblemLibraryRow> = (
+  row,
+  _columnId,
+  filterValue,
+) => {
+  const search = normalizeSearch(String(filterValue ?? ''))
+
+  return !search || createProblemSearchText(row.original).includes(search)
+}
+
+problemLibraryGlobalFilter.autoRemove = (value) =>
+  normalizeSearch(String(value ?? '')).length === 0
+
+export const problemLibraryIncludesAnyFilter: FilterFn<ProblemLibraryRow> = (
+  row,
+  columnId,
+  filterValue,
+) => {
+  const selectedValues = toStringArray(filterValue)
+
+  if (selectedValues.length === 0) {
+    return true
+  }
+
+  const value = row.getValue<string | string[]>(columnId)
+
+  if (Array.isArray(value)) {
+    return value.some((candidate) => selectedValues.includes(candidate))
+  }
+
+  return selectedValues.includes(value)
+}
+
+problemLibraryIncludesAnyFilter.autoRemove = (value) =>
+  toStringArray(value).length === 0
+
+export const problemLibraryExcludeTrueFilter: FilterFn<ProblemLibraryRow> = (
+  row,
+  columnId,
+  filterValue,
+) => {
+  if (filterValue !== true) {
+    return true
+  }
+
+  return row.getValue<boolean>(columnId) !== true
+}
+
+problemLibraryExcludeTrueFilter.autoRemove = (value) => value !== true
+
+export function getFilteredOriginalRows(
+  rows: readonly Row<ProblemLibraryRow>[],
+) {
+  return rows.map((row) => row.original)
+}
+
+function pushArrayColumnFilter(
+  columnFilters: ColumnFiltersState,
+  id: string,
+  values: readonly string[],
+) {
+  if (values.length > 0) {
+    columnFilters.push({ id, value: [...values] })
+  }
 }
 
 function createProblemSearchText(row: ProblemLibraryRow) {
@@ -139,10 +190,8 @@ function createProblemSearchText(row: ProblemLibraryRow) {
       row.problem.difficulty,
       ...row.topics.map((topic) => topic.label),
       ...row.companies.map((company) => company.label),
-      ...row.trackMemberships.flatMap((membership) => [
-        membership.trackTitle,
-        membership.groupTitle,
-      ]),
+      ...row.trackMemberships.map((membership) => membership.trackTitle),
+      ...row.trackMemberships.map((membership) => membership.groupTitle),
     ].join(' '),
   )
 }
@@ -151,58 +200,8 @@ function normalizeSearch(value: string) {
   return value.trim().toLowerCase()
 }
 
-const difficultyOrder = {
-  easy: 1,
-  medium: 2,
-  hard: 3,
-  unknown: 4,
-} as const
-
-const statusOrder = {
-  due: 1,
-  scheduled: 2,
-  'not-started': 3,
-  suspended: 4,
-} as const
-
-function compareProblemRows(
-  left: ProblemLibraryRow,
-  right: ProblemLibraryRow,
-  key: ProblemLibrarySortKey,
-) {
-  switch (key) {
-    case 'difficulty':
-      return compareNumber(
-        difficultyOrder[left.problem.difficulty],
-        difficultyOrder[right.problem.difficulty],
-      )
-    case 'lastSolvedAt':
-      return compareNullableDate(left.lastSolvedAt, right.lastSolvedAt)
-    case 'nextReviewAt':
-      return compareNullableDate(left.nextReviewAt, right.nextReviewAt)
-    case 'status':
-      return compareNumber(statusOrder[left.status], statusOrder[right.status])
-    case 'title':
-      return left.problem.title.localeCompare(right.problem.title)
-  }
-}
-
-function compareNullableDate(left: string | null, right: string | null) {
-  if (left === right) {
-    return 0
-  }
-
-  if (!left) {
-    return 1
-  }
-
-  if (!right) {
-    return -1
-  }
-
-  return compareNumber(new Date(left).getTime(), new Date(right).getTime())
-}
-
-function compareNumber(left: number, right: number) {
-  return left - right
+function toStringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : []
 }

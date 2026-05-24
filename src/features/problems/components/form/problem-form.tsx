@@ -1,0 +1,156 @@
+import { Loader2 } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+
+import { InlineStatus } from '@/components/ui/inline-status'
+import type { SerializedProblem } from '@/features/problems/api/problems-contracts'
+import {
+  useCreateProblem,
+  useProblemLibrary,
+  useProblemForEdit,
+  useUpdateProblem,
+} from '@/features/problems/api/problems-api'
+import { parseLeetCodeProblemInput } from '@/lib/leetcode'
+
+import { ProblemFormFields } from './problem-form-fields'
+
+type ProblemFormProps =
+  | {
+      mode: 'create'
+      onCancel: () => void
+      onSaved: () => void
+    }
+  | {
+      mode: 'edit'
+      onCancel: () => void
+      onLoaded?: ((problem: SerializedProblem) => void) | undefined
+      onSaved: () => void
+      problemSlug: string
+    }
+
+export function ProblemForm(props: ProblemFormProps) {
+  if (props.mode === 'edit') {
+    return (
+      <EditProblemForm
+        onCancel={props.onCancel}
+        onLoaded={props.onLoaded}
+        onSaved={props.onSaved}
+        problemSlug={props.problemSlug}
+      />
+    )
+  }
+
+  return <CreateProblemForm onCancel={props.onCancel} onSaved={props.onSaved} />
+}
+
+function CreateProblemForm({
+  onCancel,
+  onSaved,
+}: {
+  onCancel: () => void
+  onSaved: () => void
+}) {
+  const createProblem = useCreateProblem()
+  const libraryQuery = useProblemLibrary({ surface: 'dashboard' })
+  const labelOptions = libraryQuery.data?.options
+  const companyOptions = labelOptions?.companies ?? []
+  const topicOptions = labelOptions?.topics ?? []
+
+  return (
+    <ProblemFormFields
+      companyOptions={companyOptions}
+      mode="create"
+      onCancel={onCancel}
+      onSaved={onSaved}
+      onSubmit={(values) =>
+        createProblem.mutateAsync({
+          surface: 'dashboard',
+          slugOrUrl: readRequiredSlug(values.slugOrUrl),
+          title: values.title.trim(),
+          difficulty: values.difficulty,
+          isPremium: values.isPremium,
+          topicLabels: values.topicLabels,
+          companyLabels: values.companyLabels,
+        })
+      }
+      pending={createProblem.isPending}
+      topicOptions={topicOptions}
+    />
+  )
+}
+
+function EditProblemForm({
+  onCancel,
+  onLoaded,
+  onSaved,
+  problemSlug,
+}: {
+  onCancel: () => void
+  onLoaded?: ((problem: SerializedProblem) => void) | undefined
+  onSaved: () => void
+  problemSlug: string
+}) {
+  const updateProblem = useUpdateProblem()
+  const loadedProblemSlugRef = useRef<string | null>(null)
+  const editQuery = useProblemForEdit({
+    surface: 'dashboard',
+    problemSlug,
+  })
+
+  useEffect(() => {
+    const problem = editQuery.data?.problem
+
+    if (problem && loadedProblemSlugRef.current !== problem.slug) {
+      loadedProblemSlugRef.current = problem.slug
+      onLoaded?.(problem)
+    }
+  }, [editQuery.data?.problem, onLoaded])
+
+  if (editQuery.isPending) {
+    return (
+      <InlineStatus>
+        <Loader2 aria-hidden="true" className="animate-spin" />
+        Loading problem…
+      </InlineStatus>
+    )
+  }
+
+  if (editQuery.isError || !editQuery.data) {
+    return (
+      <InlineStatus role="alert" tone="danger">
+        Failed to load this problem.
+      </InlineStatus>
+    )
+  }
+
+  return (
+    <ProblemFormFields
+      companyOptions={editQuery.data.options.companies}
+      key={editQuery.data.problem.slug}
+      mode="edit"
+      onCancel={onCancel}
+      onSaved={onSaved}
+      onSubmit={(values) =>
+        updateProblem.mutateAsync({
+          surface: 'dashboard',
+          problemSlug: editQuery.data.problem.slug,
+          title: values.title.trim(),
+          difficulty: values.difficulty,
+          isPremium: values.isPremium,
+          topicLabels: values.topicLabels,
+          companyLabels: values.companyLabels,
+        })
+      }
+      pending={updateProblem.isPending}
+      problem={editQuery.data.problem}
+      selectedCompanyLabels={editQuery.data.companies.map(
+        (company) => company.label,
+      )}
+      selectedTopicLabels={editQuery.data.topics.map((topic) => topic.label)}
+      topicOptions={editQuery.data.options.topics}
+    />
+  )
+}
+
+function readRequiredSlug(slugOrUrl: string) {
+  return parseLeetCodeProblemInput(slugOrUrl)?.slug ?? ''
+}

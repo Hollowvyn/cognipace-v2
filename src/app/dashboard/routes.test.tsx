@@ -1,11 +1,15 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryHistory } from '@tanstack/react-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
 import { defaultUserSettings } from '@/features/settings/domain'
-import { createProblemLibraryResponse } from '@/testing/problem-fixtures'
+import {
+  createProblemForEditResponse,
+  createProblemLibraryResponse,
+  createSerializedProblem,
+} from '@/testing/problem-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import {
@@ -13,6 +17,7 @@ import {
   createDashboardRouter,
   dashboardPaths,
 } from './navigation/routes'
+import { dashboardModalRouteMeta } from './navigation/route-manifest'
 
 vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
@@ -33,11 +38,27 @@ function renderDashboard(initialEntry = '/') {
 }
 
 describe('dashboard routes', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    window.history.replaceState(null, '', '/')
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(sendMessage).mockImplementation((method) => {
       if (method === 'problems.getLibrary') {
         return Promise.resolve(createProblemLibraryResponse())
+      }
+
+      if (method === 'problems.getProblemForEdit') {
+        return Promise.resolve(
+          createProblemForEditResponse({
+            problem: createSerializedProblem({
+              slug: 'two-sum',
+              title: 'Two Sum',
+            }),
+          }),
+        )
       }
 
       return Promise.resolve(defaultUserSettings)
@@ -68,19 +89,23 @@ describe('dashboard routes', () => {
   })
 
   it.each([
-    ['/tracks/new', 'Tracks', 'New Track'],
-    ['/tracks/leetcode-75/edit', 'Tracks', 'Edit Track'],
-    ['/library/problems/new', 'Library', 'New Problem'],
-    ['/library/problems/two-sum/edit', 'Library', 'Edit Problem'],
+    ['/tracks/new', 'Tracks', /New Track/i, 'Placeholder'],
+    ['/tracks/leetcode-75/edit', 'Tracks', /Edit Track/i, 'Placeholder'],
+    ['/library/problems/new', 'Library', /Add problem/i, null],
+    ['/library/problems/two-sum/edit', 'Library', /Edit/i, null],
   ])(
-    'renders %s over the parent placeholder',
-    async (path, parentHeading, modalHeading) => {
+    'renders %s over the parent route',
+    async (path, parentHeading, modalHeading, eyebrow) => {
       renderDashboard(path)
 
       expect(
         await screen.findByRole('heading', { name: parentHeading }),
       ).toBeVisible()
       expect(screen.getByRole('dialog', { name: modalHeading })).toBeVisible()
+
+      if (eyebrow) {
+        expect(screen.getByText(eyebrow)).toBeVisible()
+      }
     },
   )
 
@@ -93,12 +118,33 @@ describe('dashboard routes', () => {
     const { router, user } = renderDashboard(path)
 
     await screen.findByRole('dialog')
-    await user.click(screen.getByRole('link', { name: 'Close' }))
+    const closeLink = screen.queryByRole('link', { name: 'Close' })
+
+    if (closeLink) {
+      await user.click(closeLink)
+    } else {
+      await user.click(await screen.findByRole('button', { name: 'CANCEL' }))
+    }
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe(closePath)
     })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('does not mark implemented problem modals as placeholders', () => {
+    expect(dashboardModalRouteMeta.problemNew.staticData.presentation).toBe(
+      'modal',
+    )
+    expect(dashboardModalRouteMeta.problemEdit.staticData.presentation).toBe(
+      'modal',
+    )
+    expect(dashboardModalRouteMeta.problemNew.description).not.toMatch(
+      /later phase/i,
+    )
+    expect(dashboardModalRouteMeta.problemEdit.description).not.toMatch(
+      /later phase/i,
+    )
   })
 
   it('closes modal placeholders with Escape', async () => {
@@ -113,6 +159,31 @@ describe('dashboard routes', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('closes route modals when the backdrop is clicked', async () => {
+    const { router, user } = renderDashboard('/library/problems/new')
+
+    const dialog = await screen.findByRole('dialog', { name: 'Add problem' })
+    const backdrop = dialog.parentElement
+
+    expect(backdrop).not.toBeNull()
+    await user.click(backdrop as HTMLElement)
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/library')
+    })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('rewrites modal routes to the parent route before browser reload', async () => {
+    window.history.replaceState(null, '', '/#/library/problems/new')
+    renderDashboard('/library/problems/new')
+
+    await screen.findByRole('dialog', { name: 'Add problem' })
+    window.dispatchEvent(new Event('beforeunload'))
+
+    expect(window.location.hash).toBe('#/library')
+  })
+
   it('keeps parent nav active for modal child routes', async () => {
     renderDashboard('/library/problems/two-sum/edit')
 
@@ -122,6 +193,24 @@ describe('dashboard routes', () => {
     expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute(
       'aria-current',
     )
+  })
+
+  it('skips to dashboard content without changing the hash route', async () => {
+    const { router, user } = renderDashboard('/library')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Library' }),
+    ).toBeVisible()
+
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'Skip to content' }),
+    ).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+
+    expect(screen.getByRole('main')).toHaveFocus()
+    expect(router.state.location.pathname).toBe('/library')
   })
 
   it('does not define deferred destructive or data-management routes', () => {

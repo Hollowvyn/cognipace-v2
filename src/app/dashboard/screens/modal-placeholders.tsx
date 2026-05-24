@@ -9,14 +9,6 @@ export function EditTrackModalPage() {
   return <ModalPlaceholder content={dashboardModalRouteMeta.trackEdit} />
 }
 
-export function NewProblemModalPage() {
-  return <ModalPlaceholder content={dashboardModalRouteMeta.problemNew} />
-}
-
-export function EditProblemModalPage() {
-  return <ModalPlaceholder content={dashboardModalRouteMeta.problemEdit} />
-}
-
 function ModalPlaceholder({
   content,
 }: {
@@ -26,6 +18,7 @@ function ModalPlaceholder({
     <RouteModal
       closeTo={content.closeTo}
       description={content.description}
+      eyebrow="Placeholder"
       title={content.staticData.title}
     />
   )

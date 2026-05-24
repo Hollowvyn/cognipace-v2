@@ -19,7 +19,6 @@ export const serializedProblemSchema = z.object({
   title: z.string(),
   difficulty: problemDifficultySchema,
   isPremium: z.boolean(),
-  isUserCreated: z.boolean(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 })
@@ -54,19 +53,6 @@ export type SerializedProblemTrackMembership = z.infer<
   typeof problemTrackMembershipSchema
 >
 
-export const problemTrackGroupOptionSchema = z.object({
-  trackId: z.string(),
-  trackSlug: z.string(),
-  trackTitle: z.string(),
-  groupId: z.string(),
-  groupTitle: z.string(),
-  groupPosition: z.number().int(),
-})
-
-export type SerializedProblemTrackGroupOption = z.infer<
-  typeof problemTrackGroupOptionSchema
->
-
 export const problemLibraryStatusSchema = z.enum([
   'not-started',
   'due',
@@ -90,43 +76,44 @@ export const problemLibraryRowSchema = z.object({
 
 export type ProblemLibraryRow = z.infer<typeof problemLibraryRowSchema>
 
-export const problemLibrarySummarySchema = z.object({
-  totalCount: z.number().int().min(0),
-  filteredCount: z.number().int().min(0),
-  dueCount: z.number().int().min(0),
-  suspendedCount: z.number().int().min(0),
-}).superRefine((summary, context) => {
-  if (summary.filteredCount > summary.totalCount) {
-    context.addIssue({
-      code: 'custom',
-      message: 'filteredCount cannot exceed totalCount',
-      path: ['filteredCount'],
-    })
-  }
+export const problemLibrarySummarySchema = z
+  .object({
+    totalCount: z.number().int().min(0),
+    filteredCount: z.number().int().min(0),
+    dueCount: z.number().int().min(0),
+    suspendedCount: z.number().int().min(0),
+  })
+  .superRefine((summary, context) => {
+    if (summary.filteredCount > summary.totalCount) {
+      context.addIssue({
+        code: 'custom',
+        message: 'filteredCount cannot exceed totalCount',
+        path: ['filteredCount'],
+      })
+    }
 
-  if (summary.dueCount > summary.totalCount) {
-    context.addIssue({
-      code: 'custom',
-      message: 'dueCount cannot exceed totalCount',
-      path: ['dueCount'],
-    })
-  }
+    if (summary.dueCount > summary.totalCount) {
+      context.addIssue({
+        code: 'custom',
+        message: 'dueCount cannot exceed totalCount',
+        path: ['dueCount'],
+      })
+    }
 
-  if (summary.suspendedCount > summary.totalCount) {
-    context.addIssue({
-      code: 'custom',
-      message: 'suspendedCount cannot exceed totalCount',
-      path: ['suspendedCount'],
-    })
-  }
-})
+    if (summary.suspendedCount > summary.totalCount) {
+      context.addIssue({
+        code: 'custom',
+        message: 'suspendedCount cannot exceed totalCount',
+        path: ['suspendedCount'],
+      })
+    }
+  })
 
 export type ProblemLibrarySummary = z.infer<typeof problemLibrarySummarySchema>
 
 export const problemLibraryOptionsSchema = z.object({
   topics: z.array(problemTopicSchema),
   companies: z.array(problemCompanySchema),
-  trackGroups: z.array(problemTrackGroupOptionSchema),
 })
 
 export type ProblemLibraryOptions = z.infer<typeof problemLibraryOptionsSchema>
@@ -254,18 +241,11 @@ export type ProblemsBulkDeleteRequest = z.infer<
   typeof problemsBulkDeleteRequestSchema
 >
 
-export const problemDeleteResponseSchema = z.object({
-  deletedProblemSlugs: z.array(problemSlugSchema),
-  protectedProblemSlugs: z.array(problemSlugSchema),
-  missingProblemSlugs: z.array(problemSlugSchema),
-})
+export const problemDeleteResponseSchema = z.void()
 
 export type ProblemDeleteResponse = z.infer<typeof problemDeleteResponseSchema>
 
-export const problemBulkUpdateResponseSchema = z.object({
-  updatedProblemSlugs: z.array(problemSlugSchema),
-  missingProblemSlugs: z.array(problemSlugSchema),
-})
+export const problemBulkUpdateResponseSchema = z.void()
 
 export type ProblemBulkUpdateResponse = z.infer<
   typeof problemBulkUpdateResponseSchema

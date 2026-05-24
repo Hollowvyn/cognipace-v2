@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
-import { createPracticeRepository } from '@/features/practice/data/practice-repository'
+import { saveReviewResult } from '@/features/practice/server/practice-service'
 import {
   bulkDeleteProblems,
   bulkUpdateProblems,
@@ -16,9 +16,7 @@ import {
   problemCompanies,
   problemPractice,
   problemTopics,
-  problems,
   reviewAttempts,
-  topics,
 } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
 
@@ -65,29 +63,37 @@ describe('ProblemsRepository library data', () => {
   it('creates user problems and edits seeded or user-created metadata with replacement labels', async () => {
     const handle = await createTestDb()
 
-    const created = await createProblem(handle.db, newProblemInput({
-      topicLabels: ['Array', 'Binary Search'],
-      companyLabels: ['Meta'],
-    }))
-    const edited = await updateProblem(handle.db, updateProblemInput({
-      title: 'Binary Search Updated',
-      difficulty: 'medium',
-      isPremium: true,
-      topicLabels: ['Search'],
-      companyLabels: ['Netflix'],
-    }))
-    const seededDuplicate = await createProblem(handle.db, newProblemInput({
-      slugOrUrl: 'two-sum',
-      title: 'Two Sum Custom',
-      difficulty: 'hard',
-      isPremium: true,
-      topicLabels: ['Hash Table'],
-      companyLabels: ['Amazon'],
-    }))
+    const created = await createProblem(
+      handle.db,
+      newProblemInput({
+        topicLabels: ['Array', 'Binary Search'],
+        companyLabels: ['Meta'],
+      }),
+    )
+    const edited = await updateProblem(
+      handle.db,
+      updateProblemInput({
+        title: 'Binary Search Updated',
+        difficulty: 'medium',
+        isPremium: true,
+        topicLabels: ['Search'],
+        companyLabels: ['Netflix'],
+      }),
+    )
+    const seededDuplicate = await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'two-sum',
+        title: 'Two Sum Custom',
+        difficulty: 'hard',
+        isPremium: true,
+        topicLabels: ['Hash Table'],
+        companyLabels: ['Amazon'],
+      }),
+    )
 
     expect(created.problem).toMatchObject({
       slug: 'binary-search',
-      isUserCreated: true,
     })
     expect(edited).toMatchObject({
       problem: {
@@ -101,19 +107,21 @@ describe('ProblemsRepository library data', () => {
     expect(seededDuplicate.problem).toMatchObject({
       slug: 'two-sum',
       title: 'Two Sum Custom',
-      isUserCreated: false,
     })
   })
 
-  it('bulk-updates fields and classifies delete results by persisted ownership', async () => {
+  it('bulk-updates fields and deletes existing problems', async () => {
     const handle = await createTestDb()
 
-    await createProblem(handle.db, newProblemInput({
-      topicLabels: ['Array'],
-      companyLabels: ['Meta'],
-    }))
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        topicLabels: ['Array'],
+        companyLabels: ['Meta'],
+      }),
+    )
 
-    const bulkUpdate = await bulkUpdateProblems(handle.db, {
+    await bulkUpdateProblems(handle.db, {
       surface: 'dashboard',
       problemSlugs: ['two-sum', 'binary-search', 'missing-problem'],
       set: {
@@ -127,24 +135,16 @@ describe('ProblemsRepository library data', () => {
       surface: 'dashboard',
       problemSlug: 'two-sum',
     })
-    const deleteResult = await bulkDeleteProblems(handle.db, {
+    await saveSolvedReview(handle.db, 'binary-search')
+    await bulkDeleteProblems(handle.db, {
       surface: 'dashboard',
       problemSlugs: ['binary-search', 'two-sum', 'missing-problem'],
     })
 
-    expect(bulkUpdate).toEqual({
-      updatedProblemSlugs: ['two-sum', 'binary-search'],
-      missingProblemSlugs: ['missing-problem'],
-    })
     expect(twoSum).toMatchObject({
       problem: { difficulty: 'hard', isPremium: true },
       topics: [{ label: 'Dynamic Programming' }],
       companies: [],
-    })
-    expect(deleteResult).toEqual({
-      deletedProblemSlugs: ['binary-search'],
-      protectedProblemSlugs: ['two-sum'],
-      missingProblemSlugs: ['missing-problem'],
     })
     await expect(
       getProblemForEdit(handle.db, {
@@ -152,62 +152,60 @@ describe('ProblemsRepository library data', () => {
         problemSlug: 'binary-search',
       }),
     ).rejects.toThrow(/was not found/)
+    await expect(
+      getProblemForEdit(handle.db, {
+        surface: 'dashboard',
+        problemSlug: 'two-sum',
+      }),
+    ).rejects.toThrow(/was not found/)
+    expect(
+      await handle.db
+        .select()
+        .from(problemPractice)
+        .where(eq(problemPractice.problemSlug, 'binary-search')),
+    ).toEqual([])
+    expect(
+      await handle.db
+        .select()
+        .from(reviewAttempts)
+        .where(eq(reviewAttempts.problemSlug, 'binary-search')),
+    ).toEqual([])
   })
 
-  it('migrates stale page slugs without losing relations or practice history', async () => {
+  it('upserts page captures by canonical LeetCode slug', async () => {
     const handle = await createTestDb({ seed: false })
     const repository = createProblemsRepository(handle.db)
 
     await repository.upsertFromLeetCode({
-      slug: 'old-two-sum',
-      title: 'Old Two Sum',
-      difficulty: 'easy',
-    })
-    await handle.db.insert(topics).values({ id: 'array', label: 'Array' })
-    await handle.db.insert(problemTopics).values({
-      problemSlug: 'old-two-sum',
-      topicId: 'array',
-    })
-    await saveSolvedReview(handle.db, 'old-two-sum')
-
-    const saved = await upsertProblemFromPage(handle.db, {
-      url: 'https://leetcode.com/problems/old-two-sum/',
       slug: 'two-sum',
       title: 'Two Sum',
-      difficulty: 'Easy',
-      isPremium: false,
-    })
-    const [oldRows, practiceRows, attemptRows] = await Promise.all([
-      handle.db.select().from(problems).where(eq(problems.slug, 'old-two-sum')),
-      handle.db
-        .select()
-        .from(problemPractice)
-        .where(eq(problemPractice.problemSlug, 'two-sum')),
-      handle.db
-        .select()
-        .from(reviewAttempts)
-        .where(eq(reviewAttempts.problemSlug, 'two-sum')),
-    ])
-    const edit = await getProblemForEdit(handle.db, {
-      surface: 'dashboard',
-      problemSlug: 'two-sum',
+      difficulty: 'easy',
     })
 
-    expect(saved.slug).toBe('two-sum')
-    expect(oldRows).toEqual([])
-    expect(practiceRows).toHaveLength(1)
-    expect(attemptRows).toHaveLength(1)
-    expect(edit.topics).toEqual([{ id: 'array', label: 'Array' }])
+    const saved = await upsertProblemFromPage(handle.db, {
+      url: 'https://leetcode.com/problems/two-sum/',
+      slug: 'two-sum',
+      title: 'Two Sum Updated',
+      difficulty: 'Medium',
+      isPremium: true,
+    })
+
+    expect(saved).toMatchObject({
+      slug: 'two-sum',
+      title: 'Two Sum Updated',
+      difficulty: 'medium',
+      isPremium: true,
+    })
   })
 })
 
 const solvedAt = new Date('2026-01-01T10:00:00.000Z')
 
 function saveSolvedReview(
-  db: Parameters<typeof createPracticeRepository>[0],
+  db: Parameters<typeof saveReviewResult>[0],
   problemSlug = 'two-sum',
 ) {
-  return createPracticeRepository(db).saveReviewResult({
+  return saveReviewResult(db, {
     problemSlug,
     rating: 'good',
     reviewedAt: solvedAt,

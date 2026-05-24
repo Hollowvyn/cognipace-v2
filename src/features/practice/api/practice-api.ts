@@ -1,6 +1,7 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { sendMessage } from '@/extension/messaging'
+import { invalidateTaggedQueries } from '@/platform/query/cache-invalidation'
 import { queryKeys } from '@/platform/query/query-keys'
 
 import type {
@@ -72,14 +73,24 @@ export function useOverrideLastReviewResult() {
 }
 
 export function useSetPracticeSuspended() {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: setPracticeSuspendedViaRuntime,
+    onSuccess: () => {
+      invalidateTaggedQueries(queryClient, ['practice', 'problems'])
+    },
   })
 }
 
 export function useResetPracticeSchedule() {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: resetPracticeScheduleViaRuntime,
+    onSuccess: () => {
+      invalidateTaggedQueries(queryClient, ['practice', 'problems'])
+    },
   })
 }
 
