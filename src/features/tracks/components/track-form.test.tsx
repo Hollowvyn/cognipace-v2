@@ -187,7 +187,7 @@ describe('TrackForm', () => {
 
     await screen.findByLabelText('Title')
 
-    const actions = screen.getByLabelText('Track form actions')
+    const actions = screen.getByRole('group', { name: 'Track form actions' })
 
     expect(actions).toHaveClass('sticky', 'bottom-0')
     expect(
