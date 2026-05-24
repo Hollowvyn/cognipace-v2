@@ -608,6 +608,34 @@ describe('background handler registration', () => {
     })
   })
 
+  it('does not record active-track progress for free-practice saved reviews', async () => {
+    resetRuntimeMutationMocks()
+    backgroundMocks.getSettings.mockResolvedValueOnce({
+      ...defaultUserSettings,
+      practice: {
+        ...defaultUserSettings.practice,
+        mode: 'freePractice',
+      },
+    })
+
+    await sendRuntimeMessage('practice.saveReviewResult', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: '2026-01-05T00:00:00.000Z',
+    })
+
+    expect(
+      backgroundMocks.recordActiveTrackProblemCompletion,
+    ).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      problemSlug: 'two-sum',
+      reason: 'practice-updated',
+      source: 'dashboard',
+      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
+    })
+  })
+
   it('invalidates tracks when an eligible saved review records no new track completion', async () => {
     resetRuntimeMutationMocks()
     backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValueOnce(

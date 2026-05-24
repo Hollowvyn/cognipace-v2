@@ -327,7 +327,10 @@ export function registerBackgroundHandlers() {
           reviewedAt,
           ...(request.reviewMode ? { reviewMode: request.reviewMode } : {}),
         })
-        if (isTrackCompletionRating(request.rating)) {
+        if (
+          settings.practice.mode === 'studyPlan' &&
+          isTrackCompletionRating(request.rating)
+        ) {
           await recordActiveTrackProblemCompletion(db, {
             problemSlug: request.problemSlug,
             rating: request.rating,
