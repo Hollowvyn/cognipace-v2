@@ -35,7 +35,7 @@ export function ProblemRowPracticeActions({
   const setSuspended = useSetPracticeSuspended()
   const [isResetConfirmationOpen, setIsResetConfirmationOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const isSuspended = row.summary.suspended || row.status === 'suspended'
+  const isSuspended = row.state.isSuspended || row.status === 'suspended'
   const isPending = resetSchedule.isPending || setSuspended.isPending
   const isDisabled = disabled || isPending
 
