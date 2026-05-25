@@ -132,6 +132,19 @@ describe('runtime-policy', () => {
     }
   })
 
+  it('keeps backup and local reset methods dashboard-only', () => {
+    for (const method of [
+      'backup.exportFullBackup',
+      'backup.validateFullBackup',
+      'backup.restoreFullBackup',
+      'backup.resetLocalData',
+    ]) {
+      expect(canCallExtensionMethod(method, 'dashboard')).toBe(true)
+      expect(canCallExtensionMethod(method, 'popup')).toBe(false)
+      expect(canCallExtensionMethod(method, 'content-script')).toBe(false)
+    }
+  })
+
   it('allows popup and dashboard senders to update study mode', () => {
     expect(canCallExtensionMethod('settings.toggleStudyMode', 'popup')).toBe(
       true,

@@ -1,4 +1,8 @@
 import {
+  backupFileSchema,
+  backupPayloadRequestSchema,
+  backupRequestSchema,
+  backupSummarySchema,
   leetcodeProblemRemoteRuntimeRequestSchema,
   leetcodeSubmissionResultRemoteRuntimeRequestSchema,
   onMessage,
@@ -43,6 +47,12 @@ import {
   type AppShellRequest,
 } from '@/features/app-shell/api/app-shell-contracts'
 import { getAppShellData } from '@/features/app-shell/server/app-shell-service'
+import {
+  exportFullBackup,
+  resetLocalData,
+  restoreFullBackup,
+  validateFullBackup,
+} from '@/features/backup/server/backup-service'
 import {
   readLeetCodeProblemContentInBackground,
   readLeetCodeProblemMetadataInBackground,
@@ -136,6 +146,63 @@ export function registerBackgroundHandlers() {
     )
     return getAppDb().then(async ({ db }) =>
       appShellDataSchema.parse(await getAppShellData(db, request)),
+    )
+  })
+
+  onMessage('backup.exportFullBackup', ({ data, sender }) => {
+    const request = backupRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'backup.exportFullBackup',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      backupFileSchema.parse(await exportFullBackup(db)),
+    )
+  })
+
+  onMessage('backup.validateFullBackup', ({ data, sender }) => {
+    const request = backupPayloadRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'backup.validateFullBackup',
+      request.surface,
+      sender,
+    )
+    return backupSummarySchema.parse(validateFullBackup(request.backup))
+  })
+
+  onMessage('backup.restoreFullBackup', ({ data, sender }) => {
+    const request = backupPayloadRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'backup.restoreFullBackup',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) =>
+        backupSummarySchema.parse(await restoreFullBackup(db, request.backup)),
+      () => broadcastDataManagementInvalidation(request.surface),
+    )
+  })
+
+  onMessage('backup.resetLocalData', ({ data, sender }) => {
+    const request = backupRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'backup.resetLocalData',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) => {
+        await resetLocalData(db)
+
+        return null
+      },
+      () => broadcastDataManagementInvalidation(request.surface),
     )
   })
 
@@ -839,6 +906,14 @@ function broadcastTracksInvalidation(input: {
     reason: 'tracks-updated',
     source: input.source,
     tags: input.tags ?? ['tracks'],
+  })
+}
+
+function broadcastDataManagementInvalidation(source: 'dashboard') {
+  return broadcastCacheInvalidation({
+    reason: 'problem-catalog-updated',
+    source,
+    tags: ['settings', 'problems', 'practice', 'queue', 'tracks', 'app-shell'],
   })
 }
 

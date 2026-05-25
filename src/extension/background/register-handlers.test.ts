@@ -2,6 +2,8 @@ import { describe, expect, it, beforeEach, vi } from 'vitest'
 
 import {
   activeTrackSchema,
+  backupFileSchema,
+  backupSummarySchema,
   queueRequestSchema,
   trackForEditResponseSchema,
   tracksClearActiveTrackRequestSchema,
@@ -17,6 +19,10 @@ import {
   todayQueueSchema,
 } from '@/extension/messaging'
 import type { PopupAppShellData } from '@/features/app-shell/api/app-shell-contracts'
+import {
+  backupSchemaVersion,
+  createBackupSummary,
+} from '@/features/backup/api/backup-contracts'
 import { defaultUserSettings } from '@/features/settings/domain'
 import type { ActiveTrack } from '@/features/tracks/domain'
 import { createSerializedPracticeDetails } from '@/testing/practice-fixtures'
@@ -45,6 +51,10 @@ const backgroundMocks = vi.hoisted(() => {
     db,
     handlers,
     assertCanSenderCallExtensionMethod: vi.fn(),
+    backupExportFullBackup: vi.fn(),
+    backupResetLocalData: vi.fn(),
+    backupRestoreFullBackup: vi.fn(),
+    backupValidateFullBackup: vi.fn(),
     broadcastCacheInvalidation: vi.fn(),
     flushDbSnapshot: vi.fn(),
     getActiveTrack: vi.fn(),
@@ -96,6 +106,13 @@ vi.mock('@/extension/messaging', async (importOriginal) => {
 
 vi.mock('@/features/app-shell/server/app-shell-service', () => ({
   getAppShellData: backgroundMocks.getAppShellData,
+}))
+
+vi.mock('@/features/backup/server/backup-service', () => ({
+  exportFullBackup: backgroundMocks.backupExportFullBackup,
+  resetLocalData: backgroundMocks.backupResetLocalData,
+  restoreFullBackup: backgroundMocks.backupRestoreFullBackup,
+  validateFullBackup: backgroundMocks.backupValidateFullBackup,
 }))
 
 vi.mock(
@@ -174,6 +191,14 @@ describe('background handler registration', () => {
     backgroundMocks.handlers.clear()
     vi.clearAllMocks()
     backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
+    backgroundMocks.backupExportFullBackup.mockResolvedValue(validBackup)
+    backgroundMocks.backupResetLocalData.mockResolvedValue(null)
+    backgroundMocks.backupRestoreFullBackup.mockResolvedValue(
+      validBackupSummary,
+    )
+    backgroundMocks.backupValidateFullBackup.mockReturnValue(
+      validBackupSummary,
+    )
     backgroundMocks.flushDbSnapshot.mockResolvedValue(undefined)
     backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
     backgroundMocks.getProblemLibrary.mockResolvedValue(problemLibraryResponse)
@@ -481,6 +506,72 @@ describe('background handler registration', () => {
     expect(response).toEqual(problemLibraryResponse)
     expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
     expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
+  })
+
+  it('registers backup export handling with dashboard policy', async () => {
+    const response = await sendRuntimeMessage('backup.exportFullBackup', {
+      surface: 'dashboard',
+    })
+
+    expectRuntimePolicy('backup.exportFullBackup', 'dashboard')
+    expect(backgroundMocks.backupExportFullBackup).toHaveBeenCalledWith(
+      backgroundMocks.db,
+    )
+    expect(response).toEqual(validBackup)
+  })
+
+  it('registers backup validation without flushing the snapshot', async () => {
+    const response = await sendRuntimeMessage('backup.validateFullBackup', {
+      surface: 'dashboard',
+      backup: validBackup,
+    })
+
+    expectRuntimePolicy('backup.validateFullBackup', 'dashboard')
+    expect(backgroundMocks.backupValidateFullBackup).toHaveBeenCalledWith(
+      validBackup,
+    )
+    expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
+    expect(backupSummarySchema.parse(response).problems).toBe(
+      validBackupSummary.problems,
+    )
+  })
+
+  it('registers restore handling with snapshot flush and broad invalidation', async () => {
+    const response = await sendRuntimeMessage('backup.restoreFullBackup', {
+      surface: 'dashboard',
+      backup: validBackup,
+    })
+
+    expectRuntimePolicy('backup.restoreFullBackup', 'dashboard')
+    expect(backgroundMocks.backupRestoreFullBackup).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      validBackup,
+    )
+    expect(response).toEqual(validBackupSummary)
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      reason: 'problem-catalog-updated',
+      source: 'dashboard',
+      tags: ['settings', 'problems', 'practice', 'queue', 'tracks', 'app-shell'],
+    })
+    expectFlushBeforeBroadcast()
+  })
+
+  it('registers local reset handling with snapshot flush and broad invalidation', async () => {
+    const response = await sendRuntimeMessage('backup.resetLocalData', {
+      surface: 'dashboard',
+    })
+
+    expect(response).toBeNull()
+    expectRuntimePolicy('backup.resetLocalData', 'dashboard')
+    expect(backgroundMocks.backupResetLocalData).toHaveBeenCalledWith(
+      backgroundMocks.db,
+    )
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      reason: 'problem-catalog-updated',
+      source: 'dashboard',
+      tags: ['settings', 'problems', 'practice', 'queue', 'tracks', 'app-shell'],
+    })
+    expectFlushBeforeBroadcast()
   })
 
   it('flushes and broadcasts problem invalidation after create writes', async () => {
@@ -954,3 +1045,146 @@ const trackForEditResponse = createTrackForEditResponse()
 const parsedTrackForEditResponse =
   trackForEditResponseSchema.parse(trackForEditResponse)
 const trackWorkspaceResponse = createTrackWorkspaceResponse()
+const backupTimestamp = '2026-05-25T12:00:00.000Z'
+const validBackup = backupFileSchema.parse({
+  schemaVersion: backupSchemaVersion,
+  app: 'cognipace',
+  exportedAt: backupTimestamp,
+  source: { appVersion: '0.0.0' },
+  data: {
+    problems: [
+      {
+        slug: 'two-sum',
+        title: 'Two Sum',
+        difficulty: 'easy',
+        isPremium: false,
+        createdAt: backupTimestamp,
+        updatedAt: backupTimestamp,
+      },
+    ],
+    topics: [{ id: 'array', label: 'Array' }],
+    companies: [{ id: 'meta', label: 'Meta' }],
+    problemTopics: [{ problemSlug: 'two-sum', topicId: 'array' }],
+    problemCompanies: [{ problemSlug: 'two-sum', companyId: 'meta' }],
+    practice: {
+      problemPractice: [
+        {
+          problemSlug: 'two-sum',
+          status: 'review',
+          firstSeenAt: backupTimestamp,
+          lastSeenAt: backupTimestamp,
+          lastReviewedAt: backupTimestamp,
+          lastRating: 'good',
+          lastElapsedSeconds: 600,
+          bestElapsedSeconds: 600,
+          interviewPattern: 'hash-map',
+          timeComplexity: 'O(n)',
+          spaceComplexity: 'O(n)',
+          languages: 'TypeScript',
+          notes: 'review note',
+          solvedCount: 1,
+          attemptCount: 1,
+          isSuspended: false,
+          createdAt: backupTimestamp,
+          updatedAt: backupTimestamp,
+        },
+      ],
+      fsrsCards: [
+        {
+          id: 'card-1',
+          problemSlug: 'two-sum',
+          cardKind: 'default',
+          dueAt: backupTimestamp,
+          stability: 2.5,
+          difficulty: 4.5,
+          elapsedDays: 0,
+          scheduledDays: 1,
+          learningSteps: 0,
+          reps: 1,
+          lapses: 0,
+          state: 'review',
+          lastReviewAt: backupTimestamp,
+          createdAt: backupTimestamp,
+          updatedAt: backupTimestamp,
+        },
+      ],
+      reviewAttempts: [
+        {
+          id: 'attempt-1',
+          problemSlug: 'two-sum',
+          cardId: 'card-1',
+          rating: 'good',
+          reviewMode: 'manual',
+          reviewedAt: backupTimestamp,
+          elapsedSeconds: 600,
+          isCorrect: true,
+          interviewPattern: 'hash-map',
+          timeComplexity: 'O(n)',
+          spaceComplexity: 'O(n)',
+          languages: 'TypeScript',
+          notes: 'review note',
+          fsrsReviewLog: null,
+          createdAt: backupTimestamp,
+          updatedAt: backupTimestamp,
+        },
+      ],
+    },
+    tracks: {
+      tracks: [
+        {
+          id: 'custom-track',
+          slug: 'custom-track',
+          title: 'Custom Track',
+          description: 'A local track',
+          dueAt: null,
+          createdAt: backupTimestamp,
+          updatedAt: backupTimestamp,
+        },
+      ],
+      groups: [
+        {
+          id: 'custom-track:arrays',
+          trackId: 'custom-track',
+          title: 'Arrays',
+          position: 1,
+          createdAt: backupTimestamp,
+          updatedAt: backupTimestamp,
+        },
+      ],
+      memberships: [
+        {
+          trackGroupId: 'custom-track:arrays',
+          problemSlug: 'two-sum',
+          position: 1,
+        },
+      ],
+      progress: [
+        {
+          trackGroupId: 'custom-track:arrays',
+          problemSlug: 'two-sum',
+          completedAt: backupTimestamp,
+          completedRating: 'good',
+          createdAt: backupTimestamp,
+          updatedAt: backupTimestamp,
+        },
+      ],
+      session: [
+        {
+          id: 'active',
+          activeTrackId: 'custom-track',
+          activeGroupId: 'custom-track:arrays',
+          startedAt: backupTimestamp,
+          updatedAt: backupTimestamp,
+        },
+      ],
+    },
+    settings: [
+      {
+        key: 'user-settings',
+        value: JSON.stringify(defaultUserSettings),
+        updatedAt: backupTimestamp,
+      },
+    ],
+  },
+})
+const validBackupSummary = createBackupSummary(validBackup)
