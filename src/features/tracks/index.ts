@@ -1,4 +1,16 @@
 export type { ActiveTrack, Track, TrackGroup, TrackProgress } from './domain'
+export {
+  deriveTrackTargetStatus,
+  getDateInputMin,
+  getTodayDateInputValue,
+  isPastDateInputValue,
+  toDateInputValue,
+  type TrackTargetProgress,
+  type TrackTargetStatus,
+  type TrackTargetStatusInput,
+  type TrackTargetStatusKind,
+  type TrackTargetStatusTone,
+} from './domain'
 export { LibrarySelectionTrackForm } from './components/library-selection-track-form'
 export { TrackForm } from './components/track-form'
 export {
