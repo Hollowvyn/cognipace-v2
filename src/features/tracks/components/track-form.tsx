@@ -865,7 +865,7 @@ function TargetDateField({
         </label>
         {value ? (
           <IconButton
-            className="mt-2 shrink-0"
+            className="mt-3 shrink-0"
             label="Clear target date"
             onClick={onClear}
             size="sm"
