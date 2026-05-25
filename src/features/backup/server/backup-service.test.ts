@@ -43,13 +43,17 @@ describe('backup service', () => {
     const { db } = await createTestDb({ now })
     await insertCustomState(db)
 
-    const backup = await exportFullBackup(db, { now })
+    const backup = await exportFullBackup(db, {
+      appVersion: '1.0.0',
+      exportedAt: now,
+      extensionVersion: '2.0.0',
+    })
 
     expect(backup).toMatchObject({
       schemaVersion: backupSchemaVersion,
       app: 'cognipace',
       exportedAt: now.toISOString(),
-      source: { appVersion: '0.0.0' },
+      source: { appVersion: '1.0.0', extensionVersion: '2.0.0' },
     })
     expect(backup.data.problems).toEqual(
       expect.arrayContaining([
@@ -64,7 +68,7 @@ describe('backup service', () => {
   it('validates a backup and returns counts without writing', async () => {
     const { db } = await createTestDb({ now })
     await insertCustomState(db)
-    const backup = await exportFullBackup(db, { now })
+    const backup = await exportFullBackup(db, { exportedAt: now })
 
     const summary = validateFullBackup(backup)
 
@@ -78,7 +82,7 @@ describe('backup service', () => {
 
   it('rejects mismatched app and unsupported backup versions', async () => {
     const { db } = await createTestDb({ now })
-    const backup = await exportFullBackup(db, { now })
+    const backup = await exportFullBackup(db, { exportedAt: now })
 
     expect(() => validateFullBackup({ ...backup, app: 'other-app' })).toThrow(
       /not a CogniPace backup/i,
@@ -91,7 +95,7 @@ describe('backup service', () => {
   it('rejects broken references before restore writes and preserves existing rows', async () => {
     const { db } = await createTestDb({ now })
     await insertCustomState(db)
-    const backup = await exportFullBackup(db, { now })
+    const backup = await exportFullBackup(db, { exportedAt: now })
     const malformedBackup = {
       ...backup,
       data: {
@@ -120,7 +124,7 @@ describe('backup service', () => {
   it('rejects review attempts whose card belongs to another problem before restore writes', async () => {
     const { db } = await createTestDb({ now })
     await insertCustomState(db)
-    const backup = await exportFullBackup(db, { now })
+    const backup = await exportFullBackup(db, { exportedAt: now })
     const malformedBackup = {
       ...backup,
       data: {
@@ -158,7 +162,7 @@ describe('backup service', () => {
   it('rejects duplicate DB identities before restore writes', async () => {
     const { db } = await createTestDb({ now })
     await insertCustomState(db)
-    const backup = await exportFullBackup(db, { now })
+    const backup = await exportFullBackup(db, { exportedAt: now })
 
     expect(() =>
       validateFullBackup({
@@ -172,6 +176,19 @@ describe('backup service', () => {
         },
       } satisfies BackupFile),
     ).toThrow(/duplicate topic label Custom Topic/i)
+
+    expect(() =>
+      validateFullBackup({
+        ...backup,
+        data: {
+          ...backup.data,
+          companies: [
+            ...backup.data.companies,
+            { id: 'custom-company-copy', label: 'Custom Company' },
+          ],
+        },
+      } satisfies BackupFile),
+    ).toThrow(/duplicate company label Custom Company/i)
 
     expect(() =>
       validateFullBackup({
@@ -200,7 +217,7 @@ describe('backup service', () => {
   it('restores a backup over existing data', async () => {
     const source = await createTestDb({ now })
     await insertCustomState(source.db)
-    const backup = await exportFullBackup(source.db, { now })
+    const backup = await exportFullBackup(source.db, { exportedAt: now })
 
     const target = await createTestDb({ now })
     await insertOtherState(target.db)

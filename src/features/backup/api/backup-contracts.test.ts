@@ -180,6 +180,22 @@ describe('backup contracts', () => {
     })
   })
 
+  it('accepts optional app and extension source versions', () => {
+    expect(
+      backupFileSchema.parse({
+        ...createValidBackupFixture(),
+        source: { extensionVersion: '1.2.3' },
+      }).source,
+    ).toEqual({ extensionVersion: '1.2.3' })
+
+    expect(
+      backupFileSchema.parse({
+        ...createValidBackupFixture(),
+        source: {},
+      }).source,
+    ).toEqual({})
+  })
+
   it('rejects a backup for another app with a friendly error', () => {
     expect(() =>
       parseBackupFileForCurrentApp({

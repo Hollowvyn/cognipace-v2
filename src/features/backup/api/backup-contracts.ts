@@ -198,7 +198,8 @@ export const backupFileSchema = z.strictObject({
   app: z.literal('cognipace'),
   exportedAt: isoDatetimeSchema,
   source: z.strictObject({
-    appVersion: z.string(),
+    appVersion: z.string().optional(),
+    extensionVersion: z.string().optional(),
   }),
   data: backupDataSchema,
 })

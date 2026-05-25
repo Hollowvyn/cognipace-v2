@@ -16,23 +16,30 @@ import {
 } from '../data/backup-repository'
 
 type ExportFullBackupOptions = {
-  now?: Date
+  exportedAt?: Date
   appVersion?: string
+  extensionVersion?: string
 }
 
 export async function exportFullBackup(
   db: Db,
   options: ExportFullBackupOptions = {},
 ): Promise<BackupFile> {
-  const now = options.now ?? new Date()
+  const exportedAt = options.exportedAt ?? new Date()
   const appVersion = options.appVersion ?? '0.0.0'
+  const source: BackupFile['source'] = { appVersion }
+
+  if (options.extensionVersion !== undefined) {
+    source.extensionVersion = options.extensionVersion
+  }
+
   const data = await createBackupRepository(db).readBackupData()
 
   return backupFileSchema.parse({
     schemaVersion: backupSchemaVersion,
     app: 'cognipace',
-    exportedAt: now.toISOString(),
-    source: { appVersion },
+    exportedAt: exportedAt.toISOString(),
+    source,
     data,
   })
 }
