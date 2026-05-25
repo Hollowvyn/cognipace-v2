@@ -8,6 +8,7 @@ import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import {
   settingsQueryKeys,
+  useCycleThemeMode,
   useSettings,
   useToggleStudyMode,
   useUpdateSettings,
@@ -101,6 +102,34 @@ describe('settings API hooks', () => {
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: queryKeys.tracks.all,
+    })
+  })
+
+  it('sends theme-mode cycles and invalidates DB-backed settings state', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(null)
+    const { queryClient, wrapper } = createQueryTestHarness()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useCycleThemeMode(), {
+      wrapper,
+    })
+
+    let response: unknown
+
+    await act(async () => {
+      response = await result.current.mutateAsync({
+        surface: 'dashboard',
+      })
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('settings.cycleThemeMode', {
+      surface: 'dashboard',
+    })
+    expect(response).toBeNull()
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.settings.all,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.appShell.all,
     })
   })
 })

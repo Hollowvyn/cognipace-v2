@@ -9,6 +9,7 @@ import {
   hasUserSettingsChanges,
   type ReviewOrder,
   type StudyMode,
+  type ThemeMode,
   type UserSettings,
 } from '../domain'
 import {
@@ -45,6 +46,7 @@ export interface SettingsDraftActions {
   setStudyMode: (value: StudyMode) => void
   setStrictTiming: (value: boolean) => void
   setTargetRetention: (value: number) => void
+  setThemeMode: (value: ThemeMode) => void
 }
 
 export interface SettingsDraftController {
@@ -85,6 +87,7 @@ type SettingsDraftAction =
   | { type: 'set-study-mode'; value: StudyMode }
   | { type: 'set-strict-timing'; value: boolean }
   | { type: 'set-target-retention'; value: number }
+  | { type: 'set-theme-mode'; value: ThemeMode }
 
 const initialNumberInputs = createNumberInputs(defaultUserSettings)
 
@@ -267,6 +270,9 @@ export function useSettingsDraft(): SettingsDraftController {
       setTargetRetention: (value) => {
         dispatch({ type: 'set-target-retention', value })
       },
+      setThemeMode: (value) => {
+        dispatch({ type: 'set-theme-mode', value })
+      },
     },
   }
 }
@@ -353,6 +359,14 @@ function settingsDraftReducer(
         review: {
           ...draft.review,
           targetRetention: action.value,
+        },
+      }))
+    case 'set-theme-mode':
+      return updateDraft(state, (draft) => ({
+        ...draft,
+        appearance: {
+          ...draft.appearance,
+          themeMode: action.value,
         },
       }))
   }

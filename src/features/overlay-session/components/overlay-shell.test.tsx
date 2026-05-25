@@ -6,28 +6,46 @@ import type { LeetCodeOverlaySession } from '../hooks/use-leetcode-overlay-sessi
 import { OverlayShell } from './overlay-shell'
 
 vi.mock('./modes/collapsed/collapsed-overlay', () => ({
-  CollapsedOverlay: () => <div>Collapsed mode</div>,
+  CollapsedOverlay: ({ themeMode }: { themeMode: string }) => (
+    <div>Collapsed mode: {themeMode}</div>
+  ),
 }))
 
 vi.mock('./modes/docked/docked-overlay', () => ({
-  DockedOverlay: () => <div>Docked mode</div>,
+  DockedOverlay: ({ themeMode }: { themeMode: string }) => (
+    <div>Docked mode: {themeMode}</div>
+  ),
 }))
 
 vi.mock('./modes/expanded/expanded-overlay', () => ({
-  ExpandedOverlay: ({ view }: { view: { problemTitle: string } }) => (
-    <div>Expanded mode: {view.problemTitle}</div>
+  ExpandedOverlay: ({
+    themeMode,
+    view,
+  }: {
+    themeMode: string
+    view: { problemTitle: string }
+  }) => (
+    <div>
+      Expanded mode: {view.problemTitle}: {themeMode}
+    </div>
   ),
 }))
 
 describe('OverlayShell', () => {
   it.each([
-    ['collapsed', 'Collapsed mode'],
-    ['expanded', 'Expanded mode: Two Sum'],
-    ['docked', 'Docked mode'],
+    ['collapsed', 'Collapsed mode: light'],
+    ['expanded', 'Expanded mode: Two Sum: light'],
+    ['docked', 'Docked mode: light'],
   ] as const)('routes to the %s mode', (visualMode, text) => {
     render(
       <OverlayShell
         {...createSession({
+          context: {
+            ...createSession().context!,
+            appearance: {
+              themeMode: 'light',
+            },
+          },
           overlay: {
             ...initialOverlaySessionState,
             visualMode,
@@ -62,6 +80,9 @@ function createSession(
       updateReview: vi.fn(),
     },
     context: {
+      appearance: {
+        themeMode: 'system',
+      },
       automation: {
         autoDetectSolved: false,
       },

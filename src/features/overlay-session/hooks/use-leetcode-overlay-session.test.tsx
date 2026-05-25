@@ -728,6 +728,9 @@ function createOverlayData(options?: {
     generatedAt: '2026-01-01T10:00:00.000Z',
     surface: 'overlay',
     overlay: {
+      appearance: {
+        themeMode: 'system',
+      },
       automation: {
         autoDetectSolved: options?.autoDetectSolved ?? false,
       },

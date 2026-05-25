@@ -9,7 +9,7 @@ describe('DockedOverlay', () => {
     const user = userEvent.setup()
     const onRestore = vi.fn()
 
-    render(<DockedOverlay onRestore={onRestore} />)
+    render(<DockedOverlay onRestore={onRestore} themeMode="system" />)
 
     await user.click(screen.getByRole('button', { name: 'Show Overlay' }))
 

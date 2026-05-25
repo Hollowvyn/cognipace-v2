@@ -8,6 +8,7 @@ import { DataManagementScreen } from '@/features/backup'
 
 import { useSettingsDraft } from '../hooks/use-settings-draft'
 import { AdvancedReviewSection } from './sections/advanced-review-section'
+import { AppearanceSection } from './sections/appearance-section'
 import { DailyPracticeSection } from './sections/daily-practice-section'
 import { LeetCodeOverlaySection } from './sections/leetcode-overlay-section'
 import { SettingsSaveDock } from './settings-save-bar'
@@ -72,6 +73,10 @@ export function SettingsScreen() {
       >
         <Surface className="grid p-0">
           <div className="px-4 pb-6 pt-4 md:px-5 lg:px-7">
+            <AppearanceSection
+              actions={controller.actions}
+              draft={controller.draft}
+            />
             <DailyPracticeSection
               actions={controller.actions}
               draft={controller.draft}

@@ -68,11 +68,13 @@ export {
 export type { SerializedProblem } from '@/features/problems/api/problems-contracts'
 import type { UserSettings } from '@/features/settings'
 export {
+  settingsCycleThemeModeRequestSchema,
   settingsRequestSchema,
   settingsToggleStudyModeRequestSchema,
   settingsUpdateRequestSchema,
 } from '@/features/settings/api/settings-contracts'
 import {
+  type SettingsCycleThemeModeRequest,
   type SettingsRequest,
   type SettingsToggleStudyModeRequest,
   type SettingsUpdateRequest,
@@ -301,6 +303,7 @@ export interface ProtocolMap {
   'settings.getSettings'(request: SettingsRequest): UserSettings
   'settings.updateSettings'(request: SettingsUpdateRequest): UserSettings
   'settings.toggleStudyMode'(request: SettingsToggleStudyModeRequest): null
+  'settings.cycleThemeMode'(request: SettingsCycleThemeModeRequest): null
   'leetcode.readProblemMetadata'(
     request: LeetCodeProblemRemoteRuntimeRequest,
   ): SerializedLeetCodeMetadataResult

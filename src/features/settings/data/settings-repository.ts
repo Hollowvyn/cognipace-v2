@@ -5,6 +5,7 @@ import { settingsKv } from '@/platform/db/schema'
 
 import {
   defaultUserSettings,
+  deriveNextThemeMode,
   mergeUserSettings,
   parseStoredUserSettings,
   type UserSettings,
@@ -64,6 +65,17 @@ export class SettingsRepository {
             currentSettings.practice.mode === 'studyPlan'
               ? 'freePractice'
               : 'studyPlan',
+        },
+      }),
+      now,
+    )
+  }
+
+  async cycleThemeMode(now = new Date()) {
+    return this.updateSettings(
+      (currentSettings) => ({
+        appearance: {
+          themeMode: deriveNextThemeMode(currentSettings.appearance.themeMode),
         },
       }),
       now,

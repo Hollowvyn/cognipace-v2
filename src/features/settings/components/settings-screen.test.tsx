@@ -50,6 +50,12 @@ describe('SettingsScreen', () => {
       await screen.findByRole('heading', { name: 'Practice Defaults' }),
     ).toBeVisible()
     expect(
+      await screen.findByRole('heading', { name: 'Appearance' }),
+    ).toBeVisible()
+    expect(screen.getByRole('radio', { name: 'System' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Light' })).toBeVisible()
+    expect(screen.getByRole('radio', { name: 'Dark' })).toBeVisible()
+    expect(
       screen.getByRole('heading', { name: 'Solving Overlay' }),
     ).toBeVisible()
     expect(
@@ -242,6 +248,50 @@ describe('SettingsScreen', () => {
     expect(screen.getByRole('button', { name: 'Save Settings' })).toBeDisabled()
     expect(screen.getByText('No pending changes')).toBeVisible()
     expect(screen.queryByText('Saved')).not.toBeInTheDocument()
+  })
+
+  it('edits appearance and saves only after Save Settings', async () => {
+    const user = userEvent.setup()
+    const savedSettings = {
+      ...defaultUserSettings,
+      appearance: {
+        themeMode: 'light' as const,
+      },
+    }
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'settings.getSettings') {
+        return Promise.resolve(defaultUserSettings)
+      }
+
+      if (method === 'settings.updateSettings') {
+        return Promise.resolve(savedSettings)
+      }
+
+      return Promise.reject(new Error(`Unexpected method ${method}`))
+    })
+    const { wrapper } = createQueryTestHarness()
+
+    render(<SettingsScreen />, { wrapper })
+
+    await screen.findByRole('heading', { name: 'Appearance' })
+    await user.click(screen.getByRole('radio', { name: 'Light' }))
+
+    expect(screen.getByText('Unsaved changes')).toBeVisible()
+    expect(sendMessage).not.toHaveBeenCalledWith(
+      'settings.updateSettings',
+      expect.anything(),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Save Settings' }))
+
+    expect(sendMessage).toHaveBeenCalledWith('settings.updateSettings', {
+      surface: 'dashboard',
+      patch: {
+        appearance: {
+          themeMode: 'light',
+        },
+      },
+    })
   })
 
   it('shows the strict timing dependency from the disabled switch', async () => {

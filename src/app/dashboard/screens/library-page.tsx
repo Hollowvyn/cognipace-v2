@@ -6,6 +6,7 @@ import {
   DashboardPageBody,
   DashboardPageHeader,
 } from '@/app/dashboard/layout/dashboard-page'
+import { useDashboardChrome } from '@/app/dashboard/dashboard-shell'
 import { Button } from '@/components/ui/button'
 import { ProblemLibraryScreen } from '@/features/problems'
 import { createLibrarySelectionTrackDraft } from '@/features/tracks'
@@ -17,10 +18,14 @@ import {
 
 export function LibraryPage() {
   const navigate = useNavigate()
+  const { themeAction } = useDashboardChrome()
 
   return (
     <DashboardPage className="mx-auto w-full max-w-[64rem]">
-      <DashboardPageHeader title={dashboardRouteMeta.library.staticData.title}>
+      <DashboardPageHeader
+        actions={themeAction}
+        title={dashboardRouteMeta.library.staticData.title}
+      >
         Inspect every tracked problem, review state, and metadata.
       </DashboardPageHeader>
       <DashboardPageBody>

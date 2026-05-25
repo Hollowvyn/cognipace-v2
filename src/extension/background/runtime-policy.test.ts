@@ -178,6 +178,18 @@ describe('runtime-policy', () => {
     ).toBe(true)
   })
 
+  it('allows dashboard senders to cycle theme mode', () => {
+    expect(canCallExtensionMethod('settings.cycleThemeMode', 'dashboard')).toBe(
+      true,
+    )
+    expect(canCallExtensionMethod('settings.cycleThemeMode', 'popup')).toBe(
+      false,
+    )
+    expect(
+      canCallExtensionMethod('settings.cycleThemeMode', 'content-script'),
+    ).toBe(false)
+  })
+
   it('rejects content scripts for settings reads and writes', () => {
     expect(
       canCallExtensionMethod('settings.getSettings', 'content-script'),
@@ -187,6 +199,9 @@ describe('runtime-policy', () => {
     ).toBe(false)
     expect(
       canCallExtensionMethod('settings.toggleStudyMode', 'content-script'),
+    ).toBe(false)
+    expect(
+      canCallExtensionMethod('settings.cycleThemeMode', 'content-script'),
     ).toBe(false)
   })
 

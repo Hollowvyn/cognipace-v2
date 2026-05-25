@@ -3,6 +3,7 @@ import { AlertCircle, Info } from 'lucide-react'
 import { InlineStatus } from '@/components/ui/inline-status'
 import { SurfaceRoot } from '@/components/ui/surface'
 import type { OverlayAppShellData } from '@/features/app-shell'
+import type { ThemeMode } from '@/features/settings'
 import type { ReviewRating } from '@/lib/fsrs'
 
 import type { OverlayDraftField } from '../../../domain'
@@ -55,10 +56,15 @@ type ExpandedOverlayCommands = {
 
 type ExpandedOverlayProps = {
   commands: ExpandedOverlayCommands
+  themeMode: ThemeMode
   view: ExpandedOverlayViewModel
 }
 
-export function ExpandedOverlay({ commands, view }: ExpandedOverlayProps) {
+export function ExpandedOverlay({
+  commands,
+  themeMode,
+  view,
+}: ExpandedOverlayProps) {
   const {
     context,
     draft,
@@ -99,7 +105,7 @@ export function ExpandedOverlay({ commands, view }: ExpandedOverlayProps) {
       asChild
       data-cp-overlay-mode="expanded"
       surface="overlay"
-      theme="dark"
+      theme={themeMode}
     >
       <aside aria-label="CogniPace review overlay">
         <OverlayHeader

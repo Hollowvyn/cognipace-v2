@@ -110,6 +110,7 @@ const overlayAutomationSettingsSchema = z.object({
 })
 
 const appShellSettingsSummarySchema = z.object({
+  appearance: userSettingsSchema.shape.appearance,
   practice: userSettingsSchema.shape.practice,
   review: userSettingsSchema.shape.review,
   assessment: appShellAssessmentSettingsSchema,
@@ -167,6 +168,7 @@ export const overlayAppShellDataSchema = z.object({
   generatedAt: z.iso.datetime(),
   surface: z.literal('overlay'),
   overlay: z.object({
+    appearance: userSettingsSchema.shape.appearance,
     automation: overlayAutomationSettingsSchema,
     problem: appShellProblemSummarySchema.nullable(),
     practice: practiceDetailsSchema.nullable(),

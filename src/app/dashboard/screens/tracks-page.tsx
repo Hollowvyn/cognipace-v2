@@ -6,6 +6,7 @@ import {
   DashboardPageBody,
   DashboardPageHeader,
 } from '@/app/dashboard/layout/dashboard-page'
+import { useDashboardChrome } from '@/app/dashboard/dashboard-shell'
 import {
   dashboardPaths,
   dashboardRouteMeta,
@@ -15,9 +16,14 @@ import { IconButton } from '@/components/ui/icon-button'
 import { TracksScreen } from '@/features/tracks'
 
 export function TracksPage() {
+  const { themeAction } = useDashboardChrome()
+
   return (
     <DashboardPage className="mx-auto w-full max-w-[64rem]">
-      <DashboardPageHeader title={dashboardRouteMeta.tracks.staticData.title}>
+      <DashboardPageHeader
+        actions={themeAction}
+        title={dashboardRouteMeta.tracks.staticData.title}
+      >
         Manage the active curriculum, groups, and ordered practice path.
       </DashboardPageHeader>
       <DashboardPageBody>

@@ -60,6 +60,9 @@ export function createDashboardAppShellData(
       items: [queueItem],
     },
     settings: {
+      appearance: {
+        themeMode: 'system',
+      },
       practice: {
         dailyGoal: 4,
         mode: 'studyPlan',

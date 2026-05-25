@@ -96,6 +96,9 @@ const fallbackData = {
     items: [],
   },
   settings: {
+    appearance: {
+      themeMode: 'system',
+    },
     practice: {
       dailyGoal: 4,
       mode: 'studyPlan',

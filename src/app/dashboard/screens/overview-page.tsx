@@ -6,6 +6,7 @@ import {
   DashboardPageBody,
   DashboardPageHeader,
 } from '@/app/dashboard/layout/dashboard-page'
+import { useDashboardChrome } from '@/app/dashboard/dashboard-shell'
 import {
   dashboardPaths,
   dashboardRouteMeta,
@@ -13,9 +14,14 @@ import {
 import { OverviewScreen } from '@/features/app-shell'
 
 export function OverviewPage() {
+  const { themeAction } = useDashboardChrome()
+
   return (
     <DashboardPage className="mx-auto w-full max-w-[64rem]">
-      <DashboardPageHeader title={dashboardRouteMeta.overview.staticData.title}>
+      <DashboardPageHeader
+        actions={themeAction}
+        title={dashboardRouteMeta.overview.staticData.title}
+      >
         What should I practice now?
       </DashboardPageHeader>
       <DashboardPageBody>

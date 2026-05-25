@@ -15,10 +15,12 @@ export {
   userSettingsSchemaVersion,
   type ReviewOrder,
   type StudyMode,
+  type ThemeMode,
   type UserSettings,
   type UserSettingsPatch,
 } from './domain'
 export {
+  useCycleThemeMode,
   useSettings,
   useToggleStudyMode,
   useUpdateSettings,

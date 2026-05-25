@@ -14,3 +14,7 @@ export function updateSettings(db: Db, patch: UserSettingsPatch) {
 export function toggleStudyMode(db: Db) {
   return createSettingsRepository(db).toggleStudyMode()
 }
+
+export function cycleThemeMode(db: Db) {
+  return createSettingsRepository(db).cycleThemeMode()
+}

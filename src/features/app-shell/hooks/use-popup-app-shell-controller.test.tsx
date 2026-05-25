@@ -90,6 +90,7 @@ const popupData = {
     items: [],
   },
   settings: {
+    appearance: defaultUserSettings.appearance,
     practice: defaultUserSettings.practice,
     review: defaultUserSettings.review,
     assessment: defaultUserSettings.assessment,

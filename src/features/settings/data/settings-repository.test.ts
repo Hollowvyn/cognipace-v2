@@ -127,4 +127,31 @@ describe('SettingsRepository', () => {
       },
     })
   })
+
+  it('cycles theme mode through the generic settings write path', async () => {
+    const handle = await createTestDb({ seed: false })
+    const repository = createSettingsRepository(handle.db)
+
+    await repository.updateSettings({
+      practice: { dailyGoal: 12 },
+      appearance: { themeMode: 'system' },
+    })
+
+    await expect(repository.cycleThemeMode()).resolves.toEqual({
+      ...defaultUserSettings,
+      appearance: { themeMode: 'light' },
+      practice: {
+        ...defaultUserSettings.practice,
+        dailyGoal: 12,
+      },
+    })
+    await expect(repository.cycleThemeMode()).resolves.toMatchObject({
+      appearance: { themeMode: 'dark' },
+      practice: { dailyGoal: 12 },
+    })
+    await expect(repository.cycleThemeMode()).resolves.toMatchObject({
+      appearance: { themeMode: 'system' },
+      practice: { dailyGoal: 12 },
+    })
+  })
 })

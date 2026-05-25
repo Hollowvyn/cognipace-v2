@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 
 import { SurfaceRoot } from '@/components/ui/surface'
+import type { ThemeMode } from '@/features/settings'
 import { cn } from '@/utils/cn'
 
 import {
@@ -39,10 +40,15 @@ type CollapsedOverlayCommands = {
 
 type CollapsedOverlayProps = {
   commands: CollapsedOverlayCommands
+  themeMode: ThemeMode
   view: CollapsedOverlayViewModel
 }
 
-export function CollapsedOverlay({ commands, view }: CollapsedOverlayProps) {
+export function CollapsedOverlay({
+  commands,
+  themeMode,
+  view,
+}: CollapsedOverlayProps) {
   const { canUseProblem, elapsedSeconds, isOverTarget, overlay, timerStatus } =
     view
   const {
@@ -72,7 +78,7 @@ export function CollapsedOverlay({ commands, view }: CollapsedOverlayProps) {
       asChild
       data-cp-overlay-mode="collapsed"
       surface="overlay"
-      theme="dark"
+      theme={themeMode}
     >
       <aside
         aria-label="CogniPace collapsed controls"

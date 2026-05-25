@@ -14,10 +14,15 @@ export const settingsUpdateRequestSchema = settingsRequestSchema.extend({
 
 export const settingsToggleStudyModeRequestSchema = settingsRequestSchema
 
+export const settingsCycleThemeModeRequestSchema = settingsRequestSchema
+
 export type SettingsSurface = z.infer<typeof settingsSurfaceSchema>
 export type SettingsRequest = z.infer<typeof settingsRequestSchema>
 export type SettingsUpdateRequest = z.infer<typeof settingsUpdateRequestSchema>
 export type SettingsToggleStudyModeRequest = z.infer<
   typeof settingsToggleStudyModeRequestSchema
+>
+export type SettingsCycleThemeModeRequest = z.infer<
+  typeof settingsCycleThemeModeRequestSchema
 >
 export type SettingsResponse = UserSettings

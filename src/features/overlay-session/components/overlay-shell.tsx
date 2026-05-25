@@ -1,3 +1,5 @@
+import type { ThemeMode } from '@/features/settings'
+
 import type { LeetCodeOverlaySession } from '../hooks/use-leetcode-overlay-session'
 import { CollapsedOverlay } from './modes/collapsed/collapsed-overlay'
 import { DockedOverlay } from './modes/docked/docked-overlay'
@@ -22,9 +24,10 @@ export function OverlayShell({
     location?.slug ??
     'Reading page'
   const canUseProblem = Boolean(context?.problem) && status === 'ready'
+  const themeMode: ThemeMode = context?.appearance.themeMode ?? 'system'
 
   if (overlay.visualMode === 'docked') {
-    return <DockedOverlay onRestore={actions.restore} />
+    return <DockedOverlay onRestore={actions.restore} themeMode={themeMode} />
   }
 
   if (overlay.visualMode === 'expanded') {
@@ -55,6 +58,7 @@ export function OverlayShell({
           targetSeconds: timer.targetSeconds,
           timerStatus: timer.status,
         }}
+        themeMode={themeMode}
       />
     )
   }
@@ -78,6 +82,7 @@ export function OverlayShell({
         overlay,
         timerStatus: timer.status,
       }}
+      themeMode={themeMode}
     />
   )
 }
