@@ -62,6 +62,9 @@ function createSession(
       updateReview: vi.fn(),
     },
     context: {
+      appearance: {
+        themeMode: 'system',
+      },
       automation: {
         autoDetectSolved: false,
       },

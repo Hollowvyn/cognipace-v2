@@ -191,6 +191,9 @@ function createFailedSubmittedOverlay(): ExpandedOverlayProps['view']['overlay']
 
 function createOverlayContext(): ExpandedOverlayProps['view']['context'] {
   return {
+    appearance: {
+      themeMode: 'system',
+    },
     automation: {
       autoDetectSolved: false,
     },
