@@ -48,6 +48,7 @@ Implemented or meaningfully wired:
 - Library/Problems management
 - Tracks workspace and management
 - Settings
+- Backup, restore, and reset local data from Settings
 - FSRS-backed practice scheduling
 - Runtime messaging, cache invalidation, local database, migrations, and seed data
 
@@ -55,7 +56,6 @@ Currently incomplete or intentionally light:
 
 - Overview is a dashboard route with a planned guided-practice home.
 - Analytics is a dashboard route reserved for future scheduling and reporting work.
-- Backup/reset workflows are future dashboard work.
 
 ## Product Surfaces
 
@@ -101,6 +101,9 @@ Current behavior:
 - Tracks manages active track workspace, groups, ordered problems, progress,
   create/edit, activation, deletion, and reset progress.
 - Settings manages persisted user preferences through a dirty-state form workflow.
+- Data Management in Settings exports full local backups, validates and restores
+  full backups, shows planned selective import sections, and performs explicit
+  full local reset.
 - Overview and Analytics currently reserve route ownership and are not finished
   product surfaces.
 
@@ -169,8 +172,7 @@ These are possible future directions, not approved work by default:
 
 - overview home polish
 - richer analytics
-- backup and reset workflows
-- import/export workflows
+- selective import conflict policies for topics, companies, tracks, and problems
 - improved notification strategy
 - sync across browsers or devices if local-only scope changes
 
@@ -184,6 +186,7 @@ The current product stage is successful when a user can:
 - inspect and maintain Library problems
 - manage tracks and active progression
 - adjust settings
+- export, restore, and reset local data from Settings
 - keep all persisted state local unless a future product decision changes that
 
 ## Canonicality

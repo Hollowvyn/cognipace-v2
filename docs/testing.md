@@ -70,6 +70,21 @@ keeps recommendation guidance separate from track guidance.
 Expected: settings changes save through the extension runtime and persist
 locally.
 
+### Settings Data Management
+
+1. Open the dashboard.
+2. Navigate to Settings.
+3. Use Export backup.
+4. Confirm a JSON file downloads.
+5. Choose Import full backup and select that exported file.
+6. Confirm the validation summary appears.
+7. Cancel before restore unless intentionally testing destructive restore.
+8. Open Reset local data.
+9. Cancel once, then reopen if intentionally testing reset.
+
+Expected: backup validation happens before restore, restore and reset require
+confirmation, and reset offers backup first.
+
 ### Library
 
 1. Open the dashboard.
@@ -122,7 +137,6 @@ refresh across surfaces.
 - Overview is a reserved dashboard route for a future guided-practice home.
 - Analytics is a reserved dashboard route for future scheduling and reporting
   work.
-- Backup/reset workflows are future work.
 
 Do not report these as broken unless they stop rendering or navigation fails.
 
@@ -131,11 +145,9 @@ Do not report these as broken unless they stop rendering or navigation fails.
 Use this when testing from a clean CogniPace local state. Local test data is
 disposable during development.
 
-1. Open `chrome://extensions`.
-2. Find CogniPace.
-3. Remove the CogniPace extension.
-4. Choose Load unpacked.
-5. Select `.output/chrome-mv3` again.
+Use Settings > Data Management > Reset local data for an in-app fresh-install
+reset. Removing and reloading the extension remains useful when testing
+extension installation behavior.
 
 Schema and migration changes may reset local extension data during development.
 
@@ -184,7 +196,7 @@ Include:
 Docs-only formatting:
 
 ```sh
-npx prettier --check docs/testing.md
+npx prettier --check docs/product.md docs/testing.md
 ```
 
 Focused tests:
