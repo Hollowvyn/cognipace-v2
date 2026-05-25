@@ -126,6 +126,7 @@ describe('TracksScreen', () => {
     expect(
       within(progressSummary).getByLabelText('33% complete'),
     ).toBeVisible()
+    expect(screen.queryByLabelText('Progress metric')).not.toBeInTheDocument()
     expect(
       screen.queryByLabelText('Track target summary'),
     ).not.toBeInTheDocument()
