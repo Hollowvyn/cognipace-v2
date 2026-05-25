@@ -167,20 +167,25 @@ describe('TracksScreen', () => {
     renderTracksScreen()
 
     expect(
-      await screen.findByRole('columnheader', { name: 'Track' }),
+      await screen.findByRole('columnheader', { name: 'Completed' }),
     ).toBeVisible()
     expect(screen.getByRole('columnheader', { name: 'Review' })).toBeVisible()
-    expect(
-      screen.queryByRole('columnheader', { name: 'Status' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Track' })).toBeNull()
+    expect(screen.queryByRole('columnheader', { name: 'Status' })).toBeNull()
 
-    expect(
-      within(getTrackProblemRow('Two Sum')).getByText('Not completed'),
-    ).toBeVisible()
+    const incompleteBadge = within(getTrackProblemRow('Two Sum')).getByText(
+      'No',
+    )
+
+    expect(incompleteBadge).toBeVisible()
+    expect(incompleteBadge).toHaveAttribute('data-cp-track-completed', 'false')
     expect(within(getTrackProblemRow('Two Sum')).getByText('Due')).toBeVisible()
-    expect(
-      within(getTrackProblemRow('Binary Search')).getByText('Completed'),
-    ).toBeVisible()
+    const completedBadge = within(
+      getTrackProblemRow('Binary Search'),
+    ).getByText('Yes')
+
+    expect(completedBadge).toBeVisible()
+    expect(completedBadge).toHaveAttribute('data-cp-track-completed', 'true')
     expect(
       within(getTrackProblemRow('Binary Search')).getByText('Scheduled'),
     ).toBeVisible()
