@@ -223,9 +223,15 @@ export function DataManagementScreen() {
           onConfirm={() => {
             void handleResetConfirm()
           }}
-          secondaryActionLabel="Export backup first"
+          secondaryActionLabel={
+            resetStatus === 'Backup exported.'
+              ? 'Backup exported'
+              : 'Export backup first'
+          }
           secondaryActionPending={exportBackup.isPending}
-          status={resetStatus}
+          secondaryActionTone={
+            resetStatus === 'Backup exported.' ? 'success' : undefined
+          }
           title="Clear local data?"
         />
       ) : null}

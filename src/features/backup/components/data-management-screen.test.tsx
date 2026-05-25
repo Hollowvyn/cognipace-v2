@@ -173,7 +173,13 @@ describe('DataManagementScreen', () => {
     expect(sendMessage).toHaveBeenCalledWith('backup.exportFullBackup', {
       surface: 'dashboard',
     })
-    expect(await within(dialog).findByText('Backup exported.')).toBeVisible()
+    const exportedButton = await within(dialog).findByRole('button', {
+      name: 'Backup exported',
+    })
+    expect(exportedButton).toHaveAttribute('data-cp-tone', 'success')
+    expect(
+      within(dialog).queryByText('Backup exported.'),
+    ).not.toBeInTheDocument()
   })
 
   it('cancels and confirms clearing local data through a confirmation dialog', async () => {

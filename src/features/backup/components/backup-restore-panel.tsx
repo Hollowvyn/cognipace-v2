@@ -1,4 +1,4 @@
-import { Download, Loader2, Upload } from 'lucide-react'
+import { Check, Download, Loader2, Upload } from 'lucide-react'
 import {
   useEffect,
   useRef,
@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
+import type { Tone } from '@/components/ui/types'
 import { formatDateTime } from '@/utils/date-format'
 
 import type { BackupSummary } from '../api/backup-contracts'
@@ -221,6 +222,7 @@ export function BackupConfirmationDialog({
   onConfirm,
   secondaryActionLabel,
   secondaryActionPending = false,
+  secondaryActionTone,
   status,
   title,
 }: {
@@ -233,6 +235,7 @@ export function BackupConfirmationDialog({
   onConfirm: () => void
   secondaryActionLabel?: string | undefined
   secondaryActionPending?: boolean | undefined
+  secondaryActionTone?: Extract<Tone, 'success'> | undefined
   status?: ReactNode | undefined
   title: string
 }) {
@@ -365,6 +368,12 @@ export function BackupConfirmationDialog({
           </Button>
           {onSecondaryAction && secondaryActionLabel ? (
             <Button
+              className={
+                secondaryActionTone
+                  ? 'border-[color:var(--cp-tone-border)] bg-[var(--cp-tone-bg)] text-[color:var(--cp-tone-fg)] hover:bg-[color:var(--cp-tone-bg)] hover:text-[color:var(--cp-tone-fg)]'
+                  : undefined
+              }
+              data-cp-tone={secondaryActionTone}
               disabled={isDialogPending}
               onClick={onSecondaryAction}
               size="sm"
@@ -375,6 +384,8 @@ export function BackupConfirmationDialog({
                   aria-hidden="true"
                   className="animate-spin motion-reduce:animate-none"
                 />
+              ) : secondaryActionTone === 'success' ? (
+                <Check aria-hidden="true" />
               ) : (
                 <Download aria-hidden="true" />
               )}

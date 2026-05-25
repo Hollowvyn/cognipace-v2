@@ -95,8 +95,9 @@ Clear local data lives in a separate danger zone. It is not presented as a
 casual settings button.
 
 `Clear local data` opens a confirmation dialog. The dialog asks whether the user
-is sure, offers `Export backup first`, then requires explicit confirmation.
-Clear performs a fresh-install reset:
+is sure, offers `Export backup first`, changes that button to the success-toned
+`Backup exported` state after export succeeds, then requires explicit
+confirmation. Clear performs a fresh-install reset:
 
 - clear persisted CogniPace data
 - reseed current built-in defaults

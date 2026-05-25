@@ -87,7 +87,8 @@ locally.
 
 Expected: backup validation happens before restore, restore and clear require
 confirmation, restore success resets the import card, and clear offers backup
-first inside the confirmation dialog.
+first inside the confirmation dialog. After that backup export succeeds, the
+dialog button changes to a success state labeled Backup exported.
 
 ### Library
 
