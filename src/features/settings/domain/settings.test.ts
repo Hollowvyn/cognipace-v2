@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createUserSettingsPatch,
   defaultUserSettings,
+  deriveNextThemeMode,
   hasUserSettingsChanges,
   mergeUserSettings,
   parseStoredUserSettings,
@@ -35,6 +36,97 @@ describe('settings domain', () => {
         autoDetectSolved: false,
       },
     })
+  })
+
+  it('defaults missing appearance settings to system without dropping valid stored values', () => {
+    expect(
+      parseStoredUserSettings({
+        practice: {
+          dailyGoal: 6,
+          problemFilters: {
+            skipPremium: true,
+          },
+        },
+      }),
+    ).toMatchObject({
+      appearance: {
+        themeMode: 'system',
+      },
+      practice: {
+        dailyGoal: 6,
+        mode: defaultUserSettings.practice.mode,
+        problemFilters: {
+          skipPremium: true,
+        },
+      },
+    })
+  })
+
+  it('validates appearance mode at the domain boundary', () => {
+    expect(userSettingsSchema.parse(defaultUserSettings).appearance).toEqual({
+      themeMode: 'system',
+    })
+    expect(() =>
+      userSettingsSchema.parse({
+        ...defaultUserSettings,
+        appearance: {
+          themeMode: 'sepia',
+        },
+      }),
+    ).toThrow()
+  })
+
+  it('uses default appearance for invalid stored appearance while preserving valid stored branches', () => {
+    expect(
+      parseStoredUserSettings({
+        appearance: {
+          themeMode: 'sepia',
+        },
+        practice: {
+          dailyGoal: 6,
+          problemFilters: {
+            skipPremium: true,
+          },
+        },
+      }),
+    ).toMatchObject({
+      appearance: {
+        themeMode: 'system',
+      },
+      practice: {
+        dailyGoal: 6,
+        problemFilters: {
+          skipPremium: true,
+        },
+      },
+    })
+  })
+
+  it('patches appearance mode without dropping unrelated settings', () => {
+    const draft = {
+      ...defaultUserSettings,
+      appearance: {
+        themeMode: 'dark' as const,
+      },
+    }
+
+    expect(createUserSettingsPatch(defaultUserSettings, draft)).toEqual({
+      appearance: { themeMode: 'dark' },
+    })
+    expect(
+      mergeUserSettings(defaultUserSettings, {
+        appearance: { themeMode: 'light' },
+      }),
+    ).toEqual({
+      ...defaultUserSettings,
+      appearance: { themeMode: 'light' },
+    })
+  })
+
+  it('derives the next theme mode in repository-owned cycle order', () => {
+    expect(deriveNextThemeMode('system')).toBe('light')
+    expect(deriveNextThemeMode('light')).toBe('dark')
+    expect(deriveNextThemeMode('dark')).toBe('system')
   })
 
   it('falls back to defaults for invalid stored settings', () => {

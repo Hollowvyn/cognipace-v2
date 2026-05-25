@@ -6,6 +6,7 @@ export const reviewOrderSchema = z.enum([
   'mixByDifficulty',
 ])
 export const studyModeSchema = z.enum(['studyPlan', 'freePractice'])
+export const themeModeSchema = z.enum(['system', 'light', 'dark'])
 export const userSettingsSchemaVersion = 1
 
 export const timeOfDaySchema = z
@@ -60,6 +61,12 @@ export const timeTargetsMinutesSchema = z
       })
     }
   })
+
+const appearanceSettingsSchema = z
+  .object({
+    themeMode: themeModeSchema.default('system'),
+  })
+  .strict()
 
 const practiceSettingsSchema = z
   .object({
@@ -119,6 +126,7 @@ export const userSettingsSchema = z
     schemaVersion: z
       .literal(userSettingsSchemaVersion)
       .default(userSettingsSchemaVersion),
+    appearance: appearanceSettingsSchema.default({ themeMode: 'system' }),
     practice: practiceSettingsSchema,
     review: reviewSettingsSchema,
     assessment: assessmentSettingsSchema,
@@ -129,6 +137,7 @@ export const userSettingsSchema = z
 
 export const userSettingsPatchSchema = z
   .object({
+    appearance: appearanceSettingsSchema.partial().strict().optional(),
     practice: z
       .object({
         dailyGoal: practiceSettingsSchema.shape.dailyGoal.optional(),
@@ -171,9 +180,13 @@ export type UserSettings = z.infer<typeof userSettingsSchema>
 export type UserSettingsPatch = z.infer<typeof userSettingsPatchSchema>
 export type ReviewOrder = z.infer<typeof reviewOrderSchema>
 export type StudyMode = z.infer<typeof studyModeSchema>
+export type ThemeMode = z.infer<typeof themeModeSchema>
 
 export const defaultUserSettings: UserSettings = {
   schemaVersion: userSettingsSchemaVersion,
+  appearance: {
+    themeMode: 'system',
+  },
   practice: {
     dailyGoal: 4,
     mode: 'studyPlan',
@@ -206,19 +219,35 @@ export const defaultUserSettings: UserSettings = {
 }
 
 export function parseStoredUserSettings(value: unknown): UserSettings {
-  const parsed = userSettingsSchema.safeParse(value)
+  const appearanceSafeValue = createAppearanceSafeStoredValue(value)
+  const parsed = userSettingsSchema.safeParse(appearanceSafeValue)
 
   if (parsed.success) {
     return parsed.data
   }
 
-  const patch = userSettingsPatchSchema.safeParse(value)
+  const patch = userSettingsPatchSchema.safeParse(appearanceSafeValue)
 
   if (patch.success) {
     return mergeStoredUserSettingsPatch(patch.data) ?? defaultUserSettings
   }
 
   return defaultUserSettings
+}
+
+function createAppearanceSafeStoredValue(value: unknown): unknown {
+  if (!isRecord(value)) {
+    return value
+  }
+
+  const appearance = appearanceSettingsSchema.safeParse(value.appearance)
+
+  return {
+    ...value,
+    appearance: appearance.success
+      ? appearance.data
+      : defaultUserSettings.appearance,
+  }
 }
 
 export function mergeUserSettings(
@@ -246,6 +275,10 @@ function createMergedUserSettings(
     ...current,
     ...patch,
     schemaVersion: userSettingsSchemaVersion,
+    appearance: {
+      ...current.appearance,
+      ...patch.appearance,
+    },
     practice: {
       ...current.practice,
       ...patch.practice,
@@ -293,6 +326,14 @@ export function createUserSettingsPatch(
   draft: UserSettings,
 ): UserSettingsPatch | null {
   const patch: UserSettingsPatch = {}
+
+  const appearancePatch: NonNullable<UserSettingsPatch['appearance']> = {}
+  if (saved.appearance.themeMode !== draft.appearance.themeMode) {
+    appearancePatch.themeMode = draft.appearance.themeMode
+  }
+  if (hasObjectKeys(appearancePatch)) {
+    patch.appearance = appearancePatch
+  }
 
   const practicePatch: NonNullable<UserSettingsPatch['practice']> = {}
   if (saved.practice.dailyGoal !== draft.practice.dailyGoal) {
@@ -395,4 +436,19 @@ export function createUserSettingsPatch(
 
 function hasObjectKeys(value: object) {
   return Object.keys(value).length > 0
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+export function deriveNextThemeMode(themeMode: ThemeMode): ThemeMode {
+  switch (themeMode) {
+    case 'system':
+      return 'light'
+    case 'light':
+      return 'dark'
+    case 'dark':
+      return 'system'
+  }
 }
