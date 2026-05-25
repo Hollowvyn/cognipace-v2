@@ -54,6 +54,9 @@ describe('DataManagementScreen', () => {
       backup: validBackup,
     })
     expect(await screen.findByText('Backup ready to restore')).toBeVisible()
+    expect(screen.getByText('Schema version: 1')).toBeVisible()
+    expect(screen.getByText('Exported: 2026-05-25T12:00:00.000Z')).toBeVisible()
+    expect(screen.getByText('App version: 0.0.0')).toBeVisible()
     expect(screen.getByText('Problems: 1')).toBeVisible()
     expect(screen.getByText('Tracks: 1')).toBeVisible()
   })
@@ -152,20 +155,27 @@ function createBackupFile(backup: BackupFile) {
 }
 
 const validSummary = {
-  problems: 1,
-  topics: 1,
-  companies: 1,
-  problemTopics: 1,
-  problemCompanies: 1,
-  problemPractice: 1,
-  fsrsCards: 1,
-  reviewAttempts: 1,
-  tracks: 1,
-  trackGroups: 1,
-  trackMemberships: 1,
-  trackProgress: 1,
-  trackSession: 1,
-  settings: 1,
+  schemaVersion: 1,
+  exportedAt: '2026-05-25T12:00:00.000Z',
+  source: {
+    appVersion: '0.0.0',
+  },
+  counts: {
+    problems: 1,
+    topics: 1,
+    companies: 1,
+    problemTopics: 1,
+    problemCompanies: 1,
+    problemPractice: 1,
+    fsrsCards: 1,
+    reviewAttempts: 1,
+    tracks: 1,
+    trackGroups: 1,
+    trackMemberships: 1,
+    trackProgress: 1,
+    trackSession: 1,
+    settings: 1,
+  },
 } satisfies BackupSummary
 
 const validBackup = {

@@ -210,10 +210,15 @@ export const backupRequestSchema = z.strictObject({
 
 export const backupPayloadRequestSchema = z.strictObject({
   surface: z.literal('dashboard'),
-  backup: backupFileSchema,
+  backup: z.unknown(),
 })
 
-export const backupSummarySchema = z.strictObject({
+const backupSourceSchema = z.strictObject({
+  appVersion: z.string().optional(),
+  extensionVersion: z.string().optional(),
+})
+
+const backupSummaryCountsSchema = z.strictObject({
   problems: z.number().int().min(0),
   topics: z.number().int().min(0),
   companies: z.number().int().min(0),
@@ -228,6 +233,13 @@ export const backupSummarySchema = z.strictObject({
   trackProgress: z.number().int().min(0),
   trackSession: z.number().int().min(0),
   settings: z.number().int().min(0),
+})
+
+export const backupSummarySchema = z.strictObject({
+  schemaVersion: z.number().int().positive(),
+  exportedAt: isoDatetimeSchema,
+  source: backupSourceSchema,
+  counts: backupSummaryCountsSchema,
 })
 
 export type BackupFile = z.infer<typeof backupFileSchema>
@@ -262,19 +274,24 @@ export function parseBackupFileForCurrentApp(input: unknown): BackupFile {
 
 export function createBackupSummary(backup: BackupFile): BackupSummary {
   return backupSummarySchema.parse({
-    problems: backup.data.problems.length,
-    topics: backup.data.topics.length,
-    companies: backup.data.companies.length,
-    problemTopics: backup.data.problemTopics.length,
-    problemCompanies: backup.data.problemCompanies.length,
-    problemPractice: backup.data.practice.problemPractice.length,
-    fsrsCards: backup.data.practice.fsrsCards.length,
-    reviewAttempts: backup.data.practice.reviewAttempts.length,
-    tracks: backup.data.tracks.tracks.length,
-    trackGroups: backup.data.tracks.groups.length,
-    trackMemberships: backup.data.tracks.memberships.length,
-    trackProgress: backup.data.tracks.progress.length,
-    trackSession: backup.data.tracks.session.length,
-    settings: backup.data.settings.length,
+    schemaVersion: backup.schemaVersion,
+    exportedAt: backup.exportedAt,
+    source: backup.source,
+    counts: {
+      problems: backup.data.problems.length,
+      topics: backup.data.topics.length,
+      companies: backup.data.companies.length,
+      problemTopics: backup.data.problemTopics.length,
+      problemCompanies: backup.data.problemCompanies.length,
+      problemPractice: backup.data.practice.problemPractice.length,
+      fsrsCards: backup.data.practice.fsrsCards.length,
+      reviewAttempts: backup.data.practice.reviewAttempts.length,
+      tracks: backup.data.tracks.tracks.length,
+      trackGroups: backup.data.tracks.groups.length,
+      trackMemberships: backup.data.tracks.memberships.length,
+      trackProgress: backup.data.tracks.progress.length,
+      trackSession: backup.data.tracks.session.length,
+      settings: backup.data.settings.length,
+    },
   })
 }

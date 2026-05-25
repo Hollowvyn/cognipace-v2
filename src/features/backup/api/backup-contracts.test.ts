@@ -4,6 +4,7 @@ import { defaultUserSettings } from '@/features/settings/domain'
 
 import {
   backupFileSchema,
+  backupPayloadRequestSchema,
   backupSchemaVersion,
   createBackupSummary,
   parseBackupFileForCurrentApp,
@@ -163,21 +164,41 @@ describe('backup contracts', () => {
 
     expect(backup).toEqual(createValidBackupFixture())
     expect(createBackupSummary(backup)).toEqual({
-      problems: 1,
-      topics: 1,
-      companies: 1,
-      problemTopics: 1,
-      problemCompanies: 1,
-      problemPractice: 1,
-      fsrsCards: 1,
-      reviewAttempts: 1,
-      tracks: 1,
-      trackGroups: 1,
-      trackMemberships: 1,
-      trackProgress: 1,
-      trackSession: 1,
-      settings: 1,
+      schemaVersion: backupSchemaVersion,
+      exportedAt: timestamp,
+      source: { appVersion: '0.0.0' },
+      counts: {
+        problems: 1,
+        topics: 1,
+        companies: 1,
+        problemTopics: 1,
+        problemCompanies: 1,
+        problemPractice: 1,
+        fsrsCards: 1,
+        reviewAttempts: 1,
+        tracks: 1,
+        trackGroups: 1,
+        trackMemberships: 1,
+        trackProgress: 1,
+        trackSession: 1,
+        settings: 1,
+      },
     })
+  })
+
+  it('keeps runtime backup payloads loose for service-owned validation', () => {
+    const unsupportedBackup = {
+      ...createValidBackupFixture(),
+      schemaVersion: backupSchemaVersion + 1,
+      app: 'other-app',
+    }
+
+    expect(
+      backupPayloadRequestSchema.parse({
+        surface: 'dashboard',
+        backup: unsupportedBackup,
+      }).backup,
+    ).toEqual(unsupportedBackup)
   })
 
   it('accepts optional app and extension source versions', () => {

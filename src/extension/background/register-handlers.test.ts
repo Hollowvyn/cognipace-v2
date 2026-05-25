@@ -196,9 +196,7 @@ describe('background handler registration', () => {
     backgroundMocks.backupRestoreFullBackup.mockResolvedValue(
       validBackupSummary,
     )
-    backgroundMocks.backupValidateFullBackup.mockReturnValue(
-      validBackupSummary,
-    )
+    backgroundMocks.backupValidateFullBackup.mockReturnValue(validBackupSummary)
     backgroundMocks.flushDbSnapshot.mockResolvedValue(undefined)
     backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
     backgroundMocks.getProblemLibrary.mockResolvedValue(problemLibraryResponse)
@@ -531,9 +529,28 @@ describe('background handler registration', () => {
       validBackup,
     )
     expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
-    expect(backupSummarySchema.parse(response).problems).toBe(
-      validBackupSummary.problems,
+    expect(backupSummarySchema.parse(response).counts.problems).toBe(
+      validBackupSummary.counts.problems,
     )
+  })
+
+  it('passes backup payloads to service-owned validation before app and version rejection', async () => {
+    const mismatchedBackup = {
+      ...validBackup,
+      app: 'other-app',
+      schemaVersion: backupSchemaVersion + 1,
+    }
+
+    const response = await sendRuntimeMessage('backup.validateFullBackup', {
+      surface: 'dashboard',
+      backup: mismatchedBackup,
+    })
+
+    expectRuntimePolicy('backup.validateFullBackup', 'dashboard')
+    expect(backgroundMocks.backupValidateFullBackup).toHaveBeenCalledWith(
+      mismatchedBackup,
+    )
+    expect(response).toEqual(validBackupSummary)
   })
 
   it('registers restore handling with snapshot flush and broad invalidation', async () => {
@@ -551,7 +568,14 @@ describe('background handler registration', () => {
     expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
       reason: 'problem-catalog-updated',
       source: 'dashboard',
-      tags: ['settings', 'problems', 'practice', 'queue', 'tracks', 'app-shell'],
+      tags: [
+        'settings',
+        'problems',
+        'practice',
+        'queue',
+        'tracks',
+        'app-shell',
+      ],
     })
     expectFlushBeforeBroadcast()
   })
@@ -569,7 +593,14 @@ describe('background handler registration', () => {
     expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
       reason: 'problem-catalog-updated',
       source: 'dashboard',
-      tags: ['settings', 'problems', 'practice', 'queue', 'tracks', 'app-shell'],
+      tags: [
+        'settings',
+        'problems',
+        'practice',
+        'queue',
+        'tracks',
+        'app-shell',
+      ],
     })
     expectFlushBeforeBroadcast()
   })

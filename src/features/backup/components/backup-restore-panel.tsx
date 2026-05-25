@@ -115,32 +115,57 @@ export function BackupRestorePanel({
 }
 
 export function BackupSummaryList({ summary }: { summary: BackupSummary }) {
+  const metadataItems: Array<[string, string]> = [
+    ['Schema version', String(summary.schemaVersion)],
+    ['Exported', summary.exportedAt],
+  ]
+  if (summary.source.appVersion) {
+    metadataItems.push(['App version', summary.source.appVersion])
+  }
+  if (summary.source.extensionVersion) {
+    metadataItems.push(['Extension version', summary.source.extensionVersion])
+  }
   const items: Array<[string, number]> = [
-    ['Problems', summary.problems],
-    ['Topics', summary.topics],
-    ['Companies', summary.companies],
-    ['Tracks', summary.tracks],
-    ['Track groups', summary.trackGroups],
-    ['Practice rows', summary.problemPractice],
-    ['FSRS cards', summary.fsrsCards],
-    ['Review attempts', summary.reviewAttempts],
-    ['Settings', summary.settings],
+    ['Problems', summary.counts.problems],
+    ['Topics', summary.counts.topics],
+    ['Companies', summary.counts.companies],
+    ['Tracks', summary.counts.tracks],
+    ['Track groups', summary.counts.trackGroups],
+    ['Practice rows', summary.counts.problemPractice],
+    ['FSRS cards', summary.counts.fsrsCards],
+    ['Review attempts', summary.counts.reviewAttempts],
+    ['Settings', summary.counts.settings],
   ]
 
   return (
-    <dl className="grid grid-cols-1 gap-2 text-[length:var(--cp-copy-font-size)] sm:grid-cols-2 lg:grid-cols-3">
-      {items.map(([label, value]) => (
-        <div
-          className="rounded-[var(--cp-radius-md)] border border-border bg-muted px-3 py-2"
-          key={label}
-        >
-          <dt className="sr-only">{label}</dt>
-          <dd className="m-0 font-semibold tabular-nums">
-            {label}: {value}
-          </dd>
-        </div>
-      ))}
-    </dl>
+    <div className="grid gap-3">
+      <dl className="grid grid-cols-1 gap-2 text-[length:var(--cp-copy-font-size)] sm:grid-cols-2 lg:grid-cols-3">
+        {metadataItems.map(([label, value]) => (
+          <div
+            className="rounded-[var(--cp-radius-md)] border border-border bg-background px-3 py-2"
+            key={label}
+          >
+            <dt className="sr-only">{label}</dt>
+            <dd className="m-0 font-semibold tabular-nums">
+              {label}: {value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <dl className="grid grid-cols-1 gap-2 text-[length:var(--cp-copy-font-size)] sm:grid-cols-2 lg:grid-cols-3">
+        {items.map(([label, value]) => (
+          <div
+            className="rounded-[var(--cp-radius-md)] border border-border bg-muted px-3 py-2"
+            key={label}
+          >
+            <dt className="sr-only">{label}</dt>
+            <dd className="m-0 font-semibold tabular-nums">
+              {label}: {value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   )
 }
 

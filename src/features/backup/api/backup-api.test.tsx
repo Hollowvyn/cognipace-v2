@@ -123,20 +123,25 @@ describe('backup API hooks', () => {
 })
 
 const validSummary = {
-  problems: 0,
-  topics: 0,
-  companies: 0,
-  problemTopics: 0,
-  problemCompanies: 0,
-  problemPractice: 0,
-  fsrsCards: 0,
-  reviewAttempts: 0,
-  tracks: 0,
-  trackGroups: 0,
-  trackMemberships: 0,
-  trackProgress: 0,
-  trackSession: 0,
-  settings: 0,
+  schemaVersion: 1,
+  exportedAt: '2026-05-25T12:00:00.000Z',
+  source: {},
+  counts: {
+    problems: 0,
+    topics: 0,
+    companies: 0,
+    problemTopics: 0,
+    problemCompanies: 0,
+    problemPractice: 0,
+    fsrsCards: 0,
+    reviewAttempts: 0,
+    tracks: 0,
+    trackGroups: 0,
+    trackMemberships: 0,
+    trackProgress: 0,
+    trackSession: 0,
+    settings: 0,
+  },
 } satisfies BackupSummary
 
 const validBackup = {

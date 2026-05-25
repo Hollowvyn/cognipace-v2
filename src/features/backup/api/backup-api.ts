@@ -6,7 +6,7 @@ import {
   type CacheInvalidationTag,
 } from '@/platform/query/cache-invalidation'
 
-import type { BackupFile, BackupPayloadRequest } from './backup-contracts'
+import type { BackupFile } from './backup-contracts'
 
 const broadBackupInvalidationTags = [
   'settings',
@@ -54,27 +54,17 @@ export function useResetLocalData() {
 }
 
 export function validateFullBackupViaRuntime(backup: unknown) {
-  const request = {
+  return sendMessage('backup.validateFullBackup', {
     surface: 'dashboard',
     backup,
-  } satisfies { surface: 'dashboard'; backup: unknown }
-
-  return sendMessage(
-    'backup.validateFullBackup',
-    request as BackupPayloadRequest,
-  )
+  })
 }
 
 export function restoreFullBackupViaRuntime(backup: unknown) {
-  const request = {
+  return sendMessage('backup.restoreFullBackup', {
     surface: 'dashboard',
     backup,
-  } satisfies { surface: 'dashboard'; backup: unknown }
-
-  return sendMessage(
-    'backup.restoreFullBackup',
-    request as BackupPayloadRequest,
-  )
+  })
 }
 
 export function downloadBackupFile(

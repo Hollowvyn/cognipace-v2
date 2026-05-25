@@ -73,9 +73,14 @@ describe('backup service', () => {
     const summary = validateFullBackup(backup)
 
     expect(summary).toMatchObject({
-      problems: backup.data.problems.length,
-      tracks: backup.data.tracks.tracks.length,
-      settings: 1,
+      schemaVersion: backup.schemaVersion,
+      exportedAt: backup.exportedAt,
+      source: backup.source,
+      counts: {
+        problems: backup.data.problems.length,
+        tracks: backup.data.tracks.tracks.length,
+        settings: 1,
+      },
     })
     expect(await rowsForProblem(db, 'custom-problem')).toHaveLength(1)
   })
@@ -225,8 +230,10 @@ describe('backup service', () => {
     const summary = await restoreFullBackup(target.db, backup)
 
     expect(summary).toMatchObject({
-      problems: backup.data.problems.length,
-      tracks: backup.data.tracks.tracks.length,
+      counts: {
+        problems: backup.data.problems.length,
+        tracks: backup.data.tracks.tracks.length,
+      },
     })
     expect(await rowsForProblem(target.db, 'other-problem')).toHaveLength(0)
     expect(await rowsForProblem(target.db, 'custom-problem')).toHaveLength(1)
