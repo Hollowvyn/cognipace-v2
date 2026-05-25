@@ -7,6 +7,7 @@ import type {
   TrackGroupInput,
   TrackMutationInput,
 } from '../api/tracks-contracts'
+import { isPastDateInputValue, toDateInputValue } from '../domain'
 import {
   createGroupsFromInitialDraftRows,
   type TrackFormGroupBy,
@@ -55,6 +56,7 @@ export interface TrackFormState {
   dueAt: string
   groupBy: TrackFormGroupBy
   groups: TrackFormGroupState[]
+  initialDueAt: string
   nextGroupNumber: number
   selectedGroupKey: string
   setActiveAfterCreate: boolean
@@ -62,6 +64,7 @@ export interface TrackFormState {
 }
 
 export interface TrackFormFieldErrors {
+  dueAt: string | null
   groupTitles: Record<string, string>
   groups: string | null
   problemSlugs: string | null
@@ -299,12 +302,14 @@ function createInitialTrackFormState({
 }): TrackFormState {
   const groups = createInitialGroups(source, initialDraft)
   const firstGroup = groups[0] ?? createFallbackMainGroup()
+  const initialDueAt = toDateInputValue(source.track?.dueAt ?? null)
 
   return {
     description: source.track?.description ?? '',
-    dueAt: toDateInputValue(source.track?.dueAt ?? null),
+    dueAt: initialDueAt,
     groupBy: 'none',
     groups,
+    initialDueAt,
     nextGroupNumber: groups.length + 1,
     selectedGroupKey: firstGroup.key,
     setActiveAfterCreate: false,
@@ -367,6 +372,9 @@ function deriveFieldErrors(state: TrackFormState): TrackFormFieldErrors {
   }
 
   return {
+    dueAt: isInvalidPastDueAt(state)
+      ? 'Target date must be today or later.'
+      : null,
     groupTitles,
     groups:
       state.groups.length === 0 ? 'At least one group is required.' : null,
@@ -379,6 +387,7 @@ function deriveFieldErrors(state: TrackFormState): TrackFormFieldErrors {
 
 function isFieldErrorFree(fieldErrors: TrackFormFieldErrors) {
   return (
+    fieldErrors.dueAt === null &&
     fieldErrors.title === null &&
     fieldErrors.groups === null &&
     fieldErrors.problemSlugs === null &&
@@ -414,10 +423,6 @@ function toNullableTrimmedValue(value: string) {
   return trimmedValue.length > 0 ? trimmedValue : null
 }
 
-function toDateInputValue(value: string | null) {
-  return value ? value.slice(0, 10) : ''
-}
-
 function hasProblemSlugInTrack(
   groups: readonly TrackFormGroupState[],
   problemSlug: string,
@@ -439,6 +444,18 @@ function findDuplicateProblemSlug(groups: readonly TrackFormGroupState[]) {
   }
 
   return null
+}
+
+function isInvalidPastDueAt(state: TrackFormState) {
+  if (!state.dueAt) {
+    return false
+  }
+
+  if (state.initialDueAt && state.dueAt === state.initialDueAt) {
+    return false
+  }
+
+  return isPastDateInputValue(state.dueAt)
 }
 
 function moveArrayItem<T>(
