@@ -164,7 +164,7 @@ describe('TrackForm', () => {
 
   it('blocks a past target date in create mode', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date('2026-05-25T12:00:00.000Z'))
+    vi.setSystemTime(new Date(2026, 4, 25, 12, 0, 0))
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     mockTrackFormRuntime(createTrackDefaults())
 
@@ -188,7 +188,7 @@ describe('TrackForm', () => {
 
   it('allows a same-day target date during local evening hours', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date('2026-05-26T02:00:00.000Z'))
+    vi.setSystemTime(new Date(2026, 4, 25, 22, 0, 0))
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     mockTrackFormRuntime(createTrackDefaults())
 
@@ -216,7 +216,7 @@ describe('TrackForm', () => {
 
   it('allows an unchanged saved past target date in edit mode', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date('2026-05-25T12:00:00.000Z'))
+    vi.setSystemTime(new Date(2026, 4, 25, 12, 0, 0))
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     mockTrackFormRuntime(
       createEditResponse({
@@ -255,7 +255,7 @@ describe('TrackForm', () => {
 
   it('blocks a changed past target date in edit mode', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date('2026-05-25T12:00:00.000Z'))
+    vi.setSystemTime(new Date(2026, 4, 25, 12, 0, 0))
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     mockTrackFormRuntime(
       createEditResponse({
