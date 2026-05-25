@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { dashboardPaths } from '@/app/dashboard/navigation/route-manifest'
@@ -17,6 +18,7 @@ interface DashboardPlaceholderAction {
 
 export interface DashboardPlaceholderPageProps {
   action?: DashboardPlaceholderAction | undefined
+  actions?: ReactNode
   description: string
   panelCopy: string
   title: string
@@ -24,13 +26,14 @@ export interface DashboardPlaceholderPageProps {
 
 export function DashboardPlaceholderPage({
   action,
+  actions,
   description,
   panelCopy,
   title,
 }: DashboardPlaceholderPageProps) {
   return (
     <DashboardPage>
-      <DashboardPageHeader title={title}>
+      <DashboardPageHeader actions={actions} title={title}>
         <p className="m-0">{description}</p>
       </DashboardPageHeader>
       <DashboardPageBody>

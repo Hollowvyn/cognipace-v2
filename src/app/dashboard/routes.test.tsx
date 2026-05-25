@@ -173,6 +173,46 @@ describe('dashboard routes', () => {
     expect(screen.getByRole('link', { name: 'Open Tracks' })).toBeVisible()
   })
 
+  it('applies the saved dashboard theme and cycles it from the header button', async () => {
+    const darkSettings = {
+      ...defaultUserSettings,
+      appearance: {
+        themeMode: 'dark' as const,
+      },
+    }
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'settings.getSettings') {
+        return Promise.resolve(darkSettings)
+      }
+
+      if (method === 'settings.cycleThemeMode') {
+        return Promise.resolve(null)
+      }
+
+      if (method === 'app.getShellData') {
+        return Promise.resolve(createDashboardAppShellData())
+      }
+
+      if (method === 'tracks.getWorkspace') {
+        return Promise.resolve(createTrackWorkspaceResponse())
+      }
+
+      return Promise.resolve(defaultUserSettings)
+    })
+
+    const { user } = renderDashboard('/')
+
+    await screen.findByRole('heading', { name: 'Overview' })
+    const dashboardRoot = document.querySelector('[data-cp-surface="dashboard"]')
+    expect(dashboardRoot).toHaveAttribute('data-cp-theme', 'dark')
+
+    await user.click(screen.getByRole('button', { name: 'Cycle theme mode' }))
+
+    expect(sendMessage).toHaveBeenCalledWith('settings.cycleThemeMode', {
+      surface: 'dashboard',
+    })
+  })
+
   it('renders the Overview queue-clear route with Library and Tracks actions', async () => {
     vi.mocked(sendMessage).mockImplementation((method) => {
       if (method === 'app.getShellData') {

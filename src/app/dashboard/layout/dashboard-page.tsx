@@ -22,22 +22,31 @@ export function DashboardPage({
 }
 
 export function DashboardPageHeader({
+  actions,
   children,
   title,
 }: {
+  actions?: ReactNode
   children?: ReactNode
   title: string
 }) {
   return (
     <header className="min-w-0">
-      <h2 className="m-0 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
-        {title}
-      </h2>
-      {children ? (
-        <div className="mt-2 max-w-2xl text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
-          {children}
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="m-0 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
+            {title}
+          </h2>
+          {children ? (
+            <div className="mt-2 max-w-2xl text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
+              {children}
+            </div>
+          ) : null}
         </div>
-      ) : null}
+        {actions ? (
+          <div className="flex shrink-0 items-center gap-2">{actions}</div>
+        ) : null}
+      </div>
     </header>
   )
 }

@@ -20,6 +20,7 @@ export {
   type UserSettingsPatch,
 } from './domain'
 export {
+  useCycleThemeMode,
   useSettings,
   useToggleStudyMode,
   useUpdateSettings,
