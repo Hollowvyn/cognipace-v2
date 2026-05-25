@@ -134,6 +134,7 @@ describe('OverviewScreen', () => {
 
     const todayQueue = screen.getByRole('region', { name: 'Today Queue' })
 
+    expect(within(todayQueue).getAllByText('Today Queue')).toHaveLength(1)
     expect(within(todayQueue).getByText('Jump Game IV')).toBeVisible()
     expect(within(todayQueue).getByText('Showing 1')).toBeVisible()
     expect(

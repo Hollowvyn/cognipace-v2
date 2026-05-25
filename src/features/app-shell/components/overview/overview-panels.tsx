@@ -224,7 +224,6 @@ export function OverviewQueuePreview({
     >
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <PanelKicker>Today Queue</PanelKicker>
           <h2 className="m-0 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
             Today Queue
           </h2>
