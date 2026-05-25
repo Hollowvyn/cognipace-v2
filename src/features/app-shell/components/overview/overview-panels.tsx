@@ -124,26 +124,39 @@ export function OverviewActiveTrackPanel({
   activeTrack: DashboardOverviewView['activeTrack']
   tracksAction: ReactNode
 }) {
-  if (activeTrack.state === 'no-active-track') {
+  const nextProblem = activeTrack.nextProblem
+
+  if (!nextProblem) {
     return (
-      <Surface className="grid w-full gap-3">
-        <div className="grid gap-1">
-          <PanelKicker>Active Track</PanelKicker>
-          <h2 className="m-0 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
-            No active track selected.
-          </h2>
-          <p className="m-0 max-w-3xl text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
-            Open Tracks to choose a guided path.
-          </p>
+      <Surface className="grid w-full gap-4">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+          <div className="min-w-0">
+            <PanelKicker>Active Track</PanelKicker>
+            <h2 className="m-0 break-words text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
+              {activeTrack.title}
+            </h2>
+            {activeTrack.description ? (
+              <p className="m-0 mt-2 max-w-3xl text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
+                {activeTrack.description}
+              </p>
+            ) : null}
+          </div>
+          {hasTrackProgress(activeTrack) ? (
+            <TrackProgressBadge activeTrack={activeTrack} />
+          ) : null}
         </div>
+
+        {hasTrackProgress(activeTrack) ? (
+          <TrackProgressSummary activeTrack={activeTrack} />
+        ) : null}
+
+        <InlineStatus>{activeTrack.detail}</InlineStatus>
         <div>
           <ActionButton action={tracksAction} variant="outline" />
         </div>
       </Surface>
     )
   }
-
-  const nextProblem = activeTrack.nextProblem
 
   return (
     <Surface className="grid w-full gap-4">
@@ -159,81 +172,40 @@ export function OverviewActiveTrackPanel({
             </p>
           ) : null}
         </div>
-        <Badge
-          className="shrink-0 justify-self-start md:justify-self-end"
-          tone="warning"
-        >
-          {activeTrack.progress.percent}%
-        </Badge>
+        <TrackProgressBadge activeTrack={activeTrack} />
       </div>
 
-      <div className="grid gap-2">
-        <div
-          aria-label="Active track progress"
-          aria-valuemax={100}
-          aria-valuemin={0}
-          aria-valuenow={activeTrack.progress.percent}
-          className="h-2 overflow-hidden rounded-full bg-muted"
-          role="progressbar"
-        >
-          <div
-            className="h-full rounded-full bg-primary"
-            style={{ width: `${activeTrack.progress.percent}%` }}
-          />
-        </div>
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
-          <span>
-            {activeTrack.progress.completedCount}/
-            {activeTrack.progress.totalCount} problems traversed
-          </span>
-          {activeTrack.groupTitle ? (
-            <span>Current chapter: {activeTrack.groupTitle}</span>
-          ) : null}
-        </div>
-      </div>
+      <TrackProgressSummary activeTrack={activeTrack} />
 
       <div className="grid gap-3 border-t border-border pt-4">
-        {nextProblem ? (
-          <>
-            <div className="grid gap-2">
-              <PanelKicker>Next Up</PanelKicker>
-              <div className="text-[length:var(--cp-copy-font-size)] font-semibold leading-tight text-foreground">
-                {nextProblem.title}
-              </div>
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                {activeTrack.groupTitle ? (
-                  <Badge tone="neutral">{activeTrack.groupTitle}</Badge>
-                ) : null}
-                <ProblemDifficultyBadge difficulty={nextProblem.difficulty} />
-              </div>
-              <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
-                {activeTrack.detail}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button asChild>
-                <a
-                  href={createLeetCodeProblemUrl(nextProblem.problemSlug)}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  <ExternalLink aria-hidden="true" />
-                  Continue Path
-                </a>
-              </Button>
-              <ActionButton action={tracksAction} variant="outline" />
-            </div>
-          </>
-        ) : (
-          <div className="grid gap-3">
-            <InlineStatus>
-              No next problem is selected for this track.
-            </InlineStatus>
-            <div>
-              <ActionButton action={tracksAction} variant="outline" />
-            </div>
+        <div className="grid gap-2">
+          <PanelKicker>Next Up</PanelKicker>
+          <div className="text-[length:var(--cp-copy-font-size)] font-semibold leading-tight text-foreground">
+            {nextProblem.title}
           </div>
-        )}
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {activeTrack.groupTitle ? (
+              <Badge tone="neutral">{activeTrack.groupTitle}</Badge>
+            ) : null}
+            <ProblemDifficultyBadge difficulty={nextProblem.difficulty} />
+          </div>
+          <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
+            {activeTrack.detail}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <a
+              href={createLeetCodeProblemUrl(nextProblem.problemSlug)}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <ExternalLink aria-hidden="true" />
+              Continue Path
+            </a>
+          </Button>
+          <ActionButton action={tracksAction} variant="outline" />
+        </div>
       </div>
     </Surface>
   )
@@ -257,9 +229,7 @@ export function OverviewQueuePreview({
             Today Queue
           </h2>
         </div>
-        <Badge tone="neutral">
-          {items.length} {items.length === 1 ? 'item' : 'items'}
-        </Badge>
+        <Badge tone="neutral">Showing {items.length}</Badge>
       </div>
 
       {items.length === 0 ? (
@@ -299,6 +269,58 @@ export function OverviewQueuePreview({
       )}
     </Surface>
   )
+}
+
+function TrackProgressBadge({
+  activeTrack,
+}: {
+  activeTrack: DashboardOverviewView['activeTrack']
+}) {
+  return (
+    <Badge
+      className="shrink-0 justify-self-start md:justify-self-end"
+      tone="warning"
+    >
+      {activeTrack.progress.percent}%
+    </Badge>
+  )
+}
+
+function TrackProgressSummary({
+  activeTrack,
+}: {
+  activeTrack: DashboardOverviewView['activeTrack']
+}) {
+  return (
+    <div className="grid gap-2">
+      <div
+        aria-label="Active track progress"
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={activeTrack.progress.percent}
+        className="h-2 overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+      >
+        <div
+          className="h-full rounded-full bg-primary"
+          style={{ width: `${activeTrack.progress.percent}%` }}
+        />
+      </div>
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+        <span>
+          {activeTrack.progress.completedCount}/
+          {activeTrack.progress.totalCount} problems traversed
+        </span>
+        {activeTrack.groupTitle ? (
+          <span>Current chapter: {activeTrack.groupTitle}</span>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function hasTrackProgress(activeTrack: DashboardOverviewView['activeTrack']) {
+  return activeTrack.trackId !== null && activeTrack.progress.totalCount > 0
 }
 
 function ActionButton({

@@ -135,9 +135,92 @@ describe('OverviewScreen', () => {
     const todayQueue = screen.getByRole('region', { name: 'Today Queue' })
 
     expect(within(todayQueue).getByText('Jump Game IV')).toBeVisible()
+    expect(within(todayQueue).getByText('Showing 1')).toBeVisible()
     expect(
       within(todayQueue).getByRole('link', { name: 'Open Jump Game IV' }),
     ).toHaveAttribute('href', 'https://leetcode.com/problems/jump-game-iv/')
+  })
+
+  it('renders disabled free-practice track guidance without a path CTA', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      createDashboardAppShellData({
+        activeTrack: {
+          state: 'disabled-free-practice',
+          trackId: null,
+          title: 'Track guidance disabled',
+          description: null,
+          groupTitle: null,
+          dueAt: null,
+          progress: {
+            completedCount: 0,
+            totalCount: 0,
+            percent: 0,
+          },
+          detail: 'Free Practice uses queue recommendations only.',
+          nextProblem: null,
+        },
+      }),
+    )
+
+    renderOverviewScreen()
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Track guidance disabled',
+      }),
+    ).toBeVisible()
+    expect(
+      screen.getByText('Free Practice uses queue recommendations only.'),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('link', { name: 'Continue Path' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open Tracks' })).toHaveAttribute(
+      'href',
+      '#/tracks',
+    )
+  })
+
+  it('renders exhausted active-track guidance without a path CTA', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      createDashboardAppShellData({
+        activeTrack: {
+          state: 'exhausted',
+          trackId: 'bytebytego-coding-patterns-101',
+          title: 'ByteByteGo Coding Patterns 101',
+          description: "ByteByteGo's coding patterns path.",
+          groupTitle: 'Two Pointers',
+          dueAt: null,
+          progress: {
+            completedCount: 101,
+            totalCount: 101,
+            percent: 100,
+          },
+          detail: 'No more problems in track.',
+          nextProblem: null,
+        },
+      }),
+    )
+
+    renderOverviewScreen()
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'ByteByteGo Coding Patterns 101',
+      }),
+    ).toBeVisible()
+    expect(screen.getByText('No more problems in track.')).toBeVisible()
+    expect(screen.getByLabelText('Active track progress')).toHaveAttribute(
+      'aria-valuenow',
+      '100',
+    )
+    expect(
+      screen.queryByRole('link', { name: 'Continue Path' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open Tracks' })).toHaveAttribute(
+      'href',
+      '#/tracks',
+    )
   })
 
   it('renders the empty new-user overview state', async () => {
