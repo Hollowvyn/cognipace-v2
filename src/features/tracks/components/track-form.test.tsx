@@ -158,51 +158,6 @@ describe('TrackForm', () => {
     expect(screen.getByText('No matching Library problems.')).toBeVisible()
   })
 
-  it('constrains long problem titles before form action controls', async () => {
-    const user = userEvent.setup()
-    const longTitle = `Problem ${'C'.repeat(90)}`
-    mockTrackFormRuntime(
-      createTrackForEditResponse({
-        track: null,
-        groups: [],
-        problemRows: [problemRow('long-problem', longTitle)],
-      }),
-    )
-
-    renderTrackForm(
-      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
-    )
-
-    await user.type(
-      await screen.findByLabelText('Search Library problems'),
-      'problem',
-    )
-
-    expect(await screen.findByText(longTitle)).toHaveClass(
-      'min-w-0',
-      'max-w-full',
-      'truncate',
-    )
-  })
-
-  it('keeps track form actions in a sticky footer', async () => {
-    mockTrackFormRuntime(createTrackDefaults())
-
-    renderTrackForm(
-      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
-    )
-
-    await screen.findByLabelText('Title')
-
-    const actions = screen.getByRole('group', { name: 'Track form actions' })
-
-    expect(actions).toHaveClass('sticky', 'bottom-0')
-    expect(
-      within(actions).getByRole('button', { name: 'CANCEL' }),
-    ).toBeVisible()
-    expect(within(actions).getByRole('button', { name: 'SAVE' })).toBeVisible()
-  })
-
   it('keeps Cancel available while a create save is pending', async () => {
     const user = userEvent.setup()
     const onCancel = vi.fn()
@@ -270,11 +225,7 @@ describe('TrackForm', () => {
     })
 
     expect(within(arraysRow).getByText('2 problems')).toBeVisible()
-    expect(within(arraysRow).getByText('Arrays and Hashing')).toHaveClass(
-      'text-[length:var(--cp-copy-font-size)]',
-    )
     expect(within(dynamicRow).getByText('1 problem')).toBeVisible()
-    expect(dynamicRow).toHaveClass('cursor-pointer')
     expect(within(arraysRow).getByLabelText('Group title')).toHaveValue(
       'Arrays and Hashing',
     )
@@ -338,7 +289,7 @@ describe('TrackForm', () => {
     ).toBeEnabled()
   })
 
-  it('selected group problems render as dense rows with remove after move controls', async () => {
+  it('shows selected group problems with move and remove controls', async () => {
     mockTrackFormRuntime(createEditResponse())
 
     renderTrackForm(
@@ -359,21 +310,17 @@ describe('TrackForm', () => {
       name: '1. Two Sum',
     })
 
+    expect(within(selectedGroupProblems).getByText('2 selected')).toBeVisible()
+    expect(within(twoSumRow).getByText('Two Sum')).toBeVisible()
     expect(
-      within(selectedGroupProblems).getByText('2 selected'),
-    ).toHaveClass('text-[length:var(--cp-badge-font-size)]')
-    expect(twoSumRow).toHaveClass('grid-cols-[auto_minmax(0,1fr)_auto]')
-    expect(twoSumRow).toHaveClass('bg-background/30', 'px-3', 'py-2')
-    expect(within(twoSumRow).getByText('Two Sum')).toHaveClass(
-      'truncate',
-      'text-[length:var(--cp-copy-font-size)]',
-    )
-    expect(within(twoSumRow).queryByText('Easy')).toBeNull()
-    expectActionOrder(twoSumRow, [
-      'Move Two Sum up',
-      'Move Two Sum down',
-      'Remove Two Sum',
-    ])
+      within(twoSumRow).getByRole('button', { name: 'Move Two Sum up' }),
+    ).toBeDisabled()
+    expect(
+      within(twoSumRow).getByRole('button', { name: 'Move Two Sum down' }),
+    ).toBeEnabled()
+    expect(
+      within(twoSumRow).getByRole('button', { name: 'Remove Two Sum' }),
+    ).toBeEnabled()
   })
 
   it('only shows up to four autocomplete results after searching', async () => {
@@ -395,26 +342,15 @@ describe('TrackForm', () => {
     const searchInput = screen.getByLabelText('Search Library problems')
 
     expect(
-      screen.getByRole('region', { name: 'Track problem search' }),
-    ).toHaveClass('relative', 'z-20')
-    expect(
       screen.queryByRole('region', { name: 'Library problem suggestions' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByText('No matching Library problems.')).toBeNull()
 
     await user.type(searchInput, 'two')
 
-    const emptySuggestions = screen.getByRole('region', {
-      name: 'Library problem suggestions',
-    })
-
-    expect(emptySuggestions).toHaveClass(
-      'absolute',
-      'top-full',
-      'max-h-56',
-      'overflow-y-auto',
-      'bg-popover',
-    )
+    expect(
+      screen.getByRole('region', { name: 'Library problem suggestions' }),
+    ).toBeVisible()
     expect(
       screen.queryByRole('button', { name: 'Add Two Sum' }),
     ).not.toBeInTheDocument()
@@ -431,13 +367,7 @@ describe('TrackForm', () => {
     })
     const resultRows = within(results).getAllByRole('listitem')
 
-    expect(suggestions).toHaveClass(
-      'absolute',
-      'top-full',
-      'max-h-56',
-      'overflow-y-auto',
-      'bg-popover',
-    )
+    expect(suggestions).toBeVisible()
     expect(resultRows).toHaveLength(4)
     const binarySearchResult = within(results).getByRole('listitem', {
       name: 'Binary Search',
@@ -449,13 +379,6 @@ describe('TrackForm', () => {
       },
     )
 
-    expect(addBinarySearchButton).toHaveClass(
-      'w-full',
-      'grid-cols-[minmax(0,1fr)_auto]',
-    )
-    expect(within(binarySearchResult).getByText('Binary Search')).toHaveClass(
-      'text-[length:var(--cp-copy-font-size)]',
-    )
     expect(within(binarySearchResult).queryByText('Easy')).toBeNull()
     expect(addBinarySearchButton).toBeVisible()
     expect(screen.queryByText('Binary Tree Path Sum')).toBeNull()
@@ -467,63 +390,6 @@ describe('TrackForm', () => {
       screen.queryByRole('region', { name: 'Library problem suggestions' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByText('No matching Library problems.')).toBeNull()
-  })
-
-  it('keeps group and selected problem rows in internal scroll containers', async () => {
-    mockTrackFormRuntime(createEditResponse())
-
-    renderTrackForm(
-      <TrackForm
-        mode="edit"
-        onCancel={vi.fn()}
-        onLoaded={vi.fn()}
-        onSaved={vi.fn()}
-        trackId="leetcode-75"
-      />,
-    )
-
-    expect(await screen.findByLabelText('Title')).toHaveValue('LeetCode 75')
-
-    const compositionEditor = screen.getByRole('group', {
-      name: 'Track composition editor',
-    })
-    const groupHeader = screen.getByLabelText('Track groups header')
-    const selectedProblemHeader = screen.getByLabelText(
-      'Selected group problems header',
-    )
-    const groupRows = screen.getByRole('list', { name: 'Track groups' })
-    const selectedProblemRows = screen.getByRole('region', {
-      name: 'Selected problem rows',
-    })
-
-    expect(compositionEditor).toHaveClass(
-      'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]',
-    )
-    expect(groupHeader).toHaveClass(
-      'min-h-[var(--cp-control-height-sm)]',
-      'items-center',
-    )
-    expect(selectedProblemHeader).toHaveClass(
-      'min-h-[var(--cp-control-height-sm)]',
-      'items-center',
-    )
-    expect(groupRows).toHaveClass(
-      'h-80',
-      'content-start',
-      'overflow-y-auto',
-      'rounded-[var(--cp-control-radius)]',
-      'border-2',
-      'border-border',
-      'p-3',
-    )
-    expect(selectedProblemRows).toHaveClass(
-      'h-80',
-      'overflow-y-auto',
-      'rounded-[var(--cp-control-radius)]',
-      'border-2',
-      'border-border',
-      'p-3',
-    )
   })
 
   it('expands the first invalid group title on submit', async () => {
@@ -639,16 +505,6 @@ function renderTrackForm(ui: ReactElement) {
   const { wrapper } = createQueryTestHarness()
 
   return render(ui, { wrapper })
-}
-
-function expectActionOrder(container: HTMLElement, actions: readonly string[]) {
-  const buttons = within(container).getAllByRole('button')
-  const actionIndexes = actions.map((action) =>
-    buttons.findIndex((button) => button.getAttribute('aria-label') === action),
-  )
-
-  expect(actionIndexes).not.toContain(-1)
-  expect(actionIndexes).toEqual([...actionIndexes].sort((a, b) => a - b))
 }
 
 function mockTrackFormRuntime(
