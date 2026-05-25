@@ -54,16 +54,28 @@ describe('ProblemsRepository library data', () => {
     })
     const twoSum = library.rows.find((row) => row.problem.slug === 'two-sum')
 
-    expect(library.summary.totalCount).toBe(2)
+    expect(library.summary.totalCount).toBe(library.rows.length)
+    expect(library.rows.map((row) => row.problem.slug)).toEqual(
+      expect.arrayContaining([
+        'two-sum',
+        'valid-parentheses',
+        'two-sum-ii-input-array-is-sorted',
+      ]),
+    )
     expect(twoSum).toMatchObject({
       status: 'scheduled',
       lastSolvedAt: solvedAt.toISOString(),
       topics: [{ id: 'array', label: 'Array' }],
       companies: [{ id: 'netflix', label: 'Netflix' }],
-      trackMemberships: [
-        { trackId: 'leetcode-75', groupId: 'leetcode-75:arrays-hashing' },
-      ],
     })
+    expect(twoSum?.trackMemberships).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          trackId: 'leetcode-75',
+          groupId: 'leetcode-75:arrays-hashing',
+        }),
+      ]),
+    )
   })
 
   it('creates user problems and edits seeded or user-created metadata with replacement labels', async () => {

@@ -564,6 +564,41 @@ describe('ProblemLibraryScreen', () => {
     expect(await screen.findByText('Deleted selected problems.')).toBeVisible()
   })
 
+  it('renders a selected-row action with selected rows in bulk-selection order', async () => {
+    const user = userEvent.setup()
+    const onMakeTrack = vi.fn()
+    vi.mocked(sendMessage).mockResolvedValueOnce(libraryResponse)
+    renderProblemLibrary({
+      renderSelectedRowsAction: (selectedRows) => (
+        <Button
+          onClick={() => {
+            onMakeTrack(selectedRows.map((row) => row.problem.slug))
+          }}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          Make Track
+        </Button>
+      ),
+    })
+
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Select Two Sum' }),
+    )
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select Binary Search' }),
+    )
+
+    const bulkBar = screen.getByRole('region', { name: 'Bulk actions' })
+
+    await user.click(
+      within(bulkBar).getByRole('button', { name: 'Make Track' }),
+    )
+
+    expect(onMakeTrack).toHaveBeenCalledWith(['two-sum', 'binary-search'])
+  })
+
   it('bulk-edits metadata with explicit enabled replacement fields', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage).mockImplementation((method) => {
@@ -688,7 +723,9 @@ describe('ProblemLibraryScreen', () => {
   })
 })
 
-function renderProblemLibrary() {
+function renderProblemLibrary(
+  props: Partial<Parameters<typeof ProblemLibraryScreen>[0]> = {},
+) {
   const { wrapper } = createQueryTestHarness()
 
   return render(
@@ -706,6 +743,7 @@ function renderProblemLibrary() {
           <a href={`#/library/problems/${problem.slug}/edit`}>Edit</a>
         </Button>
       )}
+      {...props}
     />,
     { wrapper },
   )

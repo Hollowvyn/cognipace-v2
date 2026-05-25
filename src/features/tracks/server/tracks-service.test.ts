@@ -1,4 +1,4 @@
-import { asc } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
 import { createSettingsRepository } from '@/features/settings/data/settings-repository'
@@ -33,10 +33,10 @@ describe('tracks service', () => {
 
     expect(activeTrack).toMatchObject({
       track: {
-        id: 'leetcode-75',
+        id: 'bytebytego-coding-patterns-101',
       },
       nextProblem: {
-        slug: 'two-sum',
+        slug: 'two-sum-ii-input-array-is-sorted',
       },
     })
   })
@@ -71,8 +71,11 @@ describe('tracks service', () => {
       at: '2026-01-10T12:00:00.000Z',
     })
 
-    expect(workspace.activeTrack?.track.id).toBe('leetcode-75')
+    expect(workspace.activeTrack?.track.id).toBe(
+      'bytebytego-coding-patterns-101',
+    )
     expect(workspace.tracks.map((row) => row.track.id)).toEqual([
+      'bytebytego-coding-patterns-101',
       'grind-75',
       'leetcode-75',
     ])
@@ -84,6 +87,7 @@ describe('tracks service', () => {
     })
     const timestamp = new Date('2026-01-02T00:00:00.000Z').getTime()
 
+    await makeLeetCodeActive(handle.db)
     await handle.db.insert(trackGroups).values([
       {
         id: 'leetcode-75:stack',
@@ -145,6 +149,7 @@ describe('tracks service', () => {
       dueCount: 1,
     })
     expect(workspace.tracks.map((row) => row.track.id)).toEqual([
+      'bytebytego-coding-patterns-101',
       'grind-75',
       'leetcode-75',
     ])
@@ -203,6 +208,7 @@ describe('tracks service', () => {
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
 
+    await makeLeetCodeActive(handle.db)
     await makeProblemDue(handle.db, 'valid-parentheses', {
       now: new Date('2026-01-10T12:00:00.000Z'),
     })
@@ -223,6 +229,7 @@ describe('tracks service', () => {
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
 
+    await makeLeetCodeActive(handle.db)
     await addActiveTrackMembership(handle.db, {
       groupId: 'leetcode-75:stack',
       groupTitle: 'Stack',
@@ -261,6 +268,7 @@ describe('tracks service', () => {
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
 
+    await makeLeetCodeActive(dueHandle.db)
     await addActiveTrackMembership(dueHandle.db, {
       groupId: 'leetcode-75:stack',
       groupTitle: 'Stack',
@@ -288,6 +296,7 @@ describe('tracks service', () => {
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
 
+    await makeLeetCodeActive(unscheduledHandle.db)
     await addActiveTrackMembership(unscheduledHandle.db, {
       groupId: 'leetcode-75:stack',
       groupTitle: 'Stack',
@@ -313,6 +322,7 @@ describe('tracks service', () => {
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
 
+    await makeLeetCodeActive(completeHandle.db)
     await completeTrackProblem(completeHandle.db, {
       groupId: 'leetcode-75:arrays-hashing',
       problemSlug: 'two-sum',
@@ -335,6 +345,7 @@ describe('tracks service', () => {
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
 
+    await makeLeetCodeActive(handle.db)
     await addActiveTrackMembership(handle.db, {
       groupId: 'leetcode-75:stack',
       groupTitle: 'Stack',
@@ -370,10 +381,15 @@ describe('tracks service', () => {
         problemSlugs: [],
       },
     ])
-    expect(edit.problemRows.map((row) => row.problem.slug)).toEqual([
-      'two-sum',
-      'valid-parentheses',
-    ])
+    const problemSlugs = edit.problemRows.map((row) => row.problem.slug)
+    expect(problemSlugs).toHaveLength(101)
+    expect(problemSlugs).toContain('two-sum')
+    expect(problemSlugs).toContain('valid-parentheses')
+    expect(edit.problemRows[0]).toMatchObject({
+      problem: {
+        slug: 'ones-and-zeroes',
+      },
+    })
   })
 
   it('returns existing track metadata, ordered groups, memberships, and Library problem rows for edit', async () => {
@@ -415,10 +431,15 @@ describe('tracks service', () => {
       ],
       ['leetcode-75:stack', 'leetcode-75', 'Stack', 2, ['valid-parentheses']],
     ])
-    expect(edit.problemRows.map((row) => row.problem.slug)).toEqual([
-      'two-sum',
-      'valid-parentheses',
-    ])
+    const problemSlugs = edit.problemRows.map((row) => row.problem.slug)
+    expect(problemSlugs).toHaveLength(101)
+    expect(problemSlugs).toContain('two-sum')
+    expect(problemSlugs).toContain('valid-parentheses')
+    expect(edit.problemRows[0]).toMatchObject({
+      problem: {
+        slug: 'ones-and-zeroes',
+      },
+    })
   })
 
   it('creates and activates a new track when requested', async () => {
@@ -475,6 +496,7 @@ describe('tracks service', () => {
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
 
+    await makeLeetCodeActive(handle.db)
     await deleteTrack(handle.db, {
       surface: 'dashboard',
       trackId: 'leetcode-75',
@@ -551,6 +573,16 @@ describe('tracks service', () => {
     ).rejects.toThrow('Track "missing" was not found.')
   })
 })
+
+async function makeLeetCodeActive(db: Db) {
+  await db
+    .update(trackSession)
+    .set({
+      activeTrackId: 'leetcode-75',
+      activeGroupId: 'leetcode-75:arrays-hashing',
+    })
+    .where(eq(trackSession.id, 'active'))
+}
 
 async function addActiveTrackMembership(
   db: Db,

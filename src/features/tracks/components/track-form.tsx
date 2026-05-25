@@ -26,6 +26,10 @@ import type {
   TracksUpdateTrackRequest,
 } from '../api/tracks-contracts'
 import {
+  trackFormGroupByOptions,
+  type TrackFormInitialDraft,
+} from '../hooks/track-form-initial-draft'
+import {
   useTrackForm,
   type TrackFormFieldErrors,
   type TrackFormGroupState,
@@ -33,6 +37,7 @@ import {
 
 type TrackFormProps =
   | {
+      initialDraft?: TrackFormInitialDraft | undefined
       mode: 'create'
       onCancel: () => void
       onSaved: () => void
@@ -91,7 +96,13 @@ export function TrackForm(props: TrackFormProps) {
 
   return (
     <TrackFormFields
-      key={editQuery.data.track?.id ?? 'create'}
+      initialDraft={props.mode === 'create' ? props.initialDraft : undefined}
+      key={
+        editQuery.data.track?.id ??
+        (props.mode === 'create' && props.initialDraft
+          ? `create:${props.initialDraft.id}`
+          : props.mode)
+      }
       mode={props.mode}
       onCancel={props.onCancel}
       onSaved={props.onSaved}
@@ -102,12 +113,14 @@ export function TrackForm(props: TrackFormProps) {
 }
 
 function TrackFormFields({
+  initialDraft,
   mode,
   onCancel,
   onSaved,
   source,
   trackId,
 }: {
+  initialDraft?: TrackFormInitialDraft | undefined
   mode: 'create' | 'edit'
   onCancel: () => void
   onSaved: () => void
@@ -117,22 +130,27 @@ function TrackFormFields({
   const createTrack = useCreateTrack()
   const updateTrack = useUpdateTrack()
   const { canSubmit, dispatch, fieldErrors, payload, selectedGroup, state } =
-    useTrackForm(source)
+    useTrackForm(source, initialDraft ? { initialDraft } : {})
   const [searchQuery, setSearchQuery] = useState('')
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const shouldShowGroupBy = mode === 'create' && Boolean(initialDraft)
   const pending = createTrack.isPending || updateTrack.isPending
   const errorId = 'track-form-error'
   const validationError = submitAttempted
     ? getFirstFieldError(fieldErrors)
     : null
   const visibleError = submitError ?? validationError
+  const availableProblemRows = useMemo(
+    () => mergeProblemRows(source.problemRows, initialDraft?.problemRows ?? []),
+    [initialDraft?.problemRows, source.problemRows],
+  )
   const problemRowsBySlug = useMemo(
     () =>
       new Map(
-        source.problemRows.map((row) => [row.problem.slug, row] as const),
+        availableProblemRows.map((row) => [row.problem.slug, row] as const),
       ),
-    [source.problemRows],
+    [availableProblemRows],
   )
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -198,6 +216,11 @@ function TrackFormFields({
       ) : null}
 
       <section className="grid gap-4" aria-label="Track metadata">
+        {initialDraft ? (
+          <InlineStatus>
+            {initialDraft.selectedCount} selected Library problems
+          </InlineStatus>
+        ) : null}
         <TrackTextField
           describedBy={
             submitAttempted && fieldErrors.title ? errorId : undefined
@@ -217,13 +240,32 @@ function TrackFormFields({
           }
           value={state.description}
         />
-        <TrackTextField
-          label="Target date"
-          name="track-due-at"
-          onChange={(dueAt) => dispatch({ type: 'set-due-at', dueAt })}
-          type="date"
-          value={state.dueAt}
-        />
+        <div
+          className={cn('grid gap-4', shouldShowGroupBy && 'md:grid-cols-2')}
+        >
+          <TrackTextField
+            label="Target date"
+            name="track-due-at"
+            onChange={(dueAt) => dispatch({ type: 'set-due-at', dueAt })}
+            type="date"
+            value={state.dueAt}
+          />
+          {shouldShowGroupBy && initialDraft ? (
+            <TrackSelectField
+              label="Group by"
+              name="track-group-by"
+              onChange={(groupBy) =>
+                dispatch({
+                  groupBy,
+                  problemRows: initialDraft.problemRows,
+                  type: 'set-group-by',
+                })
+              }
+              options={trackFormGroupByOptions}
+              value={state.groupBy}
+            />
+          ) : null}
+        </div>
         {mode === 'create' ? (
           <label className="inline-flex min-h-[var(--cp-control-height)] w-fit items-center gap-2 text-[length:var(--cp-control-font-size)] font-semibold text-foreground">
             <input
@@ -246,7 +288,7 @@ function TrackFormFields({
       <TrackProblemSearch
         dispatch={dispatch}
         groups={state.groups}
-        problemRows={source.problemRows}
+        problemRows={availableProblemRows}
         searchQuery={searchQuery}
         selectedGroup={selectedGroup}
         setSearchQuery={setSearchQuery}
@@ -266,6 +308,7 @@ function TrackFormFields({
         />
         <SelectedGroupProblems
           dispatch={dispatch}
+          groups={state.groups}
           problemRowsBySlug={problemRowsBySlug}
           selectedGroup={selectedGroup}
         />
@@ -321,10 +364,7 @@ function TrackProblemSearch({
     : []
 
   return (
-    <section
-      aria-label="Track problem search"
-      className="relative z-20"
-    >
+    <section aria-label="Track problem search" className="relative z-20">
       <TrackTextField
         icon={<Search aria-hidden="true" />}
         label="Search Library problems"
@@ -530,10 +570,12 @@ function TrackGroupList({
 
 function SelectedGroupProblems({
   dispatch,
+  groups,
   problemRowsBySlug,
   selectedGroup,
 }: {
   dispatch: ReturnType<typeof useTrackForm>['dispatch']
+  groups: readonly TrackFormGroupState[]
   problemRowsBySlug: ReadonlyMap<string, ProblemLibraryRow>
   selectedGroup: TrackFormGroupState
 }) {
@@ -556,6 +598,7 @@ function SelectedGroupProblems({
 
       <OrderedProblemList
         dispatch={dispatch}
+        groups={groups}
         problemRowsBySlug={problemRowsBySlug}
         selectedGroup={selectedGroup}
       />
@@ -565,10 +608,12 @@ function SelectedGroupProblems({
 
 function OrderedProblemList({
   dispatch,
+  groups,
   problemRowsBySlug,
   selectedGroup,
 }: {
   dispatch: ReturnType<typeof useTrackForm>['dispatch']
+  groups: readonly TrackFormGroupState[]
   problemRowsBySlug: ReadonlyMap<string, ProblemLibraryRow>
   selectedGroup: TrackFormGroupState
 }) {
@@ -598,12 +643,27 @@ function OrderedProblemList({
                 <span className="text-[length:var(--cp-badge-font-size)] font-bold text-muted-foreground tabular-nums">
                   {index + 1}
                 </span>
-                <ProblemSummary
-                  compact
-                  title={title}
-                  slug={problemSlug}
-                />
+                <ProblemSummary compact title={title} slug={problemSlug} />
                 <div className="flex shrink-0 justify-end gap-1">
+                  <select
+                    aria-label={`Group for ${title}`}
+                    className="h-8 max-w-36 rounded-[var(--cp-control-radius)] border border-border bg-background px-2 text-[length:var(--cp-badge-font-size)] text-foreground"
+                    onChange={(event) =>
+                      dispatch({
+                        fromGroupKey: selectedGroup.key,
+                        problemSlug,
+                        toGroupKey: event.target.value,
+                        type: 'move-problem-to-group',
+                      })
+                    }
+                    value={selectedGroup.key}
+                  >
+                    {groups.map((group) => (
+                      <option key={group.key} value={group.key}>
+                        {group.title.trim() || 'Untitled group'}
+                      </option>
+                    ))}
+                  </select>
                   <IconButton
                     disabled={index === 0}
                     label={`Move ${title} up`}
@@ -674,11 +734,7 @@ function ProblemSearchResult({
   row: ProblemLibraryRow
 }) {
   return (
-    <div
-      aria-label={row.problem.title}
-      className="min-w-0"
-      role="listitem"
-    >
+    <div aria-label={row.problem.title} className="min-w-0" role="listitem">
       <button
         aria-label={`Add ${row.problem.title}`}
         className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--cp-control-radius)] border border-border px-3 py-2 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-popover"
@@ -765,6 +821,38 @@ function TrackTextField({
   )
 }
 
+function TrackSelectField<TValue extends string>({
+  label,
+  name,
+  onChange,
+  options,
+  value,
+}: {
+  label: string
+  name: string
+  onChange: (value: TValue) => void
+  options: ReadonlyArray<{ label: string; value: TValue }>
+  value: TValue
+}) {
+  return (
+    <label className="relative block pt-2">
+      <span className={floatingLabelClassName}>{label}</span>
+      <select
+        className={fieldClassName}
+        name={name}
+        onChange={(event) => onChange(event.target.value as TValue)}
+        value={value}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 function TrackTextareaField({
   label,
   name,
@@ -831,6 +919,19 @@ function matchesProblemSearch(row: ProblemLibraryRow, searchQuery: string) {
   return `${row.problem.title} ${row.problem.slug}`
     .toLowerCase()
     .includes(normalizedSearchQuery)
+}
+
+function mergeProblemRows(
+  sourceRows: readonly ProblemLibraryRow[],
+  draftRows: readonly ProblemLibraryRow[],
+) {
+  const rowsBySlug = new Map<string, ProblemLibraryRow>()
+
+  for (const row of [...sourceRows, ...draftRows]) {
+    rowsBySlug.set(row.problem.slug, row)
+  }
+
+  return [...rowsBySlug.values()]
 }
 
 const floatingLabelClassName =

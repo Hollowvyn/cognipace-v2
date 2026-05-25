@@ -1,12 +1,13 @@
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { RouteModal } from '@/app/dashboard/layout/route-modal'
 import {
+  type DashboardModalClosePath,
   dashboardModalRouteMeta,
   dashboardPaths,
 } from '@/app/dashboard/navigation/route-manifest'
-import { TrackForm } from '@/features/tracks'
+import { LibrarySelectionTrackForm, TrackForm } from '@/features/tracks'
 
 export function NewTrackModalPage() {
   const closeToTracks = useCloseToTracks()
@@ -50,10 +51,33 @@ export function EditTrackModalPage() {
   )
 }
 
+export function NewLibrarySelectionTrackModalPage() {
+  const closeToLibrary = useCloseTo(dashboardPaths.library)
+  const search = useSearch({ from: dashboardPaths.libraryTrackNew })
+
+  return (
+    <RouteModal
+      closeTo={dashboardModalRouteMeta.libraryTrackNew.closeTo}
+      title="New Track"
+      variant="form"
+    >
+      <LibrarySelectionTrackForm
+        draftId={search.draft}
+        onCancel={closeToLibrary}
+        onSaved={closeToLibrary}
+      />
+    </RouteModal>
+  )
+}
+
 function useCloseToTracks() {
+  return useCloseTo(dashboardPaths.tracks)
+}
+
+function useCloseTo(path: DashboardModalClosePath) {
   const navigate = useNavigate()
 
   return () => {
-    void navigate({ replace: true, to: dashboardPaths.tracks })
+    void navigate({ replace: true, to: path })
   }
 }

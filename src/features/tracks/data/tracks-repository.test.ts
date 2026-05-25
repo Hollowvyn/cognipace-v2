@@ -10,6 +10,7 @@ import {
   tracks,
 } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
+import type { Db } from '@/platform/db'
 
 import { createTracksRepository } from './tracks-repository'
 
@@ -24,20 +25,20 @@ describe('TracksRepository', () => {
 
     expect(activeTrack).toMatchObject({
       track: {
-        id: 'leetcode-75',
-        title: 'LeetCode 75',
+        id: 'bytebytego-coding-patterns-101',
+        title: 'ByteByteGo Coding Patterns 101',
         dueAt: null,
       },
       activeGroup: {
-        title: 'Arrays and Hashing',
+        title: 'Two Pointers',
       },
       progress: {
         completedCount: 0,
-        totalCount: 1,
+        totalCount: 101,
         percent: 0,
       },
       nextProblem: {
-        slug: 'two-sum',
+        slug: 'two-sum-ii-input-array-is-sorted',
       },
     })
   })
@@ -79,7 +80,7 @@ describe('TracksRepository', () => {
     await handle.db
       .update(tracks)
       .set({ dueAt: dueAt.getTime() })
-      .where(eq(tracks.id, 'leetcode-75'))
+      .where(eq(tracks.id, 'bytebytego-coding-patterns-101'))
 
     const activeTrack = await createTracksRepository(handle.db).getActiveTrack()
 
@@ -92,6 +93,7 @@ describe('TracksRepository', () => {
     })
     const timestamp = new Date('2026-01-01T08:00:00.000Z').getTime()
 
+    await makeLeetCodeActive(handle.db)
     await handle.db.insert(trackGroups).values({
       id: 'leetcode-75:stack',
       trackId: 'leetcode-75',
@@ -141,6 +143,7 @@ describe('TracksRepository', () => {
     })
     const timestamp = new Date('2026-01-01T08:00:00.000Z').getTime()
 
+    await makeLeetCodeActive(handle.db)
     await handle.db.insert(trackGroups).values({
       id: 'leetcode-75:stack',
       trackId: 'leetcode-75',
@@ -202,9 +205,7 @@ describe('TracksRepository', () => {
 
     await handle.db
       .delete(trackGroupProblems)
-      .where(
-        eq(trackGroupProblems.trackGroupId, 'leetcode-75:arrays-hashing'),
-      )
+      .where(eq(trackGroupProblems.trackGroupId, 'leetcode-75:arrays-hashing'))
 
     const rows = await handle.db
       .select()
@@ -253,6 +254,7 @@ describe('TracksRepository', () => {
     })
     const timestamp = new Date('2026-01-01T08:00:00.000Z').getTime()
 
+    await makeLeetCodeActive(handle.db)
     await handle.db.insert(problemPractice).values({
       problemSlug: 'two-sum',
       status: 'suspended',
@@ -288,19 +290,20 @@ describe('TracksRepository', () => {
     const catalog = await repository.getTrackCatalog()
 
     expect(catalog.map((item) => item.track.id)).toEqual([
+      'bytebytego-coding-patterns-101',
       'grind-75',
       'leetcode-75',
     ])
-    expect(catalog.map((item) => item.isActive)).toEqual([false, true])
+    expect(catalog.map((item) => item.isActive)).toEqual([true, false, false])
     expect(catalog.find((item) => item.isActive)).toMatchObject({
-      activeGroupId: 'leetcode-75:arrays-hashing',
+      activeGroupId: 'bytebytego-coding-patterns-101:two-pointers',
       progress: {
         completedCount: 0,
-        totalCount: 1,
+        totalCount: 101,
         percent: 0,
       },
       track: {
-        id: 'leetcode-75',
+        id: 'bytebytego-coding-patterns-101',
       },
     })
   })
@@ -314,12 +317,12 @@ describe('TracksRepository', () => {
 
     expect(session).toMatchObject({
       activeTrack: {
-        id: 'leetcode-75',
-        title: 'LeetCode 75',
+        id: 'bytebytego-coding-patterns-101',
+        title: 'ByteByteGo Coding Patterns 101',
       },
       activeGroup: {
-        id: 'leetcode-75:arrays-hashing',
-        title: 'Arrays and Hashing',
+        id: 'bytebytego-coding-patterns-101:two-pointers',
+        title: 'Two Pointers',
       },
     })
   })
@@ -467,10 +470,10 @@ describe('TracksRepository', () => {
 
     await expect(repository.getSession()).resolves.toMatchObject({
       activeTrack: {
-        id: 'leetcode-75',
+        id: 'bytebytego-coding-patterns-101',
       },
       activeGroup: {
-        id: 'leetcode-75:arrays-hashing',
+        id: 'bytebytego-coding-patterns-101:two-pointers',
       },
     })
   })
@@ -774,13 +777,17 @@ describe('TracksRepository', () => {
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
 
+    await makeLeetCodeActive(handle.db)
     await createTracksRepository(handle.db).deleteTrack(
       'leetcode-75',
       new Date('2026-01-02T00:00:00.000Z'),
     )
 
     const sessionRows = await handle.db.select().from(trackSession)
-    const trackRows = await handle.db.select().from(tracks)
+    const trackRows = await handle.db
+      .select()
+      .from(tracks)
+      .orderBy(asc(tracks.id))
 
     expect(sessionRows).toMatchObject([
       {
@@ -788,7 +795,10 @@ describe('TracksRepository', () => {
         activeGroupId: null,
       },
     ])
-    expect(trackRows.map((track) => track.id)).toEqual(['grind-75'])
+    expect(trackRows.map((track) => track.id)).toEqual([
+      'bytebytego-coding-patterns-101',
+      'grind-75',
+    ])
   })
 
   it('resets only progress rows for the target track', async () => {
@@ -841,6 +851,7 @@ describe('TracksRepository', () => {
     const timestamp = new Date('2026-01-01T08:00:00.000Z').getTime()
     const repository = createTracksRepository(handle.db)
 
+    await makeLeetCodeActive(handle.db)
     await handle.db.insert(trackGroups).values({
       id: 'leetcode-75:duplicates',
       trackId: 'leetcode-75',
@@ -912,6 +923,7 @@ describe('TracksRepository', () => {
     })
     const repository = createTracksRepository(handle.db)
 
+    await makeLeetCodeActive(handle.db)
     await handle.db.insert(trackGroupProblems).values({
       trackGroupId: 'grind-75:stack',
       problemSlug: 'two-sum',
@@ -942,3 +954,13 @@ describe('TracksRepository', () => {
     ])
   })
 })
+
+async function makeLeetCodeActive(db: Db) {
+  await db
+    .update(trackSession)
+    .set({
+      activeTrackId: 'leetcode-75',
+      activeGroupId: 'leetcode-75:arrays-hashing',
+    })
+    .where(eq(trackSession.id, 'active'))
+}

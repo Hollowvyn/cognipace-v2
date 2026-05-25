@@ -13,8 +13,8 @@
 ## Execution Prep
 
 - Work from `/Users/tobiolutimehin/WebstormProjects/cognipace-v2`.
-- Start from latest `main`; create an implementation branch such as `codex/tracks-phase-3-3`.
-- Do not touch the local fixture change in `src/platform/db/seed.ts` unless the user explicitly asks.
+- Start from latest `main` after PR #26 cleanup; continue on `codex/tracks-phase-3-3`.
+- The ByteByteGo seed fixture is a branch commit, not an uncommitted local tweak. Do not overwrite it accidentally; if final verification depends on it, update fixture-sensitive tests deliberately instead of treating those failures as unrelated.
 - Keep `.superpowers/` and `.codex/` out of commits unless the user asks to preserve brainstorming artifacts.
 
 Recommended prep commands:
@@ -27,7 +27,7 @@ git switch -c codex/tracks-phase-3-3
 npm run check
 ```
 
-Expected before implementation: `npm run check` passes or only reports unrelated pre-existing local fixture issues. If `src/platform/db/seed.ts` is still modified, leave it unstaged.
+Expected before implementation: latest `main` should pass `npm run check`. On this branch, `npm run check` may still expose ByteByteGo seed expectation drift until the branch-local fixture tests are updated.
 
 ## File Structure
 
@@ -61,7 +61,7 @@ Modify:
 - `src/features/problems/components/library/problem-library-screen.tsx`
   - Expose selected-row action prop to app composition.
 - `src/features/problems/components/library/problem-library-screen.test.tsx`
-  - Assert selected-row action receives selected rows in table order.
+  - Assert selected-row action receives selected rows in the current Library bulk-selection order.
 - `src/app/dashboard/screens/library-page.tsx`
   - Add `Make Track` action that creates a Tracks draft and navigates to the Library modal route.
 - `src/app/dashboard/screens/track-modal-pages.tsx`
@@ -74,6 +74,11 @@ Modify:
   - Cover route rendering, closing, missing draft, and Library selection navigation.
 - `src/testing/architecture-boundaries.test.ts`
   - No expected changes; run it to verify public-surface imports remain valid.
+
+Boundary note: app/dashboard files must import Tracks feature pieces only from
+`@/features/tracks`. Nested imports such as `@/features/tracks/components/*` or
+`@/features/tracks/utils/*` are allowed inside the Tracks feature itself, but
+will violate the architecture boundary from app code.
 
 ---
 
@@ -328,7 +333,7 @@ function uniqueProblemSlugs(problemSlugs: readonly string[]) {
 }
 
 function createDraftId() {
-  return globalThis.crypto?.randomUUID() ?? `draft-${Date.now()}`
+  return globalThis.crypto?.randomUUID?.() ?? `draft-${Date.now()}`
 }
 
 function getDraftStorageKey(id: string) {
@@ -517,6 +522,7 @@ export const trackFormGroupByOptions = [
 ] as const satisfies readonly Array<{ label: string; value: TrackFormGroupBy }>
 
 export interface TrackFormInitialDraft {
+  id: string
   problemRows: readonly ProblemLibraryRow[]
   selectedCount: number
   source: 'library-selection'
@@ -793,6 +799,7 @@ it('seeds create mode from selected Library rows and shows compact group by drop
   renderTrackForm(
     <TrackForm
       initialDraft={{
+        id: 'draft-1',
         source: 'library-selection',
         selectedCount: 3,
         problemRows: createSelectedProblemRows(),
@@ -837,6 +844,7 @@ it('regroups selected Library rows and moves a problem with the compact group se
   renderTrackForm(
     <TrackForm
       initialDraft={{
+        id: 'draft-1',
         source: 'library-selection',
         selectedCount: 3,
         problemRows: createSelectedProblemRows(),
@@ -966,7 +974,12 @@ Pass `initialDraft` into `TrackFormFields`:
 ```tsx
 <TrackFormFields
   initialDraft={props.mode === 'create' ? props.initialDraft : undefined}
-  key={editQuery.data.track?.id ?? props.mode}
+  key={
+    editQuery.data.track?.id ??
+    (props.mode === 'create' && props.initialDraft
+      ? `create:${props.initialDraft.id}`
+      : props.mode)
+  }
   mode={props.mode}
   onCancel={props.onCancel}
   onSaved={props.onSaved}
@@ -1175,7 +1188,7 @@ git commit -m "feat: add grouped library track drafts to form"
 In `src/features/problems/components/library/problem-library-screen.test.tsx`, add:
 
 ```ts
-it('renders a selected-row action with selected rows in table order', async () => {
+it('renders a selected-row action with selected rows in bulk-selection order', async () => {
   const user = userEvent.setup()
   const onMakeTrack = vi.fn()
   vi.mocked(sendMessage).mockResolvedValueOnce(libraryResponse)
@@ -1240,22 +1253,31 @@ In `src/features/problems/components/library/problem-bulk-action-bar.tsx`, impor
 import { useMemo, useState, type ReactNode } from 'react'
 ```
 
-Add prop:
+Add props:
 
 ```ts
-renderSelectedRowsAction?: ((selectedRows: readonly ProblemLibraryRow[]) => ReactNode) | undefined
+interface RenderSelectedRowsActionContext {
+  disabled: boolean
+}
+
+export type RenderSelectedRowsAction =
+  (selectedRows: readonly ProblemLibraryRow[], context: RenderSelectedRowsActionContext) => ReactNode
+
+renderSelectedRowsAction?: RenderSelectedRowsAction | undefined
 ```
 
 Render after selected count:
 
 ```tsx
-{renderSelectedRowsAction ? renderSelectedRowsAction(selectedRows) : null}
+{renderSelectedRowsAction
+  ? renderSelectedRowsAction(selectedRows, { disabled: isPending })
+  : null}
 ```
 
 In `src/features/problems/components/library/problem-library-table.tsx`, add the same prop:
 
 ```ts
-renderSelectedRowsAction?: ((selectedRows: readonly ProblemLibraryRow[]) => ReactNode) | undefined
+renderSelectedRowsAction?: RenderSelectedRowsAction | undefined
 ```
 
 Pass it into `ProblemBulkActionBar`:
@@ -1335,6 +1357,10 @@ and:
 ```ts
 ['/library/tracks/new?draft=missing', '/library'],
 ```
+
+Also include `/library/tracks/new?draft=missing` in the current parent-nav
+active-state and `beforeunload` modal-close route arrays. The cleanup branch
+keeps `RouteModal` responsible for rewriting modal hashes back to `closeTo`.
 
 Update modal metadata assertions:
 
@@ -1436,6 +1462,7 @@ export function LibrarySelectionTrackForm({
       ) : null}
       <TrackForm
         initialDraft={{
+          id: draft.id,
           source: 'library-selection',
           selectedCount: problemRows.length,
           problemRows,
@@ -1659,8 +1686,9 @@ function createTrackFromSelection(selectedRows: readonly ProblemLibraryRow[]) {
 Pass the action:
 
 ```tsx
-renderSelectedRowsAction={(selectedRows) => (
+renderSelectedRowsAction={(selectedRows, { disabled }) => (
   <Button
+    disabled={disabled}
     onClick={() => createTrackFromSelection(selectedRows)}
     size="sm"
     type="button"

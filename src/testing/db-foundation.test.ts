@@ -16,6 +16,11 @@ import { createTestDb } from '@/platform/db/test-db'
 
 import { deserializeDb, serializeDb } from '@/platform/db/snapshot'
 
+const byteByteGoTrackTitle = 'ByteByteGo Coding Patterns 101'
+const byteByteGoFirstProblemSlug = 'two-sum-ii-input-array-is-sorted'
+const seededProblemCount = 101
+const legacyStarterProblemSlugs = ['two-sum', 'valid-parentheses']
+
 describe('db foundation', () => {
   it('boots sqlite, applies migrations, and seeds the starter catalog', async () => {
     const handle = await createTestDb({
@@ -25,12 +30,15 @@ describe('db foundation', () => {
     const rows = await handle.db.select().from(problems)
     const activeTrack = await createTracksRepository(handle.db).getActiveTrack()
 
-    expect(rows.map((row) => row.slug)).toEqual([
-      'two-sum',
-      'valid-parentheses',
-    ])
-    expect(activeTrack?.track.title).toBe('LeetCode 75')
-    expect(activeTrack?.nextProblem?.slug).toBe('two-sum')
+    expect(rows).toHaveLength(seededProblemCount)
+    expect(rows.map((row) => row.slug)).toEqual(
+      expect.arrayContaining([
+        ...legacyStarterProblemSlugs,
+        byteByteGoFirstProblemSlug,
+      ]),
+    )
+    expect(activeTrack?.track.title).toBe(byteByteGoTrackTitle)
+    expect(activeTrack?.nextProblem?.slug).toBe(byteByteGoFirstProblemSlug)
   })
 
   it('keeps migration indexes aligned with current query paths', async () => {
@@ -368,8 +376,10 @@ describe('db foundation', () => {
 
     const restoredRows = await restored.db.select().from(problems)
 
-    expect(restoredRows).toHaveLength(2)
-    expect(restoredRows[0]?.slug).toBe('two-sum')
+    expect(restoredRows).toHaveLength(seededProblemCount)
+    expect(restoredRows.map((row) => row.slug)).toEqual(
+      expect.arrayContaining(legacyStarterProblemSlugs),
+    )
   })
 
   it('saves a review result and updates the queue from data state', async () => {
@@ -461,11 +471,11 @@ describe('db foundation', () => {
     const activeTrack = await createTracksRepository(handle.db).getActiveTrack()
 
     expect(activeTrack?.nextProblem).toMatchObject({
-      slug: 'two-sum',
+      slug: byteByteGoFirstProblemSlug,
     })
     expect(activeTrack?.progress).toEqual({
       completedCount: 0,
-      totalCount: 1,
+      totalCount: seededProblemCount,
       percent: 0,
     })
   })

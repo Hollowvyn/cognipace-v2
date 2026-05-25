@@ -88,6 +88,11 @@ type LibrarySelectionTrackDraft = {
 Only slugs are stored. The modal reloads normal Library data and resolves those
 slugs to current `ProblemLibraryRow` values.
 
+The selected row order is the Library bulk-selection order already used by the
+current table, not the rendered page order and not all filtered rows. The draft
+stores those selected slugs in that order, and the modal preserves it when
+resolving rows.
+
 If the draft is missing, stale, or resolves to zero rows, the modal shows a small
 error state with a `Return to Library` action. If only some slugs resolve, the
 modal continues with the remaining rows and shows a non-blocking warning.
@@ -100,7 +105,7 @@ small dropdown control, not a large composer section.
 Supported values:
 
 - `None`: one `Main` group containing every selected problem in the current
-  Library table order.
+  Library bulk-selection order.
 - `Difficulty`: groups by `Easy`, `Medium`, `Hard`, then `Unknown`; empty groups
   are omitted.
 - `Topic`: groups by the first topic on each problem; problems without topics go
@@ -117,6 +122,11 @@ draft.
 
 `TrackForm` should accept an optional create-mode draft source. The normal
 `/tracks/new` flow still uses the default `Main` group behavior.
+
+Draft-backed create forms must remount when the draft changes. Include a stable
+draft id/key in the initial draft source and use it in the `TrackFormFields` key
+so reducer initialization is not reused across `/library/tracks/new?draft=...`
+changes.
 
 The create-from-Library flow should:
 
@@ -155,7 +165,9 @@ App/dashboard owns:
 - returning the modal to the correct parent route.
 
 Cross-feature imports should stay on public feature surfaces. Root feature barrels
-must not export `data` or `server` modules.
+must not export `data` or `server` modules. App/dashboard code must import
+Tracks feature pieces such as `TrackForm`, `LibrarySelectionTrackForm`, and the
+selection draft helper from `@/features/tracks`, not nested Tracks paths.
 
 ## Data Flow
 
@@ -179,7 +191,8 @@ Add or update focused tests for:
 - The action stores selected slugs and navigates to the Library track modal route.
 - `/library/tracks/new` renders over Library and closes to `/library`.
 - Missing or invalid drafts show a recoverable modal state.
-- Draft resolution preserves current Library table order for selected rows.
+- Draft resolution preserves current Library bulk-selection order for selected
+  rows.
 - Group by none, difficulty, topic, and company creates expected groups.
 - Multi-topic and multi-company rows use the first value only.
 - Missing topics/companies use fallback groups.

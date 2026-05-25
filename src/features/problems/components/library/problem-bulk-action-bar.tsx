@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   CirclePause,
   CirclePlay,
@@ -29,13 +29,24 @@ import { ProblemBulkMetadataDialog } from './problem-bulk-metadata-dialog'
 
 type BulkConfirmation = 'delete' | 'reset'
 
+interface RenderSelectedRowsActionContext {
+  disabled: boolean
+}
+
+export type RenderSelectedRowsAction = (
+  selectedRows: readonly ProblemLibraryRow[],
+  context: RenderSelectedRowsActionContext,
+) => ReactNode
+
 export function ProblemBulkActionBar({
   onClearSelection,
   options,
+  renderSelectedRowsAction,
   selectedRows,
 }: {
   onClearSelection: () => void
   options: ProblemLibraryOptions
+  renderSelectedRowsAction?: RenderSelectedRowsAction | undefined
   selectedRows: readonly ProblemLibraryRow[]
 }) {
   const bulkDelete = useBulkDeleteProblems()
@@ -149,6 +160,9 @@ export function ProblemBulkActionBar({
           <span className="whitespace-nowrap font-semibold text-foreground">
             {selectedRows.length} selected
           </span>
+          {renderSelectedRowsAction
+            ? renderSelectedRowsAction(selectedRows, { disabled: isPending })
+            : null}
           <div className="inline-flex items-center gap-1">
             <IconButton
               disabled={isPending}

@@ -114,6 +114,98 @@ describe('TrackForm', () => {
     })
   })
 
+  it('seeds create mode from selected Library rows and shows compact Group by', async () => {
+    const user = userEvent.setup()
+    mockTrackFormRuntime(createTrackDefaultsWithSelectionRows())
+
+    renderTrackForm(
+      <TrackForm
+        initialDraft={{
+          id: 'draft-1',
+          source: 'library-selection',
+          selectedCount: 3,
+          problemRows: createSelectedProblemRows(),
+        }}
+        mode="create"
+        onCancel={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByText('3 selected Library problems')).toBeVisible()
+    expect(screen.getByLabelText('Group by')).toHaveValue('none')
+    expect(screen.getByLabelText('Target date')).toBeVisible()
+    expect(screen.getByLabelText('Group title')).toHaveValue('Main')
+    expect(screen.getByRole('listitem', { name: '1. Two Sum' })).toBeVisible()
+    expect(
+      screen.getByRole('listitem', { name: '2. Group Anagrams' }),
+    ).toBeVisible()
+    expect(screen.getByRole('listitem', { name: '3. 01 Matrix' })).toBeVisible()
+
+    await user.type(screen.getByLabelText('Title'), 'Netflix Prep')
+    await user.click(screen.getByRole('button', { name: 'SAVE' }))
+
+    await waitFor(() => {
+      expect(sendMessage).toHaveBeenCalledWith('tracks.createTrack', {
+        surface: 'dashboard',
+        title: 'Netflix Prep',
+        description: null,
+        dueAt: null,
+        groups: [
+          {
+            title: 'Main',
+            problemSlugs: ['two-sum', 'group-anagrams', '01-matrix'],
+          },
+        ],
+      } satisfies TracksCreateTrackRequest)
+    })
+  })
+
+  it('regroups and moves draft problems with compact group selectors', async () => {
+    const user = userEvent.setup()
+    mockTrackFormRuntime(createTrackDefaultsWithSelectionRows())
+
+    renderTrackForm(
+      <TrackForm
+        initialDraft={{
+          id: 'draft-1',
+          source: 'library-selection',
+          selectedCount: 3,
+          problemRows: createSelectedProblemRows(),
+        }}
+        mode="create"
+        onCancel={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    )
+
+    await user.selectOptions(await screen.findByLabelText('Group by'), 'topic')
+
+    expect(screen.getByRole('button', { name: 'Select Arrays' })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Select Hash Maps' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Select No topic' }),
+    ).toBeVisible()
+    expect(screen.getByRole('listitem', { name: '1. Two Sum' })).toBeVisible()
+
+    await user.selectOptions(
+      screen.getByLabelText('Group for Two Sum'),
+      'draft-group-2',
+    )
+    await user.click(screen.getByRole('button', { name: 'Select Hash Maps' }))
+
+    expect(screen.getByRole('listitem', { name: '2. Two Sum' })).toBeVisible()
+
+    await user.selectOptions(screen.getByLabelText('Group by'), 'company')
+
+    expect(screen.getByRole('button', { name: 'Select Meta' })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Select No company' }),
+    ).toBeVisible()
+  })
+
   it('sends setActive only when the create checkbox is checked', async () => {
     const user = userEvent.setup()
     mockTrackFormRuntime(createTrackDefaults())
@@ -538,6 +630,53 @@ function createTrackDefaults() {
     track: null,
     groups: [],
     problemRows: [problemRow('two-sum', 'Two Sum'), problemRow()],
+  })
+}
+
+function createTrackDefaultsWithSelectionRows() {
+  return createTrackForEditResponse({
+    track: null,
+    groups: [],
+    problemRows: createSelectedProblemRows(),
+  })
+}
+
+function createSelectedProblemRows() {
+  return [
+    problemRowWithMetadata('two-sum', 'Two Sum', {
+      topics: [{ id: 'arrays', label: 'Arrays' }],
+      companies: [{ id: 'meta', label: 'Meta' }],
+    }),
+    problemRowWithMetadata('group-anagrams', 'Group Anagrams', {
+      difficulty: 'medium',
+      topics: [{ id: 'hash-maps', label: 'Hash Maps' }],
+      companies: [{ id: 'meta', label: 'Meta' }],
+    }),
+    problemRowWithMetadata('01-matrix', '01 Matrix', {
+      difficulty: 'medium',
+      topics: [],
+      companies: [],
+    }),
+  ]
+}
+
+function problemRowWithMetadata(
+  slug: string,
+  title: string,
+  overrides: {
+    companies?: ReturnType<typeof createTrackProblemRow>['companies']
+    difficulty?: ProblemDifficulty
+    topics?: ReturnType<typeof createTrackProblemRow>['topics']
+  } = {},
+) {
+  return createTrackProblemRow({
+    problem: createSerializedProblem({
+      difficulty: overrides.difficulty ?? 'easy',
+      slug,
+      title,
+    }),
+    companies: overrides.companies ?? [],
+    topics: overrides.topics ?? [],
   })
 }
 

@@ -1,4 +1,5 @@
 export type { ActiveTrack, Track, TrackGroup, TrackProgress } from './domain'
+export { LibrarySelectionTrackForm } from './components/library-selection-track-form'
 export { TrackForm } from './components/track-form'
 export {
   TracksScreen,
@@ -79,3 +80,9 @@ export {
   type TracksUpdateTrackRequest,
   type TrackWorkspaceResponse,
 } from './api/tracks-contracts'
+export {
+  clearLibrarySelectionTrackDraft,
+  createLibrarySelectionTrackDraft,
+  readLibrarySelectionTrackDraft,
+  type LibrarySelectionTrackDraft,
+} from './utils/library-selection-track-draft'

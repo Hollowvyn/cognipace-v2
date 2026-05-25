@@ -12,6 +12,7 @@ import {
   getFilteredOriginalRows,
   summarizeVisibleLibraryRows,
 } from './problem-library-filtering'
+import type { RenderSelectedRowsAction } from './problem-bulk-action-bar'
 import { ProblemLibraryTable } from './problem-library-table'
 import { ProblemLibraryToolbar } from './problem-library-toolbar'
 import { useProblemLibraryTable } from './use-problem-library-table'
@@ -19,9 +20,11 @@ import { useProblemLibraryTable } from './use-problem-library-table'
 export function ProblemLibraryScreen({
   newProblemAction,
   renderEditProblemAction,
+  renderSelectedRowsAction,
 }: {
   newProblemAction: ReactNode
   renderEditProblemAction: (problem: SerializedProblem) => ReactNode
+  renderSelectedRowsAction?: RenderSelectedRowsAction | undefined
 }) {
   const libraryQuery = useProblemLibrary({ surface: 'dashboard' })
   const library = libraryQuery.data
@@ -93,6 +96,7 @@ export function ProblemLibraryScreen({
               <ProblemLibraryTable
                 options={library.options}
                 renderEditProblemAction={renderEditProblemAction}
+                renderSelectedRowsAction={renderSelectedRowsAction}
                 table={table}
               />
             )}

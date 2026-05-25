@@ -1,16 +1,28 @@
 import { useReducer } from 'react'
 
+import type { ProblemLibraryRow } from '@/features/problems'
+
 import type {
   TrackForEditResponse,
   TrackGroupInput,
   TrackMutationInput,
 } from '../api/tracks-contracts'
+import {
+  createGroupsFromInitialDraftRows,
+  type TrackFormGroupBy,
+  type TrackFormInitialDraft,
+} from './track-form-initial-draft'
 
 export type TrackFormAction =
   | { type: 'set-title'; title: string }
   | { type: 'set-description'; description: string }
   | { type: 'set-due-at'; dueAt: string }
   | { type: 'set-active-after-create'; checked: boolean }
+  | {
+      type: 'set-group-by'
+      groupBy: TrackFormGroupBy
+      problemRows: readonly ProblemLibraryRow[]
+    }
   | { type: 'add-group' }
   | { type: 'rename-group'; groupKey: string; title: string }
   | { type: 'remove-group'; groupKey: string }
@@ -18,6 +30,12 @@ export type TrackFormAction =
   | { type: 'select-group'; groupKey: string }
   | { type: 'add-problem'; groupKey: string; problemSlug: string }
   | { type: 'remove-problem'; groupKey: string; problemSlug: string }
+  | {
+      type: 'move-problem-to-group'
+      fromGroupKey: string
+      toGroupKey: string
+      problemSlug: string
+    }
   | {
       type: 'move-problem'
       groupKey: string
@@ -35,6 +53,7 @@ export interface TrackFormGroupState {
 export interface TrackFormState {
   description: string
   dueAt: string
+  groupBy: TrackFormGroupBy
   groups: TrackFormGroupState[]
   nextGroupNumber: number
   selectedGroupKey: string
@@ -49,10 +68,20 @@ export interface TrackFormFieldErrors {
   title: string | null
 }
 
-export function useTrackForm(source: TrackForEditResponse) {
+export interface UseTrackFormOptions {
+  initialDraft?: TrackFormInitialDraft | null
+}
+
+export function useTrackForm(
+  source: TrackForEditResponse,
+  options: UseTrackFormOptions = {},
+) {
   const [state, dispatch] = useReducer(
     trackFormReducer,
-    source,
+    {
+      initialDraft: options.initialDraft,
+      source,
+    },
     createInitialTrackFormState,
   )
   const fieldErrors = deriveFieldErrors(state)
@@ -86,6 +115,23 @@ function trackFormReducer(
       return { ...state, dueAt: action.dueAt }
     case 'set-active-after-create':
       return { ...state, setActiveAfterCreate: action.checked }
+    case 'set-group-by': {
+      const draftGroups = createGroupsFromInitialDraftRows(
+        action.problemRows,
+        action.groupBy,
+      )
+      const groups =
+        draftGroups.length > 0 ? draftGroups : [createFallbackMainGroup()]
+      const selectedGroup = groups[0] ?? createFallbackMainGroup()
+
+      return {
+        ...state,
+        groupBy: action.groupBy,
+        groups,
+        nextGroupNumber: groups.length + 1,
+        selectedGroupKey: selectedGroup.key,
+      }
+    }
     case 'add-group': {
       const nextGroup: TrackFormGroupState = {
         key: `new-group-${state.nextGroupNumber}`,
@@ -178,6 +224,51 @@ function trackFormReducer(
             : group,
         ),
       }
+    case 'move-problem-to-group': {
+      if (action.fromGroupKey === action.toGroupKey) {
+        return state
+      }
+
+      const sourceGroup = state.groups.find(
+        (group) => group.key === action.fromGroupKey,
+      )
+      const targetGroup = state.groups.find(
+        (group) => group.key === action.toGroupKey,
+      )
+
+      if (
+        !sourceGroup ||
+        !targetGroup ||
+        !sourceGroup.problemSlugs.includes(action.problemSlug)
+      ) {
+        return state
+      }
+
+      return {
+        ...state,
+        groups: state.groups.map((group) => {
+          if (group.key === action.fromGroupKey) {
+            return {
+              ...group,
+              problemSlugs: group.problemSlugs.filter(
+                (problemSlug) => problemSlug !== action.problemSlug,
+              ),
+            }
+          }
+
+          if (group.key === action.toGroupKey) {
+            return group.problemSlugs.includes(action.problemSlug)
+              ? group
+              : {
+                  ...group,
+                  problemSlugs: [...group.problemSlugs, action.problemSlug],
+                }
+          }
+
+          return group
+        }),
+      }
+    }
     case 'move-problem':
       return {
         ...state,
@@ -199,15 +290,20 @@ function trackFormReducer(
   }
 }
 
-function createInitialTrackFormState(
-  source: TrackForEditResponse,
-): TrackFormState {
-  const groups = createInitialGroups(source)
+function createInitialTrackFormState({
+  initialDraft,
+  source,
+}: {
+  initialDraft: TrackFormInitialDraft | null | undefined
+  source: TrackForEditResponse
+}): TrackFormState {
+  const groups = createInitialGroups(source, initialDraft)
   const firstGroup = groups[0] ?? createFallbackMainGroup()
 
   return {
     description: source.track?.description ?? '',
     dueAt: toDateInputValue(source.track?.dueAt ?? null),
+    groupBy: 'none',
     groups,
     nextGroupNumber: groups.length + 1,
     selectedGroupKey: firstGroup.key,
@@ -216,7 +312,18 @@ function createInitialTrackFormState(
   }
 }
 
-function createInitialGroups(source: TrackForEditResponse) {
+function createInitialGroups(
+  source: TrackForEditResponse,
+  initialDraft?: TrackFormInitialDraft | null,
+) {
+  if (
+    !source.track &&
+    initialDraft?.problemRows &&
+    initialDraft.problemRows.length > 0
+  ) {
+    return createGroupsFromInitialDraftRows(initialDraft.problemRows, 'none')
+  }
+
   const sortedGroups = [...source.groups].sort(
     (groupA, groupB) => groupA.position - groupB.position,
   )

@@ -32,6 +32,7 @@ export const dashboardPaths = {
   trackNew: '/tracks/new',
   trackEdit: '/tracks/$trackId/edit',
   trackProblemEdit: '/tracks/problems/$problemSlug/edit',
+  libraryTrackNew: '/library/tracks/new',
   problemNew: '/library/problems/new',
   problemEdit: '/library/problems/$problemSlug/edit',
 } as const satisfies Record<string, string>
@@ -151,6 +152,16 @@ export const dashboardModalRouteMeta = {
       presentation: 'modal',
       section: 'tracks',
       title: 'Edit Problem',
+    },
+  },
+  libraryTrackNew: {
+    closeTo: dashboardPaths.library,
+    description: 'Create a track from selected Library problems.',
+    relativePath: 'tracks/new',
+    staticData: {
+      presentation: 'modal',
+      section: 'library',
+      title: 'New Track',
     },
   },
   problemNew: {

@@ -1,5 +1,5 @@
-import { Link, Outlet } from '@tanstack/react-router'
-import { Plus } from 'lucide-react'
+import { Link, Outlet, useNavigate } from '@tanstack/react-router'
+import { MapPlus, Plus } from 'lucide-react'
 
 import {
   DashboardPage,
@@ -8,6 +8,7 @@ import {
 } from '@/app/dashboard/layout/dashboard-page'
 import { Button } from '@/components/ui/button'
 import { ProblemLibraryScreen } from '@/features/problems'
+import { createLibrarySelectionTrackDraft } from '@/features/tracks'
 
 import {
   dashboardPaths,
@@ -15,6 +16,8 @@ import {
 } from '@/app/dashboard/navigation/route-manifest'
 
 export function LibraryPage() {
+  const navigate = useNavigate()
+
   return (
     <DashboardPage className="mx-auto w-full max-w-[64rem]">
       <DashboardPageHeader title={dashboardRouteMeta.library.staticData.title}>
@@ -38,6 +41,27 @@ export function LibraryPage() {
               >
                 Edit
               </Link>
+            </Button>
+          )}
+          renderSelectedRowsAction={(selectedRows, { disabled }) => (
+            <Button
+              disabled={disabled}
+              onClick={() => {
+                const draft = createLibrarySelectionTrackDraft(
+                  selectedRows.map((row) => row.problem.slug),
+                )
+
+                void navigate({
+                  search: { draft: draft.id },
+                  to: dashboardPaths.libraryTrackNew,
+                })
+              }}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <MapPlus aria-hidden="true" />
+              Make Track
             </Button>
           )}
         />

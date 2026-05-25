@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { createPracticeRepository } from '@/features/practice/data/practice-repository'
 import { createSettingsRepository } from '@/features/settings/data/settings-repository'
 import { recordActiveTrackProblemCompletion } from '@/features/tracks/server/tracks-service'
-import { tracks } from '@/platform/db/schema'
+import { tracks, trackSession } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
 
 import {
@@ -42,17 +42,18 @@ describe('app-shell service', () => {
       },
       activeTrack: {
         state: 'ready',
-        trackId: 'leetcode-75',
-        title: 'LeetCode 75',
-        groupTitle: 'Arrays and Hashing',
+        trackId: 'bytebytego-coding-patterns-101',
+        title: 'ByteByteGo Coding Patterns 101',
+        groupTitle: 'Two Pointers',
         dueAt: null,
         progress: {
           completedCount: 0,
-          totalCount: 1,
+          totalCount: 101,
           percent: 0,
         },
         nextProblem: {
-          problemSlug: 'two-sum',
+          problemSlug: 'two-sum-ii-input-array-is-sorted',
+          title: 'Pair Sum - Sorted',
         },
       },
       settings: {
@@ -78,6 +79,7 @@ describe('app-shell service', () => {
     })
     const dueAt = new Date('2026-02-14T00:00:00.000Z')
 
+    await activateLeetCode75Track(handle)
     await handle.db
       .update(tracks)
       .set({ dueAt: dueAt.getTime() })
@@ -94,6 +96,7 @@ describe('app-shell service', () => {
     })
     const practiceRepository = createPracticeRepository(handle.db)
 
+    await activateLeetCode75Track(handle)
     await practiceRepository.saveReviewResult({
       problemSlug: 'two-sum',
       rating: 'good',
@@ -205,8 +208,11 @@ describe('app-shell service', () => {
           strictTiming: false,
         },
         nextStep: {
-          kind: 'empty',
-          problem: null,
+          kind: 'track',
+          title: 'Pair Sum - Sorted',
+          problem: {
+            problemSlug: 'two-sum-ii-input-array-is-sorted',
+          },
         },
       },
     })
@@ -242,9 +248,9 @@ describe('app-shell service', () => {
 
     expect(payload.overlay.nextStep).toMatchObject({
       kind: 'track',
-      title: 'Two Sum',
+      title: 'Pair Sum - Sorted',
       problem: {
-        problemSlug: 'two-sum',
+        problemSlug: 'two-sum-ii-input-array-is-sorted',
       },
     })
   })
@@ -270,6 +276,7 @@ describe('app-shell service', () => {
     })
     const practiceRepository = createPracticeRepository(handle.db)
 
+    await activateLeetCode75Track(handle)
     await recordActiveTrackProblemCompletion(handle.db, {
       problemSlug: 'two-sum',
       rating: 'easy',
@@ -337,6 +344,16 @@ describe('app-shell service', () => {
 })
 
 type TestDbHandle = Awaited<ReturnType<typeof createTestDb>>
+
+async function activateLeetCode75Track(handle: TestDbHandle) {
+  await handle.db
+    .update(trackSession)
+    .set({
+      activeTrackId: 'leetcode-75',
+      activeGroupId: 'leetcode-75:arrays-hashing',
+    })
+    .where(eq(trackSession.id, 'active'))
+}
 
 async function getPopupPayload(handle: TestDbHandle, readAt = generatedAt) {
   return popupAppShellDataSchema.parse(

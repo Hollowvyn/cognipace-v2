@@ -20,6 +20,7 @@ import {
 import { SettingsPage } from '../screens/settings-page'
 import {
   EditTrackModalPage,
+  NewLibrarySelectionTrackModalPage,
   NewTrackModalPage,
 } from '../screens/track-modal-pages'
 import { TracksPage } from '../screens/tracks-page'
@@ -78,6 +79,16 @@ const problemNewRoute = createRoute({
   staticData: dashboardModalRouteMeta.problemNew.staticData,
 })
 
+const libraryTrackNewRoute = createRoute({
+  getParentRoute: () => libraryRoute,
+  path: dashboardModalRouteMeta.libraryTrackNew.relativePath,
+  component: NewLibrarySelectionTrackModalPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    draft: typeof search.draft === 'string' ? search.draft : undefined,
+  }),
+  staticData: dashboardModalRouteMeta.libraryTrackNew.staticData,
+})
+
 const problemEditRoute = createRoute({
   getParentRoute: () => libraryRoute,
   path: dashboardModalRouteMeta.problemEdit.relativePath,
@@ -106,7 +117,11 @@ const routeTree = rootRoute.addChildren([
     trackEditRoute,
     trackProblemEditRoute,
   ]),
-  libraryRoute.addChildren([problemNewRoute, problemEditRoute]),
+  libraryRoute.addChildren([
+    problemNewRoute,
+    libraryTrackNewRoute,
+    problemEditRoute,
+  ]),
   analyticsRoute,
   settingsRoute,
 ])
