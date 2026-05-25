@@ -5,6 +5,13 @@ export function createDashboardAppShellData(
   overrides: Partial<DashboardAppShellData> = {},
 ): DashboardAppShellData {
   const queueItem = createAppShellQueueItem()
+  const practiceProgress = {
+    completedToday: 1,
+    dailyGoal: 4,
+    currentStreak: 0,
+    goalMetToday: false,
+    todayDateKey: '2026-05-25',
+  } satisfies DashboardAppShellData['practiceProgress']
 
   return {
     surface: 'dashboard',
@@ -15,8 +22,9 @@ export function createDashboardAppShellData(
     },
     metrics: [
       { label: 'Due Today', value: '1' },
-      { label: 'Streak', value: '1 day' },
+      { label: 'Streak', value: '0 days' },
     ],
+    practiceProgress,
     recommendation: {
       title: queueItem.problem.title,
       detail: 'Review easy.',
@@ -74,13 +82,7 @@ export function createDashboardAppShellData(
       },
     },
     overview: {
-      practiceProgress: {
-        completedToday: 1,
-        dailyGoal: 4,
-        currentStreak: 0,
-        goalMetToday: false,
-        todayDateKey: '2026-05-25',
-      },
+      practiceProgress,
       queuePreview: [queueItem],
     },
     dashboard: {

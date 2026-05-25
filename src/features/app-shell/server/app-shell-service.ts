@@ -24,6 +24,7 @@ import type {
   OverlayNextStep,
   PopupAppShellData,
 } from '../api/app-shell-contracts'
+import { createAppShellMetrics } from '../domain/app-shell-metrics'
 import { buildAppShellRecommendation } from '../domain/popup-app-shell'
 
 export async function getAppShellData(
@@ -61,10 +62,7 @@ async function getDashboardAppShellData(db: Db, now: Date) {
     ...baseData,
     surface: 'dashboard',
     overview: {
-      practiceProgress: await getPracticeProgressSummary(db, {
-        dailyGoal: baseData.settings.practice.dailyGoal,
-        now,
-      }),
+      practiceProgress: baseData.practiceProgress,
       queuePreview,
     },
     dashboard: { queuePreview },
@@ -76,7 +74,13 @@ async function getMainAppShellData(db: Db, now: Date) {
     getSettings(db),
     getTodayQueue(db, now),
   ])
-  const activeTrack = await getActiveTrack(db, now)
+  const [activeTrack, practiceProgress] = await Promise.all([
+    getActiveTrack(db, now),
+    getPracticeProgressSummary(db, {
+      dailyGoal: settings.practice.dailyGoal,
+      now,
+    }),
+  ])
   const queueItems = queue.items.map(serializeQueueItem)
   const baseData = {
     generatedAt: now.toISOString(),
@@ -84,10 +88,11 @@ async function getMainAppShellData(db: Db, now: Date) {
       label: 'Practice ready',
       detail: `${queue.dueCount} due, ${queue.newCount} new, ${queue.reinforcementCount} reinforcement available.`,
     },
-    metrics: [
-      { label: 'Due Today', value: String(queue.dueCount) },
-      { label: 'Streak', value: '0 days' },
-    ],
+    metrics: createAppShellMetrics({
+      dueCount: queue.dueCount,
+      practiceProgress,
+    }),
+    practiceProgress,
     recommendation: buildAppShellRecommendation(queueItems[0] ?? null),
     activeTrack: serializeActiveTrack(activeTrack, settings.practice.mode),
     queue: {

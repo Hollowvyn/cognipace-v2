@@ -38,6 +38,13 @@ const shellData = {
     { label: 'Due Today', value: '1' },
     { label: 'Streak', value: '0 days' },
   ],
+  practiceProgress: {
+    completedToday: 0,
+    dailyGoal: 4,
+    currentStreak: 0,
+    goalMetToday: false,
+    todayDateKey: '2026-01-01',
+  },
   recommendation: {
     title: 'Valid Parentheses',
     detail: 'Review easy.',

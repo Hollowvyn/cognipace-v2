@@ -78,8 +78,10 @@ function hasAppShellSurface<TSurface extends AppShellData['surface']>(
 }
 
 export type {
+  AppShellPracticeProgress,
   AppShellProblemSummary,
   DashboardAppShellData,
+  DashboardOverviewData,
   OverlayNextStep,
   OverlayAppShellData,
   PopupAppShellData,

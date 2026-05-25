@@ -73,6 +73,45 @@ describe('app-shell service', () => {
     expect(payload.popup.queuePreview).toHaveLength(0)
   })
 
+  it('composes popup metrics from shared practice progress', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const practiceRepository = createPracticeRepository(handle.db)
+
+    await createSettingsRepository(handle.db).updateSettings({
+      practice: {
+        dailyGoal: 2,
+      },
+    })
+    await practiceRepository.saveReviewResult({
+      problemSlug: 'two-sum',
+      rating: 'again',
+      reviewedAt: new Date('2026-01-01T08:00:00.000Z'),
+      reviewMode: 'manual',
+    })
+    await practiceRepository.saveReviewResult({
+      problemSlug: 'valid-parentheses',
+      rating: 'good',
+      reviewedAt: new Date('2026-01-01T09:00:00.000Z'),
+      reviewMode: 'manual',
+    })
+
+    const payload = await getPopupPayload(handle)
+
+    expect(payload.practiceProgress).toMatchObject({
+      completedToday: 2,
+      dailyGoal: 2,
+      currentStreak: 1,
+      goalMetToday: true,
+      todayDateKey: '2026-01-01',
+    })
+    expect(payload.metrics).toEqual([
+      { label: 'Due Today', value: String(payload.queue.dueCount) },
+      { label: 'Streak', value: '1 day' },
+    ])
+  })
+
   it('serializes the active track due date when present', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
@@ -212,6 +251,8 @@ describe('app-shell service', () => {
       goalMetToday: true,
       todayDateKey: '2026-01-01',
     })
+    expect(payload.overview.practiceProgress).toEqual(payload.practiceProgress)
+    expect(payload.metrics).toContainEqual({ label: 'Streak', value: '1 day' })
   })
 
   it('composes overlay payload with current problem practice details', async () => {
