@@ -282,7 +282,9 @@ describe('TrackForm', () => {
     ).toBeDisabled()
 
     await user.click(screen.getByRole('button', { name: 'New Group' }))
-    const emptyGroup = within(groups).getByRole('listitem', { name: /Group 3/i })
+    const emptyGroup = within(groups).getByRole('listitem', {
+      name: /Group 3/i,
+    })
 
     expect(
       within(emptyGroup).getByRole('button', { name: 'Remove Group 3' }),
