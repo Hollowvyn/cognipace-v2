@@ -547,10 +547,12 @@ expect(screen.getByText('Target Jun 15 · 14 days left')).toBeVisible()
 Add an overdue all-tracks row expectation:
 
 ```ts
-expect(screen.getByText('Target May 21 · Overdue · 11 days late')).toBeVisible()
-expect(screen.getByText('Target May 21 · Overdue · 11 days late')).toHaveClass(
-  'text-destructive',
+const overdueTarget = screen.getByText(
+  'Target May 21 · Overdue · 11 days late',
 )
+
+expect(overdueTarget).toBeVisible()
+expect(overdueTarget).toHaveAttribute('data-cp-tone', 'danger')
 ```
 
 - [ ] **Step 2: Run Tracks screen tests and verify they fail**
@@ -806,6 +808,9 @@ Replace the metadata row with:
   <span>{row.progress.totalCount} problems</span>
   {targetStatus.catalogLabel ? (
     <span
+      data-cp-tone={
+        targetStatus.kind === 'overdue' ? 'danger' : undefined
+      }
       className={cn(
         'inline-flex items-center gap-1',
         targetStatus.kind === 'overdue' && 'text-destructive',
@@ -1330,13 +1335,13 @@ Expected: fail because popup still renders the full due date badge.
 
 - [ ] **Step 3: Derive popup target badge in the view model**
 
-Modify imports in `src/features/app-shell/domain/popup-app-shell.ts`:
+Modify imports in `src/features/app-shell/domain/popup-app-shell.ts`. Import from the Tracks domain public surface instead of the broad feature barrel so app-shell does not pull component/API exports into its domain module:
 
 ```ts
 import {
   getTrackTargetStatus,
   type TrackTargetStatusTone,
-} from '@/features/tracks'
+} from '@/features/tracks/domain'
 ```
 
 Add target fields to `PopupStudyPlanView`:
