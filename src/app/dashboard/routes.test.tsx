@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
 import { defaultUserSettings } from '@/features/settings/domain'
+import { createLibrarySelectionTrackDraft } from '@/features/tracks'
 import {
   createProblemForEditResponse,
   createProblemLibraryResponse,
@@ -45,6 +46,7 @@ function renderDashboard(initialEntry = '/') {
 
 describe('dashboard routes', () => {
   afterEach(() => {
+    sessionStorage.clear()
     vi.restoreAllMocks()
     window.history.replaceState(null, '', '/')
   })
@@ -157,6 +159,7 @@ describe('dashboard routes', () => {
     ['/tracks/new', 'Tracks', /New Track/i, null],
     ['/tracks/leetcode-75/edit', 'Tracks', /Edit/i, null],
     ['/tracks/problems/two-sum/edit', 'Tracks', /Edit/i, null],
+    ['/library/tracks/new?draft=missing-draft', 'Library', /New Track/i, null],
     ['/library/problems/new', 'Library', /Add problem/i, null],
     ['/library/problems/two-sum/edit', 'Library', /Edit/i, null],
   ])(
@@ -194,6 +197,86 @@ describe('dashboard routes', () => {
     expect(within(dialog).queryByText('Placeholder')).not.toBeInTheDocument()
     expect(sendMessage).toHaveBeenCalledWith('tracks.getTrackForEdit', {
       surface: 'dashboard',
+    })
+  })
+
+  it('/library/tracks/new direct route handles a missing selection draft', async () => {
+    const { router, user } = renderDashboard(
+      '/library/tracks/new?draft=missing-draft',
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Library' }),
+    ).toBeVisible()
+    const dialog = screen.getByRole('dialog', { name: 'New Track' })
+
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'Track selection draft was not found.',
+    )
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Return to Library' }),
+    )
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/library')
+    })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('/library/tracks/new handles a failed Library selection load', async () => {
+    const draft = createLibrarySelectionTrackDraft(['binary-search'], {
+      id: 'failed-library-load',
+    })
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.reject(new Error('library failed'))
+      }
+
+      if (method === 'tracks.getWorkspace') {
+        return Promise.resolve(createTrackWorkspaceResponse())
+      }
+
+      return Promise.resolve(defaultUserSettings)
+    })
+
+    const { router, user } = renderDashboard(
+      `/library/tracks/new?draft=${draft.id}`,
+    )
+
+    const dialog = await screen.findByRole('dialog', { name: 'New Track' })
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Selected Library problems could not be loaded.',
+    )
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Return to Library' }),
+    )
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/library')
+    })
+  })
+
+  it('/library/tracks/new handles a selection draft with no available problems', async () => {
+    const draft = createLibrarySelectionTrackDraft(['missing-problem'], {
+      id: 'missing-problem-row',
+    })
+    const { router, user } = renderDashboard(
+      `/library/tracks/new?draft=${draft.id}`,
+    )
+
+    const dialog = await screen.findByRole('dialog', { name: 'New Track' })
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'No selected Library problems are still available.',
+    )
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Return to Library' }),
+    )
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/library')
     })
   })
 
@@ -296,6 +379,7 @@ describe('dashboard routes', () => {
     ['/tracks/new', '/tracks'],
     ['/tracks/leetcode-75/edit', '/tracks'],
     ['/tracks/problems/two-sum/edit', '/tracks'],
+    ['/library/tracks/new?draft=missing-draft', '/library'],
     ['/library/problems/new', '/library'],
     ['/library/problems/two-sum/edit', '/library'],
   ])('closes %s to %s', async (path, closePath) => {
@@ -332,6 +416,9 @@ describe('dashboard routes', () => {
     expect(dashboardModalRouteMeta.problemEdit.staticData.presentation).toBe(
       'modal',
     )
+    expect(
+      dashboardModalRouteMeta.libraryTrackNew.staticData.presentation,
+    ).toBe('modal')
     expect(dashboardModalRouteMeta.problemNew.description).not.toMatch(
       /later phase/i,
     )
@@ -347,6 +434,19 @@ describe('dashboard routes', () => {
     expect(dashboardModalRouteMeta.trackEdit.description).not.toMatch(
       /later phase/i,
     )
+    expect(dashboardModalRouteMeta.libraryTrackNew.description).toBe(
+      'Create a track from selected Library problems.',
+    )
+    expect(dashboardPaths.libraryTrackNew).toBe('/library/tracks/new')
+    expect(dashboardModalRouteMeta.libraryTrackNew.closeTo).toBe('/library')
+    expect(dashboardModalRouteMeta.libraryTrackNew.relativePath).toBe(
+      'tracks/new',
+    )
+    expect(dashboardModalRouteMeta.libraryTrackNew.staticData).toEqual({
+      presentation: 'modal',
+      section: 'library',
+      title: 'New Track',
+    })
   })
 
   it('closes route modals with Escape', async () => {
@@ -376,18 +476,23 @@ describe('dashboard routes', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('rewrites modal routes to the parent route before browser reload', async () => {
-    window.history.replaceState(null, '', '/#/library/problems/new')
-    renderDashboard('/library/problems/new')
+  it.each([
+    ['/tracks/new', '/tracks'],
+    ['/library/problems/new', '/library'],
+    ['/library/tracks/new?draft=missing-draft', '/library'],
+  ])('rewrites %s to %s before browser reload', async (path, parentPath) => {
+    window.history.replaceState(null, '', `/#${path}`)
+    renderDashboard(path)
 
-    await screen.findByRole('dialog', { name: 'Add problem' })
+    await screen.findByRole('dialog')
     window.dispatchEvent(new Event('beforeunload'))
 
-    expect(window.location.hash).toBe('#/library')
+    expect(window.location.hash).toBe(`#${parentPath}`)
   })
 
   it.each([
     ['/library/problems/two-sum/edit', 'Library', 'Tracks'],
+    ['/library/tracks/new?draft=missing-draft', 'Library', 'Tracks'],
     ['/tracks/problems/two-sum/edit', 'Tracks', 'Library'],
   ])(
     'keeps parent nav active for %s',
