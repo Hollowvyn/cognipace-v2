@@ -7,6 +7,7 @@ import {
   hasUserSettingsChanges,
   mergeUserSettings,
   parseStoredUserSettings,
+  userSettingsPatchSchema,
   userSettingsSchema,
 } from './settings'
 
@@ -121,6 +122,20 @@ describe('settings domain', () => {
       ...defaultUserSettings,
       appearance: { themeMode: 'light' },
     })
+  })
+
+  it('keeps an empty appearance patch as a no-op', () => {
+    const patch = userSettingsPatchSchema.parse({ appearance: {} })
+
+    expect(
+      mergeUserSettings(
+        {
+          ...defaultUserSettings,
+          appearance: { themeMode: 'dark' },
+        },
+        patch,
+      ).appearance,
+    ).toEqual({ themeMode: 'dark' })
   })
 
   it('derives the next theme mode in repository-owned cycle order', () => {

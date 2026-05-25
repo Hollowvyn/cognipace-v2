@@ -68,6 +68,12 @@ const appearanceSettingsSchema = z
   })
   .strict()
 
+const appearanceSettingsPatchSchema = z
+  .object({
+    themeMode: themeModeSchema.optional(),
+  })
+  .strict()
+
 const practiceSettingsSchema = z
   .object({
     dailyGoal: dailyGoalSchema,
@@ -137,7 +143,7 @@ export const userSettingsSchema = z
 
 export const userSettingsPatchSchema = z
   .object({
-    appearance: appearanceSettingsSchema.partial().strict().optional(),
+    appearance: appearanceSettingsPatchSchema.optional(),
     practice: z
       .object({
         dailyGoal: practiceSettingsSchema.shape.dailyGoal.optional(),
