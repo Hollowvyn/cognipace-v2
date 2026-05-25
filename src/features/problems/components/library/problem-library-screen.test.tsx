@@ -571,9 +571,9 @@ describe('ProblemLibraryScreen', () => {
     renderProblemLibrary({
       renderSelectedRowsAction: (selectedRows) => (
         <Button
-          onClick={() =>
+          onClick={() => {
             onMakeTrack(selectedRows.map((row) => row.problem.slug))
-          }
+          }}
           size="sm"
           type="button"
           variant="outline"
