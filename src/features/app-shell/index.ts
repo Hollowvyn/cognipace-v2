@@ -18,6 +18,7 @@ export {
   type DashboardOverviewPrimaryView,
   type DashboardOverviewView,
 } from './domain/dashboard-overview'
+export { OverviewScreen } from './components/overview-screen'
 export type {
   PopupAppShellView,
   PopupRecommendationView,
