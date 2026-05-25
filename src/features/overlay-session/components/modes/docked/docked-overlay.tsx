@@ -1,6 +1,7 @@
 import { PanelRightOpen } from 'lucide-react'
 
 import { SurfaceRoot } from '@/components/ui/surface'
+import type { ThemeMode } from '@/features/settings'
 import {
   Tooltip,
   TooltipContent,
@@ -12,9 +13,10 @@ import { useDockedOverlayDrag } from './use-docked-overlay-drag'
 
 type DockedOverlayProps = {
   onRestore: () => void
+  themeMode: ThemeMode
 }
 
-export function DockedOverlay({ onRestore }: DockedOverlayProps) {
+export function DockedOverlay({ onRestore, themeMode }: DockedOverlayProps) {
   const drag = useDockedOverlayDrag()
 
   return (
@@ -23,7 +25,7 @@ export function DockedOverlay({ onRestore }: DockedOverlayProps) {
       data-cp-overlay-mode="docked"
       style={{ transform: `translateY(${drag.dockOffsetY}px)` }}
       surface="overlay"
-      theme="dark"
+      theme={themeMode}
     >
       <aside aria-label="CogniPace docked overlay">
         <TooltipProvider delayDuration={250}>
