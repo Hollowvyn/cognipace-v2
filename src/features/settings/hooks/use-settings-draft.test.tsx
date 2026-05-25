@@ -109,6 +109,51 @@ describe('useSettingsDraft', () => {
     })
   })
 
+  it('saves appearance theme changes through the settings draft workflow', async () => {
+    const savedSettings = {
+      ...defaultUserSettings,
+      appearance: {
+        themeMode: 'dark' as const,
+      },
+    }
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'settings.getSettings') {
+        return Promise.resolve(defaultUserSettings)
+      }
+
+      if (method === 'settings.updateSettings') {
+        return Promise.resolve(savedSettings)
+      }
+
+      return Promise.reject(new Error(`Unexpected method ${method}`))
+    })
+    const { wrapper } = createQueryTestHarness()
+    const { result } = renderHook(() => useSettingsDraft(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.draft).toEqual(defaultUserSettings)
+    })
+
+    act(() => {
+      result.current.actions.setThemeMode('dark')
+    })
+
+    expect(result.current.canSave).toBe(true)
+
+    await act(async () => {
+      await result.current.actions.save()
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('settings.updateSettings', {
+      surface: 'dashboard',
+      patch: {
+        appearance: {
+          themeMode: 'dark',
+        },
+      },
+    })
+  })
+
   it('keeps local edits and shows a recoverable status when writes fail', async () => {
     vi.mocked(sendMessage).mockImplementation((method) => {
       if (method === 'settings.getSettings') {
