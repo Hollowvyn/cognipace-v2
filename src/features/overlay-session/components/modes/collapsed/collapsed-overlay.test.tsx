@@ -74,6 +74,7 @@ function createProps(
       onStartTimer: vi.fn(),
       ...overrides.commands,
     },
+    themeMode: 'system',
     view: {
       canUseProblem: true,
       elapsedSeconds: 0,

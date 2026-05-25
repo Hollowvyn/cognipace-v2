@@ -15,6 +15,7 @@ export {
   userSettingsSchemaVersion,
   type ReviewOrder,
   type StudyMode,
+  type ThemeMode,
   type UserSettings,
   type UserSettingsPatch,
 } from './domain'

@@ -132,6 +132,7 @@ function createProps(
       onUpdate: vi.fn(),
       ...overrides.commands,
     },
+    themeMode: 'system',
     view: {
       context: createOverlayContext(),
       draft: {
