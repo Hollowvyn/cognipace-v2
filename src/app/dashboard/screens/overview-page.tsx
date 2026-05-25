@@ -1,12 +1,39 @@
-import { DashboardPlaceholderPage } from '@/app/dashboard/layout/dashboard-placeholder-page'
-import { dashboardRouteMeta } from '@/app/dashboard/navigation/route-manifest'
+import { Link } from '@tanstack/react-router'
+import { BookOpen, Map } from 'lucide-react'
+
+import {
+  DashboardPage,
+  DashboardPageBody,
+  DashboardPageHeader,
+} from '@/app/dashboard/layout/dashboard-page'
+import {
+  dashboardPaths,
+  dashboardRouteMeta,
+} from '@/app/dashboard/navigation/route-manifest'
+import { OverviewScreen } from '@/features/app-shell'
 
 export function OverviewPage() {
   return (
-    <DashboardPlaceholderPage
-      description='This will become the lightweight "what should I do now?" home for guided practice.'
-      panelCopy="Phase 0 only establishes the app shell, route boundaries, and where the future overview modules will land."
-      title={dashboardRouteMeta.overview.staticData.title}
-    />
+    <DashboardPage className="mx-auto w-full max-w-[64rem]">
+      <DashboardPageHeader title={dashboardRouteMeta.overview.staticData.title}>
+        What should I practice now?
+      </DashboardPageHeader>
+      <DashboardPageBody>
+        <OverviewScreen
+          libraryAction={
+            <Link to={dashboardPaths.library}>
+              <BookOpen aria-hidden="true" />
+              Open Library
+            </Link>
+          }
+          tracksAction={
+            <Link to={dashboardPaths.tracks}>
+              <Map aria-hidden="true" />
+              Open Tracks
+            </Link>
+          }
+        />
+      </DashboardPageBody>
+    </DashboardPage>
   )
 }

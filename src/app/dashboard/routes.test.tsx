@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { sendMessage } from '@/extension/messaging'
 import { defaultUserSettings } from '@/features/settings/domain'
 import { createLibrarySelectionTrackDraft } from '@/features/tracks'
+import { createDashboardAppShellData } from '@/testing/app-shell-fixtures'
 import {
   createProblemForEditResponse,
   createProblemLibraryResponse,
@@ -54,6 +55,10 @@ describe('dashboard routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(sendMessage).mockImplementation((method, request) => {
+      if (method === 'app.getShellData') {
+        return Promise.resolve(createDashboardAppShellData())
+      }
+
       if (method === 'tracks.getWorkspace') {
         return Promise.resolve(createTrackWorkspaceResponse())
       }
@@ -143,7 +148,7 @@ describe('dashboard routes', () => {
   })
 
   it.each([
-    ['/', 'Overview', 'what should I do now'],
+    ['/', 'Overview', 'What should I practice now'],
     ['/tracks', 'Tracks', 'Core interview practice'],
     ['/library', 'Library', 'Total'],
     ['/analytics', 'Analytics', 'Queue, FSRS, and Analytics'],
@@ -153,6 +158,67 @@ describe('dashboard routes', () => {
 
     expect(await screen.findByRole('heading', { name: heading })).toBeVisible()
     expect(await screen.findByText(new RegExp(expectedCopy, 'i'))).toBeVisible()
+  })
+
+  it('renders the real Overview route with recommendation and route navigation', async () => {
+    renderDashboard('/')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Overview' }),
+    ).toBeVisible()
+    expect(
+      await screen.findByRole('heading', { name: 'Add Binary' }),
+    ).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Library' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Open Tracks' })).toBeVisible()
+  })
+
+  it('renders the Overview queue-clear route with Library and Tracks actions', async () => {
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'app.getShellData') {
+        return Promise.resolve(
+          createDashboardAppShellData({
+            recommendation: {
+              title: 'Queue is clear',
+              detail: 'No due reviews or extra practice are queued right now.',
+              category: null,
+              problem: null,
+              dueAt: null,
+            },
+            queue: {
+              dailyGoal: 4,
+              dueCount: 0,
+              newCount: 0,
+              reinforcementCount: 0,
+              items: [],
+            },
+            overview: {
+              practiceProgress: {
+                completedToday: 4,
+                dailyGoal: 4,
+                currentStreak: 3,
+                goalMetToday: true,
+                todayDateKey: '2026-05-25',
+              },
+              queuePreview: [],
+            },
+            dashboard: {
+              queuePreview: [],
+            },
+          }),
+        )
+      }
+
+      return Promise.resolve(defaultUserSettings)
+    })
+
+    renderDashboard('/')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Queue Clear' }),
+    ).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Open Library' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Open Tracks' })).toBeVisible()
   })
 
   it.each([
