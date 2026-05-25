@@ -31,7 +31,7 @@ export function ThemeModeButton({
   return (
     <IconButton
       disabled={isPending}
-      label="Cycle theme mode"
+      label={`Cycle theme mode. Current theme: ${readThemeModeLabel(themeMode)}`}
       onClick={onCycleThemeMode}
       tooltip={`Current theme: ${readThemeModeLabel(themeMode)}`}
       variant="ghost"

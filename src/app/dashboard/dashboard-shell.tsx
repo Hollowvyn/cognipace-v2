@@ -101,7 +101,7 @@ export function DashboardShell() {
             id="dashboard-main"
             tabIndex={-1}
           >
-            {settings.isPending ? null : <Outlet />}
+            <Outlet />
           </main>
         </div>
       </SurfaceRoot>
