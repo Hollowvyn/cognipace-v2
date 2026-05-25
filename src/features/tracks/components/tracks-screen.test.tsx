@@ -15,6 +15,7 @@ import {
 } from '@/testing/track-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
+import { OtherTracksAccordion } from './other-tracks-accordion'
 import { TracksScreen } from './tracks-screen'
 
 vi.mock('@/extension/messaging', () => ({
@@ -409,6 +410,46 @@ describe('TracksScreen', () => {
     ).toHaveAttribute('href', '#/tracks/leetcode-75/edit')
     expect(
       screen.getByText('Grind 75'),
+    ).toBeVisible()
+  })
+
+  it('opens all tracks when a track is added after the catalog mounts', () => {
+    const activeTrackRow = twoGroupWorkspace.tracks.find(
+      (row) => row.track.id === 'leetcode-75',
+    )
+
+    if (!activeTrackRow) {
+      throw new Error('Expected active track catalog row fixture.')
+    }
+
+    const initialTracks = [activeTrackRow]
+    const addedTrack = {
+      track: createSerializedTrack({
+        id: 'fresh-track',
+        slug: 'fresh-track',
+        title: 'Fresh Track',
+      }),
+      progress: {
+        completedCount: 0,
+        totalCount: 0,
+        percent: 0,
+      },
+    }
+
+    const { rerender } = renderOtherTracksAccordion(initialTracks)
+
+    expect(screen.queryByText('Fresh Track')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Show all tracks' }),
+    ).toBeVisible()
+
+    rerender(
+      createOtherTracksAccordionElement([...initialTracks, addedTrack]),
+    )
+
+    expect(screen.getByText('Fresh Track')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Hide all tracks' }),
     ).toBeVisible()
   })
 
@@ -854,6 +895,30 @@ function renderTracksScreen() {
       )}
     />,
     { wrapper },
+  )
+}
+
+function renderOtherTracksAccordion(
+  tracks: React.ComponentProps<typeof OtherTracksAccordion>['tracks'],
+) {
+  const { wrapper } = createQueryTestHarness()
+
+  return render(createOtherTracksAccordionElement(tracks), { wrapper })
+}
+
+function createOtherTracksAccordionElement(
+  tracks: React.ComponentProps<typeof OtherTracksAccordion>['tracks'],
+) {
+  return (
+    <OtherTracksAccordion
+      activeTrackId="leetcode-75"
+      generatedAt="2026-06-01T12:00:00.000Z"
+      newTrackAction={<a href="#/tracks/new">New Track</a>}
+      renderEditTrackAction={(track) => (
+        <a href={`#/tracks/${track.id}/edit`}>Edit Track</a>
+      )}
+      tracks={tracks}
+    />
   )
 }
 

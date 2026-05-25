@@ -1,5 +1,5 @@
 import { CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { IconButton } from '@/components/ui/icon-button'
@@ -26,10 +26,20 @@ export function OtherTracksAccordion({
 }) {
   const [isExpandedByUser, setIsExpandedByUser] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const previousTrackCountRef = useRef(tracks.length)
   const setActiveTrack = useSetActiveTrack()
   const isForcedOpen = activeTrackId === null
   const isOpen = isForcedOpen || isExpandedByUser
   const canToggle = tracks.length > 0 && !isForcedOpen
+
+  useEffect(() => {
+    const previousTrackCount = previousTrackCountRef.current
+    previousTrackCountRef.current = tracks.length
+
+    if (tracks.length > previousTrackCount) {
+      setIsExpandedByUser(true)
+    }
+  }, [tracks.length])
 
   if (tracks.length === 0 && !newTrackAction) {
     return null
