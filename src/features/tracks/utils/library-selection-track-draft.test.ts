@@ -74,6 +74,18 @@ describe('library selection track draft', () => {
     expect(readLibrarySelectionTrackDraft('invalid-created-at', { storage })).toBeNull()
     expect(storage.getItem('cognipace:track-draft:invalid-created-at')).toBeNull()
 
+    storage.setItem(
+      'cognipace:track-draft:impossible-created-at',
+      JSON.stringify({
+        id: 'impossible-created-at',
+        source: 'library-selection',
+        problemSlugs: ['two-sum'],
+        createdAt: '2026-02-31T12:00:00.000Z',
+      }),
+    )
+    expect(readLibrarySelectionTrackDraft('impossible-created-at', { storage })).toBeNull()
+    expect(storage.getItem('cognipace:track-draft:impossible-created-at')).toBeNull()
+
     const expired = createLibrarySelectionTrackDraft(['two-sum'], {
       id: 'expired',
       now: new Date('2026-05-24T12:00:00.000Z'),
@@ -90,11 +102,20 @@ describe('library selection track draft', () => {
 
   it('clears drafts by id', () => {
     const storage = new MemoryStorage()
-    createLibrarySelectionTrackDraft(['two-sum'], {
+    const draft = createLibrarySelectionTrackDraft(['two-sum'], {
       id: 'draft-1',
       now: new Date('2026-05-24T12:00:00.000Z'),
       storage,
     })
+
+    expect(() => clearLibrarySelectionTrackDraft(null, { storage })).not.toThrow()
+    expect(() => clearLibrarySelectionTrackDraft(undefined, { storage })).not.toThrow()
+    expect(
+      readLibrarySelectionTrackDraft('draft-1', {
+        now: new Date('2026-05-24T12:10:00.000Z'),
+        storage,
+      }),
+    ).toEqual(draft)
 
     clearLibrarySelectionTrackDraft('draft-1', { storage })
 

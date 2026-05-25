@@ -68,6 +68,7 @@ export function readLibrarySelectionTrackDraft(
 
     if (
       Number.isNaN(createdAtTime) ||
+      new Date(createdAtTime).toISOString() !== draft.createdAt ||
       createdAtTime > nowTime ||
       nowTime - createdAtTime > MAX_DRAFT_AGE_MS
     ) {
@@ -94,7 +95,9 @@ export function clearLibrarySelectionTrackDraft(
 }
 
 function createDraftId() {
-  return globalThis.crypto?.randomUUID?.() ?? `draft-${Date.now()}`
+  const randomSuffix = Math.random().toString(36).slice(2, 10)
+
+  return globalThis.crypto?.randomUUID?.() ?? `draft-${Date.now()}-${randomSuffix}`
 }
 
 function dedupeProblemSlugs(problemSlugs: readonly string[]) {
