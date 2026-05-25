@@ -1,4 +1,10 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Pencil, Plus } from 'lucide-react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -124,9 +130,7 @@ describe('TracksScreen', () => {
     expect(within(progressSummary).getByText('Progress')).toBeVisible()
     expect(within(progressSummary).getByText('1 of 3')).toBeVisible()
     expect(within(progressSummary).getByText('2 problems left')).toBeVisible()
-    expect(
-      within(progressSummary).getByLabelText('33% complete'),
-    ).toBeVisible()
+    expect(within(progressSummary).getByLabelText('33% complete')).toBeVisible()
     expect(screen.queryByLabelText('Progress metric')).not.toBeInTheDocument()
     expect(
       screen.queryByLabelText('Track target summary'),
@@ -349,6 +353,90 @@ describe('TracksScreen', () => {
     expect(tabs[1]).toHaveTextContent('0/1')
   })
 
+  it('shows group scroll indicators as the tab row scrolls', async () => {
+    const restoreScrollMetrics = mockTrackGroupTabScrollMetrics({
+      clientWidth: 320,
+      scrollLeft: 0,
+      scrollWidth: 960,
+    })
+
+    try {
+      vi.mocked(sendMessage).mockResolvedValueOnce({
+        ...twoGroupWorkspace,
+        activeTrackGroups: [
+          createSerializedTrackGroup({
+            id: 'leetcode-75:arrays-hashing',
+            title: 'Arrays and Hashing',
+            position: 1,
+          }),
+          createSerializedTrackGroup({
+            id: 'leetcode-75:dynamic-programming',
+            title: 'Dynamic Programming',
+            position: 2,
+          }),
+          createSerializedTrackGroup({
+            id: 'leetcode-75:graphs',
+            title: 'Graphs',
+            position: 3,
+          }),
+          createSerializedTrackGroup({
+            id: 'leetcode-75:binary-search',
+            title: 'Binary Search',
+            position: 4,
+          }),
+        ],
+      })
+      renderTracksScreen()
+
+      const tabList = await screen.findByRole('tablist', {
+        name: 'Track groups',
+      })
+
+      expect(
+        await screen.findByRole('button', {
+          name: 'Scroll track groups right',
+        }),
+      ).toBeVisible()
+      expect(
+        screen.queryByRole('button', {
+          name: 'Scroll track groups left',
+        }),
+      ).not.toBeInTheDocument()
+
+      restoreScrollMetrics.metrics.scrollLeft = 320
+      fireEvent.scroll(tabList)
+
+      expect(
+        await screen.findByRole('button', {
+          name: 'Scroll track groups left',
+        }),
+      ).toBeVisible()
+      expect(
+        screen.getByRole('button', {
+          name: 'Scroll track groups right',
+        }),
+      ).toBeVisible()
+
+      restoreScrollMetrics.metrics.scrollLeft = 640
+      fireEvent.scroll(tabList)
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('button', {
+            name: 'Scroll track groups right',
+          }),
+        ).not.toBeInTheDocument()
+      })
+      expect(
+        screen.getByRole('button', {
+          name: 'Scroll track groups left',
+        }),
+      ).toBeVisible()
+    } finally {
+      restoreScrollMetrics.restore()
+    }
+  })
+
   it('hides group tabs for a single-group track', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(createTrackWorkspaceResponse())
     renderTracksScreen()
@@ -408,9 +496,7 @@ describe('TracksScreen', () => {
     expect(
       within(activeRowActions).getByRole('link', { name: 'Edit Track' }),
     ).toHaveAttribute('href', '#/tracks/leetcode-75/edit')
-    expect(
-      screen.getByText('Grind 75'),
-    ).toBeVisible()
+    expect(screen.getByText('Grind 75')).toBeVisible()
   })
 
   it('opens all tracks when a track is added after the catalog mounts', () => {
@@ -443,9 +529,7 @@ describe('TracksScreen', () => {
       screen.getByRole('button', { name: 'Show all tracks' }),
     ).toBeVisible()
 
-    rerender(
-      createOtherTracksAccordionElement([...initialTracks, addedTrack]),
-    )
+    rerender(createOtherTracksAccordionElement([...initialTracks, addedTrack]))
 
     expect(screen.getByText('Fresh Track')).toBeVisible()
     expect(
@@ -920,6 +1004,100 @@ function createOtherTracksAccordionElement(
       tracks={tracks}
     />
   )
+}
+
+function mockTrackGroupTabScrollMetrics(metrics: {
+  clientWidth: number
+  scrollLeft: number
+  scrollWidth: number
+}) {
+  const clientWidthDescriptor = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    'clientWidth',
+  )
+  const scrollLeftDescriptor = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    'scrollLeft',
+  )
+  const scrollWidthDescriptor = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    'scrollWidth',
+  )
+
+  Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+    configurable: true,
+    get(this: HTMLElement) {
+      if (isTrackGroupTabList(this)) {
+        return metrics.clientWidth
+      }
+
+      return readNumericHTMLElementProperty(clientWidthDescriptor, this)
+    },
+  })
+  Object.defineProperty(HTMLElement.prototype, 'scrollLeft', {
+    configurable: true,
+    get(this: HTMLElement) {
+      if (isTrackGroupTabList(this)) {
+        return metrics.scrollLeft
+      }
+
+      return readNumericHTMLElementProperty(scrollLeftDescriptor, this)
+    },
+    set(this: HTMLElement, value: number) {
+      if (isTrackGroupTabList(this)) {
+        metrics.scrollLeft = value
+        return
+      }
+
+      scrollLeftDescriptor?.set?.call(this, value)
+    },
+  })
+  Object.defineProperty(HTMLElement.prototype, 'scrollWidth', {
+    configurable: true,
+    get(this: HTMLElement) {
+      if (isTrackGroupTabList(this)) {
+        return metrics.scrollWidth
+      }
+
+      return readNumericHTMLElementProperty(scrollWidthDescriptor, this)
+    },
+  })
+
+  return {
+    metrics,
+    restore: () => {
+      restoreHTMLElementProperty('clientWidth', clientWidthDescriptor)
+      restoreHTMLElementProperty('scrollLeft', scrollLeftDescriptor)
+      restoreHTMLElementProperty('scrollWidth', scrollWidthDescriptor)
+    },
+  }
+}
+
+function isTrackGroupTabList(element: HTMLElement) {
+  return element.getAttribute('aria-label') === 'Track groups'
+}
+
+function readNumericHTMLElementProperty(
+  descriptor: PropertyDescriptor | undefined,
+  element: HTMLElement,
+) {
+  const value: unknown = descriptor?.get?.call(element)
+
+  return typeof value === 'number' ? value : 0
+}
+
+function restoreHTMLElementProperty(
+  propertyName: 'clientWidth' | 'scrollLeft' | 'scrollWidth',
+  descriptor: PropertyDescriptor | undefined,
+) {
+  if (descriptor) {
+    Object.defineProperty(HTMLElement.prototype, propertyName, descriptor)
+    return
+  }
+
+  delete (HTMLElement.prototype as unknown as Record<string, unknown>)[
+    propertyName
+  ]
 }
 
 function getTrackProblemRow(title: string) {
