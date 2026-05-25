@@ -11,6 +11,7 @@ import {
   type Updater,
 } from '@tanstack/react-table'
 
+import { Badge } from '@/components/ui/badge'
 import {
   ProblemDifficultyBadge,
   ProblemRowActionsBar,
@@ -185,9 +186,15 @@ function createTrackProblemColumns(): ColumnDef<TrackProblemRow>[] {
       ),
     },
     {
-      id: trackProblemColumnIds.status,
+      id: trackProblemColumnIds.trackCompletion,
+      accessorFn: (row) => row.membership.completedAt ?? undefined,
+      header: 'Track',
+      cell: ({ row }) => <TrackCompletionBadge row={row.original} />,
+    },
+    {
+      id: trackProblemColumnIds.review,
       accessorFn: (row) => row.status,
-      header: 'Status',
+      header: 'Review',
       cell: ({ row }) => <ProblemStatusBadge status={row.original.status} />,
     },
     {
@@ -252,6 +259,16 @@ function ProblemTitleCell({ row }: { row: TrackProblemRow }) {
   )
 }
 
+function TrackCompletionBadge({ row }: { row: TrackProblemRow }) {
+  const isCompleted = row.membership.completedAt !== null
+
+  return (
+    <Badge tone={isCompleted ? 'success' : 'neutral'}>
+      {isCompleted ? 'Completed' : 'Not completed'}
+    </Badge>
+  )
+}
+
 function DisclosureIcon({ icon: Icon }: { icon: LucideIcon }) {
   return <Icon aria-hidden="true" className="size-4" />
 }
@@ -312,5 +329,6 @@ const trackProblemColumnIds = {
   nextReview: 'nextReview',
   order: 'order',
   problem: 'problem',
-  status: 'status',
+  review: 'review',
+  trackCompletion: 'trackCompletion',
 } as const

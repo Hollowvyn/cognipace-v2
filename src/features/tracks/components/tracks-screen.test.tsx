@@ -162,6 +162,30 @@ describe('TracksScreen', () => {
     expect(queryTrackProblemRow('Maximum Subarray')).not.toBeInTheDocument()
   })
 
+  it('renders track completion separately from review status', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(twoGroupWorkspace)
+    renderTracksScreen()
+
+    expect(
+      await screen.findByRole('columnheader', { name: 'Track' }),
+    ).toBeVisible()
+    expect(screen.getByRole('columnheader', { name: 'Review' })).toBeVisible()
+    expect(
+      screen.queryByRole('columnheader', { name: 'Status' }),
+    ).not.toBeInTheDocument()
+
+    expect(
+      within(getTrackProblemRow('Two Sum')).getByText('Not completed'),
+    ).toBeVisible()
+    expect(within(getTrackProblemRow('Two Sum')).getByText('Due')).toBeVisible()
+    expect(
+      within(getTrackProblemRow('Binary Search')).getByText('Completed'),
+    ).toBeVisible()
+    expect(
+      within(getTrackProblemRow('Binary Search')).getByText('Scheduled'),
+    ).toBeVisible()
+  })
+
   it('keeps New Track reachable from the active workspace', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(twoGroupWorkspace)
     renderTracksScreen()
