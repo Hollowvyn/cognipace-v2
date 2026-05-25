@@ -10,6 +10,7 @@ import {
 } from '@/features/practice'
 import type { ReviewRating } from '@/lib/fsrs'
 import type { LeetCodeSubmissionResult } from '@/lib/leetcode'
+import { getDashboardUrl } from '@/platform/chrome/extension-pages'
 
 import {
   createOverlayDraftFromLog,
@@ -409,13 +410,7 @@ export function useOverlayReviewActions({
   }
 
   function openSettings() {
-    dispatch({
-      type: 'set-feedback',
-      feedback: {
-        tone: 'neutral',
-        message: 'Settings are available from the CogniPace popup.',
-      },
-    })
+    window.open(getDashboardUrl('settings'), '_blank', 'noopener')
   }
 
   function setOverlayError(message: string) {

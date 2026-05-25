@@ -35,6 +35,16 @@ const leetcodeMockState = vi.hoisted<LeetCodeMockState>(() => ({
   },
 }))
 
+const browserMocks = vi.hoisted(() => ({
+  getURL: vi.fn((path: string) => `chrome-extension://extension-id${path}`),
+}))
+
+vi.mock('wxt/browser', () => ({
+  browser: {
+    runtime: { getURL: browserMocks.getURL },
+  },
+}))
+
 vi.mock('@/lib/leetcode', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/leetcode')>()
 
@@ -423,6 +433,22 @@ describe('useLeetCodeOverlaySession', () => {
       },
     })
     expect(saveReviewResultViaRuntime).not.toHaveBeenCalled()
+  })
+
+  it('opens dashboard settings from the overlay settings action', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    const { result } = await renderReadySession()
+
+    act(() => {
+      result.current.actions.openSettings()
+    })
+
+    expect(openSpy).toHaveBeenCalledWith(
+      'chrome-extension://extension-id/dashboard.html#/settings',
+      '_blank',
+      'noopener',
+    )
+    expect(result.current.overlay.feedback).toBeNull()
   })
 
   it('refreshes live overlay context after cross-surface cache invalidation', async () => {
