@@ -186,6 +186,34 @@ describe('TrackForm', () => {
     )
   })
 
+  it('allows a same-day target date during local evening hours', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-05-26T02:00:00.000Z'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    mockTrackFormRuntime(createTrackDefaults())
+
+    renderTrackForm(
+      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
+    )
+
+    await user.type(await screen.findByLabelText('Title'), 'Today Track')
+    const targetDate = screen.getByLabelText('Target date')
+
+    expect(targetDate).toHaveAttribute('min', '2026-05-25')
+
+    await user.type(targetDate, '2026-05-25')
+    await user.click(screen.getByRole('button', { name: 'SAVE' }))
+
+    await waitFor(() => {
+      expect(sendMessage).toHaveBeenCalledWith(
+        'tracks.createTrack',
+        expect.objectContaining({
+          dueAt: '2026-05-25T00:00:00.000Z',
+        }),
+      )
+    })
+  })
+
   it('allows an unchanged saved past target date in edit mode', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-05-25T12:00:00.000Z'))

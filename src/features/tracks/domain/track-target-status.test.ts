@@ -169,4 +169,16 @@ describe('date input helpers', () => {
       '2026-05-25',
     )
   })
+
+  it('uses the local calendar day for date input today', () => {
+    const localEveningNow = new Date('2026-05-26T02:00:00.000Z')
+
+    expect(getTodayDateInputValue(localEveningNow)).toBe('2026-05-25')
+    expect(isPastDateInputValue('2026-05-25', localEveningNow)).toBe(false)
+    expect(isPastDateInputValue('2026-05-24', localEveningNow)).toBe(true)
+    expect(getDateInputMin('', null, localEveningNow)).toBe('2026-05-25')
+    expect(
+      getDateInputMin('2026-05-24', '2026-05-24', localEveningNow),
+    ).toBeUndefined()
+  })
 })

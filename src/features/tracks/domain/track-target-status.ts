@@ -141,7 +141,11 @@ export function getTrackTargetStatus({
 }
 
 export function getTodayDateInputValue(now: Date | string = new Date()): string {
-  return toDateInputValue(now) || toDateInputValue(new Date())
+  if (now instanceof Date) {
+    return toLocalDateInputValue(now) || toLocalDateInputValue(new Date())
+  }
+
+  return toDateInputValue(now) || toLocalDateInputValue(new Date())
 }
 
 export function isPastDateInputValue(
@@ -219,6 +223,18 @@ function dateKeyToUtcTime(dateKey: string): number {
   const [year, month, day] = dateKey.split('-').map(Number)
 
   return Date.UTC(year ?? 0, (month ?? 1) - 1, day ?? 1)
+}
+
+function toLocalDateInputValue(value: Date): string {
+  if (Number.isNaN(value.getTime())) {
+    return ''
+  }
+
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
 }
 
 function formatDateLabel(dateKey: string): string {
