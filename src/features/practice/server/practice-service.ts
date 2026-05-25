@@ -4,6 +4,7 @@ import { createPracticeRepository } from '../data/practice-repository'
 import type {
   PracticeDetails,
   OverrideLastReviewResultInput,
+  PracticeProgressSummaryInput,
   PracticeReadOptions,
   ResetPracticeScheduleInput,
   SaveReviewResultInput,
@@ -17,6 +18,13 @@ export function getPracticeDetails(
   options: PracticeReadOptions = {},
 ): Promise<PracticeDetails> {
   return createPracticeRepository(db).getPracticeDetails(problemSlug, options)
+}
+
+export function getPracticeProgressSummary(
+  db: Db,
+  input: PracticeProgressSummaryInput,
+) {
+  return createPracticeRepository(db).getPracticeProgressSummary(input)
 }
 
 export function saveReviewResult(db: Db, input: SaveReviewResultInput) {
