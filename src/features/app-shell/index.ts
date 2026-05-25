@@ -12,6 +12,12 @@ export {
   type OverlayAppShellData,
   type PopupAppShellData,
 } from './api/app-shell-api'
+export {
+  createDashboardOverviewView,
+  type DashboardOverviewMetricView,
+  type DashboardOverviewPrimaryView,
+  type DashboardOverviewView,
+} from './domain/dashboard-overview'
 export type {
   PopupAppShellView,
   PopupRecommendationView,
