@@ -179,7 +179,7 @@ describe('TracksScreen', () => {
 
     expect(incompleteBadge).toBeVisible()
     expect(incompleteBadge).toHaveAttribute('data-cp-track-completed', 'false')
-    expect(incompleteBadge).toHaveAttribute('data-cp-tone', 'pink')
+    expect(incompleteBadge).toHaveAttribute('data-cp-tone', 'danger')
     expect(within(getTrackProblemRow('Two Sum')).getByText('Due')).toBeVisible()
     const completedBadge = within(
       getTrackProblemRow('Binary Search'),

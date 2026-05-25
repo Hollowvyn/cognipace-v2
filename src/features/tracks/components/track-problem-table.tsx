@@ -265,7 +265,7 @@ function TrackCompletionBadge({ row }: { row: TrackProblemRow }) {
   return (
     <Badge
       data-cp-track-completed={isCompleted ? 'true' : 'false'}
-      tone={isCompleted ? 'success' : 'pink'}
+      tone={isCompleted ? 'success' : 'danger'}
     >
       {isCompleted ? 'Yes' : 'No'}
     </Badge>
