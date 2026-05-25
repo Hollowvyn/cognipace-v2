@@ -25,9 +25,11 @@ const validParentheses = {
   isPremium: false,
 } satisfies AppShellProblemSummary
 
+const shellGeneratedAt = new Date(2026, 0, 1, 12, 0, 0).toISOString()
+
 const shellData = {
   surface: 'popup',
-  generatedAt: '2026-01-01T00:00:00.000Z',
+  generatedAt: shellGeneratedAt,
   status: {
     label: 'Practice ready',
     detail: '1 due, 1 new, 0 reinforcement available.',
@@ -248,7 +250,7 @@ describe('PopupShell', () => {
         controller={createController({
           data: {
             ...shellData,
-            generatedAt: '2026-03-02T00:00:00.000Z',
+            generatedAt: new Date(2026, 2, 2, 12, 0, 0).toISOString(),
           },
         })}
       />,

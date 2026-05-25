@@ -53,7 +53,9 @@ describe('TrackForm', () => {
   })
 
   it('creates a track with ordered groups and selected-group problem membership', async () => {
-    const user = userEvent.setup()
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 4, 25, 12, 0, 0))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     mockTrackFormRuntime(createTrackDefaults())
 
     renderTrackForm(

@@ -848,14 +848,14 @@ function TargetDateField({
 }) {
   return (
     <div className="grid gap-1">
-      <div className="relative pt-2">
-        <label>
+      <div className="flex min-w-0 items-start gap-2">
+        <label className="relative block min-w-0 flex-1 pt-2">
           <span className={floatingLabelClassName}>Target date</span>
           <input
             aria-describedby={describedBy}
             aria-invalid={invalid || undefined}
             autoComplete="off"
-            className={cn(fieldClassName, value && 'pr-11')}
+            className={fieldClassName}
             min={min}
             name="track-due-at"
             onChange={(event) => onChange(event.target.value)}
@@ -865,7 +865,7 @@ function TargetDateField({
         </label>
         {value ? (
           <IconButton
-            className="absolute right-2 top-[1.125rem]"
+            className="mt-2 shrink-0"
             label="Clear target date"
             onClick={onClear}
             size="sm"

@@ -145,7 +145,15 @@ export function getTodayDateInputValue(now: Date | string = new Date()): string 
     return toLocalDateInputValue(now) || toLocalDateInputValue(new Date())
   }
 
-  return toDateInputValue(now) || toLocalDateInputValue(new Date())
+  if (/^\d{4}-\d{2}-\d{2}$/.test(now)) {
+    return now
+  }
+
+  return (
+    toLocalDateInputValue(new Date(now)) ||
+    toDateInputValue(now) ||
+    toLocalDateInputValue(new Date())
+  )
 }
 
 export function isPastDateInputValue(

@@ -8,7 +8,7 @@ import {
   toDateInputValue,
 } from './track-target-status'
 
-const generatedAt = '2026-05-25T16:30:00.000Z'
+const generatedAt = new Date(2026, 4, 25, 12, 0, 0).toISOString()
 
 function progress(
   overrides: Partial<{
@@ -139,7 +139,23 @@ describe('getTrackTargetStatus', () => {
     expect(
       getTrackTargetStatus({
         dueAt: '2026-05-25T00:00:00.000Z',
-        generatedAt: '2026-05-25T23:59:59.000Z',
+        generatedAt: new Date(2026, 4, 25, 23, 59, 59).toISOString(),
+        progress: progress(),
+      }),
+    ).toMatchObject({
+      daysDelta: 0,
+      kind: 'due-today',
+      statusLabel: 'Due today',
+    })
+  })
+
+  it('compares generated timestamps by the local calendar date', () => {
+    const localEveningNow = new Date(2026, 4, 25, 22, 0, 0)
+
+    expect(
+      getTrackTargetStatus({
+        dueAt: '2026-05-25T00:00:00.000Z',
+        generatedAt: localEveningNow.toISOString(),
         progress: progress(),
       }),
     ).toMatchObject({
