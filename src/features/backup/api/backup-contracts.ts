@@ -19,6 +19,8 @@ export const minimumSupportedBackupSchemaVersion = 1
 
 const isoDatetimeSchema = z.iso.datetime()
 
+const durableIdSchema = z.string().trim().min(1)
+
 export const backupProblemRowSchema = z.strictObject({
   slug: problemSlugSchema,
   title: z.string(),
@@ -29,23 +31,23 @@ export const backupProblemRowSchema = z.strictObject({
 })
 
 export const backupTopicRowSchema = z.strictObject({
-  id: z.string(),
+  id: durableIdSchema,
   label: z.string(),
 })
 
 export const backupCompanyRowSchema = z.strictObject({
-  id: z.string(),
+  id: durableIdSchema,
   label: z.string(),
 })
 
 export const backupProblemTopicRowSchema = z.strictObject({
   problemSlug: problemSlugSchema,
-  topicId: z.string(),
+  topicId: durableIdSchema,
 })
 
 export const backupProblemCompanyRowSchema = z.strictObject({
   problemSlug: problemSlugSchema,
-  companyId: z.string(),
+  companyId: durableIdSchema,
 })
 
 export const backupProblemPracticeRowSchema = z.strictObject({
@@ -70,15 +72,15 @@ export const backupProblemPracticeRowSchema = z.strictObject({
 })
 
 export const backupFsrsCardRowSchema = z.strictObject({
-  id: z.string(),
+  id: durableIdSchema,
   problemSlug: problemSlugSchema,
-  cardKind: z.string(),
+  cardKind: durableIdSchema,
   dueAt: isoDatetimeSchema,
   stability: z.number(),
   difficulty: z.number(),
-  elapsedDays: z.number().int(),
-  scheduledDays: z.number().int(),
-  learningSteps: z.number().int(),
+  elapsedDays: z.number().int().min(0),
+  scheduledDays: z.number().int().min(0),
+  learningSteps: z.number().int().min(0),
   reps: z.number().int().min(0),
   lapses: z.number().int().min(0),
   state: z.enum(fsrsCardStates),
@@ -88,9 +90,9 @@ export const backupFsrsCardRowSchema = z.strictObject({
 })
 
 export const backupReviewAttemptRowSchema = z.strictObject({
-  id: z.string(),
+  id: durableIdSchema,
   problemSlug: problemSlugSchema,
-  cardId: z.string(),
+  cardId: durableIdSchema,
   rating: z.enum(reviewRatings),
   reviewMode: z.enum(reviewModes),
   reviewedAt: isoDatetimeSchema,
@@ -141,7 +143,7 @@ export const backupTrackProgressRowSchema = z.strictObject({
 })
 
 export const backupTrackSessionRowSchema = z.strictObject({
-  id: z.string(),
+  id: durableIdSchema,
   activeTrackId: trackIdSchema.nullable(),
   activeGroupId: trackGroupIdSchema.nullable(),
   startedAt: isoDatetimeSchema,

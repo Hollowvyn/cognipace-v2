@@ -221,4 +221,78 @@ describe('backup contracts', () => {
       }),
     ).toThrow()
   })
+
+  it.each([
+    [
+      'topic id',
+      (backup: ReturnType<typeof createValidBackupFixture>) => {
+        backup.data.topics[0]!.id = ' '
+      },
+    ],
+    [
+      'company id',
+      (backup: ReturnType<typeof createValidBackupFixture>) => {
+        backup.data.companies[0]!.id = ' '
+      },
+    ],
+    [
+      'problem topic id',
+      (backup: ReturnType<typeof createValidBackupFixture>) => {
+        backup.data.problemTopics[0]!.topicId = ' '
+      },
+    ],
+    [
+      'problem company id',
+      (backup: ReturnType<typeof createValidBackupFixture>) => {
+        backup.data.problemCompanies[0]!.companyId = ' '
+      },
+    ],
+    [
+      'FSRS card id',
+      (backup: ReturnType<typeof createValidBackupFixture>) => {
+        backup.data.practice.fsrsCards[0]!.id = ' '
+      },
+    ],
+    [
+      'FSRS card kind',
+      (backup: ReturnType<typeof createValidBackupFixture>) => {
+        backup.data.practice.fsrsCards[0]!.cardKind = ' '
+      },
+    ],
+    [
+      'review attempt id',
+      (backup: ReturnType<typeof createValidBackupFixture>) => {
+        backup.data.practice.reviewAttempts[0]!.id = ' '
+      },
+    ],
+    [
+      'review attempt card id',
+      (backup: ReturnType<typeof createValidBackupFixture>) => {
+        backup.data.practice.reviewAttempts[0]!.cardId = ' '
+      },
+    ],
+    [
+      'track session id',
+      (backup: ReturnType<typeof createValidBackupFixture>) => {
+        backup.data.tracks.session[0]!.id = ' '
+      },
+    ],
+  ])('rejects empty durable ID for %s', (_field, mutateBackup) => {
+    const backup = createValidBackupFixture()
+
+    mutateBackup(backup)
+
+    expect(() => backupFileSchema.parse(backup)).toThrow()
+  })
+
+  it.each(['elapsedDays', 'scheduledDays', 'learningSteps'] as const)(
+    'rejects negative FSRS %s',
+    (field) => {
+      const backup = createValidBackupFixture()
+
+      backup.data.practice.fsrsCards[0]![field] = -1
+
+      expect(() => backupFileSchema.parse(backup)).toThrow()
+    },
+  )
 })
