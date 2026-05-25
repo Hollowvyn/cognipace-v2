@@ -59,6 +59,13 @@ const fallbackData = {
     { label: 'Due Today', value: '--' },
     { label: 'Streak', value: '--' },
   ],
+  practiceProgress: {
+    completedToday: 0,
+    dailyGoal: 0,
+    currentStreak: 0,
+    goalMetToday: false,
+    todayDateKey: '1970-01-01',
+  },
   recommendation: {
     title: 'Loading recommendation',
     detail: 'The queue service is not connected yet.',

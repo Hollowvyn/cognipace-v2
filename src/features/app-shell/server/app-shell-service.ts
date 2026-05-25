@@ -2,7 +2,10 @@ import {
   serializeNormalizedPracticeState,
   serializePracticeDetails,
 } from '@/features/practice/api/practice-serializers'
-import { getPracticeDetails } from '@/features/practice/server/practice-service'
+import {
+  getPracticeDetails,
+  getPracticeProgressSummary,
+} from '@/features/practice/server/practice-service'
 import type { Problem } from '@/features/problems/domain'
 import { getProblemContext } from '@/features/problems/server/problems-service'
 import type { QueueItem } from '@/features/queue/domain'
@@ -21,6 +24,7 @@ import type {
   OverlayNextStep,
   PopupAppShellData,
 } from '../api/app-shell-contracts'
+import { createAppShellMetrics } from '../domain/app-shell-metrics'
 import { buildAppShellRecommendation } from '../domain/popup-app-shell'
 
 export async function getAppShellData(
@@ -52,11 +56,16 @@ async function getPopupAppShellData(db: Db, now: Date) {
 
 async function getDashboardAppShellData(db: Db, now: Date) {
   const { baseData, queueItems } = await getMainAppShellData(db, now)
+  const queuePreview = queueItems.slice(0, 5)
 
   return {
     ...baseData,
     surface: 'dashboard',
-    dashboard: { queuePreview: queueItems.slice(0, 8) },
+    overview: {
+      practiceProgress: baseData.practiceProgress,
+      queuePreview,
+    },
+    dashboard: { queuePreview },
   } satisfies AppShellData
 }
 
@@ -65,7 +74,13 @@ async function getMainAppShellData(db: Db, now: Date) {
     getSettings(db),
     getTodayQueue(db, now),
   ])
-  const activeTrack = await getActiveTrack(db, now)
+  const [activeTrack, practiceProgress] = await Promise.all([
+    getActiveTrack(db, now),
+    getPracticeProgressSummary(db, {
+      dailyGoal: settings.practice.dailyGoal,
+      now,
+    }),
+  ])
   const queueItems = queue.items.map(serializeQueueItem)
   const baseData = {
     generatedAt: now.toISOString(),
@@ -73,10 +88,11 @@ async function getMainAppShellData(db: Db, now: Date) {
       label: 'Practice ready',
       detail: `${queue.dueCount} due, ${queue.newCount} new, ${queue.reinforcementCount} reinforcement available.`,
     },
-    metrics: [
-      { label: 'Due Today', value: String(queue.dueCount) },
-      { label: 'Streak', value: '0 days' },
-    ],
+    metrics: createAppShellMetrics({
+      dueCount: queue.dueCount,
+      practiceProgress,
+    }),
+    practiceProgress,
     recommendation: buildAppShellRecommendation(queueItems[0] ?? null),
     activeTrack: serializeActiveTrack(activeTrack, settings.practice.mode),
     queue: {

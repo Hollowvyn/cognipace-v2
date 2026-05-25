@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, desc, eq } from 'drizzle-orm'
 
 import {
   createInitialFsrsCard,
@@ -24,6 +24,7 @@ import {
 } from '@/platform/db/schema'
 
 import {
+  buildPracticeProgressSummary,
   derivePracticeSummary,
   deriveNormalizedPracticeState,
   normalizeReviewLogFields,
@@ -34,6 +35,8 @@ import {
   type OverrideLastReviewResultInput,
   type PracticeDetails,
   type PracticeLogFields,
+  type PracticeProgressSummary,
+  type PracticeProgressSummaryInput,
   type PracticeReviewAttemptSnapshot,
   type PracticeReadOptions,
   type PracticeStateSnapshot,
@@ -371,6 +374,26 @@ export class PracticeRepository {
     options: PracticeReadOptions = {},
   ): Promise<NormalizedPracticeState> {
     return this.getPracticeDetails(problemSlug, options)
+  }
+
+  async getPracticeProgressSummary(
+    input: PracticeProgressSummaryInput,
+  ): Promise<PracticeProgressSummary> {
+    const rows = await this.db
+      .select({
+        problemSlug: reviewAttempts.problemSlug,
+        reviewedAt: reviewAttempts.reviewedAt,
+      })
+      .from(reviewAttempts)
+      .orderBy(desc(reviewAttempts.reviewedAt))
+
+    return buildPracticeProgressSummary(
+      rows.map((row) => ({
+        problemSlug: row.problemSlug,
+        reviewedAt: new Date(row.reviewedAt),
+      })),
+      input,
+    )
   }
 
   async getCard(

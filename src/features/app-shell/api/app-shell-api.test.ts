@@ -4,6 +4,7 @@ import { sendMessage } from '@/extension/messaging'
 
 import {
   appShellQueryKeys,
+  getDashboardAppShellDataViaRuntime,
   getOverlayAppShellDataViaRuntime,
   getPopupAppShellDataViaRuntime,
 } from './app-shell-api'
@@ -42,6 +43,16 @@ describe('app-shell runtime API', () => {
     expect(sendMessage).toHaveBeenCalledWith('app.getShellData', {
       surface: 'overlay',
       problemSlug: 'two-sum',
+    })
+  })
+
+  it('reads dashboard app-shell data through the dashboard surface request', async () => {
+    const payload = { surface: 'dashboard' } as AppShellData
+    vi.mocked(sendMessage).mockResolvedValueOnce(payload)
+
+    await expect(getDashboardAppShellDataViaRuntime()).resolves.toBe(payload)
+    expect(sendMessage).toHaveBeenCalledWith('app.getShellData', {
+      surface: 'dashboard',
     })
   })
 
