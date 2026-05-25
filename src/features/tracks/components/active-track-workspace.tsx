@@ -1,4 +1,4 @@
-import { CalendarClock, CheckCircle2, ListChecks } from 'lucide-react'
+import { CalendarClock, ListChecks } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
 import { InlineStatus } from '@/components/ui/inline-status'
@@ -13,6 +13,7 @@ import type {
   SerializedTrackGroup,
   TrackProblemRow,
 } from '../api/tracks-contracts'
+import { getTrackTargetStatus } from '../domain'
 import { TrackActions } from './track-actions'
 import { TrackProblemTable } from './track-problem-table'
 import type { RenderProblemEditAction } from '@/features/problems'
@@ -26,9 +27,11 @@ export function ActiveTrackWorkspace({
   renderEditTrackAction,
   rows,
   dueCount,
+  generatedAt,
 }: {
   activeTrack: NonNullable<SerializedActiveTrack>
   dueCount: number
+  generatedAt: string
   groups: readonly SerializedTrackGroup[]
   renderEditProblemAction: RenderProblemEditAction
   renderEditTrackAction: RenderTrackEditAction
@@ -45,6 +48,7 @@ export function ActiveTrackWorkspace({
       <ActiveTrackHeader
         activeTrack={activeTrack}
         dueCount={dueCount}
+        generatedAt={generatedAt}
         renderEditTrackAction={renderEditTrackAction}
       />
       <ActiveTrackGroups
@@ -70,12 +74,20 @@ export function ActiveTrackWorkspace({
 function ActiveTrackHeader({
   activeTrack,
   dueCount,
+  generatedAt,
   renderEditTrackAction,
 }: {
   activeTrack: NonNullable<SerializedActiveTrack>
   dueCount: number
+  generatedAt: string
   renderEditTrackAction: RenderTrackEditAction
 }) {
+  const targetStatus = getTrackTargetStatus({
+    dueAt: activeTrack.track.dueAt,
+    generatedAt,
+    progress: activeTrack.progress,
+  })
+
   return (
     <div className="grid gap-4 px-4 pb-4 pt-4 md:px-5 lg:px-7 lg:py-5">
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
@@ -88,11 +100,6 @@ function ActiveTrackHeader({
               {activeTrack.track.description}
             </p>
           ) : null}
-          {activeTrack.track.dueAt ? (
-            <p className="m-0 mt-2 text-[length:var(--cp-badge-font-size)] font-semibold text-muted-foreground">
-              Due {formatDateCell(activeTrack.track.dueAt)}
-            </p>
-          ) : null}
         </div>
         <TrackActions
           ariaLabel={`${activeTrack.track.title} track actions`}
@@ -102,25 +109,20 @@ function ActiveTrackHeader({
           track={activeTrack.track}
         />
       </div>
-      <div className="grid gap-3 border-y border-border py-3 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-border">
+      <div
+        className={cn(
+          'grid min-w-0 gap-3',
+          targetStatus.hasTarget ? 'grid-cols-2' : 'grid-cols-1',
+        )}
+      >
+        <ProgressSummaryPanel progress={activeTrack.progress} />
+        {targetStatus.hasTarget ? (
+          <TargetSummaryPanel targetStatus={targetStatus} />
+        ) : null}
+      </div>
+      <div className="grid gap-3 border-y border-border py-3 sm:grid-cols-2 sm:gap-0 sm:divide-x sm:divide-border">
         <MetricBlock
-          ariaLabel="Progress metric"
-          icon={<CheckCircle2 aria-hidden="true" />}
-          label="Progress"
-          value={
-            <span className="inline-flex min-w-0 items-baseline gap-2">
-              <span className="tabular-nums">
-                {activeTrack.progress.completedCount} of{' '}
-                {activeTrack.progress.totalCount}
-              </span>
-              <span className="text-muted-foreground tabular-nums">
-                {activeTrack.progress.percent}%
-              </span>
-            </span>
-          }
-        />
-        <MetricBlock
-          ariaLabel="Due metric"
+          ariaLabel="Due reviews metric"
           icon={<CalendarClock aria-hidden="true" />}
           label="Due Reviews"
           value={<span className="tabular-nums">{dueCount}</span>}
@@ -146,6 +148,113 @@ function ActiveTrackHeader({
         />
       </div>
     </div>
+  )
+}
+
+function ProgressSummaryPanel({
+  progress,
+}: {
+  progress: NonNullable<SerializedActiveTrack>['progress']
+}) {
+  const remainingCount = Math.max(
+    progress.totalCount - progress.completedCount,
+    0,
+  )
+
+  return (
+    <div
+      aria-label="Track progress summary"
+      className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-[var(--cp-panel-radius)] border border-border bg-muted/25 p-3"
+    >
+      <ProgressRing percent={progress.percent} />
+      <div className="min-w-0">
+        <div className="text-[length:var(--cp-badge-font-size)] font-bold uppercase text-muted-foreground">
+          Progress
+        </div>
+        <div className="mt-1 truncate text-[length:var(--cp-copy-font-size)] font-bold text-foreground tabular-nums">
+          {progress.completedCount} of {progress.totalCount}
+        </div>
+        <div className="mt-1 truncate text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+          {remainingCount} {remainingCount === 1 ? 'problem' : 'problems'} left
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TargetSummaryPanel({
+  targetStatus,
+}: {
+  targetStatus: ReturnType<typeof getTrackTargetStatus>
+}) {
+  return (
+    <div
+      aria-label="Track target summary"
+      className={cn(
+        'grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-[var(--cp-panel-radius)] border bg-[var(--cp-tone-bg)] p-3',
+        targetStatus.tone === 'danger'
+          ? 'border-destructive/35 border-l-2 text-destructive'
+          : 'border-[color:var(--cp-tone-border)] text-[color:var(--cp-tone-fg)]',
+      )}
+      data-cp-tone={targetStatus.tone}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          'grid size-10 place-items-center rounded-full border bg-[var(--cp-tone-bg)]',
+          targetStatus.tone === 'danger'
+            ? 'border-destructive/30 text-destructive'
+            : 'border-[color:var(--cp-tone-border)] text-[color:var(--cp-tone-fg)]',
+        )}
+      >
+        <CalendarClock className="size-4" />
+      </span>
+      <div className="min-w-0">
+        <div className="text-[length:var(--cp-badge-font-size)] font-bold uppercase text-muted-foreground">
+          Target
+        </div>
+        <div className="mt-1 truncate text-[length:var(--cp-copy-font-size)] font-bold text-foreground">
+          {targetStatus.dateLabel}
+        </div>
+        <div
+          className={cn(
+            'mt-1 truncate text-[length:var(--cp-badge-font-size)] font-semibold',
+            targetStatus.tone === 'danger'
+              ? 'text-destructive'
+              : 'text-[color:var(--cp-tone-fg)]',
+          )}
+        >
+          {targetStatus.detailLabel ? (
+            <>
+              <span>{targetStatus.statusLabel}</span>
+              <span aria-hidden="true"> · </span>
+              <span>{targetStatus.detailLabel}</span>
+            </>
+          ) : (
+            targetStatus.statusLabel
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProgressRing({ percent }: { percent: number }) {
+  const clampedPercent = Math.max(0, Math.min(percent, 100))
+
+  return (
+    <span
+      aria-label={`${clampedPercent}% complete`}
+      className="grid size-11 shrink-0 place-items-center rounded-full"
+      role="img"
+      style={{
+        background: `conic-gradient(var(--cp-color-primary) ${clampedPercent}%, var(--cp-color-muted) 0)`,
+      }}
+    >
+      <span className="grid size-8 place-items-center rounded-full bg-card text-[0.625rem] font-bold text-foreground tabular-nums">
+        {clampedPercent}
+      </span>
+    </span>
   )
 }
 
@@ -308,13 +417,4 @@ function MetricBlock({
       </div>
     </div>
   )
-}
-
-function formatDateCell(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-    year: 'numeric',
-  }).format(new Date(value))
 }
