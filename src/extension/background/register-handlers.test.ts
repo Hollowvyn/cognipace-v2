@@ -4,6 +4,7 @@ import {
   activeTrackSchema,
   backupFileSchema,
   backupSummarySchema,
+  problemsGetLibraryRequestSchema,
   queueRequestSchema,
   trackForEditResponseSchema,
   tracksClearActiveTrackRequestSchema,
@@ -287,179 +288,249 @@ describe('background handler registration', () => {
     expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
   })
 
-  it('registers active-track handling with runtime serialization', async () => {
-    const dueAt = new Date('2026-03-01T00:00:00.000Z')
-    backgroundMocks.getActiveTrack.mockResolvedValue(createActiveTrack(dueAt))
-
-    const response = await sendRuntimeMessage('tracks.getActiveTrack', {
-      surface: 'popup',
-    })
-
-    expectRuntimePolicy('tracks.getActiveTrack', 'popup')
-    expect(backgroundMocks.getActiveTrack).toHaveBeenCalledWith(
-      backgroundMocks.db,
-    )
-    expect(response).toMatchObject({
-      track: {
-        id: 'leetcode-75',
-        dueAt: dueAt.toISOString(),
+  it.each([
+    [
+      'reads and serializes active-track data',
+      'tracks.getActiveTrack',
+      'popup',
+      () => ({ surface: 'popup' }) as const,
+      backgroundMocks.getActiveTrack,
+      () => [backgroundMocks.db],
+      (response) => {
+        expect(response).toMatchObject({
+          track: { id: 'leetcode-75', dueAt: '2026-03-01T00:00:00.000Z' },
+          activeGroup: { title: 'Arrays and Hashing' },
+          progress: { completedCount: 1, totalCount: 2, percent: 50 },
+          nextProblem: { slug: 'two-sum' },
+        })
       },
-      activeGroup: {
-        title: 'Arrays and Hashing',
+      {
+        arrange: () =>
+          backgroundMocks.getActiveTrack.mockResolvedValue(
+            createActiveTrack(new Date('2026-03-01T00:00:00.000Z')),
+          ),
       },
-      progress: {
-        completedCount: 1,
-        totalCount: 2,
-        percent: 50,
+    ],
+    [
+      'reads track workspace with request and response parsing',
+      'tracks.getWorkspace',
+      'dashboard',
+      () => ({ surface: 'dashboard', at: '2026-01-01T10:00:00.000Z' }) as const,
+      backgroundMocks.getWorkspace,
+      (request) => [
+        backgroundMocks.db,
+        tracksGetWorkspaceRequestSchema.parse(request),
+      ],
+      (response) =>
+        expect(response).toEqual(trackWorkspaceResponseSchema.parse(response)),
+      {
+        invalidServiceResponse: () => ({
+          ...trackWorkspaceResponse,
+          generatedAt: 'not-a-date',
+        }),
       },
-      nextProblem: {
-        slug: 'two-sum',
-      },
-    })
-  })
-
-  it('registers track workspace handling with request and response parsing', async () => {
-    const request = {
-      surface: 'dashboard',
-      at: '2026-01-01T10:00:00.000Z',
-    } as const
-
-    const response = await sendRuntimeMessage('tracks.getWorkspace', request)
-
-    expectRuntimePolicy('tracks.getWorkspace', 'dashboard')
-    expect(backgroundMocks.getWorkspace).toHaveBeenCalledWith(
-      backgroundMocks.db,
-      tracksGetWorkspaceRequestSchema.parse(request),
-    )
-    expect(response).toEqual(trackWorkspaceResponseSchema.parse(response))
-
-    backgroundMocks.getWorkspace.mockResolvedValueOnce({
-      ...trackWorkspaceResponse,
-      generatedAt: 'not-a-date',
-    })
-    await expect(
-      sendRuntimeMessage('tracks.getWorkspace', request),
-    ).rejects.toThrow()
-  })
-
-  it('registers track edit handling for create and edit requests', async () => {
-    const createRequest = { surface: 'dashboard' } as const
-    const editRequest = {
-      surface: 'dashboard',
-      trackId: 'leetcode-75',
-    } as const
-
-    const createResponse = await sendRuntimeMessage(
+    ],
+    [
+      'reads track edit defaults for create requests',
       'tracks.getTrackForEdit',
+      'dashboard',
+      () => ({ surface: 'dashboard' }) as const,
+      backgroundMocks.getTrackForEdit,
+      (request) => [
+        backgroundMocks.db,
+        tracksGetTrackForEditRequestSchema.parse(request),
+      ],
+      (response) =>
+        expect(response).toEqual(trackForEditResponseSchema.parse(response)),
+    ],
+    [
+      'reads track edit data for existing tracks',
+      'tracks.getTrackForEdit',
+      'dashboard',
+      () => ({ surface: 'dashboard', trackId: 'leetcode-75' }) as const,
+      backgroundMocks.getTrackForEdit,
+      (request) => [
+        backgroundMocks.db,
+        tracksGetTrackForEditRequestSchema.parse(request),
+      ],
+      (response) =>
+        expect(response).toEqual(trackForEditResponseSchema.parse(response)),
+    ],
+    [
+      'reads settings through the runtime DB boundary',
+      'settings.getSettings',
+      'dashboard',
+      () => ({ surface: 'dashboard' }) as const,
+      backgroundMocks.getSettings,
+      () => [backgroundMocks.db],
+      (response) => expect(response).toBe(defaultUserSettings),
+    ],
+    [
+      'reads the Library through request and response parsing',
+      'problems.getLibrary',
+      'dashboard',
+      () => ({ surface: 'dashboard', at: '2026-01-01T10:00:00.000Z' }) as const,
+      backgroundMocks.getProblemLibrary,
+      (request) => [
+        backgroundMocks.db,
+        problemsGetLibraryRequestSchema.parse(request),
+      ],
+      (response) => expect(response).toEqual(problemLibraryResponse),
+    ],
+    [
+      'exports backups through dashboard policy',
+      'backup.exportFullBackup',
+      'dashboard',
+      () => ({ surface: 'dashboard' }) as const,
+      backgroundMocks.backupExportFullBackup,
+      () => [backgroundMocks.db],
+      (response) => {
+        expect(response).toEqual(validBackup)
+      },
+    ],
+    [
+      'validates backup payloads without opening the DB',
+      'backup.validateFullBackup',
+      'dashboard',
+      () => ({ surface: 'dashboard', backup: validBackup }) as const,
+      backgroundMocks.backupValidateFullBackup,
+      (request) => [(request as { backup: unknown }).backup],
+      (response) =>
+        expect(backupSummarySchema.parse(response).counts.problems).toBe(
+          validBackupSummary.counts.problems,
+        ),
+      { usesDb: false },
+    ],
+  ] satisfies ReadonlyArray<ReadOnlyHandlerCase>)(
+    '%s',
+    async (
+      _name,
+      method,
+      surface,
       createRequest,
-    )
-    const editResponse = await sendRuntimeMessage(
-      'tracks.getTrackForEdit',
-      editRequest,
-    )
+      service,
+      expectedServiceArgs,
+      assertResponse,
+      options,
+    ) => {
+      const request = createRequest()
+      options?.arrange?.()
 
-    expectRuntimePolicy('tracks.getTrackForEdit', 'dashboard')
-    expectRuntimePolicy('tracks.getTrackForEdit', 'dashboard')
-    expect(backgroundMocks.getTrackForEdit).toHaveBeenNthCalledWith(
-      1,
-      backgroundMocks.db,
-      tracksGetTrackForEditRequestSchema.parse(createRequest),
-    )
-    expect(backgroundMocks.getTrackForEdit).toHaveBeenNthCalledWith(
-      2,
-      backgroundMocks.db,
-      tracksGetTrackForEditRequestSchema.parse(editRequest),
-    )
-    expect(createResponse).toEqual(
-      trackForEditResponseSchema.parse(createResponse),
-    )
-    expect(editResponse).toEqual(trackForEditResponseSchema.parse(editResponse))
-  })
+      const response = await sendRuntimeMessage(method, request)
 
-  it('flushes and broadcasts tracks invalidation after active selection writes', async () => {
-    await expectTrackWrite({
-      method: 'tracks.setActiveTrack',
-      request: {
-        surface: 'dashboard',
-        trackId: 'leetcode-75',
-      },
-      schema: tracksSetActiveTrackRequestSchema,
-      service: backgroundMocks.setActiveTrack,
-      expectedResponse: null,
-      expectedTags: ['tracks'],
-    })
+      expectRuntimePolicy(method, surface)
+      if (options?.usesDb === false) {
+        expect(backgroundMocks.getAppDb).not.toHaveBeenCalled()
+      } else {
+        expect(backgroundMocks.getAppDb).toHaveBeenCalledTimes(1)
+      }
+      expect(service).toHaveBeenCalledWith(...expectedServiceArgs(request))
+      await assertResponse(response)
+      expectNoMutationSideEffects()
 
-    await expectTrackWrite({
-      method: 'tracks.setActiveGroup',
-      request: {
-        surface: 'dashboard',
-        trackId: 'leetcode-75',
-        groupId: 'leetcode-75:arrays-hashing',
-      },
-      schema: tracksSetActiveGroupRequestSchema,
-      service: backgroundMocks.setActiveGroup,
-      expectedResponse: null,
-      expectedTags: ['tracks'],
-    })
+      if (!options?.invalidServiceResponse) {
+        return
+      }
 
-    await expectTrackWrite({
-      method: 'tracks.clearActiveTrack',
-      request: {
-        surface: 'dashboard',
-      },
-      schema: tracksClearActiveTrackRequestSchema,
-      service: backgroundMocks.clearActiveTrack,
-      expectedResponse: null,
-      expectedTags: ['tracks'],
-    })
-  })
+      vi.clearAllMocks()
+      backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
+      service.mockResolvedValueOnce(options.invalidServiceResponse())
 
-  it('flushes and broadcasts tracks plus problems invalidation after management writes', async () => {
-    await expectTrackWrite({
-      method: 'tracks.createTrack',
-      request: createTrackRequest(),
-      schema: tracksCreateTrackRequestSchema,
-      service: backgroundMocks.createTrack,
-      expectedResponse: parsedTrackForEditResponse,
-      expectedTags: ['tracks', 'problems'],
-    })
+      await expect(sendRuntimeMessage(method, request)).rejects.toThrow()
+      expectNoMutationSideEffects()
+    },
+  )
 
-    await expectTrackWrite({
-      method: 'tracks.updateTrack',
-      request: {
-        ...createTrackRequest(),
-        trackId: 'leetcode-75',
-      },
-      schema: tracksUpdateTrackRequestSchema,
-      service: backgroundMocks.updateTrack,
-      expectedResponse: parsedTrackForEditResponse,
-      expectedTags: ['tracks', 'problems'],
-    })
-
-    await expectTrackWrite({
-      method: 'tracks.deleteTrack',
-      request: {
-        surface: 'dashboard',
-        trackId: 'leetcode-75',
-      },
-      schema: tracksDeleteTrackRequestSchema,
-      service: backgroundMocks.deleteTrack,
-      expectedResponse: null,
-      expectedTags: ['tracks', 'problems'],
-    })
-
-    await expectTrackWrite({
-      method: 'tracks.resetTrackProgress',
-      request: {
-        surface: 'dashboard',
-        trackId: 'leetcode-75',
-      },
-      schema: tracksResetTrackProgressRequestSchema,
-      service: backgroundMocks.resetTrackProgress,
-      expectedResponse: null,
-      expectedTags: ['tracks', 'problems'],
-    })
-  })
+  it.each([
+    [
+      'tracks.setActiveTrack active selection write',
+      'tracks.setActiveTrack',
+      () => ({ surface: 'dashboard', trackId: 'leetcode-75' }) as const,
+      tracksSetActiveTrackRequestSchema,
+      backgroundMocks.setActiveTrack,
+      () => null,
+      ['tracks'],
+    ],
+    [
+      'tracks.setActiveGroup active session write',
+      'tracks.setActiveGroup',
+      () =>
+        ({
+          surface: 'dashboard',
+          trackId: 'leetcode-75',
+          groupId: 'leetcode-75:arrays-hashing',
+        }) as const,
+      tracksSetActiveGroupRequestSchema,
+      backgroundMocks.setActiveGroup,
+      () => null,
+      ['tracks'],
+    ],
+    [
+      'tracks.clearActiveTrack active session write',
+      'tracks.clearActiveTrack',
+      () => ({ surface: 'dashboard' }) as const,
+      tracksClearActiveTrackRequestSchema,
+      backgroundMocks.clearActiveTrack,
+      () => null,
+      ['tracks'],
+    ],
+    [
+      'tracks.createTrack management write',
+      'tracks.createTrack',
+      createTrackRequest,
+      tracksCreateTrackRequestSchema,
+      backgroundMocks.createTrack,
+      () => parsedTrackForEditResponse,
+      ['tracks', 'problems'],
+    ],
+    [
+      'tracks.updateTrack management write',
+      'tracks.updateTrack',
+      () => ({ ...createTrackRequest(), trackId: 'leetcode-75' }) as const,
+      tracksUpdateTrackRequestSchema,
+      backgroundMocks.updateTrack,
+      () => parsedTrackForEditResponse,
+      ['tracks', 'problems'],
+    ],
+    [
+      'tracks.deleteTrack management write',
+      'tracks.deleteTrack',
+      () => ({ surface: 'dashboard', trackId: 'leetcode-75' }) as const,
+      tracksDeleteTrackRequestSchema,
+      backgroundMocks.deleteTrack,
+      () => null,
+      ['tracks', 'problems'],
+    ],
+    [
+      'tracks.resetTrackProgress management write',
+      'tracks.resetTrackProgress',
+      () => ({ surface: 'dashboard', trackId: 'leetcode-75' }) as const,
+      tracksResetTrackProgressRequestSchema,
+      backgroundMocks.resetTrackProgress,
+      () => null,
+      ['tracks', 'problems'],
+    ],
+  ] satisfies ReadonlyArray<TrackWriteHandlerCase>)(
+    'flushes and broadcasts invalidation for %s',
+    async (
+      _name,
+      method,
+      createRequest,
+      schema,
+      service,
+      expectedResponse,
+      expectedTags,
+    ) => {
+      await expectTrackWrite({
+        method,
+        request: createRequest(),
+        schema,
+        service,
+        expectedResponse: expectedResponse(),
+        expectedTags,
+      })
+    },
+  )
 
   it('broadcasts cross-surface invalidation after settings writes', async () => {
     const updatedSettings = {
@@ -527,16 +598,6 @@ describe('background handler registration', () => {
     expect(cycleResponse).toBeNull()
   })
 
-  it('reads settings through the runtime policy and DB boundary', async () => {
-    const response = await sendRuntimeMessage('settings.getSettings', {
-      surface: 'dashboard',
-    })
-
-    expectRuntimePolicy('settings.getSettings', 'dashboard')
-    expect(backgroundMocks.getSettings).toHaveBeenCalledWith(backgroundMocks.db)
-    expect(response).toBe(defaultUserSettings)
-  })
-
   it('rejects invalid settings patches before writing or broadcasting', () => {
     expect(() =>
       sendRuntimeMessage('settings.updateSettings', {
@@ -547,53 +608,6 @@ describe('background handler registration', () => {
     expect(backgroundMocks.updateSettings).not.toHaveBeenCalled()
     expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
     expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
-  })
-
-  it('reads the Library without flushing or broadcasting invalidation', async () => {
-    const response = await sendRuntimeMessage('problems.getLibrary', {
-      surface: 'dashboard',
-      at: '2026-01-01T10:00:00.000Z',
-    })
-
-    expectRuntimePolicy('problems.getLibrary', 'dashboard')
-    expect(backgroundMocks.getProblemLibrary).toHaveBeenCalledWith(
-      backgroundMocks.db,
-      {
-        surface: 'dashboard',
-        at: '2026-01-01T10:00:00.000Z',
-      },
-    )
-    expect(response).toEqual(problemLibraryResponse)
-    expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
-    expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
-  })
-
-  it('registers backup export handling with dashboard policy', async () => {
-    const response = await sendRuntimeMessage('backup.exportFullBackup', {
-      surface: 'dashboard',
-    })
-
-    expectRuntimePolicy('backup.exportFullBackup', 'dashboard')
-    expect(backgroundMocks.backupExportFullBackup).toHaveBeenCalledWith(
-      backgroundMocks.db,
-    )
-    expect(response).toEqual(validBackup)
-  })
-
-  it('registers backup validation without flushing the snapshot', async () => {
-    const response = await sendRuntimeMessage('backup.validateFullBackup', {
-      surface: 'dashboard',
-      backup: validBackup,
-    })
-
-    expectRuntimePolicy('backup.validateFullBackup', 'dashboard')
-    expect(backgroundMocks.backupValidateFullBackup).toHaveBeenCalledWith(
-      validBackup,
-    )
-    expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
-    expect(backupSummarySchema.parse(response).counts.problems).toBe(
-      validBackupSummary.counts.problems,
-    )
   })
 
   it('passes backup payloads to service-owned validation before app and version rejection', async () => {
@@ -714,12 +728,7 @@ describe('background handler registration', () => {
         suspended: true,
       },
     )
-    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
-      problemSlug: 'two-sum',
-      reason: 'practice-updated',
-      source: 'dashboard',
-      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
-    })
+    expectPracticeTrackInvalidation()
     expectFlushBeforeBroadcast()
     expect(response).toMatchObject({
       problemSlug: 'two-sum',
@@ -727,83 +736,45 @@ describe('background handler registration', () => {
     })
   })
 
-  it('records active-track progress only for good and easy saved reviews', async () => {
-    await sendRuntimeMessage('practice.saveReviewResult', {
-      surface: 'dashboard',
-      problemSlug: 'two-sum',
-      rating: 'hard',
-      reviewedAt: '2026-01-02T00:00:00.000Z',
-    })
+  it.each([
+    ['hard', '2026-01-02T00:00:00.000Z', false],
+    ['good', '2026-01-02T00:00:00.000Z', true],
+    ['easy', '2026-01-03T00:00:00.000Z', true],
+  ] as const)(
+    'handles active-track progress for %s saved reviews',
+    async (rating, reviewedAt, recordsCompletion) => {
+      resetRuntimeMutationMocks()
+      if (recordsCompletion) {
+        backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValueOnce(
+          true,
+        )
+      }
 
-    expect(
-      backgroundMocks.recordActiveTrackProblemCompletion,
-    ).not.toHaveBeenCalled()
-    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
-      problemSlug: 'two-sum',
-      reason: 'practice-updated',
-      source: 'dashboard',
-      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
-    })
+      await sendRuntimeMessage('practice.saveReviewResult', {
+        surface: 'dashboard',
+        problemSlug: 'two-sum',
+        rating,
+        reviewedAt,
+      })
 
-    vi.clearAllMocks()
-    backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
-    backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
-    backgroundMocks.flushDbSnapshot.mockResolvedValue(undefined)
-    backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
-    backgroundMocks.getPracticeDetails.mockResolvedValue(practiceDetails)
-    backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValueOnce(
-      true,
-    )
-
-    await sendRuntimeMessage('practice.saveReviewResult', {
-      surface: 'dashboard',
-      problemSlug: 'two-sum',
-      rating: 'good',
-      reviewedAt: '2026-01-02T00:00:00.000Z',
-    })
-
-    expect(
-      backgroundMocks.recordActiveTrackProblemCompletion,
-    ).toHaveBeenCalledWith(backgroundMocks.db, {
-      problemSlug: 'two-sum',
-      rating: 'good',
-      completedAt: new Date('2026-01-02T00:00:00.000Z'),
-    })
-    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
-      problemSlug: 'two-sum',
-      reason: 'practice-updated',
-      source: 'dashboard',
-      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
-    })
-  })
-
-  it('records active-track progress for easy saved reviews', async () => {
-    resetRuntimeMutationMocks()
-    backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValueOnce(
-      true,
-    )
-
-    await sendRuntimeMessage('practice.saveReviewResult', {
-      surface: 'dashboard',
-      problemSlug: 'two-sum',
-      rating: 'easy',
-      reviewedAt: '2026-01-03T00:00:00.000Z',
-    })
-
-    expect(
-      backgroundMocks.recordActiveTrackProblemCompletion,
-    ).toHaveBeenCalledWith(backgroundMocks.db, {
-      problemSlug: 'two-sum',
-      rating: 'easy',
-      completedAt: new Date('2026-01-03T00:00:00.000Z'),
-    })
-    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
-      problemSlug: 'two-sum',
-      reason: 'practice-updated',
-      source: 'dashboard',
-      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
-    })
-  })
+      expectRuntimePolicy('practice.saveReviewResult', 'dashboard')
+      if (recordsCompletion) {
+        expect(
+          backgroundMocks.recordActiveTrackProblemCompletion,
+        ).toHaveBeenCalledWith(backgroundMocks.db, {
+          problemSlug: 'two-sum',
+          rating,
+          completedAt: new Date(reviewedAt),
+        })
+      } else {
+        expect(
+          backgroundMocks.recordActiveTrackProblemCompletion,
+        ).not.toHaveBeenCalled()
+      }
+      expectPracticeTrackInvalidation()
+      expectFlushBeforeBroadcast()
+    },
+  )
 
   it('does not record active-track progress for free-practice saved reviews', async () => {
     resetRuntimeMutationMocks()
@@ -825,12 +796,7 @@ describe('background handler registration', () => {
     expect(
       backgroundMocks.recordActiveTrackProblemCompletion,
     ).not.toHaveBeenCalled()
-    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
-      problemSlug: 'two-sum',
-      reason: 'practice-updated',
-      source: 'dashboard',
-      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
-    })
+    expectPracticeTrackInvalidation()
   })
 
   it('invalidates tracks when an eligible saved review records no new track completion', async () => {
@@ -853,12 +819,7 @@ describe('background handler registration', () => {
       rating: 'good',
       completedAt: new Date('2026-01-04T00:00:00.000Z'),
     })
-    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
-      problemSlug: 'two-sum',
-      reason: 'practice-updated',
-      source: 'dashboard',
-      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
-    })
+    expectPracticeTrackInvalidation()
   })
 
   it('invalidates tracks after overriding a saved review result', async () => {
@@ -878,12 +839,7 @@ describe('background handler registration', () => {
         rating: 'hard',
       }),
     )
-    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
-      problemSlug: 'two-sum',
-      reason: 'practice-updated',
-      source: 'dashboard',
-      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
-    })
+    expectPracticeTrackInvalidation()
   })
 })
 
@@ -926,6 +882,35 @@ describe('background handler serializers', () => {
     ).toThrow()
   })
 })
+
+type RuntimeSurface = 'popup' | 'dashboard' | 'content-script'
+type RuntimeServiceMock = ReturnType<typeof vi.fn>
+type RuntimeRequestSchema = { parse: (value: unknown) => unknown }
+
+type ReadOnlyHandlerCase = readonly [
+  string,
+  string,
+  RuntimeSurface,
+  () => unknown,
+  RuntimeServiceMock,
+  expectedServiceArgs: (request: unknown) => unknown[],
+  assertResponse: (response: unknown) => void | Promise<void>,
+  options?: {
+    arrange?: () => void
+    invalidServiceResponse?: () => unknown
+    usesDb?: boolean
+  },
+]
+
+type TrackWriteHandlerCase = readonly [
+  string,
+  string,
+  () => unknown,
+  RuntimeRequestSchema,
+  RuntimeServiceMock,
+  () => unknown,
+  readonly string[],
+]
 
 function readRegisteredHandler(method: string) {
   registerBackgroundHandlers()
@@ -1029,6 +1014,20 @@ function expectFlushBeforeBroadcast() {
 
   expect(flushOrder).toBeGreaterThan(0)
   expect(flushOrder).toBeLessThan(broadcastOrder)
+}
+
+function expectNoMutationSideEffects() {
+  expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
+  expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
+}
+
+function expectPracticeTrackInvalidation() {
+  expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+    problemSlug: 'two-sum',
+    reason: 'practice-updated',
+    source: 'dashboard',
+    tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
+  })
 }
 
 function createPopupShellData(): PopupAppShellData {
