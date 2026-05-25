@@ -280,6 +280,32 @@ describe('dashboard routes', () => {
     })
   })
 
+  it('creates a track from selected Library rows', async () => {
+    const { router, user } = renderDashboard('/library')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Library' }),
+    ).toBeVisible()
+
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Select Binary Search' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Make Track' }))
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/library/tracks/new')
+    })
+
+    const dialog = await screen.findByRole('dialog', { name: 'New Track' })
+
+    expect(
+      await within(dialog).findByText('1 selected Library problems'),
+    ).toBeVisible()
+    expect(
+      within(dialog).getByRole('listitem', { name: '1. Binary Search' }),
+    ).toBeVisible()
+  })
+
   it('/tracks/$trackId/edit direct route loads existing track composition', async () => {
     renderDashboard('/tracks/leetcode-75/edit')
 
