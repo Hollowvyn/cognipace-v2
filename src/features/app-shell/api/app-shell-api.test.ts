@@ -7,6 +7,7 @@ import {
   getDashboardAppShellDataViaRuntime,
   getOverlayAppShellDataViaRuntime,
   getPopupAppShellDataViaRuntime,
+  openDashboardViaRuntime,
 } from './app-shell-api'
 import type { AppShellData } from './app-shell-contracts'
 
@@ -53,6 +54,16 @@ describe('app-shell runtime API', () => {
     await expect(getDashboardAppShellDataViaRuntime()).resolves.toBe(payload)
     expect(sendMessage).toHaveBeenCalledWith('app.getShellData', {
       surface: 'dashboard',
+    })
+  })
+
+  it('asks the background service worker to open dashboard pages for content scripts', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(null)
+
+    await expect(openDashboardViaRuntime('settings')).resolves.toBeNull()
+    expect(sendMessage).toHaveBeenCalledWith('app.openDashboard', {
+      surface: 'content-script',
+      route: 'settings',
     })
   })
 

@@ -2,6 +2,7 @@ import {
   evaluateLeetCodeAssessment,
   type LeetCodeAssessmentDecision,
 } from '@/features/assessment'
+import { openDashboardViaRuntime } from '@/features/app-shell'
 import {
   overrideLastReviewResultViaRuntime,
   saveReviewResultViaRuntime,
@@ -10,7 +11,7 @@ import {
 } from '@/features/practice'
 import type { ReviewRating } from '@/lib/fsrs'
 import type { LeetCodeSubmissionResult } from '@/lib/leetcode'
-import { getDashboardUrl } from '@/platform/chrome/extension-pages'
+import { readErrorMessage } from '@/utils/errors'
 
 import {
   createOverlayDraftFromLog,
@@ -410,7 +411,17 @@ export function useOverlayReviewActions({
   }
 
   function openSettings() {
-    window.open(getDashboardUrl('settings'), '_blank', 'noopener')
+    void openDashboardSettings()
+  }
+
+  async function openDashboardSettings() {
+    try {
+      await openDashboardViaRuntime('settings')
+    } catch (error) {
+      setOverlayError(
+        readErrorMessage(error, 'Failed to open dashboard settings.'),
+      )
+    }
   }
 
   function setOverlayError(message: string) {

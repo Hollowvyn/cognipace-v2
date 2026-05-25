@@ -3,6 +3,7 @@ import type { ExtensionSurface } from '@/extension/messaging'
 const methodSurfaceAccess = {
   'runtime.ping': ['background', 'popup', 'dashboard', 'content-script'],
   'app.getShellData': ['popup', 'dashboard', 'content-script'],
+  'app.openDashboard': ['content-script'],
   'backup.exportFullBackup': ['dashboard'],
   'backup.validateFullBackup': ['dashboard'],
   'backup.restoreFullBackup': ['dashboard'],

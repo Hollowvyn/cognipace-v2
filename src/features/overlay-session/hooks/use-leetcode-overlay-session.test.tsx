@@ -2,7 +2,10 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { OverlayAppShellData } from '@/features/app-shell'
-import { getOverlayAppShellDataViaRuntime } from '@/features/app-shell'
+import {
+  getOverlayAppShellDataViaRuntime,
+  openDashboardViaRuntime,
+} from '@/features/app-shell'
 import {
   overrideLastReviewResultViaRuntime,
   saveReviewResultViaRuntime,
@@ -92,6 +95,7 @@ vi.mock('@/features/app-shell', async () => {
   return {
     appShellQueryKeys,
     getOverlayAppShellDataViaRuntime,
+    openDashboardViaRuntime: vi.fn(),
     useOverlayAppShellData: (problemSlug?: string | null) =>
       useQuery({
         enabled: problemSlug !== null && problemSlug !== undefined,
@@ -435,7 +439,7 @@ describe('useLeetCodeOverlaySession', () => {
     expect(saveReviewResultViaRuntime).not.toHaveBeenCalled()
   })
 
-  it('opens dashboard settings from the overlay settings action', async () => {
+  it('asks the background service worker to open dashboard settings', async () => {
     const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
     const { result } = await renderReadySession()
 
@@ -443,11 +447,8 @@ describe('useLeetCodeOverlaySession', () => {
       result.current.actions.openSettings()
     })
 
-    expect(openSpy).toHaveBeenCalledWith(
-      'chrome-extension://extension-id/dashboard.html#/settings',
-      '_blank',
-      'noopener',
-    )
+    expect(openDashboardViaRuntime).toHaveBeenCalledWith('settings')
+    expect(openSpy).not.toHaveBeenCalled()
     expect(result.current.overlay.feedback).toBeNull()
   })
 
@@ -874,7 +875,6 @@ function createDeferred<T>() {
     resolve,
   }
 }
-
 
 const problemRecord = {
   slug: overlayProblem.problemSlug,

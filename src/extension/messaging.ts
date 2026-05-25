@@ -127,6 +127,7 @@ export type {
   TracksUpdateTrackRequest,
   TrackWorkspaceResponse,
 } from '@/features/tracks/api/tracks-contracts'
+import { dashboardRouteSchema } from '@/platform/chrome/extension-pages'
 import { cacheInvalidationTags } from '@/platform/query/cache-invalidation'
 
 export const extensionSurfaceSchema = z.enum([
@@ -200,6 +201,13 @@ export const queueRequestSchema = z.object({
 
 export type QueueRequest = z.infer<typeof queueRequestSchema>
 
+export const openDashboardRequestSchema = z.object({
+  surface: z.literal('content-script'),
+  route: dashboardRouteSchema.optional(),
+})
+
+export type OpenDashboardRequest = z.infer<typeof openDashboardRequestSchema>
+
 export { tracksGetActiveTrackRequestSchema as tracksRequestSchema } from '@/features/tracks/api/tracks-contracts'
 
 export type TracksRequest = TracksGetActiveTrackRequest
@@ -226,6 +234,7 @@ export interface ProtocolMap {
   'cache.invalidate'(request: CacheInvalidationEvent): null
   'runtime.ping'(request: PingRequest): PingResponse
   'app.getShellData'(request: AppShellRequest): AppShellData
+  'app.openDashboard'(request: OpenDashboardRequest): null
   'backup.exportFullBackup'(request: BackupRequest): BackupFile
   'backup.validateFullBackup'(request: BackupPayloadRequest): BackupSummary
   'backup.restoreFullBackup'(request: BackupPayloadRequest): BackupSummary

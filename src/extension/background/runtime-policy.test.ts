@@ -20,6 +20,14 @@ describe('runtime-policy', () => {
     )
   })
 
+  it('allows content scripts to ask the background to open dashboard pages', () => {
+    expect(canCallExtensionMethod('app.openDashboard', 'content-script')).toBe(
+      true,
+    )
+    expect(canCallExtensionMethod('app.openDashboard', 'dashboard')).toBe(false)
+    expect(canCallExtensionMethod('app.openDashboard', 'popup')).toBe(false)
+  })
+
   it('maps overlay app-shell requests to the content-script runtime surface', () => {
     expect(getAppShellRuntimeSurface({ surface: 'overlay' })).toBe(
       'content-script',

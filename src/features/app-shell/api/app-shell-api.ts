@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { sendMessage } from '@/extension/messaging'
+import type { DashboardRoute } from '@/platform/chrome/extension-pages'
 import { queryKeys } from '@/platform/query/query-keys'
 
 import { type AppShellData, type AppShellRequest } from './app-shell-contracts'
@@ -35,6 +36,13 @@ export async function getOverlayAppShellDataViaRuntime(
     }),
     'overlay',
   )
+}
+
+export function openDashboardViaRuntime(route?: DashboardRoute) {
+  return sendMessage('app.openDashboard', {
+    surface: 'content-script',
+    ...(route ? { route } : {}),
+  })
 }
 
 export function usePopupAppShellData() {

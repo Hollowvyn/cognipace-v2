@@ -6,6 +6,7 @@ import {
   leetcodeProblemRemoteRuntimeRequestSchema,
   leetcodeSubmissionResultRemoteRuntimeRequestSchema,
   onMessage,
+  openDashboardRequestSchema,
   pingRequestSchema,
   problemBulkUpdateResponseSchema,
   problemDeleteResponseSchema,
@@ -41,6 +42,7 @@ import {
   type SerializedTodayQueue,
   type UiSurface,
 } from '@/extension/messaging'
+import { browser } from 'wxt/browser'
 import {
   appShellDataSchema,
   appShellRequestSchema,
@@ -111,6 +113,7 @@ import {
   setActiveTrack,
   updateTrack,
 } from '@/features/tracks/server/tracks-service'
+import { getDashboardUrl } from '@/platform/chrome/extension-pages'
 import { flushDbSnapshot, getAppDb, type Db } from '@/platform/db'
 
 import { broadcastCacheInvalidation } from './cache-invalidation-broadcaster'
@@ -147,6 +150,19 @@ export function registerBackgroundHandlers() {
     return getAppDb().then(async ({ db }) =>
       appShellDataSchema.parse(await getAppShellData(db, request)),
     )
+  })
+
+  onMessage('app.openDashboard', ({ data, sender }) => {
+    const request = openDashboardRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'app.openDashboard',
+      request.surface,
+      sender,
+    )
+    return browser.tabs
+      .create({ url: getDashboardUrl(request.route) })
+      .then(() => null)
   })
 
   onMessage('backup.exportFullBackup', ({ data, sender }) => {

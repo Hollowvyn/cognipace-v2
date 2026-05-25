@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 import { WxtVitest } from 'wxt/testing/vitest-plugin'
 
 export default defineConfig({
@@ -13,6 +13,7 @@ export default defineConfig({
   }),
   test: {
     environment: 'jsdom',
+    exclude: [...configDefaults.exclude, '.worktrees/**'],
     globals: true,
     setupFiles: ['./src/testing/setup-tests.ts'],
   },

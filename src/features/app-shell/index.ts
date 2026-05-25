@@ -3,6 +3,7 @@ export {
   getDashboardAppShellDataViaRuntime,
   getOverlayAppShellDataViaRuntime,
   getPopupAppShellDataViaRuntime,
+  openDashboardViaRuntime,
   useDashboardAppShellData,
   useOverlayAppShellData,
   usePopupAppShellData,

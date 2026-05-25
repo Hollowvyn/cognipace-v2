@@ -79,6 +79,7 @@ const backgroundMocks = vi.hoisted(() => {
     setActiveTrack: vi.fn(),
     getSettings: vi.fn(),
     toggleStudyMode: vi.fn(),
+    tabsCreate: vi.fn(),
     updateTrack: vi.fn(),
     onMessage: vi.fn(
       (
@@ -103,6 +104,17 @@ vi.mock('@/extension/messaging', async (importOriginal) => {
     onMessage: backgroundMocks.onMessage,
   }
 })
+
+vi.mock('wxt/browser', () => ({
+  browser: {
+    runtime: {
+      getURL: (path: string) => `chrome-extension://extension-id${path}`,
+    },
+    tabs: {
+      create: backgroundMocks.tabsCreate,
+    },
+  },
+}))
 
 vi.mock('@/features/app-shell/server/app-shell-service', () => ({
   getAppShellData: backgroundMocks.getAppShellData,
@@ -217,6 +229,7 @@ describe('background handler registration', () => {
     backgroundMocks.clearActiveTrack.mockResolvedValue(undefined)
     backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
     backgroundMocks.toggleStudyMode.mockResolvedValue(defaultUserSettings)
+    backgroundMocks.tabsCreate.mockResolvedValue({})
     backgroundMocks.updateSettings.mockResolvedValue(defaultUserSettings)
   })
 
@@ -240,6 +253,35 @@ describe('background handler registration', () => {
         dueAt: '2026-03-01T00:00:00.000Z',
       },
     })
+  })
+
+  it('opens dashboard pages from content scripts through the background tab API', async () => {
+    const contentScriptSender = {
+      tab: { id: 7 },
+      url: 'https://leetcode.com/problems/two-sum/',
+    }
+
+    const response = await sendRuntimeMessage(
+      'app.openDashboard',
+      {
+        surface: 'content-script',
+        route: 'settings',
+      },
+      contentScriptSender,
+    )
+
+    expectRuntimePolicy(
+      'app.openDashboard',
+      'content-script',
+      contentScriptSender,
+    )
+    expect(backgroundMocks.tabsCreate).toHaveBeenCalledWith({
+      url: 'chrome-extension://extension-id/dashboard.html#/settings',
+    })
+    expect(response).toBeNull()
+    expect(backgroundMocks.getAppDb).not.toHaveBeenCalled()
+    expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
   })
 
   it('registers active-track handling with runtime serialization', async () => {
