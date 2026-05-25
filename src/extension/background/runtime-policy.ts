@@ -3,6 +3,10 @@ import type { ExtensionSurface } from '@/extension/messaging'
 const methodSurfaceAccess = {
   'runtime.ping': ['background', 'popup', 'dashboard', 'content-script'],
   'app.getShellData': ['popup', 'dashboard', 'content-script'],
+  'backup.exportFullBackup': ['dashboard'],
+  'backup.validateFullBackup': ['dashboard'],
+  'backup.restoreFullBackup': ['dashboard'],
+  'backup.resetLocalData': ['dashboard'],
   'problems.upsertFromPage': ['content-script', 'dashboard'],
   'problems.getLibrary': ['dashboard'],
   'problems.getProblemForEdit': ['dashboard'],
@@ -85,7 +89,13 @@ export function getMessageSenderSurface(
 }
 
 function getExtensionPageSurface(value: string): ExtensionSurface | null {
-  const senderPath = readUrlPathname(value)
+  const senderUrl = readUrl(value)
+
+  if (senderUrl?.protocol !== 'chrome-extension:') {
+    return null
+  }
+
+  const senderPath = senderUrl.pathname
 
   if (senderPath.endsWith('/popup.html')) {
     return 'popup'
@@ -134,10 +144,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-function readUrlPathname(value: string) {
+function readUrl(value: string) {
   try {
-    return new URL(value).pathname
+    return new URL(value)
   } catch {
-    return ''
+    return null
   }
 }

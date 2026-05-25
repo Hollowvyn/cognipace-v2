@@ -5,6 +5,18 @@ import type {
   AppShellData,
   AppShellRequest,
 } from '@/features/app-shell/api/app-shell-contracts'
+import type {
+  BackupFile,
+  BackupPayloadRequest,
+  BackupRequest,
+  BackupSummary,
+} from '@/features/backup/api/backup-contracts'
+export {
+  backupFileSchema,
+  backupPayloadRequestSchema,
+  backupRequestSchema,
+  backupSummarySchema,
+} from '@/features/backup/api/backup-contracts'
 import {
   leetcodeProblemRemoteRequestSchema,
   leetcodeSubmissionResultRemoteRequestSchema,
@@ -214,6 +226,10 @@ export interface ProtocolMap {
   'cache.invalidate'(request: CacheInvalidationEvent): null
   'runtime.ping'(request: PingRequest): PingResponse
   'app.getShellData'(request: AppShellRequest): AppShellData
+  'backup.exportFullBackup'(request: BackupRequest): BackupFile
+  'backup.validateFullBackup'(request: BackupPayloadRequest): BackupSummary
+  'backup.restoreFullBackup'(request: BackupPayloadRequest): BackupSummary
+  'backup.resetLocalData'(request: BackupRequest): null
   'problems.upsertFromPage'(
     request: ProblemsUpsertFromPageRequest,
   ): SerializedProblem

@@ -69,9 +69,12 @@ describe('architecture boundaries', () => {
   })
 
   it('keeps review scheduling writes behind the practice repository', () => {
-    const allowedWriteFile = 'src/features/practice/data/practice-repository.ts'
+    const allowedWriteFiles = new Set([
+      'src/features/practice/data/practice-repository.ts',
+      'src/features/backup/data/backup-repository.ts',
+    ])
     const offenders = productionSourceFiles()
-      .filter((file) => toRepoPath(file) !== allowedWriteFile)
+      .filter((file) => !allowedWriteFiles.has(toRepoPath(file)))
       .filter((file) => {
         const content = readFileSync(file, 'utf8')
         return reviewSchedulingWritePattern.test(content)

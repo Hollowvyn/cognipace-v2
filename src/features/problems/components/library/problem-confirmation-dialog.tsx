@@ -33,6 +33,14 @@ export function ProblemConfirmationDialog({
           onCancel()
         }
       }}
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) {
+          event.preventDefault()
+          if (!pending) {
+            onCancel()
+          }
+        }
+      }}
     >
       <section
         aria-describedby={descriptionId}

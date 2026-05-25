@@ -3,7 +3,7 @@
 ## Purpose
 
 This guide is for friends and contributors testing CogniPace locally. It covers
-loading the extension, trying the main workflows, resetting local data,
+loading the extension, trying the main workflows, clearing local data,
 reporting useful bugs, and choosing validation commands.
 
 ## Local Setup
@@ -70,6 +70,26 @@ keeps recommendation guidance separate from track guidance.
 Expected: settings changes save through the extension runtime and persist
 locally.
 
+### Settings Data Management
+
+1. Open the dashboard.
+2. Navigate to Settings.
+3. Use Export backup.
+4. Confirm a JSON file downloads and a success toast appears.
+5. Use Choose backup file under Import full backup and select that exported
+   file.
+6. Confirm the selected filename, validation toast, and validation summary
+   appear.
+7. Confirm Restore full backup is not shown until validation succeeds, then
+   cancel before restore unless intentionally testing destructive restore.
+8. Open Clear local data.
+9. Cancel once, then reopen if intentionally testing clear/reset behavior.
+
+Expected: backup validation happens before restore, restore and clear require
+confirmation, restore success resets the import card, and clear offers backup
+first inside the confirmation dialog. After that backup export succeeds, the
+dialog button changes to a success state labeled Backup exported.
+
 ### Library
 
 1. Open the dashboard.
@@ -122,20 +142,17 @@ refresh across surfaces.
 - Overview is a reserved dashboard route for a future guided-practice home.
 - Analytics is a reserved dashboard route for future scheduling and reporting
   work.
-- Backup/reset workflows are future work.
 
 Do not report these as broken unless they stop rendering or navigation fails.
 
-## Reset Local Data
+## Clear Local Data
 
 Use this when testing from a clean CogniPace local state. Local test data is
 disposable during development.
 
-1. Open `chrome://extensions`.
-2. Find CogniPace.
-3. Remove the CogniPace extension.
-4. Choose Load unpacked.
-5. Select `.output/chrome-mv3` again.
+Use Settings > Data Management > Clear local data for an in-app fresh-install
+clear/reset. Removing and reloading the extension remains useful when testing
+extension installation behavior.
 
 Schema and migration changes may reset local extension data during development.
 
@@ -184,7 +201,7 @@ Include:
 Docs-only formatting:
 
 ```sh
-npx prettier --check docs/testing.md
+npx prettier --check docs/product.md docs/testing.md
 ```
 
 Focused tests:

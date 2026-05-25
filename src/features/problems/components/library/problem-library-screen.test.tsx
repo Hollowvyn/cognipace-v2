@@ -328,9 +328,7 @@ describe('ProblemLibraryScreen', () => {
       '#/library/problems/two-sum/edit',
     )
     expect(screen.getByRole('button', { name: 'Suspend' })).toBeVisible()
-    expect(
-      screen.getByRole('button', { name: 'Reset Schedule' }),
-    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Reset Schedule' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Delete' })).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'Suspend' }))
@@ -438,9 +436,7 @@ describe('ProblemLibraryScreen', () => {
       '#/tracks/problems/two-sum',
     )
     expect(screen.getByRole('button', { name: 'Suspend' })).toBeVisible()
-    expect(
-      screen.getByRole('button', { name: 'Reset Schedule' }),
-    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Reset Schedule' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
   })
 
@@ -467,6 +463,37 @@ describe('ProblemLibraryScreen', () => {
       within(deleteDialog).getByRole('button', { name: 'Delete Problem' }),
     )
     expect(sendMessage).toHaveBeenCalledWith('problems.deleteProblem', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+    })
+  })
+
+  it('closes problem delete confirmation when the backdrop is clicked', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.resolve(libraryResponse)
+      }
+
+      return Promise.resolve(undefined)
+    })
+    renderProblemLibrary()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Expand Two Sum' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+
+    const deleteDialog = screen.getByRole('dialog', { name: 'Delete problem?' })
+    const backdrop = deleteDialog.parentElement
+
+    expect(backdrop).not.toBeNull()
+    await user.click(backdrop as HTMLElement)
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Delete problem?' }),
+    ).not.toBeInTheDocument()
+    expect(sendMessage).not.toHaveBeenCalledWith('problems.deleteProblem', {
       surface: 'dashboard',
       problemSlug: 'two-sum',
     })
@@ -720,6 +747,44 @@ describe('ProblemLibraryScreen', () => {
         topicLabels: [],
       },
     })
+  })
+
+  it('closes bulk metadata dialog when the backdrop is clicked', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.resolve(libraryResponse)
+      }
+
+      return Promise.resolve(createSerializedPracticeDetails())
+    })
+    renderProblemLibrary()
+
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Select Two Sum' }),
+    )
+    await user.click(
+      within(screen.getByRole('region', { name: 'Bulk actions' })).getByRole(
+        'button',
+        { name: 'Edit Metadata' },
+      ),
+    )
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'Edit selected metadata',
+    })
+    const backdrop = dialog.parentElement
+
+    expect(backdrop).not.toBeNull()
+    await user.click(backdrop as HTMLElement)
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Edit selected metadata' }),
+    ).not.toBeInTheDocument()
+    expect(sendMessage).not.toHaveBeenCalledWith(
+      'problems.bulkUpdateProblems',
+      expect.anything(),
+    )
   })
 })
 
