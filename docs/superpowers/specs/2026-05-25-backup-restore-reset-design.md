@@ -32,7 +32,7 @@ silent dropping of malformed data, and ambiguous merge semantics.
 - Export all durable local CogniPace state to a versioned JSON backup.
 - Validate a backup before any restore write.
 - Restore a full backup safely with all-or-nothing replacement behavior.
-- Reset local data as a separate destructive action.
+- Clear local data as a separate destructive action.
 - Keep the UI plain, careful, and trust-building.
 - Reserve a future home for selective imports without implementing them now.
 
@@ -46,8 +46,8 @@ silent dropping of malformed data, and ambiguous merge semantics.
 
 ## Product UX
 
-Backup, restore, and reset live in Settings as a Data Management area with three
-separate parts.
+Backup, restore, and clear local data live in Settings as a Data Management
+area with three separate parts.
 
 ### Backup / Restore
 
@@ -67,8 +67,8 @@ shows a summary before any write. The summary includes:
   settings rows
 
 The user must then confirm `Restore full backup`. The confirmation states that
-restore replaces local CogniPace data. The flow offers `Export current backup`
-before restoring, but does not require it.
+restore replaces local CogniPace data. The Data Management page keeps a primary
+`Export backup` action available before destructive restore.
 
 ### Selective Import
 
@@ -84,14 +84,14 @@ It has no active import controls. Before activation, selective import must
 define conflict behavior for each section: skip existing, replace existing,
 merge by stable identity, or reject conflicts.
 
-### Reset Local Data
+### Clear Local Data
 
-Reset lives in a separate danger zone. It is not presented as a casual settings
-button.
+Clear local data lives in a separate danger zone. It is not presented as a
+casual settings button.
 
-`Reset local data` opens a confirmation dialog. The dialog offers
-`Export current backup`, then requires explicit confirmation. Reset performs a
-fresh-install reset:
+`Clear local data` opens a confirmation dialog. The dialog asks whether the user
+is sure, offers `Export backup first`, then requires explicit confirmation.
+Clear performs a fresh-install reset:
 
 - clear persisted CogniPace data
 - reseed current built-in defaults
@@ -277,7 +277,7 @@ The broad invalidation tags after restore and reset are:
 - validate and summarize a backup
 - migrate supported previous backup versions to the current restore shape
 - restore a validated backup transactionally
-- reset local data transactionally
+- clear/reset local data transactionally
 
 `backup-repository.ts` owns table-level reads and writes for the backup feature.
 It may read and write rows across owned feature tables because backup/restore is
@@ -319,7 +319,7 @@ The UI should avoid generic SaaS admin language. Primary labels are:
 - `Export backup`
 - `Import full backup`
 - `Restore full backup`
-- `Reset local data`
+- `Clear local data`
 
 ## Testing
 

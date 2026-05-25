@@ -93,7 +93,7 @@ describe('SettingsScreen', () => {
       screen.getByRole('heading', { name: 'Selective import' }),
     ).toBeVisible()
     expect(
-      screen.getByRole('heading', { name: 'Reset local data' }),
+      screen.getByRole('heading', { name: 'Clear local data' }),
     ).toBeVisible()
   })
 

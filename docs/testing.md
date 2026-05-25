@@ -3,7 +3,7 @@
 ## Purpose
 
 This guide is for friends and contributors testing CogniPace locally. It covers
-loading the extension, trying the main workflows, resetting local data,
+loading the extension, trying the main workflows, clearing local data,
 reporting useful bugs, and choosing validation commands.
 
 ## Local Setup
@@ -79,11 +79,11 @@ locally.
 5. Choose Import full backup and select that exported file.
 6. Confirm the validation summary appears.
 7. Cancel before restore unless intentionally testing destructive restore.
-8. Open Reset local data.
-9. Cancel once, then reopen if intentionally testing reset.
+8. Open Clear local data.
+9. Cancel once, then reopen if intentionally testing clear/reset behavior.
 
-Expected: backup validation happens before restore, restore and reset require
-confirmation, and reset offers backup first.
+Expected: backup validation happens before restore, restore and clear require
+confirmation, and clear offers backup first inside the confirmation dialog.
 
 ### Library
 
@@ -140,13 +140,13 @@ refresh across surfaces.
 
 Do not report these as broken unless they stop rendering or navigation fails.
 
-## Reset Local Data
+## Clear Local Data
 
 Use this when testing from a clean CogniPace local state. Local test data is
 disposable during development.
 
-Use Settings > Data Management > Reset local data for an in-app fresh-install
-reset. Removing and reloading the extension remains useful when testing
+Use Settings > Data Management > Clear local data for an in-app fresh-install
+clear/reset. Removing and reloading the extension remains useful when testing
 extension installation behavior.
 
 Schema and migration changes may reset local extension data during development.

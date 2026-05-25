@@ -185,16 +185,24 @@ export function BackupConfirmationDialog({
   description,
   error,
   isPending,
+  onSecondaryAction,
   onCancel,
   onConfirm,
+  secondaryActionLabel,
+  secondaryActionPending = false,
+  status,
   title,
 }: {
   confirmLabel: string
   description: string
   error?: ReactNode | undefined
   isPending: boolean
+  onSecondaryAction?: (() => void) | undefined
   onCancel: () => void
   onConfirm: () => void
+  secondaryActionLabel?: string | undefined
+  secondaryActionPending?: boolean | undefined
+  status?: ReactNode | undefined
   title: string
 }) {
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
@@ -202,6 +210,15 @@ export function BackupConfirmationDialog({
   const titleId = `backup-confirmation-${title.toLowerCase().replace(/\W+/g, '-')}`
   const descriptionId = `${titleId}-description`
   const errorId = `${titleId}-error`
+  const statusId = `${titleId}-status`
+  const isDialogPending = isPending || secondaryActionPending
+  const describedBy = [
+    descriptionId,
+    status ? statusId : null,
+    error ? errorId : null,
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   useEffect(() => {
     const previouslyFocused =
@@ -221,13 +238,13 @@ export function BackupConfirmationDialog({
   }, [])
 
   useEffect(() => {
-    if (isPending) {
+    if (isDialogPending) {
       dialogRef.current?.focus()
     }
-  }, [isPending])
+  }, [isDialogPending])
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === 'Escape' && !isPending) {
+    if (event.key === 'Escape' && !isDialogPending) {
       event.preventDefault()
       onCancel()
       return
@@ -276,8 +293,8 @@ export function BackupConfirmationDialog({
       }}
     >
       <section
-        aria-busy={isPending || undefined}
-        aria-describedby={error ? `${descriptionId} ${errorId}` : descriptionId}
+        aria-busy={isDialogPending || undefined}
+        aria-describedby={describedBy}
         aria-labelledby={titleId}
         aria-modal="true"
         className="grid w-full max-w-md gap-4 rounded-[var(--cp-panel-radius)] border border-border bg-card p-[var(--cp-panel-padding)] text-card-foreground shadow-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -304,9 +321,10 @@ export function BackupConfirmationDialog({
             {error}
           </InlineStatus>
         ) : null}
+        {status ? <InlineStatus id={statusId}>{status}</InlineStatus> : null}
         <div className="flex flex-wrap justify-end gap-2">
           <Button
-            disabled={isPending}
+            disabled={isDialogPending}
             onClick={onCancel}
             ref={cancelButtonRef}
             size="sm"
@@ -314,8 +332,26 @@ export function BackupConfirmationDialog({
           >
             Cancel
           </Button>
+          {onSecondaryAction && secondaryActionLabel ? (
+            <Button
+              disabled={isDialogPending}
+              onClick={onSecondaryAction}
+              size="sm"
+              variant="outline"
+            >
+              {secondaryActionPending ? (
+                <Loader2
+                  aria-hidden="true"
+                  className="animate-spin motion-reduce:animate-none"
+                />
+              ) : (
+                <Download aria-hidden="true" />
+              )}
+              {secondaryActionLabel}
+            </Button>
+          ) : null}
           <Button
-            disabled={isPending}
+            disabled={isDialogPending}
             onClick={onConfirm}
             size="sm"
             variant="destructive"

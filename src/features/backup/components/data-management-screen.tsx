@@ -90,10 +90,10 @@ export function DataManagementScreen() {
 
     try {
       await resetLocalData.mutateAsync()
-      setResetStatus('Local data reset.')
+      setResetStatus('Local data cleared.')
       setResetDialogOpen(false)
     } catch (error) {
-      setResetError(readErrorMessage(error, 'Failed to reset local data.'))
+      setResetError(readErrorMessage(error, 'Failed to clear local data.'))
     }
   }
 
@@ -158,12 +158,9 @@ export function DataManagementScreen() {
       <SelectiveImportPanel />
       <ResetLocalDataPanel
         error={resetError}
-        isExporting={exportBackup.isPending}
         isResetting={resetLocalData.isPending}
-        onExport={() => {
-          void handleExport('reset')
-        }}
         onOpenResetDialog={() => {
+          setResetError(null)
           setResetDialogOpen(true)
         }}
         status={resetStatus}
@@ -189,19 +186,25 @@ export function DataManagementScreen() {
 
       {resetDialogOpen ? (
         <BackupConfirmationDialog
-          confirmLabel="Confirm reset"
-          description="This clears local CogniPace data from this extension install."
+          confirmLabel="Clear local data"
+          description="Are you sure? This clears local CogniPace data from this extension install. Export a backup first if you might need this data later."
           error={resetError}
           isPending={resetLocalData.isPending}
+          onSecondaryAction={() => {
+            void handleExport('reset')
+          }}
           onCancel={() => {
-            if (!resetLocalData.isPending) {
+            if (!resetLocalData.isPending && !exportBackup.isPending) {
               setResetDialogOpen(false)
             }
           }}
           onConfirm={() => {
             void handleResetConfirm()
           }}
-          title="Reset local data?"
+          secondaryActionLabel="Export backup first"
+          secondaryActionPending={exportBackup.isPending}
+          status={resetStatus}
+          title="Clear local data?"
         />
       ) : null}
     </section>

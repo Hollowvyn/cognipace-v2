@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -117,30 +117,66 @@ describe('DataManagementScreen', () => {
     expect(await screen.findByText('Backup restored.')).toBeVisible()
   })
 
-  it('cancels and confirms reset through a confirmation dialog', async () => {
+  it('offers a backup export inside the clear confirmation dialog', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'backup.exportFullBackup') {
+        return Promise.resolve(validBackup)
+      }
+
+      return Promise.reject(new Error(`Unexpected method ${method}`))
+    })
+    const { wrapper } = createQueryTestHarness()
+
+    render(<DataManagementScreen />, { wrapper })
+
+    expect(
+      screen.queryByRole('button', { name: 'Export current backup' }),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Clear local data' }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Clear local data?' })
+    expect(dialog).toHaveTextContent('Are you sure?')
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Export backup first' }),
+    )
+
+    expect(sendMessage).toHaveBeenCalledWith('backup.exportFullBackup', {
+      surface: 'dashboard',
+    })
+    expect(await within(dialog).findByText('Backup exported.')).toBeVisible()
+  })
+
+  it('cancels and confirms clearing local data through a confirmation dialog', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage).mockResolvedValue(null)
     const { wrapper } = createQueryTestHarness()
 
     render(<DataManagementScreen />, { wrapper })
 
-    await user.click(screen.getByRole('button', { name: 'Reset local data' }))
+    await user.click(screen.getByRole('button', { name: 'Clear local data' }))
 
     expect(
-      screen.getByRole('dialog', { name: 'Reset local data?' }),
+      screen.getByRole('dialog', { name: 'Clear local data?' }),
     ).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
     await waitFor(() => {
       expect(
-        screen.queryByRole('dialog', { name: 'Reset local data?' }),
+        screen.queryByRole('dialog', { name: 'Clear local data?' }),
       ).not.toBeInTheDocument()
     })
     expect(sendMessage).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('button', { name: 'Reset local data' }))
-    await user.click(screen.getByRole('button', { name: 'Confirm reset' }))
+    await user.click(screen.getByRole('button', { name: 'Clear local data' }))
+    await user.click(
+      within(
+        screen.getByRole('dialog', { name: 'Clear local data?' }),
+      ).getByRole('button', { name: 'Clear local data' }),
+    )
 
     expect(sendMessage).toHaveBeenCalledWith('backup.resetLocalData', {
       surface: 'dashboard',

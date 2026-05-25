@@ -1,4 +1,4 @@
-import { Download, Loader2, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { InlineStatus } from '@/components/ui/inline-status'
@@ -6,18 +6,14 @@ import { Surface } from '@/components/ui/surface'
 
 interface ResetLocalDataPanelProps {
   error: string | null
-  isExporting: boolean
   isResetting: boolean
-  onExport: () => void
   onOpenResetDialog: () => void
   status: string | null
 }
 
 export function ResetLocalDataPanel({
   error,
-  isExporting,
   isResetting,
-  onExport,
   onOpenResetDialog,
   status,
 }: ResetLocalDataPanelProps) {
@@ -28,10 +24,10 @@ export function ResetLocalDataPanel({
           className="m-0 text-[length:var(--cp-title-font-size)] font-bold leading-tight"
           id="reset-local-data-title"
         >
-          Reset local data
+          Clear local data
         </h2>
         <p className="m-0 text-[length:var(--cp-copy-font-size)] text-muted-foreground">
-          Clear local CogniPace data only after exporting anything you need.
+          Remove local CogniPace data from this extension install.
         </p>
       </header>
 
@@ -44,29 +40,13 @@ export function ResetLocalDataPanel({
 
       <div className="flex flex-wrap items-center gap-2">
         <Button
-          disabled={isExporting || isResetting}
-          onClick={onExport}
-          size="sm"
-          variant="outline"
-        >
-          {isExporting ? (
-            <Loader2
-              aria-hidden="true"
-              className="animate-spin motion-reduce:animate-none"
-            />
-          ) : (
-            <Download aria-hidden="true" />
-          )}
-          Export current backup
-        </Button>
-        <Button
           disabled={isResetting}
           onClick={onOpenResetDialog}
           size="sm"
           variant="destructive"
         >
           <Trash2 aria-hidden="true" />
-          Reset local data
+          Clear local data
         </Button>
       </div>
     </Surface>

@@ -48,7 +48,7 @@ Implemented or meaningfully wired:
 - Library/Problems management
 - Tracks workspace and management
 - Settings
-- Backup, restore, and reset local data from Settings
+- Backup, restore, and clear local data from Settings
 - FSRS-backed practice scheduling
 - Runtime messaging, cache invalidation, local database, migrations, and seed data
 
@@ -103,7 +103,7 @@ Current behavior:
 - Settings manages persisted user preferences through a dirty-state form workflow.
 - Data Management in Settings exports full local backups, validates and restores
   full backups, shows planned selective import sections, and performs explicit
-  full local reset.
+  full local clear/reset.
 - Overview and Analytics currently reserve route ownership and are not finished
   product surfaces.
 
@@ -186,7 +186,7 @@ The current product stage is successful when a user can:
 - inspect and maintain Library problems
 - manage tracks and active progression
 - adjust settings
-- export, restore, and reset local data from Settings
+- export, restore, and clear local data from Settings
 - keep all persisted state local unless a future product decision changes that
 
 ## Canonicality
