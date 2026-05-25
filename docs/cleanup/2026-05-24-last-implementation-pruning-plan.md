@@ -527,8 +527,12 @@ expect(payloadAfterLedgerCompletion.activeTrack).toMatchObject({
   },
   nextProblem: null,
 })
-expect(payloadAfterLedgerCompletion.recommendation.problem).toBeNull()
 ```
+
+Do not assert `payloadAfterLedgerCompletion.recommendation.problem` in this
+folded test. This fixture has global practice history, so the separate queue
+recommendation can legitimately contain a problem while active-track guidance is
+exhausted.
 
 - [ ] **Step 3: Delete the now-duplicated app-shell exhausted test**
 
