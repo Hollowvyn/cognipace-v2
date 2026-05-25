@@ -113,7 +113,6 @@ function StudyPlanModeCard({
   view: StudyPlanStudyModeView
 }) {
   const nextProblem = view.nextProblem
-  const dueDate = view.dueAt ? formatDueDate(view.dueAt) : null
 
   return (
     <StudyModeSurface titleId="popup-active-track-title">
@@ -124,9 +123,9 @@ function StudyPlanModeCard({
       />
       <StudyModeBody variant="clamped">{view.body}</StudyModeBody>
       <TrackProgressBadges
-        dueDate={dueDate}
         groupTitle={view.groupTitle}
         progressPercent={view.progressPercent}
+        targetStatus={view.targetStatus}
       />
       {nextProblem ? (
         <NextTrackProblem
@@ -232,13 +231,13 @@ function StudyModeBody({
 }
 
 function TrackProgressBadges({
-  dueDate,
   groupTitle,
   progressPercent,
+  targetStatus,
 }: {
-  dueDate: string | null
   groupTitle: string | null
   progressPercent: number | null
+  targetStatus: StudyPlanStudyModeView['targetStatus']
 }) {
   if (progressPercent === null) {
     return null
@@ -258,7 +257,9 @@ function TrackProgressBadges({
       >
         {progressPercent}%
       </Badge>
-      {dueDate ? <Badge tone="info">Due {dueDate}</Badge> : null}
+      {targetStatus ? (
+        <Badge tone={targetStatus.tone}>{targetStatus.label}</Badge>
+      ) : null}
     </div>
   )
 }
@@ -325,19 +326,4 @@ function StudyModeFooter({
       </div>
     </>
   )
-}
-
-function formatDueDate(value: string) {
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return null
-  }
-
-  return new Intl.DateTimeFormat('en-US', {
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-    year: 'numeric',
-  }).format(date)
 }

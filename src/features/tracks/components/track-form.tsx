@@ -25,6 +25,7 @@ import type {
   TracksCreateTrackRequest,
   TracksUpdateTrackRequest,
 } from '../api/tracks-contracts'
+import { getDateInputMin } from '../domain'
 import {
   trackFormGroupByOptions,
   type TrackFormInitialDraft,
@@ -137,6 +138,7 @@ function TrackFormFields({
   const shouldShowGroupBy = mode === 'create' && Boolean(initialDraft)
   const pending = createTrack.isPending || updateTrack.isPending
   const errorId = 'track-form-error'
+  const targetDateHelpId = 'track-target-date-help'
   const validationError = submitAttempted
     ? getFirstFieldError(fieldErrors)
     : null
@@ -243,11 +245,17 @@ function TrackFormFields({
         <div
           className={cn('grid gap-4', shouldShowGroupBy && 'md:grid-cols-2')}
         >
-          <TrackTextField
-            label="Target date"
-            name="track-due-at"
+          <TargetDateField
+            describedBy={
+              submitAttempted && fieldErrors.dueAt
+                ? `${targetDateHelpId} ${errorId}`
+                : targetDateHelpId
+            }
+            helperId={targetDateHelpId}
+            invalid={submitAttempted && Boolean(fieldErrors.dueAt)}
+            min={getDateInputMin(state.dueAt, state.initialDueAt)}
             onChange={(dueAt) => dispatch({ type: 'set-due-at', dueAt })}
-            type="date"
+            onClear={() => dispatch({ dueAt: '', type: 'set-due-at' })}
             value={state.dueAt}
           />
           {shouldShowGroupBy && initialDraft ? (
@@ -821,6 +829,64 @@ function TrackTextField({
   )
 }
 
+function TargetDateField({
+  describedBy,
+  helperId,
+  invalid,
+  min,
+  onChange,
+  onClear,
+  value,
+}: {
+  describedBy: string
+  helperId: string
+  invalid: boolean
+  min?: string | undefined
+  onChange: (value: string) => void
+  onClear: () => void
+  value: string
+}) {
+  return (
+    <div className="grid gap-1">
+      <div className="flex min-w-0 items-start gap-2">
+        <label className="relative block min-w-0 flex-1 pt-2">
+          <span className={floatingLabelClassName}>Target date</span>
+          <input
+            aria-describedby={describedBy}
+            aria-invalid={invalid || undefined}
+            autoComplete="off"
+            className={fieldClassName}
+            min={min}
+            name="track-due-at"
+            onChange={(event) => onChange(event.target.value)}
+            type="date"
+            value={value}
+          />
+        </label>
+        {value ? (
+          <IconButton
+            className="mt-3 shrink-0"
+            label="Clear target date"
+            onClick={onClear}
+            size="sm"
+            tooltip="Clear target date"
+            type="button"
+            variant="ghost"
+          >
+            <X aria-hidden="true" />
+          </IconButton>
+        ) : null}
+      </div>
+      <p
+        className="m-0 text-[length:var(--cp-badge-font-size)] text-muted-foreground"
+        id={helperId}
+      >
+        Optional finish target for this track.
+      </p>
+    </div>
+  )
+}
+
 function TrackSelectField<TValue extends string>({
   label,
   name,
@@ -881,6 +947,10 @@ function TrackTextareaField({
 function getFirstFieldError(fieldErrors: TrackFormFieldErrors) {
   if (fieldErrors.title) {
     return fieldErrors.title
+  }
+
+  if (fieldErrors.dueAt) {
+    return fieldErrors.dueAt
   }
 
   if (fieldErrors.groups) {

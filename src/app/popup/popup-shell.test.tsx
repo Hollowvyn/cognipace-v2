@@ -25,9 +25,11 @@ const validParentheses = {
   isPremium: false,
 } satisfies AppShellProblemSummary
 
+const shellGeneratedAt = new Date(2026, 0, 1, 12, 0, 0).toISOString()
+
 const shellData = {
   surface: 'popup',
-  generatedAt: '2026-01-01T00:00:00.000Z',
+  generatedAt: shellGeneratedAt,
   status: {
     label: 'Practice ready',
     detail: '1 due, 1 new, 0 reinforcement available.',
@@ -141,7 +143,8 @@ describe('PopupShell', () => {
     expect(within(recommendation).getByText('Overdue')).toBeInTheDocument()
 
     const activeTrack = screen.getByRole('region', { name: 'LeetCode 75' })
-    expect(within(activeTrack).getByText('Due Mar 1, 2026')).toBeInTheDocument()
+    expect(within(activeTrack).getByText('59 days left')).toBeInTheDocument()
+    expect(within(activeTrack).queryByText('Due Mar 1, 2026')).toBeNull()
     expect(
       within(activeTrack).getByText('Arrays and Hashing'),
     ).toBeInTheDocument()
@@ -229,6 +232,33 @@ describe('PopupShell', () => {
     expect(screen.queryByText('Up Next')).toBeNull()
     expect(screen.queryByText('Two Sum')).toBeNull()
     expect(screen.queryByText('Arrays and Hashing')).toBeNull()
+    const freePractice = screen.getByRole('region', {
+      name: 'Track guidance disabled',
+    })
+    expect(within(freePractice).queryByText('59 days left')).toBeNull()
+    expect(within(freePractice).queryByText('Overdue')).toBeNull()
+    expect(
+      within(freePractice).queryByLabelText(
+        /Track progress .* percent complete/i,
+      ),
+    ).toBeNull()
+  })
+
+  it('renders overdue active-track target status without a full due date', () => {
+    render(
+      <PopupShell
+        controller={createController({
+          data: {
+            ...shellData,
+            generatedAt: new Date(2026, 2, 2, 12, 0, 0).toISOString(),
+          },
+        })}
+      />,
+    )
+
+    const activeTrack = screen.getByRole('region', { name: 'LeetCode 75' })
+    expect(within(activeTrack).getByText('Overdue')).toBeInTheDocument()
+    expect(within(activeTrack).queryByText('Due Mar 1, 2026')).toBeNull()
   })
 
   it('derives the study card from active-track state when settings mode is stale', () => {

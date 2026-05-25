@@ -8,15 +8,18 @@ import { cn } from '@/utils/cn'
 
 import { useSetActiveTrack } from '../api/tracks-api'
 import type { SerializedTrackWorkspaceRow } from '../api/tracks-contracts'
+import { getTrackTargetStatus } from '../domain'
 import { TrackActions, type RenderTrackEditAction } from './track-actions'
 
 export function OtherTracksAccordion({
   activeTrackId,
+  generatedAt,
   newTrackAction,
   renderEditTrackAction,
   tracks,
 }: {
   activeTrackId: string | null
+  generatedAt: string
   newTrackAction?: ReactNode
   renderEditTrackAction: RenderTrackEditAction
   tracks: readonly SerializedTrackWorkspaceRow[]
@@ -115,6 +118,7 @@ export function OtherTracksAccordion({
                 onSetActive={() => {
                   void setActive(row.track.id)
                 }}
+                generatedAt={generatedAt}
                 renderEditTrackAction={renderEditTrackAction}
                 row={row}
               />
@@ -128,17 +132,25 @@ export function OtherTracksAccordion({
 
 function OtherTrackRow({
   disabled,
+  generatedAt,
   isActive,
   onSetActive,
   renderEditTrackAction,
   row,
 }: {
   disabled: boolean
+  generatedAt: string
   isActive: boolean
   onSetActive: () => void
   renderEditTrackAction: RenderTrackEditAction
   row: SerializedTrackWorkspaceRow
 }) {
+  const targetStatus = getTrackTargetStatus({
+    dueAt: row.track.dueAt,
+    generatedAt,
+    progress: row.progress,
+  })
+
   return (
     <div className="grid min-w-0 gap-3 px-4 py-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:px-5">
       <div className="min-w-0">
@@ -156,10 +168,19 @@ function OtherTrackRow({
           </p>
         ) : null}
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
-          <ProgressText row={row} />
+          <ProgressText row={row} title={row.track.title} />
           <span>{row.progress.totalCount} problems</span>
-          {row.track.dueAt ? (
-            <span>Due {formatDateCell(row.track.dueAt)}</span>
+          {targetStatus.catalogLabel ? (
+            <span
+              className={cn(
+                targetStatus.tone === 'danger' && 'text-destructive',
+              )}
+              data-cp-tone={
+                targetStatus.tone === 'danger' ? 'danger' : undefined
+              }
+            >
+              {targetStatus.catalogLabel}
+            </span>
           ) : null}
         </div>
       </div>
@@ -187,33 +208,38 @@ function OtherTrackRow({
   )
 }
 
-function ProgressText({ row }: { row: SerializedTrackWorkspaceRow }) {
+function ProgressText({
+  row,
+  title,
+}: {
+  row: SerializedTrackWorkspaceRow
+  title: string
+}) {
   return (
-    <span className="inline-flex items-center gap-2">
+    <span
+      aria-label={`${title} progress: ${row.progress.completedCount} of ${row.progress.totalCount}`}
+      className="inline-flex items-center gap-2"
+    >
+      <TinyProgressRing percent={row.progress.percent} />
       <span className="tabular-nums">
         {row.progress.completedCount} of {row.progress.totalCount}
-      </span>
-      <span
-        aria-hidden="true"
-        className={cn(
-          'h-1.5 w-16 overflow-hidden rounded-full bg-muted',
-          row.progress.totalCount === 0 && 'opacity-70',
-        )}
-      >
-        <span
-          className="block h-full rounded-full bg-primary"
-          style={{ width: `${row.progress.percent}%` }}
-        />
       </span>
     </span>
   )
 }
 
-function formatDateCell(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-    year: 'numeric',
-  }).format(new Date(value))
+function TinyProgressRing({ percent }: { percent: number }) {
+  const clampedPercent = Math.max(0, Math.min(percent, 100))
+
+  return (
+    <span
+      aria-hidden="true"
+      className="grid size-3 shrink-0 place-items-center rounded-full"
+      style={{
+        background: `conic-gradient(var(--cp-color-primary) ${clampedPercent}%, var(--cp-color-muted) 0)`,
+      }}
+    >
+      <span className="block size-1.5 rounded-full bg-card" />
+    </span>
+  )
 }

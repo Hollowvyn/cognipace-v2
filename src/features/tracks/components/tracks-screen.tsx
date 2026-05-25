@@ -76,6 +76,7 @@ function TracksWorkspaceView({
         <NoActiveTrackState />
         <OtherTracksAccordion
           activeTrackId={null}
+          generatedAt={workspace.generatedAt}
           newTrackAction={newTrackAction}
           renderEditTrackAction={renderEditTrackAction}
           tracks={workspace.tracks}
@@ -89,6 +90,7 @@ function TracksWorkspaceView({
       <ActiveTrackWorkspace
         activeTrack={workspace.activeTrack}
         dueCount={workspace.dueCount}
+        generatedAt={workspace.generatedAt}
         groups={workspace.activeTrackGroups}
         renderEditProblemAction={renderEditProblemAction}
         renderEditTrackAction={renderEditTrackAction}
@@ -96,6 +98,7 @@ function TracksWorkspaceView({
       />
       <OtherTracksAccordion
         activeTrackId={workspace.activeTrack.track.id}
+        generatedAt={workspace.generatedAt}
         newTrackAction={newTrackAction}
         renderEditTrackAction={renderEditTrackAction}
         tracks={workspace.tracks}

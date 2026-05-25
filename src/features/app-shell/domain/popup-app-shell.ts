@@ -3,6 +3,10 @@ import type {
   AppShellQueueItem,
   PopupAppShellData,
 } from '../api/app-shell-contracts'
+import {
+  getTrackTargetStatus,
+  type TrackTargetStatusTone,
+} from '@/features/tracks/domain'
 
 export type PopupRecommendationReason = {
   label: string
@@ -23,8 +27,11 @@ type PopupStudyPlanView = {
   title: string
   body: string
   groupTitle: string | null
-  dueAt: string | null
   progressPercent: number | null
+  targetStatus: {
+    label: string
+    tone: TrackTargetStatusTone
+  } | null
   nextProblem: AppShellProblemSummary | null
   modeActionLabel: string
 }
@@ -129,14 +136,25 @@ function createPopupStudyModeView(data: PopupAppShellData): PopupStudyModeView {
   }
 
   const hasActiveTrack = activeTrack.trackId !== null
+  const targetStatus = getTrackTargetStatus({
+    dueAt: activeTrack.dueAt,
+    generatedAt: data.generatedAt,
+    progress: activeTrack.progress,
+  })
 
   return {
     kind: 'studyPlan',
     title: readActiveTrackTitle(data),
     body: readActiveTrackBody(data),
     groupTitle: hasActiveTrack ? activeTrack.groupTitle : null,
-    dueAt: hasActiveTrack ? activeTrack.dueAt : null,
     progressPercent: hasActiveTrack ? activeTrack.progress.percent : null,
+    targetStatus:
+      hasActiveTrack && targetStatus.popupLabel
+        ? {
+            label: targetStatus.popupLabel,
+            tone: targetStatus.tone,
+          }
+        : null,
     nextProblem: activeTrack.nextProblem,
     modeActionLabel: 'Start freestyle mode',
   }

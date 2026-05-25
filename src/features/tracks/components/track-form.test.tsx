@@ -27,6 +27,7 @@ vi.mock('@/extension/messaging', () => ({
 describe('TrackForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
   })
 
   it('requires a title and starts create mode with a Main group', async () => {
@@ -52,7 +53,9 @@ describe('TrackForm', () => {
   })
 
   it('creates a track with ordered groups and selected-group problem membership', async () => {
-    const user = userEvent.setup()
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 4, 25, 12, 0, 0))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     mockTrackFormRuntime(createTrackDefaults())
 
     renderTrackForm(
@@ -158,6 +161,164 @@ describe('TrackForm', () => {
           },
         ],
       } satisfies TracksCreateTrackRequest)
+    })
+  })
+
+  it('blocks a past target date in create mode', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 4, 25, 12, 0, 0))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    mockTrackFormRuntime(createTrackDefaults())
+
+    renderTrackForm(
+      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
+    )
+
+    await user.type(await screen.findByLabelText('Title'), 'Past Track')
+    await user.type(screen.getByLabelText('Target date'), '2026-05-24')
+    await user.click(screen.getByRole('button', { name: 'SAVE' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Target date must be today or later.',
+    )
+    expect(screen.getByLabelText('Target date')).toBeInvalid()
+    expect(sendMessage).not.toHaveBeenCalledWith(
+      'tracks.createTrack',
+      expect.anything(),
+    )
+  })
+
+  it('allows a same-day target date during local evening hours', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 4, 25, 22, 0, 0))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    mockTrackFormRuntime(createTrackDefaults())
+
+    renderTrackForm(
+      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
+    )
+
+    await user.type(await screen.findByLabelText('Title'), 'Today Track')
+    const targetDate = screen.getByLabelText('Target date')
+
+    expect(targetDate).toHaveAttribute('min', '2026-05-25')
+
+    await user.type(targetDate, '2026-05-25')
+    await user.click(screen.getByRole('button', { name: 'SAVE' }))
+
+    await waitFor(() => {
+      expect(sendMessage).toHaveBeenCalledWith(
+        'tracks.createTrack',
+        expect.objectContaining({
+          dueAt: '2026-05-25T00:00:00.000Z',
+        }),
+      )
+    })
+  })
+
+  it('allows an unchanged saved past target date in edit mode', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 4, 25, 12, 0, 0))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    mockTrackFormRuntime(
+      createEditResponse({
+        dueAt: '2026-05-21T00:00:00.000Z',
+      }),
+    )
+
+    renderTrackForm(
+      <TrackForm
+        mode="edit"
+        onCancel={vi.fn()}
+        onLoaded={vi.fn()}
+        onSaved={vi.fn()}
+        trackId="leetcode-75"
+      />,
+    )
+
+    expect(await screen.findByLabelText('Target date')).toHaveValue(
+      '2026-05-21',
+    )
+
+    await user.clear(screen.getByLabelText('Title'))
+    await user.type(screen.getByLabelText('Title'), 'LeetCode 75 Updated')
+    await user.click(screen.getByRole('button', { name: 'SAVE' }))
+
+    await waitFor(() => {
+      expect(sendMessage).toHaveBeenCalledWith(
+        'tracks.updateTrack',
+        expect.objectContaining({
+          dueAt: '2026-05-21T00:00:00.000Z',
+          title: 'LeetCode 75 Updated',
+        }),
+      )
+    })
+  })
+
+  it('blocks a changed past target date in edit mode', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 4, 25, 12, 0, 0))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    mockTrackFormRuntime(
+      createEditResponse({
+        dueAt: '2026-05-21T00:00:00.000Z',
+      }),
+    )
+
+    renderTrackForm(
+      <TrackForm
+        mode="edit"
+        onCancel={vi.fn()}
+        onLoaded={vi.fn()}
+        onSaved={vi.fn()}
+        trackId="leetcode-75"
+      />,
+    )
+
+    const targetDate = await screen.findByLabelText('Target date')
+
+    await user.clear(targetDate)
+    await user.type(targetDate, '2026-05-22')
+    await user.click(screen.getByRole('button', { name: 'SAVE' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Target date must be today or later.',
+    )
+    expect(targetDate).toBeInvalid()
+    expect(sendMessage).not.toHaveBeenCalledWith(
+      'tracks.updateTrack',
+      expect.anything(),
+    )
+  })
+
+  it('clears a target date to null', async () => {
+    const user = userEvent.setup()
+    mockTrackFormRuntime(createEditResponse())
+
+    renderTrackForm(
+      <TrackForm
+        mode="edit"
+        onCancel={vi.fn()}
+        onLoaded={vi.fn()}
+        onSaved={vi.fn()}
+        trackId="leetcode-75"
+      />,
+    )
+
+    expect(await screen.findByLabelText('Target date')).toHaveValue(
+      '2026-06-15',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Clear target date' }))
+    await user.click(screen.getByRole('button', { name: 'SAVE' }))
+
+    await waitFor(() => {
+      expect(sendMessage).toHaveBeenCalledWith(
+        'tracks.updateTrack',
+        expect.objectContaining({
+          dueAt: null,
+        }),
+      )
     })
   })
 
@@ -680,11 +841,15 @@ function problemRowWithMetadata(
   })
 }
 
-function createEditResponse() {
+function createEditResponse(
+  overrides: {
+    dueAt?: string | null
+  } = {},
+) {
   return createTrackForEditResponse({
     track: createSerializedTrack({
       description: 'Core interview practice.',
-      dueAt: '2026-06-15T00:00:00.000Z',
+      dueAt: overrides.dueAt ?? '2026-06-15T00:00:00.000Z',
       id: 'leetcode-75',
       slug: 'leetcode-75',
       title: 'LeetCode 75',

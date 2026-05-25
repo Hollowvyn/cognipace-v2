@@ -111,7 +111,7 @@ describe('TracksScreen', () => {
     ).toBeDisabled()
   })
 
-  it('renders the active workspace title, metrics, groups, and active rows', async () => {
+  it('renders the active workspace title, summaries, metrics, groups, and active rows', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(twoGroupWorkspace)
     renderTracksScreen()
 
@@ -119,10 +119,18 @@ describe('TracksScreen', () => {
       await screen.findByRole('heading', { name: 'LeetCode 75' }),
     ).toBeVisible()
     expect(screen.getByText('Core interview practice.')).toBeVisible()
-    expect(screen.getByText('Progress')).toBeVisible()
-    expect(screen.getByText('1 of 3')).toBeVisible()
-    expect(screen.getByText('33%')).toBeVisible()
-    const dueMetric = screen.getByLabelText('Due metric')
+    const progressSummary = screen.getByLabelText('Track progress summary')
+    expect(within(progressSummary).getByText('Progress')).toBeVisible()
+    expect(within(progressSummary).getByText('1 of 3')).toBeVisible()
+    expect(within(progressSummary).getByText('2 problems left')).toBeVisible()
+    expect(
+      within(progressSummary).getByLabelText('33% complete'),
+    ).toBeVisible()
+    expect(screen.queryByLabelText('Progress metric')).not.toBeInTheDocument()
+    expect(
+      screen.queryByLabelText('Track target summary'),
+    ).not.toBeInTheDocument()
+    const dueMetric = screen.getByLabelText('Due reviews metric')
     expect(within(dueMetric).getByText('Due Reviews')).toBeVisible()
     expect(dueMetric).toHaveTextContent('2')
     expect(screen.getByText('Next')).toBeVisible()
@@ -168,7 +176,7 @@ describe('TracksScreen', () => {
     ).toBeVisible()
   })
 
-  it('formats date-only track due dates without local timezone drift', async () => {
+  it('formats target summary and catalog metadata without local timezone drift', async () => {
     const dueAt = '2026-06-15T00:00:00.000Z'
     const activeTrack = twoGroupWorkspace.activeTrack
 
@@ -178,6 +186,7 @@ describe('TracksScreen', () => {
 
     vi.mocked(sendMessage).mockResolvedValueOnce({
       ...twoGroupWorkspace,
+      generatedAt: '2026-06-01T12:00:00.000Z',
       activeTrack: {
         ...activeTrack,
         track: {
@@ -199,13 +208,19 @@ describe('TracksScreen', () => {
     })
     renderTracksScreen()
 
-    expect(await screen.findByText('Due Jun 15, 2026')).toBeVisible()
+    const targetSummary = await screen.findByLabelText('Track target summary')
+
+    expect(within(targetSummary).getByText('Target')).toBeVisible()
+    expect(within(targetSummary).getByText('Jun 15, 2026')).toBeVisible()
+    expect(within(targetSummary).getByText('14 days left')).toBeVisible()
+    expect(targetSummary).toHaveAttribute('data-cp-tone', 'success')
+    expect(screen.queryByText('Due Jun 15, 2026')).not.toBeInTheDocument()
 
     await userEvent.click(
       screen.getByRole('button', { name: 'Show all tracks' }),
     )
 
-    expect(screen.getAllByText('Due Jun 15, 2026')).toHaveLength(2)
+    expect(screen.getAllByText('Target Jun 15 · 14 days left')).toHaveLength(1)
   })
 
   it('labels due count as due reviews instead of track target date', async () => {
@@ -229,14 +244,62 @@ describe('TracksScreen', () => {
     })
     renderTracksScreen()
 
-    const dueMetric = await screen.findByLabelText('Due metric')
+    const dueMetric = await screen.findByLabelText('Due reviews metric')
 
     expect(within(dueMetric).getByText('Due Reviews')).toBeVisible()
     expect(dueMetric).toHaveTextContent('0')
     expect(
       within(dueMetric).queryByText('Jun 15, 2026'),
     ).not.toBeInTheDocument()
-    expect(screen.getByText('Due Jun 15, 2026')).toBeVisible()
+    expect(screen.getByLabelText('Track target summary')).toHaveTextContent(
+      'Jun 15, 2026',
+    )
+  })
+
+  it('marks overdue track targets without making the row an error state', async () => {
+    const user = userEvent.setup()
+    const activeTrack = twoGroupWorkspace.activeTrack
+
+    if (!activeTrack) {
+      throw new Error('Expected active track fixture.')
+    }
+
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...twoGroupWorkspace,
+      generatedAt: '2026-06-01T12:00:00.000Z',
+      activeTrack: {
+        ...activeTrack,
+        track: {
+          ...activeTrack.track,
+          dueAt: '2026-05-21T00:00:00.000Z',
+        },
+      },
+      tracks: twoGroupWorkspace.tracks.map((row) => ({
+        ...row,
+        track: {
+          ...row.track,
+          dueAt: '2026-05-21T00:00:00.000Z',
+        },
+      })),
+    })
+    renderTracksScreen()
+
+    const targetSummary = await screen.findByLabelText('Track target summary')
+
+    expect(targetSummary).toHaveAttribute('data-cp-tone', 'danger')
+    expect(within(targetSummary).getByText('Overdue')).toBeVisible()
+    expect(within(targetSummary).getByText('11 days late')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Show all tracks' }))
+
+    const overdueMetadata = screen.getAllByText(
+      'Target May 21 · Overdue · 11 days late',
+    )
+    expect(overdueMetadata).toHaveLength(2)
+    for (const metadata of overdueMetadata) {
+      expect(metadata).toHaveAttribute('data-cp-tone', 'danger')
+    }
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('renders active groups as a single horizontally scrollable tab row', async () => {
@@ -357,6 +420,7 @@ describe('TracksScreen', () => {
     ).not.toBeInTheDocument()
     expect(screen.getByText('Grind 75')).toBeVisible()
     expect(screen.getByText('10 of 75')).toBeVisible()
+    expect(screen.getByLabelText('Grind 75 progress: 10 of 75')).toBeVisible()
     expect(
       screen.getByRole('button', { name: 'Set Grind 75 active' }),
     ).toBeVisible()
