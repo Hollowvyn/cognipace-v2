@@ -90,6 +90,14 @@ export function ProblemBulkMetadataDialog({
           onCancel()
         }
       }}
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) {
+          event.preventDefault()
+          if (!pending) {
+            onCancel()
+          }
+        }
+      }}
     >
       <section
         aria-describedby="problem-bulk-metadata-description"

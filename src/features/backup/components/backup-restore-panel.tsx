@@ -323,6 +323,9 @@ export function BackupConfirmationDialog({
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) {
           event.preventDefault()
+          if (!isDialogPending) {
+            onCancel()
+          }
         }
       }}
     >

@@ -96,6 +96,9 @@ export function TrackConfirmationDialog({
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) {
           event.preventDefault()
+          if (!pending) {
+            onCancel()
+          }
         }
       }}
     >

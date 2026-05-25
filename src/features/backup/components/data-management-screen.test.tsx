@@ -215,6 +215,29 @@ describe('DataManagementScreen', () => {
       surface: 'dashboard',
     })
   })
+
+  it('closes clear confirmation when the backdrop is clicked', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockResolvedValue(null)
+    const { wrapper } = createQueryTestHarness()
+
+    render(<DataManagementScreen />, { wrapper })
+
+    await user.click(screen.getByRole('button', { name: 'Clear local data' }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Clear local data?' })
+    const backdrop = dialog.parentElement
+
+    expect(backdrop).not.toBeNull()
+    await user.click(backdrop as HTMLElement)
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'Clear local data?' }),
+      ).not.toBeInTheDocument()
+    })
+    expect(sendMessage).not.toHaveBeenCalled()
+  })
 })
 
 function createBackupFile(backup: BackupFile) {

@@ -910,6 +910,37 @@ describe('TracksScreen', () => {
     expect(resetButton).toHaveFocus()
   })
 
+  it('closes confirmation when the backdrop is clicked', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'tracks.getWorkspace') {
+        return Promise.resolve(twoGroupWorkspace)
+      }
+
+      return Promise.resolve(null)
+    })
+
+    renderTracksScreen()
+
+    await screen.findByRole('heading', { name: 'LeetCode 75' })
+    const resetButton = screen.getByRole('button', { name: 'Reset Progress' })
+
+    await user.click(resetButton)
+
+    const resetDialog = screen.getByRole('dialog', {
+      name: 'Reset track progress?',
+    })
+    const backdrop = resetDialog.parentElement
+
+    expect(backdrop).not.toBeNull()
+    await user.click(backdrop as HTMLElement)
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Reset track progress?' }),
+    ).not.toBeInTheDocument()
+    expect(resetButton).toHaveFocus()
+  })
+
   it('keeps confirmation focus stable while an action is pending', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage).mockImplementation((method) => {
