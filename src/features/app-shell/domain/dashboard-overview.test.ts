@@ -113,5 +113,19 @@ describe('createDashboardOverviewView', () => {
       'Problem 4',
       'Problem 5',
     ])
+    expect(view.queuePreview.map((item) => item.state.problemSlug)).toEqual([
+      'problem-1',
+      'problem-2',
+      'problem-3',
+      'problem-4',
+      'problem-5',
+    ])
+    expect(view.queuePreview.map((item) => item.state.cardId)).toEqual([
+      'problem-1:default',
+      'problem-2:default',
+      'problem-3:default',
+      'problem-4:default',
+      'problem-5:default',
+    ])
   })
 })

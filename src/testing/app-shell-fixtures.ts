@@ -93,17 +93,20 @@ export function createDashboardAppShellData(
 export function createAppShellQueueItem(
   overrides: Partial<DashboardAppShellData['queue']['items'][number]> = {},
 ): DashboardAppShellData['queue']['items'][number] {
+  const problem = {
+    problemSlug: 'add-binary',
+    title: 'Add Binary',
+    difficulty: 'easy',
+    isPremium: false,
+    ...overrides.problem,
+  } satisfies DashboardAppShellData['queue']['items'][number]['problem']
+
   return {
     category: 'due',
-    problem: {
-      problemSlug: 'add-binary',
-      title: 'Add Binary',
-      difficulty: 'easy',
-      isPremium: false,
-    },
+    problem,
     state: createSerializedNormalizedPracticeState({
-      problemSlug: 'add-binary',
-      cardId: 'add-binary:default',
+      problemSlug: problem.problemSlug,
+      cardId: `${problem.problemSlug}:default`,
       status: 'review',
       phase: 'review',
       isStarted: true,
