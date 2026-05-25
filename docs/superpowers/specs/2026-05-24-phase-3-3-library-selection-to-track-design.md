@@ -42,8 +42,8 @@ filtering, or extra problem metadata.
    problem slugs, then navigates to a Library modal route.
 5. The modal resolves the draft slugs back to full Library rows, seeds the
    existing Track form, and displays the selected count.
-6. The user enters track metadata, optionally chooses `Group by`, adjusts groups
-   and order, then saves.
+6. The user enters track metadata, optionally chooses `Group by` from a compact
+   dropdown, adjusts groups and order, then saves.
 7. Saving uses the existing `tracks.createTrack` mutation and returns to
    `/library`.
 
@@ -94,7 +94,8 @@ modal continues with the remaining rows and shows a non-blocking warning.
 
 ## Grouping Rules
 
-The create-from-selection modal starts with `Group by: None`.
+The create-from-selection modal starts with `Group by: None`. `Group by` is a
+small dropdown control, not a large composer section.
 
 Supported values:
 
@@ -120,7 +121,8 @@ draft.
 The create-from-Library flow should:
 
 - show the selected problem count in the modal context;
-- place `Group by` beside `Target date` with equal horizontal weight;
+- place a compact `Group by` dropdown beside `Target date` with equal horizontal
+  weight;
 - reuse the existing metadata, group list, search, and membership editor layout;
 - keep problem membership rows visually close to the current Track modal rows;
 - add only a compact group selector to membership rows, placed near the move
