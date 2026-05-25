@@ -75,15 +75,19 @@ locally.
 1. Open the dashboard.
 2. Navigate to Settings.
 3. Use Export backup.
-4. Confirm a JSON file downloads.
-5. Choose Import full backup and select that exported file.
-6. Confirm the validation summary appears.
-7. Cancel before restore unless intentionally testing destructive restore.
+4. Confirm a JSON file downloads and a success toast appears.
+5. Use Choose backup file under Import full backup and select that exported
+   file.
+6. Confirm the selected filename, validation toast, and validation summary
+   appear.
+7. Confirm Restore full backup is not shown until validation succeeds, then
+   cancel before restore unless intentionally testing destructive restore.
 8. Open Clear local data.
 9. Cancel once, then reopen if intentionally testing clear/reset behavior.
 
 Expected: backup validation happens before restore, restore and clear require
-confirmation, and clear offers backup first inside the confirmation dialog.
+confirmation, restore success resets the import card, and clear offers backup
+first inside the confirmation dialog.
 
 ### Library
 

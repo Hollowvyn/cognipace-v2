@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
+import { formatDateTime } from '@/utils/date-format'
 
 import type { BackupSummary } from '../api/backup-contracts'
 
@@ -22,7 +23,7 @@ interface BackupRestorePanelProps {
   onExport: () => void
   onFileSelect: (file: File) => void
   onOpenRestoreDialog: () => void
-  status: string | null
+  selectedFileName: string | null
   summary: BackupSummary | null
 }
 
@@ -35,9 +36,12 @@ export function BackupRestorePanel({
   onExport,
   onFileSelect,
   onOpenRestoreDialog,
-  status,
+  selectedFileName,
   summary,
 }: BackupRestorePanelProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const fileStatusId = 'backup-import-file-status'
+
   return (
     <Surface aria-labelledby="backup-restore-title" className="grid gap-4">
       <header className="grid gap-1">
@@ -67,20 +71,46 @@ export function BackupRestorePanel({
       </div>
 
       <div className="grid gap-2">
-        <label
-          className="text-[length:var(--cp-copy-font-size)] font-bold"
-          htmlFor="backup-import-file"
-        >
+        <h3 className="m-0 text-[length:var(--cp-copy-font-size)] font-bold">
           Import full backup
-        </label>
-        <input
-          accept="application/json,.json"
-          className="block w-full rounded-[var(--cp-control-radius)] border border-border bg-background px-3 py-2 text-[length:var(--cp-copy-font-size)] text-foreground file:mr-3 file:rounded-[var(--cp-control-radius)] file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-foreground"
-          disabled={isValidating || isRestoring}
-          id="backup-import-file"
-          onChange={handleFileChange(onFileSelect)}
-          type="file"
-        />
+        </h3>
+        <div className="flex min-w-0 flex-wrap items-center gap-3 rounded-[var(--cp-control-radius)] border border-border bg-background px-3 py-2">
+          <input
+            accept="application/json,.json"
+            aria-describedby={fileStatusId}
+            aria-label="Backup file"
+            className="sr-only"
+            disabled={isValidating || isRestoring}
+            id="backup-import-file"
+            onChange={handleFileChange(onFileSelect)}
+            ref={fileInputRef}
+            type="file"
+          />
+          <Button
+            disabled={isValidating || isRestoring}
+            onClick={() => {
+              fileInputRef.current?.click()
+            }}
+            size="sm"
+            variant="outline"
+          >
+            {isValidating ? (
+              <Loader2
+                aria-hidden="true"
+                className="animate-spin motion-reduce:animate-none"
+              />
+            ) : (
+              <Upload aria-hidden="true" />
+            )}
+            Choose backup file
+          </Button>
+          <p
+            className="m-0 min-w-0 flex-1 truncate text-[length:var(--cp-copy-font-size)] text-muted-foreground"
+            id={fileStatusId}
+          >
+            {selectedFileName ?? 'No backup file selected'}
+          </p>
+        </div>
       </div>
 
       {error ? (
@@ -88,28 +118,29 @@ export function BackupRestorePanel({
           {error}
         </InlineStatus>
       ) : null}
-      {status ? <InlineStatus>{status}</InlineStatus> : null}
       {isValidating ? <InlineStatus>Validating backup…</InlineStatus> : null}
       {summary ? <BackupSummaryList summary={summary} /> : null}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          disabled={!backup || isRestoring || isValidating}
-          onClick={onOpenRestoreDialog}
-          size="sm"
-          variant="destructive"
-        >
-          {isRestoring ? (
-            <Loader2
-              aria-hidden="true"
-              className="animate-spin motion-reduce:animate-none"
-            />
-          ) : (
-            <Upload aria-hidden="true" />
-          )}
-          Restore full backup
-        </Button>
-      </div>
+      {summary ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            disabled={!backup || isRestoring || isValidating}
+            onClick={onOpenRestoreDialog}
+            size="sm"
+            variant="outline"
+          >
+            {isRestoring ? (
+              <Loader2
+                aria-hidden="true"
+                className="animate-spin motion-reduce:animate-none"
+              />
+            ) : (
+              <Upload aria-hidden="true" />
+            )}
+            Restore full backup
+          </Button>
+        </div>
+      ) : null}
     </Surface>
   )
 }
@@ -117,7 +148,7 @@ export function BackupRestorePanel({
 export function BackupSummaryList({ summary }: { summary: BackupSummary }) {
   const metadataItems: Array<[string, string]> = [
     ['Schema version', String(summary.schemaVersion)],
-    ['Exported', summary.exportedAt],
+    ['Exported', formatDateTime(summary.exportedAt)],
   ]
   if (summary.source.appVersion) {
     metadataItems.push(['App version', summary.source.appVersion])

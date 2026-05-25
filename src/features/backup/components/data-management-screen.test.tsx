@@ -28,24 +28,34 @@ describe('DataManagementScreen', () => {
     const { wrapper } = createQueryTestHarness()
 
     render(<DataManagementScreen />, { wrapper })
+    const backupPanel = screen.getByRole('region', { name: 'Export backup' })
 
     await user.click(screen.getByRole('button', { name: 'Export backup' }))
 
     expect(sendMessage).toHaveBeenCalledWith('backup.exportFullBackup', {
       surface: 'dashboard',
     })
-    expect(await screen.findByText('Backup exported.')).toBeVisible()
+    expect(
+      await screen.findByRole('status', { name: 'Data management feedback' }),
+    ).toHaveTextContent('Backup exported.')
+    expect(within(backupPanel).queryByText('Backup exported.')).toBeNull()
   })
 
-  it('validates an imported backup and shows summary counts', async () => {
+  it('validates an imported backup, shows the selected file, and keeps restore calm', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage).mockResolvedValue(validSummary)
     const { wrapper } = createQueryTestHarness()
 
     render(<DataManagementScreen />, { wrapper })
 
+    expect(screen.queryByText('No file chosen')).not.toBeInTheDocument()
+    expect(screen.getByText('No backup file selected')).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Restore full backup' }),
+    ).not.toBeInTheDocument()
+
     await user.upload(
-      screen.getByLabelText('Import full backup'),
+      screen.getByLabelText('Backup file'),
       createBackupFile(validBackup),
     )
 
@@ -53,12 +63,22 @@ describe('DataManagementScreen', () => {
       surface: 'dashboard',
       backup: validBackup,
     })
-    expect(await screen.findByText('Backup ready to restore')).toBeVisible()
+    expect(
+      await screen.findByRole('status', { name: 'Data management feedback' }),
+    ).toHaveTextContent('Backup ready to restore.')
+    expect(screen.getByText('backup.json')).toBeVisible()
     expect(screen.getByText('Schema version: 1')).toBeVisible()
-    expect(screen.getByText('Exported: 2026-05-25T12:00:00.000Z')).toBeVisible()
+    expect(
+      screen.getByText(
+        `Exported: ${formatExpectedDateTime(validSummary.exportedAt)}`,
+      ),
+    ).toBeVisible()
     expect(screen.getByText('App version: 0.0.0')).toBeVisible()
     expect(screen.getByText('Problems: 1')).toBeVisible()
     expect(screen.getByText('Tracks: 1')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Restore full backup' }),
+    ).not.toHaveClass('bg-destructive')
   })
 
   it('shows an alert for invalid JSON without calling runtime validation', async () => {
@@ -68,7 +88,7 @@ describe('DataManagementScreen', () => {
     render(<DataManagementScreen />, { wrapper })
 
     await user.upload(
-      screen.getByLabelText('Import full backup'),
+      screen.getByLabelText('Backup file'),
       new File(['not json'], 'backup.json', { type: 'application/json' }),
     )
 
@@ -96,10 +116,10 @@ describe('DataManagementScreen', () => {
     render(<DataManagementScreen />, { wrapper })
 
     await user.upload(
-      screen.getByLabelText('Import full backup'),
+      screen.getByLabelText('Backup file'),
       createBackupFile(validBackup),
     )
-    await screen.findByText('Backup ready to restore')
+    await screen.findByRole('status', { name: 'Data management feedback' })
     await user.click(
       screen.getByRole('button', { name: 'Restore full backup' }),
     )
@@ -114,7 +134,14 @@ describe('DataManagementScreen', () => {
       surface: 'dashboard',
       backup: validBackup,
     })
-    expect(await screen.findByText('Backup restored.')).toBeVisible()
+    expect(
+      await screen.findByRole('status', { name: 'Data management feedback' }),
+    ).toHaveTextContent('Backup restored.')
+    expect(screen.getByText('No backup file selected')).toBeVisible()
+    expect(screen.queryByText('Schema version: 1')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Restore full backup' }),
+    ).not.toBeInTheDocument()
   })
 
   it('offers a backup export inside the clear confirmation dialog', async () => {
@@ -188,6 +215,13 @@ function createBackupFile(backup: BackupFile) {
   return new File([JSON.stringify(backup)], 'backup.json', {
     type: 'application/json',
   })
+}
+
+function formatExpectedDateTime(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
 }
 
 const validSummary = {

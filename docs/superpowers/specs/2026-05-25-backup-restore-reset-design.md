@@ -55,9 +55,11 @@ area with three separate parts.
 uses a Blob download from the dashboard page and does not require the Chrome
 `downloads` permission.
 
-`Import full backup` opens a JSON file picker. After file selection, the app
-parses JSON, sends the parsed payload to the background for validation, and
-shows a summary before any write. The summary includes:
+`Import full backup` uses a compact `Choose backup file` control instead of the
+browser's native wide file input. The selected filename remains visible after
+selection. After file selection, the app parses JSON, sends the parsed payload
+to the background for validation, and shows a summary before any write. Success
+feedback uses a toast instead of inline status blocks. The summary includes:
 
 - backup schema version
 - exported date
@@ -66,9 +68,12 @@ shows a summary before any write. The summary includes:
   progress rows, practice aggregate rows, FSRS cards, review attempts, and
   settings rows
 
-The user must then confirm `Restore full backup`. The confirmation states that
-restore replaces local CogniPace data. The Data Management page keeps a primary
-`Export backup` action available before destructive restore.
+The `Restore full backup` action appears only after validation succeeds and uses
+a calm outline treatment until the confirmation dialog. The user must then
+confirm restore. The confirmation states that restore replaces local CogniPace
+data. After a successful restore, the import card returns to its empty state.
+The Data Management page keeps a primary `Export backup` action available before
+destructive restore.
 
 ### Selective Import
 

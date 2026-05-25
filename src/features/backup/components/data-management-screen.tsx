@@ -1,6 +1,11 @@
 import { useState } from 'react'
 
 import {
+  FeedbackToast,
+  type FeedbackToastStatus,
+} from '@/components/ui/feedback-toast'
+
+import {
   downloadBackupFile,
   useExportFullBackup,
   useResetLocalData,
@@ -22,8 +27,13 @@ export function DataManagementScreen() {
   const restoreBackup = useRestoreFullBackup()
   const resetLocalData = useResetLocalData()
   const [selectedBackup, setSelectedBackup] = useState<unknown>(null)
+  const [selectedBackupFileName, setSelectedBackupFileName] = useState<
+    string | null
+  >(null)
   const [backupSummary, setBackupSummary] = useState<BackupSummary | null>(null)
-  const [backupStatus, setBackupStatus] = useState<string | null>(null)
+  const [backupToast, setBackupToast] = useState<FeedbackToastStatus | null>(
+    null,
+  )
   const [backupError, setBackupError] = useState<string | null>(null)
   const [resetStatus, setResetStatus] = useState<string | null>(null)
   const [resetError, setResetError] = useState<string | null>(null)
@@ -36,7 +46,12 @@ export function DataManagementScreen() {
     try {
       const backup = await exportBackup.mutateAsync()
       downloadBackupFile(backup)
-      setStatus(scope, 'Backup exported.')
+      if (scope === 'backup') {
+        setBackupToast({ message: 'Backup exported.', tone: 'success' })
+        return
+      }
+
+      setResetStatus('Backup exported.')
     } catch (error) {
       setError(scope, readErrorMessage(error, 'Failed to export backup.'))
     }
@@ -44,8 +59,9 @@ export function DataManagementScreen() {
 
   async function handleFileSelect(file: File) {
     setSelectedBackup(null)
+    setSelectedBackupFileName(file.name)
     setBackupSummary(null)
-    setBackupStatus(null)
+    setBackupToast(null)
     setBackupError(null)
 
     let parsedBackup: unknown
@@ -61,7 +77,10 @@ export function DataManagementScreen() {
       const summary = await validateBackup.mutateAsync(parsedBackup)
       setSelectedBackup(parsedBackup)
       setBackupSummary(summary)
-      setBackupStatus('Backup ready to restore')
+      setBackupToast({
+        message: 'Backup ready to restore.',
+        tone: 'success',
+      })
     } catch (error) {
       setBackupError(readErrorMessage(error, 'Backup validation failed.'))
     }
@@ -75,9 +94,11 @@ export function DataManagementScreen() {
     setBackupError(null)
 
     try {
-      const summary = await restoreBackup.mutateAsync(selectedBackup)
-      setBackupSummary(summary)
-      setBackupStatus('Backup restored.')
+      await restoreBackup.mutateAsync(selectedBackup)
+      setSelectedBackup(null)
+      setSelectedBackupFileName(null)
+      setBackupSummary(null)
+      setBackupToast({ message: 'Backup restored.', tone: 'success' })
       setRestoreDialogOpen(false)
     } catch (error) {
       setBackupError(readErrorMessage(error, 'Failed to restore backup.'))
@@ -98,17 +119,13 @@ export function DataManagementScreen() {
   }
 
   function clearStatus(scope: 'backup' | 'reset') {
-    setStatus(scope, null)
     setError(scope, null)
-  }
-
-  function setStatus(scope: 'backup' | 'reset', value: string | null) {
     if (scope === 'backup') {
-      setBackupStatus(value)
+      setBackupToast(null)
       return
     }
 
-    setResetStatus(value)
+    setResetStatus(null)
   }
 
   function setError(scope: 'backup' | 'reset', value: string | null) {
@@ -152,8 +169,13 @@ export function DataManagementScreen() {
         onOpenRestoreDialog={() => {
           setRestoreDialogOpen(true)
         }}
-        status={backupStatus}
+        selectedFileName={selectedBackupFileName}
         summary={backupSummary}
+      />
+      <FeedbackToast
+        dismissLabel="Dismiss data management feedback"
+        label="Data management feedback"
+        status={backupToast}
       />
       <SelectiveImportPanel />
       <ResetLocalDataPanel
