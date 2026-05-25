@@ -408,6 +408,82 @@ describe('TracksScreen', () => {
       within(activeRowActions).getByRole('link', { name: 'Edit Track' }),
     ).toHaveAttribute('href', '#/tracks/leetcode-75/edit')
     expect(
+      screen.getByText('Grind 75'),
+    ).toBeVisible()
+  })
+
+  it('toggles all tracks when the accordion header row is clicked', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockResolvedValueOnce(twoGroupWorkspace)
+    renderTracksScreen()
+
+    expect(await screen.findByText('All tracks')).toBeVisible()
+    expect(screen.queryByText('Grind 75')).not.toBeInTheDocument()
+
+    await user.click(screen.getByText('All tracks'))
+
+    expect(screen.getByText('Grind 75')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Hide all tracks' }),
+    ).toBeVisible()
+
+    await user.click(screen.getByText('All tracks'))
+
+    expect(screen.queryByText('Grind 75')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Show all tracks' }),
+    ).toBeVisible()
+  })
+
+  it('does not toggle all tracks when New Track is clicked', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockResolvedValueOnce(twoGroupWorkspace)
+    renderTracksScreen()
+
+    const allTracksActions = await screen.findByLabelText('All tracks actions')
+
+    await user.click(
+      within(allTracksActions).getByRole('link', { name: 'New Track' }),
+    )
+
+    expect(screen.queryByText('Grind 75')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Show all tracks' }),
+    ).toBeVisible()
+  })
+
+  it('keeps the forced-open all tracks row from collapsing when there is no active track', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...twoGroupWorkspace,
+      activeTrack: null,
+      activeTrackGroups: [],
+      activeTrackRows: [],
+    })
+    renderTracksScreen()
+
+    expect(await screen.findByText('No active track selected.')).toBeVisible()
+    expect(screen.getByText('Grind 75')).toBeVisible()
+
+    await user.click(screen.getByText('All tracks'))
+
+    expect(screen.getByText('Grind 75')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'All tracks shown' }),
+    ).toBeDisabled()
+  })
+
+  it('keeps all tracks actions available when expanded', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockResolvedValueOnce(twoGroupWorkspace)
+    renderTracksScreen()
+
+    await user.click(await screen.findByText('All tracks'))
+    const activeRowActions = screen.getByLabelText(
+      'LeetCode 75 catalog actions',
+    )
+
+    expect(
       within(activeRowActions).getByRole('button', { name: 'Reset Progress' }),
     ).toBeVisible()
     expect(
