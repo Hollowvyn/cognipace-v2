@@ -2,7 +2,10 @@ import {
   serializeNormalizedPracticeState,
   serializePracticeDetails,
 } from '@/features/practice/api/practice-serializers'
-import { getPracticeDetails } from '@/features/practice/server/practice-service'
+import {
+  getPracticeDetails,
+  getPracticeProgressSummary,
+} from '@/features/practice/server/practice-service'
 import type { Problem } from '@/features/problems/domain'
 import { getProblemContext } from '@/features/problems/server/problems-service'
 import type { QueueItem } from '@/features/queue/domain'
@@ -52,11 +55,19 @@ async function getPopupAppShellData(db: Db, now: Date) {
 
 async function getDashboardAppShellData(db: Db, now: Date) {
   const { baseData, queueItems } = await getMainAppShellData(db, now)
+  const queuePreview = queueItems.slice(0, 5)
 
   return {
     ...baseData,
     surface: 'dashboard',
-    dashboard: { queuePreview: queueItems.slice(0, 8) },
+    overview: {
+      practiceProgress: await getPracticeProgressSummary(db, {
+        dailyGoal: baseData.settings.practice.dailyGoal,
+        now,
+      }),
+      queuePreview,
+    },
+    dashboard: { queuePreview },
   } satisfies AppShellData
 }
 

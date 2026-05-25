@@ -134,6 +134,19 @@ const appShellBaseDataSchema = z.object({
   settings: appShellSettingsSummarySchema,
 })
 
+const appShellPracticeProgressSchema = z.object({
+  completedToday: z.number().int().min(0),
+  dailyGoal: z.number().int().min(0),
+  currentStreak: z.number().int().min(0),
+  goalMetToday: z.boolean(),
+  todayDateKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+})
+
+const dashboardOverviewSchema = z.object({
+  practiceProgress: appShellPracticeProgressSchema,
+  queuePreview: z.array(appShellQueueItemSchema),
+})
+
 export const popupAppShellDataSchema = appShellBaseDataSchema.extend({
   surface: z.literal('popup'),
   popup: z.object({
@@ -143,6 +156,7 @@ export const popupAppShellDataSchema = appShellBaseDataSchema.extend({
 
 export const dashboardAppShellDataSchema = appShellBaseDataSchema.extend({
   surface: z.literal('dashboard'),
+  overview: dashboardOverviewSchema,
   dashboard: z.object({
     queuePreview: z.array(appShellQueueItemSchema),
   }),
@@ -169,6 +183,7 @@ export const appShellDataSchema = z.discriminatedUnion('surface', [
 export type AppShellData = z.infer<typeof appShellDataSchema>
 export type PopupAppShellData = z.infer<typeof popupAppShellDataSchema>
 export type DashboardAppShellData = z.infer<typeof dashboardAppShellDataSchema>
+export type DashboardOverviewData = z.infer<typeof dashboardOverviewSchema>
 export type OverlayAppShellData = z.infer<typeof overlayAppShellDataSchema>
 export type AppShellQueueItem = z.infer<typeof appShellQueueItemSchema>
 export type AppShellProblemSummary = z.infer<

@@ -165,9 +165,51 @@ describe('app-shell service', () => {
     const payload = await getDashboardPayload(handle)
 
     expect(payload.surface).toBe('dashboard')
+    expect(payload.overview.queuePreview).toEqual(payload.dashboard.queuePreview)
     expect(
       payload.dashboard.queuePreview.map((item) => item.problem.problemSlug),
     ).toEqual([])
+  })
+
+  it('composes dashboard overview progress from unique practiced problems', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const practiceRepository = createPracticeRepository(handle.db)
+
+    await createSettingsRepository(handle.db).updateSettings({
+      practice: {
+        dailyGoal: 2,
+      },
+    })
+    await practiceRepository.saveReviewResult({
+      problemSlug: 'two-sum',
+      rating: 'again',
+      reviewedAt: new Date('2026-01-01T08:00:00.000Z'),
+      reviewMode: 'manual',
+    })
+    await practiceRepository.saveReviewResult({
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: new Date('2026-01-01T09:00:00.000Z'),
+      reviewMode: 'manual',
+    })
+    await practiceRepository.saveReviewResult({
+      problemSlug: 'valid-parentheses',
+      rating: 'again',
+      reviewedAt: new Date('2026-01-01T09:30:00.000Z'),
+      reviewMode: 'manual',
+    })
+
+    const payload = await getDashboardPayload(handle)
+
+    expect(payload.overview.practiceProgress).toMatchObject({
+      completedToday: 2,
+      dailyGoal: 2,
+      currentStreak: 1,
+      goalMetToday: true,
+      todayDateKey: '2026-01-01',
+    })
   })
 
   it('composes overlay payload with current problem practice details', async () => {
