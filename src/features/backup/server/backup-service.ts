@@ -70,11 +70,21 @@ function validateBackupReferences(data: BackupData) {
     'problem slug',
   )
   const topicIds = uniqueValues(data.topics, (row) => row.id, 'topic id')
+  uniqueValues(data.topics, (row) => row.label, 'topic label')
   const companyIds = uniqueValues(data.companies, (row) => row.id, 'company id')
+  uniqueValues(data.companies, (row) => row.label, 'company label')
+  const fsrsCardsById = new Map(
+    data.practice.fsrsCards.map((card) => [card.id, card]),
+  )
   const fsrsCardIds = uniqueValues(
     data.practice.fsrsCards,
     (row) => row.id,
     'FSRS card id',
+  )
+  uniqueValues(
+    data.practice.fsrsCards,
+    (row) => `${row.problemSlug}:${row.cardKind}`,
+    'FSRS card problem/kind',
   )
   uniqueValues(
     data.practice.reviewAttempts,
@@ -152,6 +162,14 @@ function validateBackupReferences(data: BackupData) {
   for (const row of data.practice.reviewAttempts) {
     requireReference(problemSlugs, row.problemSlug, 'reviewAttempt', 'problem')
     requireReference(fsrsCardIds, row.cardId, 'reviewAttempt', 'card')
+
+    const card = fsrsCardsById.get(row.cardId)
+
+    if (card !== undefined && card.problemSlug !== row.problemSlug) {
+      throw new Error(
+        `Invalid backup: reviewAttempt ${row.id} references card ${row.cardId} belongs to problem ${card.problemSlug}, not ${row.problemSlug}.`,
+      )
+    }
   }
 
   for (const row of data.tracks.groups) {
