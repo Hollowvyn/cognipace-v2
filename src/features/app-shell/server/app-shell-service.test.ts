@@ -165,7 +165,9 @@ describe('app-shell service', () => {
     const payload = await getDashboardPayload(handle)
 
     expect(payload.surface).toBe('dashboard')
-    expect(payload.overview.queuePreview).toEqual(payload.dashboard.queuePreview)
+    expect(payload.overview.queuePreview).toEqual(
+      payload.dashboard.queuePreview,
+    )
     expect(
       payload.dashboard.queuePreview.map((item) => item.problem.problemSlug),
     ).toEqual([])
