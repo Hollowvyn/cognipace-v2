@@ -10,3 +10,12 @@ export {
   type BackupRequest,
   type BackupSummary,
 } from './api/backup-contracts'
+export {
+  downloadBackupFile,
+  restoreFullBackupViaRuntime,
+  useExportFullBackup,
+  useResetLocalData,
+  useRestoreFullBackup,
+  useValidateFullBackup,
+  validateFullBackupViaRuntime,
+} from './api/backup-api'
