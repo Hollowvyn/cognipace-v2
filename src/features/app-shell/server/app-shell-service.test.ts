@@ -123,6 +123,9 @@ describe('app-shell service', () => {
     const payloadAfterLedgerCompletion = await getPopupPayload(handle)
 
     expect(payloadAfterLedgerCompletion.activeTrack).toMatchObject({
+      state: 'exhausted',
+      trackId: 'leetcode-75',
+      detail: 'No more problems in track.',
       progress: {
         completedCount: 1,
         totalCount: 1,
@@ -130,28 +133,6 @@ describe('app-shell service', () => {
       },
       nextProblem: null,
     })
-  })
-
-  it('marks active track guidance exhausted instead of falling back to queue in popup data', async () => {
-    const handle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-
-    await recordActiveTrackProblemCompletion(handle.db, {
-      problemSlug: 'two-sum',
-      rating: 'good',
-      completedAt: new Date(generatedAt),
-    })
-
-    const payload = await getPopupPayload(handle)
-
-    expect(payload.activeTrack).toMatchObject({
-      state: 'exhausted',
-      trackId: 'leetcode-75',
-      detail: 'No more problems in track.',
-      nextProblem: null,
-    })
-    expect(payload.recommendation.problem).toBeNull()
   })
 
   it('does not include active-track state in popup free practice mode', async () => {

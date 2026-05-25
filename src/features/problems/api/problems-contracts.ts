@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { normalizedPracticeStateSchema } from '@/features/practice/api/practice-contracts'
-import { problemDifficulties } from '@/features/problems/domain'
+import { problemDifficulties } from '../domain'
 
 export const problemDifficultySchema = z.enum(problemDifficulties)
 

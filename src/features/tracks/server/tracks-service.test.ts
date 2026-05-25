@@ -353,27 +353,6 @@ describe('tracks service', () => {
     expect(activeTrack?.nextProblem?.slug).toBe('valid-parentheses')
   })
 
-  it('skips suspended active-track rows for direct active-track reads', async () => {
-    const handle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-
-    await addActiveTrackMembership(handle.db, {
-      groupId: 'leetcode-75:stack',
-      groupTitle: 'Stack',
-      problemSlug: 'valid-parentheses',
-      groupPosition: 2,
-    })
-    await suspendProblem(handle.db, 'two-sum')
-
-    const activeTrack = await getActiveTrack(
-      handle.db,
-      new Date('2026-01-10T12:00:00.000Z'),
-    )
-
-    expect(activeTrack?.nextProblem?.slug).toBe('valid-parentheses')
-  })
-
   it('returns create defaults and searchable Library problem rows for a new track', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
