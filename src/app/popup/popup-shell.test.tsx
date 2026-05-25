@@ -141,7 +141,8 @@ describe('PopupShell', () => {
     expect(within(recommendation).getByText('Overdue')).toBeInTheDocument()
 
     const activeTrack = screen.getByRole('region', { name: 'LeetCode 75' })
-    expect(within(activeTrack).getByText('Due Mar 1, 2026')).toBeInTheDocument()
+    expect(within(activeTrack).getByText('59 days left')).toBeInTheDocument()
+    expect(within(activeTrack).queryByText('Due Mar 1, 2026')).toBeNull()
     expect(
       within(activeTrack).getByText('Arrays and Hashing'),
     ).toBeInTheDocument()
@@ -229,6 +230,33 @@ describe('PopupShell', () => {
     expect(screen.queryByText('Up Next')).toBeNull()
     expect(screen.queryByText('Two Sum')).toBeNull()
     expect(screen.queryByText('Arrays and Hashing')).toBeNull()
+    const freePractice = screen.getByRole('region', {
+      name: 'Track guidance disabled',
+    })
+    expect(within(freePractice).queryByText('59 days left')).toBeNull()
+    expect(within(freePractice).queryByText('Overdue')).toBeNull()
+    expect(
+      within(freePractice).queryByLabelText(
+        /Track progress .* percent complete/i,
+      ),
+    ).toBeNull()
+  })
+
+  it('renders overdue active-track target status without a full due date', () => {
+    render(
+      <PopupShell
+        controller={createController({
+          data: {
+            ...shellData,
+            generatedAt: '2026-03-02T00:00:00.000Z',
+          },
+        })}
+      />,
+    )
+
+    const activeTrack = screen.getByRole('region', { name: 'LeetCode 75' })
+    expect(within(activeTrack).getByText('Overdue')).toBeInTheDocument()
+    expect(within(activeTrack).queryByText('Due Mar 1, 2026')).toBeNull()
   })
 
   it('derives the study card from active-track state when settings mode is stale', () => {
