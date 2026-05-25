@@ -4,7 +4,9 @@ import {
   useMemo,
   useRef,
   useState,
+  type FocusEvent,
   type FormEvent,
+  type KeyboardEvent,
   type ReactNode,
 } from 'react'
 
@@ -207,6 +209,7 @@ function TrackFormFields({
       autoComplete="off"
       className="grid gap-5"
       noValidate
+      onKeyDown={handleFormKeyDown}
       onSubmit={(event) => {
         void handleSubmit(event)
       }}
@@ -358,30 +361,53 @@ function TrackProblemSearch({
 }) {
   const normalizedSearchQuery = searchQuery.trim()
   const hasSearchQuery = normalizedSearchQuery.length > 0
+  const [isSearchFocused, setSearchFocused] = useState(false)
   const selectedProblemSlugSet = new Set(
     groups.flatMap((group) => group.problemSlugs),
   )
-  const filteredProblemRows = hasSearchQuery
+  const shouldShowSuggestions = isSearchFocused || hasSearchQuery
+  const filteredProblemRows = shouldShowSuggestions
     ? problemRows
         .filter(
           (row) =>
             !selectedProblemSlugSet.has(row.problem.slug) &&
-            matchesProblemSearch(row, normalizedSearchQuery),
+            (!hasSearchQuery ||
+              matchesProblemSearch(row, normalizedSearchQuery)),
         )
-        .slice(0, 4)
+        .slice(0, 5)
     : []
+  const showSuggestionPanel =
+    shouldShowSuggestions && (filteredProblemRows.length > 0 || hasSearchQuery)
+
+  function handleBlur(event: FocusEvent<HTMLElement>) {
+    const nextTarget = event.relatedTarget
+
+    if (
+      nextTarget instanceof Node &&
+      event.currentTarget.contains(nextTarget)
+    ) {
+      return
+    }
+
+    setSearchFocused(false)
+  }
 
   return (
-    <section aria-label="Track problem search" className="relative z-20">
+    <section
+      aria-label="Track problem search"
+      className="relative z-20"
+      onBlur={handleBlur}
+    >
       <TrackTextField
         icon={<Search aria-hidden="true" />}
         label="Search Library problems"
         name="track-problem-search"
         onChange={setSearchQuery}
+        onFocus={() => setSearchFocused(true)}
         type="search"
         value={searchQuery}
       />
-      {hasSearchQuery ? (
+      {showSuggestionPanel ? (
         <div
           aria-label="Library problem suggestions"
           className="absolute left-0 right-0 top-full z-30 mt-2 max-h-56 overflow-y-auto rounded-[var(--cp-control-radius)] border border-border bg-popover p-2 text-popover-foreground shadow-lg"
@@ -403,6 +429,7 @@ function TrackProblemSearch({
                       type: 'add-problem',
                     })
                     setSearchQuery('')
+                    setSearchFocused(false)
                   }}
                   row={row}
                 />
@@ -791,7 +818,10 @@ function TrackTextField({
   invalid = false,
   label,
   name,
+  onBlur,
   onChange,
+  onFocus,
+  onKeyDown,
   required = false,
   type = 'text',
   value,
@@ -801,7 +831,10 @@ function TrackTextField({
   invalid?: boolean
   label: string
   name: string
+  onBlur?: ((event: FocusEvent<HTMLInputElement>) => void) | undefined
   onChange: (value: string) => void
+  onFocus?: ((event: FocusEvent<HTMLInputElement>) => void) | undefined
+  onKeyDown?: ((event: KeyboardEvent<HTMLInputElement>) => void) | undefined
   required?: boolean
   type?: 'date' | 'search' | 'text'
   value: string
@@ -820,7 +853,10 @@ function TrackTextField({
         autoComplete="off"
         className={cn(fieldClassName, icon && 'pl-9')}
         name={name}
+        onBlur={onBlur}
         onChange={(event) => onChange(event.target.value)}
+        onFocus={onFocus}
+        onKeyDown={onKeyDown}
         required={required}
         type={type}
         value={value}
@@ -962,6 +998,21 @@ function getFirstFieldError(fieldErrors: TrackFormFieldErrors) {
   }
 
   return Object.values(fieldErrors.groupTitles)[0] ?? null
+}
+
+function handleFormKeyDown(event: KeyboardEvent<HTMLFormElement>) {
+  if (event.key !== 'Enter') {
+    return
+  }
+
+  const target = event.target
+
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLSelectElement
+  ) {
+    event.preventDefault()
+  }
 }
 
 function getGroupDisplayTitle(group: TrackFormGroupState, index: number) {

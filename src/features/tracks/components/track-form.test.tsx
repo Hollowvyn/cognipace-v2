@@ -117,6 +117,25 @@ describe('TrackForm', () => {
     })
   })
 
+  it('does not submit the modal when Enter is pressed inside form fields', async () => {
+    const user = userEvent.setup()
+    mockTrackFormRuntime(createTrackDefaults())
+
+    renderTrackForm(
+      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
+    )
+
+    await user.type(await screen.findByLabelText('Title'), 'Interview Track')
+    await user.keyboard('{Enter}')
+    await user.click(screen.getByLabelText('Search Library problems'))
+    await user.keyboard('{Enter}')
+
+    expect(sendMessage).not.toHaveBeenCalledWith(
+      'tracks.createTrack',
+      expect.anything(),
+    )
+  })
+
   it('seeds create mode from selected Library rows and shows compact Group by', async () => {
     const user = userEvent.setup()
     mockTrackFormRuntime(createTrackDefaultsWithSelectionRows())
@@ -578,7 +597,7 @@ describe('TrackForm', () => {
     ).toBeEnabled()
   })
 
-  it('only shows up to four autocomplete results after searching', async () => {
+  it('shows up to five autocomplete results while searching or focused', async () => {
     const user = userEvent.setup()
     mockTrackFormRuntime(createAutocompleteResponse())
 
@@ -599,6 +618,18 @@ describe('TrackForm', () => {
     expect(
       screen.queryByRole('region', { name: 'Library problem suggestions' }),
     ).not.toBeInTheDocument()
+    expect(screen.queryByText('No matching Library problems.')).toBeNull()
+
+    await user.click(searchInput)
+
+    const defaultSuggestions = screen.getByRole('region', {
+      name: 'Library problem suggestions',
+    })
+    const defaultResults = within(defaultSuggestions).getByRole('list', {
+      name: 'Library problem results',
+    })
+
+    expect(within(defaultResults).getAllByRole('listitem')).toHaveLength(5)
     expect(screen.queryByText('No matching Library problems.')).toBeNull()
 
     await user.type(searchInput, 'two')
@@ -623,7 +654,7 @@ describe('TrackForm', () => {
     const resultRows = within(results).getAllByRole('listitem')
 
     expect(suggestions).toBeVisible()
-    expect(resultRows).toHaveLength(4)
+    expect(resultRows).toHaveLength(5)
     const binarySearchResult = within(results).getByRole('listitem', {
       name: 'Binary Search',
     })
@@ -636,6 +667,7 @@ describe('TrackForm', () => {
 
     expect(within(binarySearchResult).queryByText('Easy')).toBeNull()
     expect(addBinarySearchButton).toBeVisible()
+    expect(screen.getByText('Binary Tree Symmetry')).toBeVisible()
     expect(screen.queryByText('Binary Tree Path Sum')).toBeNull()
 
     await user.click(addBinarySearchButton)

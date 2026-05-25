@@ -11,6 +11,7 @@ import {
   type Updater,
 } from '@tanstack/react-table'
 
+import { Badge } from '@/components/ui/badge'
 import {
   ProblemDifficultyBadge,
   ProblemRowActionsBar,
@@ -185,9 +186,15 @@ function createTrackProblemColumns(): ColumnDef<TrackProblemRow>[] {
       ),
     },
     {
-      id: trackProblemColumnIds.status,
+      id: trackProblemColumnIds.trackCompletion,
+      accessorFn: (row) => row.membership.completedAt ?? undefined,
+      header: 'Completed',
+      cell: ({ row }) => <TrackCompletionBadge row={row.original} />,
+    },
+    {
+      id: trackProblemColumnIds.review,
       accessorFn: (row) => row.status,
-      header: 'Status',
+      header: 'Review',
       cell: ({ row }) => <ProblemStatusBadge status={row.original.status} />,
     },
     {
@@ -252,6 +259,24 @@ function ProblemTitleCell({ row }: { row: TrackProblemRow }) {
   )
 }
 
+function TrackCompletionBadge({ row }: { row: TrackProblemRow }) {
+  const isCompleted = row.membership.completedAt !== null
+
+  return (
+    <Badge
+      className={
+        isCompleted
+          ? undefined
+          : 'border-rose-300/45 bg-rose-500/15 text-rose-200'
+      }
+      data-cp-track-completed={isCompleted ? 'true' : 'false'}
+      tone={isCompleted ? 'success' : 'neutral'}
+    >
+      {isCompleted ? 'Yes' : 'No'}
+    </Badge>
+  )
+}
+
 function DisclosureIcon({ icon: Icon }: { icon: LucideIcon }) {
   return <Icon aria-hidden="true" className="size-4" />
 }
@@ -312,5 +337,6 @@ const trackProblemColumnIds = {
   nextReview: 'nextReview',
   order: 'order',
   problem: 'problem',
-  status: 'status',
+  review: 'review',
+  trackCompletion: 'trackCompletion',
 } as const

@@ -1,6 +1,12 @@
-import { CalendarClock, ListChecks } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import {
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  ListChecks,
+} from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
+import { IconButton } from '@/components/ui/icon-button'
 import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
 import { createLeetCodeProblemUrl } from '@/lib/leetcode'
@@ -271,6 +277,38 @@ function ActiveTrackGroups({
 }) {
   const setActiveGroup = useSetActiveGroup()
   const [error, setError] = useState<string | null>(null)
+  const tabListRef = useRef<HTMLDivElement | null>(null)
+  const [scrollState, setScrollState] = useState({
+    canScrollLeft: false,
+    canScrollRight: false,
+    hasOverflow: false,
+  })
+
+  const updateScrollState = useCallback(() => {
+    const tabList = tabListRef.current
+
+    if (!tabList) {
+      return
+    }
+
+    const maxScrollLeft = Math.max(0, tabList.scrollWidth - tabList.clientWidth)
+
+    setScrollState({
+      canScrollLeft: tabList.scrollLeft > 1,
+      canScrollRight: tabList.scrollLeft < maxScrollLeft - 1,
+      hasOverflow: maxScrollLeft > 1,
+    })
+  }, [])
+
+  useEffect(() => {
+    updateScrollState()
+
+    window.addEventListener('resize', updateScrollState)
+
+    return () => {
+      window.removeEventListener('resize', updateScrollState)
+    }
+  }, [groups.length, updateScrollState])
 
   if (groups.length <= 1) {
     return null
@@ -305,50 +343,129 @@ function ActiveTrackGroups({
           {error}
         </InlineStatus>
       ) : null}
-      <div
-        aria-label="Track groups"
-        aria-orientation="horizontal"
-        className="flex min-w-0 flex-nowrap gap-6 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        role="tablist"
-      >
-        {groups.map((group) => {
-          const isActive = group.id === activeGroupId
-          const progress = groupProgressById.get(group.id) ?? emptyGroupProgress
+      <div className="relative min-w-0">
+        {scrollState.canScrollLeft ? (
+          <TrackGroupScrollButton
+            direction="left"
+            onClick={() => {
+              scrollTrackGroups(tabListRef.current, 'left')
+            }}
+          />
+        ) : null}
+        {scrollState.canScrollRight ? (
+          <TrackGroupScrollButton
+            direction="right"
+            onClick={() => {
+              scrollTrackGroups(tabListRef.current, 'right')
+            }}
+          />
+        ) : null}
+        <div
+          aria-label="Track groups"
+          aria-orientation="horizontal"
+          className={cn(
+            'flex min-w-0 flex-nowrap gap-6 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+            scrollState.hasOverflow && 'px-9',
+          )}
+          onScroll={updateScrollState}
+          ref={tabListRef}
+          role="tablist"
+        >
+          {groups.map((group) => {
+            const isActive = group.id === activeGroupId
+            const progress =
+              groupProgressById.get(group.id) ?? emptyGroupProgress
 
-          return (
-            <button
-              aria-label={`${group.title}, ${progress.completedCount} of ${progress.totalCount} completed`}
-              aria-selected={isActive}
-              className={cn(
-                'inline-flex min-h-12 min-w-0 max-w-[min(18rem,72vw)] shrink-0 items-center gap-2 border-b-2 px-0 py-3 text-[length:var(--cp-badge-font-size)] font-bold uppercase leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                isActive
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
-              )}
-              disabled={setActiveGroup.isPending}
-              key={group.id}
-              onClick={() => {
-                void selectGroup(group.id)
-              }}
-              role="tab"
-              type="button"
-            >
-              <span className="min-w-0 max-w-full truncate">{group.title}</span>
-              <span
-                aria-hidden="true"
+            return (
+              <button
+                aria-label={`${group.title}, ${progress.completedCount} of ${progress.totalCount} completed`}
+                aria-selected={isActive}
                 className={cn(
-                  'shrink-0 text-muted-foreground tabular-nums',
-                  isActive && 'text-primary/80',
+                  'inline-flex min-h-12 min-w-0 max-w-[min(18rem,72vw)] shrink-0 items-center gap-2 border-b-2 px-0 py-3 text-[length:var(--cp-badge-font-size)] font-bold uppercase leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                  isActive
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
                 )}
+                disabled={setActiveGroup.isPending}
+                key={group.id}
+                onClick={() => {
+                  void selectGroup(group.id)
+                }}
+                role="tab"
+                type="button"
               >
-                · {progress.completedCount}/{progress.totalCount}
-              </span>
-            </button>
-          )
-        })}
+                <span className="min-w-0 max-w-full truncate">
+                  {group.title}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'shrink-0 text-muted-foreground tabular-nums',
+                    isActive && 'text-primary/80',
+                  )}
+                >
+                  · {progress.completedCount}/{progress.totalCount}
+                </span>
+              </button>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
+}
+
+function TrackGroupScrollButton({
+  direction,
+  onClick,
+}: {
+  direction: 'left' | 'right'
+  onClick: () => void
+}) {
+  const isLeft = direction === 'left'
+
+  return (
+    <span
+      className={cn(
+        'pointer-events-none absolute inset-y-0 z-10 flex w-14 items-center',
+        isLeft
+          ? 'left-0 justify-start bg-gradient-to-r from-card via-card/95 to-transparent'
+          : 'right-0 justify-end bg-gradient-to-l from-card via-card/95 to-transparent',
+      )}
+    >
+      <IconButton
+        className="pointer-events-auto size-8 border-border bg-card/95 text-muted-foreground shadow-surface hover:text-foreground"
+        label={`Scroll track groups ${direction}`}
+        onClick={onClick}
+        size="sm"
+        tooltip={`Scroll ${direction}`}
+        type="button"
+        variant="outline"
+      >
+        {isLeft ? (
+          <ChevronLeft aria-hidden="true" />
+        ) : (
+          <ChevronRight aria-hidden="true" />
+        )}
+      </IconButton>
+    </span>
+  )
+}
+
+function scrollTrackGroups(
+  tabList: HTMLDivElement | null,
+  direction: 'left' | 'right',
+) {
+  if (!tabList) {
+    return
+  }
+
+  tabList.scrollBy({
+    behavior: 'smooth',
+    left:
+      (direction === 'left' ? -1 : 1) *
+      Math.max(180, tabList.clientWidth * 0.72),
+  })
 }
 
 type TrackGroupProgress = {

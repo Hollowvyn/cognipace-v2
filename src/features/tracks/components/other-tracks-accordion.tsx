@@ -1,5 +1,5 @@
 import { CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { IconButton } from '@/components/ui/icon-button'
@@ -26,9 +26,20 @@ export function OtherTracksAccordion({
 }) {
   const [isExpandedByUser, setIsExpandedByUser] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const previousTrackCountRef = useRef(tracks.length)
   const setActiveTrack = useSetActiveTrack()
   const isForcedOpen = activeTrackId === null
   const isOpen = isForcedOpen || isExpandedByUser
+  const canToggle = tracks.length > 0 && !isForcedOpen
+
+  useEffect(() => {
+    const previousTrackCount = previousTrackCountRef.current
+    previousTrackCountRef.current = tracks.length
+
+    if (tracks.length > previousTrackCount) {
+      setIsExpandedByUser(true)
+    }
+  }, [tracks.length])
 
   if (tracks.length === 0 && !newTrackAction) {
     return null
@@ -56,7 +67,19 @@ export function OtherTracksAccordion({
       aria-label="All tracks"
       className="rounded-[var(--cp-panel-radius)] border border-border bg-card text-card-foreground shadow-surface"
     >
-      <div className="grid min-w-0 gap-3 px-4 py-3 md:flex md:items-center md:justify-between md:px-5">
+      <div
+        className={cn(
+          'grid min-w-0 gap-3 px-4 py-3 transition-colors md:flex md:items-center md:justify-between md:px-5',
+          canToggle && 'cursor-pointer hover:bg-muted/30',
+        )}
+        onClick={() => {
+          if (!canToggle) {
+            return
+          }
+
+          setIsExpandedByUser((current) => !current)
+        }}
+      >
         <span className="min-w-0">
           <span className="block text-[length:var(--cp-copy-font-size)] font-bold text-foreground">
             All tracks
@@ -70,6 +93,7 @@ export function OtherTracksAccordion({
         <div
           aria-label="All tracks actions"
           className="flex shrink-0 flex-wrap items-center gap-2 md:justify-end"
+          onClick={(event) => event.stopPropagation()}
         >
           {newTrackAction}
           {tracks.length > 0 ? (
