@@ -14,7 +14,10 @@ import type {
   ProblemLibraryOptions,
   ProblemLibraryRow,
 } from '../../api/problems-contracts'
-import { ProblemBulkActionBar } from './problem-bulk-action-bar'
+import {
+  ProblemBulkActionBar,
+  type RenderSelectedRowsAction,
+} from './problem-bulk-action-bar'
 import { problemLibraryColumnIds } from './problem-library-filtering'
 import { ProblemLibraryRowDetails } from './problem-library-row-details'
 import type { RenderProblemEditAction } from './problem-row-actions'
@@ -22,10 +25,12 @@ import type { RenderProblemEditAction } from './problem-row-actions'
 export function ProblemLibraryTable({
   options,
   renderEditProblemAction,
+  renderSelectedRowsAction,
   table,
 }: {
   options: ProblemLibraryOptions
   renderEditProblemAction: RenderProblemEditAction
+  renderSelectedRowsAction?: RenderSelectedRowsAction | undefined
   table: Table<ProblemLibraryRow>
 }) {
   const selectedRows = table
@@ -64,6 +69,7 @@ export function ProblemLibraryTable({
           <ProblemBulkActionBar
             onClearSelection={() => table.resetRowSelection()}
             options={options}
+            renderSelectedRowsAction={renderSelectedRowsAction}
             selectedRows={selectedRows}
           />
         }
