@@ -1,8 +1,8 @@
 export type { ActiveTrack, Track, TrackGroup, TrackProgress } from './domain'
 export {
-  deriveTrackTargetStatus,
   getDateInputMin,
   getTodayDateInputValue,
+  getTrackTargetStatus,
   isPastDateInputValue,
   toDateInputValue,
   type TrackTargetProgress,

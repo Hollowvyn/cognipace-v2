@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  deriveTrackTargetStatus,
   getDateInputMin,
   getTodayDateInputValue,
+  getTrackTargetStatus,
   isPastDateInputValue,
   toDateInputValue,
 } from './track-target-status'
@@ -24,55 +24,60 @@ function progress(
   }
 }
 
-describe('deriveTrackTargetStatus', () => {
+describe('getTrackTargetStatus', () => {
   it('returns none when there is no target date', () => {
     expect(
-      deriveTrackTargetStatus({
+      getTrackTargetStatus({
         dueAt: null,
         generatedAt,
         progress: progress(),
       }),
-    ).toMatchObject({
-      compactDateLabel: 'No target',
-      dateLabel: 'No target date',
+    ).toEqual({
+      catalogLabel: null,
+      compactDateLabel: null,
+      dateLabel: null,
       daysDelta: null,
+      detailLabel: null,
       hasTarget: false,
       kind: 'none',
+      popupLabel: null,
+      statusLabel: null,
       tone: 'neutral',
     })
   })
 
   it('returns upcoming when the target date is in the future', () => {
     expect(
-      deriveTrackTargetStatus({
+      getTrackTargetStatus({
         dueAt: '2026-06-15T00:00:00.000Z',
         generatedAt,
         progress: progress(),
       }),
     ).toEqual({
-      catalogLabel: 'Due Jun 15',
+      catalogLabel: 'Target Jun 15 · 21 days left',
       compactDateLabel: 'Jun 15',
       dateLabel: 'Jun 15, 2026',
       daysDelta: 21,
-      detailLabel: 'Target date is Jun 15, 2026.',
+      detailLabel: null,
       hasTarget: true,
       kind: 'upcoming',
       popupLabel: '21 days left',
       statusLabel: '21 days left',
-      tone: 'neutral',
+      tone: 'success',
     })
   })
 
   it('returns due today when the target date matches the generated date', () => {
     expect(
-      deriveTrackTargetStatus({
+      getTrackTargetStatus({
         dueAt: '2026-05-25T00:00:00.000Z',
         generatedAt,
         progress: progress(),
       }),
     ).toMatchObject({
+      catalogLabel: 'Target May 25 · Due today',
       daysDelta: 0,
-      detailLabel: 'Target date is today.',
+      detailLabel: null,
       kind: 'due-today',
       popupLabel: 'Due today',
       statusLabel: 'Due today',
@@ -82,31 +87,33 @@ describe('deriveTrackTargetStatus', () => {
 
   it('returns overdue when the target date is in the past', () => {
     expect(
-      deriveTrackTargetStatus({
+      getTrackTargetStatus({
         dueAt: '2026-05-21T00:00:00.000Z',
         generatedAt,
         progress: progress(),
       }),
     ).toMatchObject({
+      catalogLabel: 'Target May 21 · Overdue · 4 days late',
       daysDelta: -4,
-      detailLabel: 'Target date was 4 days ago.',
+      detailLabel: '4 days late',
       kind: 'overdue',
-      popupLabel: '4 days late',
-      statusLabel: '4 days late',
+      popupLabel: 'Overdue',
+      statusLabel: 'Overdue',
       tone: 'danger',
     })
   })
 
   it('returns complete for a finished track even when the target date is overdue', () => {
     expect(
-      deriveTrackTargetStatus({
+      getTrackTargetStatus({
         dueAt: '2026-05-21T00:00:00.000Z',
         generatedAt,
         progress: progress({ completedCount: 9, percent: 100, totalCount: 10 }),
       }),
     ).toMatchObject({
+      catalogLabel: 'Target May 21 · Complete',
       daysDelta: -4,
-      detailLabel: 'Track completed by the target date.',
+      detailLabel: null,
       kind: 'complete',
       popupLabel: 'Complete',
       statusLabel: 'Complete',
@@ -116,21 +123,21 @@ describe('deriveTrackTargetStatus', () => {
 
   it('does not treat a zero-total track as complete', () => {
     expect(
-      deriveTrackTargetStatus({
+      getTrackTargetStatus({
         dueAt: '2026-05-21T00:00:00.000Z',
         generatedAt,
         progress: progress({ completedCount: 0, percent: 0, totalCount: 0 }),
       }),
     ).toMatchObject({
       kind: 'overdue',
-      statusLabel: '4 days late',
+      statusLabel: 'Overdue',
       tone: 'danger',
     })
   })
 
   it('compares UTC-midnight persisted dates by date key instead of timestamp', () => {
     expect(
-      deriveTrackTargetStatus({
+      getTrackTargetStatus({
         dueAt: '2026-05-25T00:00:00.000Z',
         generatedAt: '2026-05-25T23:59:59.000Z',
         progress: progress(),
@@ -153,11 +160,11 @@ describe('date input helpers', () => {
     expect(isPastDateInputValue('2026-05-26', generatedAt)).toBe(false)
   })
 
-  it('allows an existing saved past date to remain the date input minimum', () => {
+  it('leaves the date input minimum unset for an unchanged saved past date', () => {
     expect(getDateInputMin('', null, generatedAt)).toBe('2026-05-25')
-    expect(getDateInputMin('2026-05-21', '2026-05-21', generatedAt)).toBe(
-      '2026-05-21',
-    )
+    expect(
+      getDateInputMin('2026-05-21', '2026-05-21', generatedAt),
+    ).toBeUndefined()
     expect(getDateInputMin('2026-05-22', '2026-05-21', generatedAt)).toBe(
       '2026-05-25',
     )

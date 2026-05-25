@@ -22,12 +22,12 @@ export interface TrackTargetStatusInput {
 export interface TrackTargetStatus {
   hasTarget: boolean
   kind: TrackTargetStatusKind
-  dateLabel: string
-  compactDateLabel: string
-  statusLabel: string
-  detailLabel: string
-  catalogLabel: string
-  popupLabel: string
+  dateLabel: string | null
+  compactDateLabel: string | null
+  statusLabel: string | null
+  detailLabel: string | null
+  catalogLabel: string | null
+  popupLabel: string | null
   daysDelta: number | null
   tone: TrackTargetStatusTone
 }
@@ -49,7 +49,7 @@ const monthLabels = [
   'Dec',
 ]
 
-export function deriveTrackTargetStatus({
+export function getTrackTargetStatus({
   dueAt,
   generatedAt,
   progress,
@@ -58,15 +58,15 @@ export function deriveTrackTargetStatus({
 
   if (!dueDateKey) {
     return {
-      catalogLabel: 'No target date',
-      compactDateLabel: 'No target',
-      dateLabel: 'No target date',
+      catalogLabel: null,
+      compactDateLabel: null,
+      dateLabel: null,
       daysDelta: null,
-      detailLabel: 'Set a target date to track pacing.',
+      detailLabel: null,
       hasTarget: false,
       kind: 'none',
-      popupLabel: 'No target date',
-      statusLabel: 'No target',
+      popupLabel: null,
+      statusLabel: null,
       tone: 'neutral',
     }
   }
@@ -78,11 +78,11 @@ export function deriveTrackTargetStatus({
 
   if (isComplete(progress)) {
     return {
-      catalogLabel: 'Complete',
+      catalogLabel: `Target ${compactDateLabel} · Complete`,
       compactDateLabel,
       dateLabel,
       daysDelta,
-      detailLabel: 'Track completed by the target date.',
+      detailLabel: null,
       hasTarget: true,
       kind: 'complete',
       popupLabel: 'Complete',
@@ -93,11 +93,11 @@ export function deriveTrackTargetStatus({
 
   if (daysDelta === 0) {
     return {
-      catalogLabel: 'Due today',
+      catalogLabel: `Target ${compactDateLabel} · Due today`,
       compactDateLabel,
       dateLabel,
       daysDelta,
-      detailLabel: 'Target date is today.',
+      detailLabel: null,
       hasTarget: true,
       kind: 'due-today',
       popupLabel: 'Due today',
@@ -108,18 +108,18 @@ export function deriveTrackTargetStatus({
 
   if (daysDelta < 0) {
     const daysLate = Math.abs(daysDelta)
-    const label = `${daysLate} ${pluralizeDay(daysLate)} late`
+    const detailLabel = `${daysLate} ${pluralizeDay(daysLate)} late`
 
     return {
-      catalogLabel: label,
+      catalogLabel: `Target ${compactDateLabel} · Overdue · ${detailLabel}`,
       compactDateLabel,
       dateLabel,
       daysDelta,
-      detailLabel: `Target date was ${daysLate} ${pluralizeDay(daysLate)} ago.`,
+      detailLabel,
       hasTarget: true,
       kind: 'overdue',
-      popupLabel: label,
-      statusLabel: label,
+      popupLabel: 'Overdue',
+      statusLabel: 'Overdue',
       tone: 'danger',
     }
   }
@@ -127,16 +127,16 @@ export function deriveTrackTargetStatus({
   const label = `${daysDelta} ${pluralizeDay(daysDelta)} left`
 
   return {
-    catalogLabel: `Due ${compactDateLabel}`,
+    catalogLabel: `Target ${compactDateLabel} · ${label}`,
     compactDateLabel,
     dateLabel,
     daysDelta,
-    detailLabel: `Target date is ${dateLabel}.`,
+    detailLabel: null,
     hasTarget: true,
     kind: 'upcoming',
     popupLabel: label,
     statusLabel: label,
-    tone: 'neutral',
+    tone: 'success',
   }
 }
 
@@ -161,7 +161,7 @@ export function getDateInputMin(
   currentValue: Date | string | null | undefined,
   initialValue: Date | string | null | undefined,
   now: Date | string = new Date(),
-): string {
+): string | undefined {
   const currentDateKey = toDateInputValue(currentValue)
   const initialDateKey = toDateInputValue(initialValue)
 
@@ -171,7 +171,7 @@ export function getDateInputMin(
     currentDateKey === initialDateKey &&
     isPastDateInputValue(initialDateKey, now)
   ) {
-    return initialDateKey
+    return undefined
   }
 
   return getTodayDateInputValue(now)
