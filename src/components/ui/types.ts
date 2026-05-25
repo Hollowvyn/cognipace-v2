@@ -8,6 +8,7 @@ export type Tone =
   | 'success'
   | 'warning'
   | 'danger'
+  | 'pink'
   | 'leetcode-easy'
   | 'leetcode-medium'
   | 'leetcode-hard'

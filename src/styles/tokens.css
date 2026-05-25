@@ -68,6 +68,9 @@
     --cp-tone-danger-bg: #fff0ee;
     --cp-tone-danger-fg: #b42318;
     --cp-tone-danger-border: #f3b8b1;
+    --cp-tone-pink-bg: #ffe8f0;
+    --cp-tone-pink-fg: #8a1244;
+    --cp-tone-pink-border: #f7adc9;
     --cp-tone-leetcode-easy-bg: #e5f8f1;
     --cp-tone-leetcode-easy-fg: #007a55;
     --cp-tone-leetcode-easy-border: #a9e6d0;
@@ -153,6 +156,9 @@
     --cp-tone-danger-bg: rgb(255 180 171 / 15%);
     --cp-tone-danger-fg: #ffb4ab;
     --cp-tone-danger-border: rgb(255 180 171 / 28%);
+    --cp-tone-pink-bg: rgb(255 143 180 / 18%);
+    --cp-tone-pink-fg: #ffb1ca;
+    --cp-tone-pink-border: rgb(255 177 202 / 34%);
     --cp-tone-leetcode-easy-bg: rgb(0 184 163 / 16%);
     --cp-tone-leetcode-easy-fg: #5ee6d0;
     --cp-tone-leetcode-easy-border: rgb(94 230 208 / 30%);
@@ -217,6 +223,9 @@
       --cp-tone-danger-bg: rgb(255 180 171 / 15%);
       --cp-tone-danger-fg: #ffb4ab;
       --cp-tone-danger-border: rgb(255 180 171 / 28%);
+      --cp-tone-pink-bg: rgb(255 143 180 / 18%);
+      --cp-tone-pink-fg: #ffb1ca;
+      --cp-tone-pink-border: rgb(255 177 202 / 34%);
       --cp-tone-leetcode-easy-bg: rgb(0 184 163 / 16%);
       --cp-tone-leetcode-easy-fg: #5ee6d0;
       --cp-tone-leetcode-easy-border: rgb(94 230 208 / 30%);
@@ -275,6 +284,12 @@
     --cp-tone-bg: var(--cp-tone-danger-bg);
     --cp-tone-fg: var(--cp-tone-danger-fg);
     --cp-tone-border: var(--cp-tone-danger-border);
+  }
+
+  [data-cp-tone='pink'] {
+    --cp-tone-bg: var(--cp-tone-pink-bg);
+    --cp-tone-fg: var(--cp-tone-pink-fg);
+    --cp-tone-border: var(--cp-tone-pink-border);
   }
 
   [data-cp-tone='leetcode-easy'] {
