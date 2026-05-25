@@ -43,3 +43,12 @@ For library, framework, SDK, API, CLI, or cloud-service documentation requests, 
 - For docs-only changes, run Prettier on the touched Markdown files.
 - For substantial feature or runtime code, run focused tests first, then `npm run check`.
 - For database changes, run the relevant Drizzle/database checks.
+
+## Testing Reduction Rules
+
+- TDD is welcome during development.
+- Before finishing, prune temporary TDD tests that do not protect a lasting contract.
+- Do not add tests for behavior already protected by TypeScript, Zod at a stronger boundary, or a parent workflow.
+- Prefer typed fixtures, local helpers, table-driven Vitest tests, and high-signal workflows.
+- Avoid render-only, CSS, duplicated parent/child, and generic table-mechanic tests.
+- Large test files are a design smell. Simplify, split by real ownership boundary, move behavior down, or delete duplication instead of adding explanatory comments.

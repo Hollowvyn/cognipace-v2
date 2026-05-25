@@ -151,19 +151,39 @@ Write rules:
 
 ## Testing
 
-Use Vitest and React Testing Library. Keep tests behavior-focused and local to
-the code they protect.
+Use Vitest and React Testing Library. TDD is encouraged while developing: write
+narrow tests to discover behavior, reproduce bugs, or drive implementation.
+Before pushing, prune those tests like production code. Keep only tests that
+protect a lasting contract, collapse duplicates, and delete scaffolding that
+only helped implementation.
 
-- Unit test pure domain logic, reducers, serializers, parsing, scheduling, and
-  validation.
-- Component test visible behavior and accessibility semantics with Testing
-  Library queries.
-- Hook test returned state, actions, async transitions, and runtime calls.
-- Integration test DB migrations, repositories, runtime handlers, and workflows
-  crossing feature boundaries.
-- Use `satisfies` for fixtures when validating app contracts.
-- Avoid snapshots and CSS assertions unless they protect a meaningful contract.
-- Prefer one high-signal integration test over duplicated low-signal unit tests.
+Keep tests when they protect one of these contracts:
+
+- user-critical workflows across a product surface, such as saving settings,
+  restoring a backup, managing Library rows, tracking progress, or saving
+  overlay reviews
+- domain rules TypeScript cannot prove, such as scheduling, assessment, queue
+  ordering, target-date rules, track completion, and form-state rules
+- runtime/data boundaries, such as Zod contracts, Chrome sender authorization,
+  DB repositories, migrations, cache invalidation, serialization, backup
+  import/restore safety, and LeetCode DOM parsing
+- bug regressions with a clear failure story
+
+Delete or collapse tests that only verify render-only behavior, generic
+loading/empty/error boilerplate, CSS classes, button presence already covered by
+a workflow, component internals, table mechanics owned elsewhere, parent/child
+duplicates, or static shape TypeScript can prove.
+
+Prefer one high-signal workflow test plus critical destructive/error cases. Most
+tests should assert one to three meaningful outcomes. If many similar domain
+cases remain, use `it.each`, `test.each`, `describe.each`, or `test.for` when
+the table makes the behavior clearer. Use `satisfies`, discriminated unions,
+`as const`, const type parameters, and `never` exhaustiveness checks to remove
+runtime tests for static guarantees.
+
+Use typed fixtures and local helpers first. Promote shared helpers only after
+repeated setup appears in multiple suites and the helper keeps the test easier
+to read.
 
 Run before handing off substantial changes:
 

@@ -14,12 +14,14 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 - [`specs/2026-05-24-docs-architecture-design.md`](./specs/2026-05-24-docs-architecture-design.md): approved design for the compact docs architecture. Current for this docs pass.
 - [`specs/2026-05-24-tracks-phase-3-design.md`](./specs/2026-05-24-tracks-phase-3-design.md): Tracks phase 3 design artifact. Use as implementation history; verify current behavior against `docs/product.md` and source code.
+- [`specs/2026-05-25-testing-system-reduction-design.md`](./specs/2026-05-25-testing-system-reduction-design.md): approved design for aggressively reducing the test suite while preserving high-value contracts.
 
 ## Plans
 
 - [`plans/2026-05-24-docs-architecture.md`](./plans/2026-05-24-docs-architecture.md): implementation plan for this docs pass. Current while the docs pass is in progress.
 - [`plans/2026-05-24-tracks-phase-3.md`](./plans/2026-05-24-tracks-phase-3.md): Tracks phase 3 implementation plan. Historical once the feature has landed.
 - [`plans/2026-05-23-problems-mvp.md`](./plans/2026-05-23-problems-mvp.md): Problems MVP implementation plan. Historical once the feature has landed.
+- [`plans/2026-05-25-testing-system-reduction.md`](./plans/2026-05-25-testing-system-reduction.md): implementation plan for the broad testing reduction pass.
 
 ## Reading Guidance
 

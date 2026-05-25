@@ -216,3 +216,21 @@ Full verification:
 npm run check
 npm run format
 ```
+
+## Contributor Test Selection
+
+Keep the committed suite lean. TDD can use extra temporary tests during
+development, but before pushing, delete or collapse tests that do not protect a
+lasting contract.
+
+Use focused validation by change type:
+
+- docs-only: run Prettier on changed Markdown files
+- pruned test suites: run the affected focused tests
+- runtime, database, or contract changes: run the focused boundary tests for
+  that layer
+- broad deletion pass: run `npm run check` before handoff
+
+Do not preserve tests for coverage percentages alone. Prefer domain, runtime,
+repository, and user-critical workflow coverage over repeated component
+assertions.
