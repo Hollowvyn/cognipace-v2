@@ -9,7 +9,8 @@ import {
 describe('library selection track draft', () => {
   it('stores and reads selected problem slugs by draft id', () => {
     const storage = new MemoryStorage()
-    const draft = createLibrarySelectionTrackDraft(['two-sum', 'two-sum', 'binary-search'], {
+    const problemSlugs = ['two-sum', 'two-sum', 'binary-search'] as const
+    const draft = createLibrarySelectionTrackDraft(problemSlugs, {
       id: 'draft-1',
       now: new Date('2026-05-24T12:00:00.000Z'),
       storage,
@@ -39,6 +40,18 @@ describe('library selection track draft', () => {
     expect(readLibrarySelectionTrackDraft('bad-json', { storage })).toBeNull()
 
     storage.setItem(
+      'cognipace:track-draft:wrong-shape',
+      JSON.stringify({
+        id: 'wrong-shape',
+        source: 'library-selection',
+        problemSlugs: 'two-sum',
+        createdAt: '2026-05-24T12:00:00.000Z',
+      }),
+    )
+    expect(readLibrarySelectionTrackDraft('wrong-shape', { storage })).toBeNull()
+    expect(storage.getItem('cognipace:track-draft:wrong-shape')).toBeNull()
+
+    storage.setItem(
       'cognipace:track-draft:empty',
       JSON.stringify({
         id: 'empty',
@@ -48,6 +61,18 @@ describe('library selection track draft', () => {
       }),
     )
     expect(readLibrarySelectionTrackDraft('empty', { storage })).toBeNull()
+
+    storage.setItem(
+      'cognipace:track-draft:invalid-created-at',
+      JSON.stringify({
+        id: 'invalid-created-at',
+        source: 'library-selection',
+        problemSlugs: ['two-sum'],
+        createdAt: 'not-a-date',
+      }),
+    )
+    expect(readLibrarySelectionTrackDraft('invalid-created-at', { storage })).toBeNull()
+    expect(storage.getItem('cognipace:track-draft:invalid-created-at')).toBeNull()
 
     const expired = createLibrarySelectionTrackDraft(['two-sum'], {
       id: 'expired',

@@ -24,7 +24,7 @@ interface LibrarySelectionTrackDraftStorageOptions {
 }
 
 export function createLibrarySelectionTrackDraft(
-  problemSlugs: string[],
+  problemSlugs: readonly string[],
   options: LibrarySelectionTrackDraftCreateOptions = {},
 ): LibrarySelectionTrackDraft {
   const now = options.now ?? new Date()
@@ -97,7 +97,7 @@ function createDraftId() {
   return globalThis.crypto?.randomUUID?.() ?? `draft-${Date.now()}`
 }
 
-function dedupeProblemSlugs(problemSlugs: string[]) {
+function dedupeProblemSlugs(problemSlugs: readonly string[]) {
   return [...new Set(problemSlugs.filter((slug) => slug.length > 0))]
 }
 
