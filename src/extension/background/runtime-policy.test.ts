@@ -75,6 +75,22 @@ describe('runtime-policy', () => {
     ).toBe('dashboard')
   })
 
+  it('does not classify tab-backed web dashboard paths as extension pages', () => {
+    const sender = {
+      tab: { id: 7 },
+      url: 'https://leetcode.com/problems/dashboard.html',
+    }
+
+    expect(getMessageSenderSurface(sender)).toBe('content-script')
+    expect(() =>
+      assertCanSenderCallExtensionMethod(
+        'backup.resetLocalData',
+        'dashboard',
+        sender,
+      ),
+    ).toThrow(/cannot claim/)
+  })
+
   it('rejects content scripts claiming privileged extension surfaces', () => {
     expect(() =>
       assertCanSenderCallExtensionMethod('settings.updateSettings', 'popup', {

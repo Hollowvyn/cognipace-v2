@@ -89,7 +89,13 @@ export function getMessageSenderSurface(
 }
 
 function getExtensionPageSurface(value: string): ExtensionSurface | null {
-  const senderPath = readUrlPathname(value)
+  const senderUrl = readUrl(value)
+
+  if (senderUrl?.protocol !== 'chrome-extension:') {
+    return null
+  }
+
+  const senderPath = senderUrl.pathname
 
   if (senderPath.endsWith('/popup.html')) {
     return 'popup'
@@ -138,10 +144,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-function readUrlPathname(value: string) {
+function readUrl(value: string) {
   try {
-    return new URL(value).pathname
+    return new URL(value)
   } catch {
-    return ''
+    return null
   }
 }
