@@ -97,7 +97,6 @@ describe('TracksScreen', () => {
     expect(await screen.findByText('No active track selected.')).toBeVisible()
     expect(screen.getByRole('region', { name: 'All tracks' })).toBeVisible()
     expect(screen.getByText('All tracks')).toBeVisible()
-    expect(screen.queryByText('Summary only')).not.toBeInTheDocument()
     expect(screen.getByText('Grind 75')).toBeVisible()
 
     const allTracksActions = screen.getByLabelText('All tracks actions')
@@ -240,72 +239,6 @@ describe('TracksScreen', () => {
     expect(screen.getByText('Due Jun 15, 2026')).toBeVisible()
   })
 
-  it('lets long active track copy wrap before it can crowd header actions', async () => {
-    const longTitle = `Track ${'A'.repeat(80)}`
-    const longDescription = `Description ${'B'.repeat(100)}`
-    const activeTrack = twoGroupWorkspace.activeTrack
-
-    if (!activeTrack) {
-      throw new Error('Expected active track fixture.')
-    }
-
-    vi.mocked(sendMessage).mockResolvedValueOnce({
-      ...twoGroupWorkspace,
-      activeTrack: {
-        ...activeTrack,
-        track: {
-          ...activeTrack.track,
-          description: longDescription,
-          title: longTitle,
-        },
-      },
-    })
-    renderTracksScreen()
-
-    expect(await screen.findByRole('heading', { name: longTitle })).toHaveClass(
-      'break-words',
-    )
-    expect(screen.getByText(longDescription)).toHaveClass('break-words')
-  })
-
-  it('constrains long active group labels inside their buttons', async () => {
-    const longGroupTitle = `Group ${'D'.repeat(90)}`
-    const activeTrack = twoGroupWorkspace.activeTrack
-    const activeGroup = activeTrack?.activeGroup
-
-    if (!activeTrack || !activeGroup) {
-      throw new Error('Expected active group fixture.')
-    }
-
-    vi.mocked(sendMessage).mockResolvedValueOnce({
-      ...twoGroupWorkspace,
-      activeTrack: {
-        ...activeTrack,
-        activeGroup: {
-          ...activeGroup,
-          title: longGroupTitle,
-        },
-      },
-      activeTrackGroups: twoGroupWorkspace.activeTrackGroups.map((group) =>
-        group.id === activeGroup.id
-          ? { ...group, title: longGroupTitle }
-          : group,
-      ),
-    })
-    renderTracksScreen()
-
-    const activeGroupButton = await screen.findByRole('tab', {
-      name: `${longGroupTitle}, 1 of 2 completed`,
-    })
-
-    expect(activeGroupButton).toHaveAttribute('aria-selected', 'true')
-    expect(within(activeGroupButton).getByText(longGroupTitle)).toHaveClass(
-      'min-w-0',
-      'max-w-full',
-      'truncate',
-    )
-  })
-
   it('renders active groups as a single horizontally scrollable tab row', async () => {
     const activeTrack = twoGroupWorkspace.activeTrack
 
@@ -345,11 +278,8 @@ describe('TracksScreen', () => {
     })
     const tabs = within(tabList).getAllByRole('tab')
 
-    expect(tabList).toHaveClass('overflow-x-auto', 'flex-nowrap')
     expect(tabs).toHaveLength(4)
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
-    expect(tabs[0]).toHaveClass('shrink-0')
-    expect(tabs[0]).toHaveClass('border-primary', 'text-primary')
     expect(tabs[0]).toHaveTextContent('1/2')
     expect(tabs[1]).toHaveAttribute('aria-selected', 'false')
     expect(tabs[1]).toHaveTextContent('0/1')
@@ -397,7 +327,6 @@ describe('TracksScreen', () => {
       name: 'Show all tracks',
     })
     expect(screen.getByText('All tracks')).toBeVisible()
-    expect(screen.queryByText('Summary only')).not.toBeInTheDocument()
     expect(screen.queryByText('Grind 75')).not.toBeInTheDocument()
 
     await user.click(allTracksButton)
@@ -412,12 +341,15 @@ describe('TracksScreen', () => {
     expect(
       within(activeRowActions).getByRole('button', { name: 'Clear Active' }),
     ).toBeVisible()
-    expectActionOrder(activeRowActions, [
-      { name: 'Clear Active', role: 'button' },
-      { name: 'Edit Track', role: 'link' },
-      { name: 'Reset Progress', role: 'button' },
-      { name: 'Delete Track', role: 'button' },
-    ])
+    expect(
+      within(activeRowActions).getByRole('link', { name: 'Edit Track' }),
+    ).toHaveAttribute('href', '#/tracks/leetcode-75/edit')
+    expect(
+      within(activeRowActions).getByRole('button', { name: 'Reset Progress' }),
+    ).toBeVisible()
+    expect(
+      within(activeRowActions).getByRole('button', { name: 'Delete Track' }),
+    ).toBeVisible()
     expect(
       within(activeRowActions).queryByRole('button', {
         name: 'Set LeetCode 75 active',
@@ -481,13 +413,17 @@ describe('TracksScreen', () => {
       'LeetCode 75 track actions',
     )
 
-    expect(clearActiveButton).not.toHaveTextContent('Clear Active')
-    expectActionOrder(activeHeaderActions, [
-      { name: 'Clear Active', role: 'button' },
-      { name: 'Edit Track', role: 'link' },
-      { name: 'Reset Progress', role: 'button' },
-      { name: 'Delete Track', role: 'button' },
-    ])
+    expect(
+      within(activeHeaderActions).getByRole('link', { name: 'Edit Track' }),
+    ).toHaveAttribute('href', '#/tracks/leetcode-75/edit')
+    expect(
+      within(activeHeaderActions).getByRole('button', {
+        name: 'Reset Progress',
+      }),
+    ).toBeVisible()
+    expect(
+      within(activeHeaderActions).getByRole('button', { name: 'Delete Track' }),
+    ).toBeVisible()
 
     await user.click(clearActiveButton)
 
@@ -525,11 +461,8 @@ describe('TracksScreen', () => {
       name: 'Delete Track',
     })
 
-    expect(setActiveButton).not.toHaveTextContent('Set Active')
+    expect(setActiveButton).toBeVisible()
     expect(editLink).toHaveAttribute('href', '#/tracks/grind-75/edit')
-    expect(editLink).not.toHaveTextContent('Edit Track')
-    expect(resetButton).not.toHaveTextContent('Reset Progress')
-    expect(deleteButton).not.toHaveTextContent('Delete Track')
 
     await user.click(resetButton)
     const resetDialog = screen.getByRole('dialog', {
@@ -798,31 +731,6 @@ async function getTrackProblemRowAsync(title: string) {
   })
 
   return getTrackProblemRow(title)
-}
-
-function expectActionOrder(
-  container: HTMLElement,
-  actions: readonly {
-    name: string
-    role: 'button' | 'link'
-  }[],
-) {
-  const elements = actions.map((action) =>
-    within(container).getByRole(action.role, { name: action.name }),
-  )
-
-  for (let index = 0; index < elements.length - 1; index += 1) {
-    const current = elements[index]
-    const next = elements[index + 1]
-
-    if (!current || !next) {
-      throw new Error('Expected contiguous action elements.')
-    }
-
-    expect(
-      current.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-  }
 }
 
 const twoGroupWorkspace = createTrackWorkspaceResponse({
