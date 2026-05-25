@@ -24,3 +24,11 @@ export {
   type SetPracticeSuspendedInput,
   type UpdatePracticeLogInput,
 } from './practice'
+
+export {
+  buildPracticeProgressSummary,
+  toPracticeDateKey,
+  type PracticeProgressAttempt,
+  type PracticeProgressSummary,
+  type PracticeProgressSummaryInput,
+} from './practice-progress'
