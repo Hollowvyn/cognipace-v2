@@ -20,6 +20,7 @@ import {
   problemsUpdateProblemRequestSchema,
   problemsUpsertFromPageRequestSchema,
   queueRequestSchema,
+  settingsCycleThemeModeRequestSchema,
   settingsRequestSchema,
   settingsToggleStudyModeRequestSchema,
   settingsUpdateRequestSchema,
@@ -92,6 +93,7 @@ import type { TodayQueue } from '@/features/queue/domain'
 import { getTodayQueue } from '@/features/queue/server/queue-service'
 import type { UserSettings } from '@/features/settings/domain'
 import {
+  cycleThemeMode,
   getSettings,
   toggleStudyMode,
   updateSettings,
@@ -775,6 +777,19 @@ export function registerBackgroundHandlers() {
     )
     return runSettingsMutation(request.surface, (db) =>
       toggleStudyMode(db),
+    ).then(() => null)
+  })
+
+  onMessage('settings.cycleThemeMode', ({ data, sender }) => {
+    const request = settingsCycleThemeModeRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'settings.cycleThemeMode',
+      request.surface,
+      sender,
+    )
+    return runSettingsMutation(request.surface, (db) =>
+      cycleThemeMode(db),
     ).then(() => null)
   })
 

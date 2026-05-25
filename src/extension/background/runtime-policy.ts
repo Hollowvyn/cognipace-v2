@@ -35,6 +35,7 @@ const methodSurfaceAccess = {
   'settings.getSettings': ['popup', 'dashboard'],
   'settings.updateSettings': ['popup', 'dashboard'],
   'settings.toggleStudyMode': ['popup', 'dashboard'],
+  'settings.cycleThemeMode': ['dashboard'],
   'leetcode.readProblemMetadata': ['content-script'],
   'leetcode.readProblemContent': ['content-script'],
   'leetcode.readSubmissionResult': ['content-script'],

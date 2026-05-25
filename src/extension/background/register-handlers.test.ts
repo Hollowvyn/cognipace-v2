@@ -78,6 +78,7 @@ const backgroundMocks = vi.hoisted(() => {
     setPracticeSuspended: vi.fn(),
     setActiveTrack: vi.fn(),
     getSettings: vi.fn(),
+    cycleThemeMode: vi.fn(),
     toggleStudyMode: vi.fn(),
     updateTrack: vi.fn(),
     onMessage: vi.fn(
@@ -167,6 +168,7 @@ vi.mock('@/features/tracks/server/tracks-service', () => ({
 }))
 
 vi.mock('@/features/settings/server/settings-service', () => ({
+  cycleThemeMode: backgroundMocks.cycleThemeMode,
   getSettings: backgroundMocks.getSettings,
   toggleStudyMode: backgroundMocks.toggleStudyMode,
   updateSettings: backgroundMocks.updateSettings,
@@ -216,6 +218,7 @@ describe('background handler registration', () => {
     backgroundMocks.setActiveTrack.mockResolvedValue(undefined)
     backgroundMocks.clearActiveTrack.mockResolvedValue(undefined)
     backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
+    backgroundMocks.cycleThemeMode.mockResolvedValue(defaultUserSettings)
     backgroundMocks.toggleStudyMode.mockResolvedValue(defaultUserSettings)
     backgroundMocks.updateSettings.mockResolvedValue(defaultUserSettings)
   })
@@ -463,6 +466,23 @@ describe('background handler registration', () => {
     })
     expectFlushBeforeBroadcast()
     expect(toggleResponse).toBeNull()
+
+    vi.clearAllMocks()
+    const cycleResponse = await sendRuntimeMessage('settings.cycleThemeMode', {
+      surface: 'dashboard',
+    })
+
+    expectRuntimePolicy('settings.cycleThemeMode', 'dashboard')
+    expect(backgroundMocks.cycleThemeMode).toHaveBeenCalledWith(
+      backgroundMocks.db,
+    )
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      reason: 'settings-updated',
+      source: 'dashboard',
+      tags: ['settings'],
+    })
+    expectFlushBeforeBroadcast()
+    expect(cycleResponse).toBeNull()
   })
 
   it('reads settings through the runtime policy and DB boundary', async () => {

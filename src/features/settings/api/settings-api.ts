@@ -5,6 +5,7 @@ import { invalidateTaggedQueries } from '@/platform/query/cache-invalidation'
 import { queryKeys } from '@/platform/query/query-keys'
 
 import type {
+  SettingsCycleThemeModeRequest,
   SettingsToggleStudyModeRequest,
   SettingsUpdateRequest,
 } from './settings-contracts'
@@ -37,6 +38,18 @@ export function useToggleStudyMode() {
   return useMutation({
     mutationFn: (request: SettingsToggleStudyModeRequest) =>
       sendMessage('settings.toggleStudyMode', request),
+    onSuccess: () => {
+      invalidateTaggedQueries(queryClient, ['settings'])
+    },
+  })
+}
+
+export function useCycleThemeMode() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (request: SettingsCycleThemeModeRequest) =>
+      sendMessage('settings.cycleThemeMode', request),
     onSuccess: () => {
       invalidateTaggedQueries(queryClient, ['settings'])
     },
