@@ -19,3 +19,4 @@ export {
   useValidateFullBackup,
   validateFullBackupViaRuntime,
 } from './api/backup-api'
+export { DataManagementScreen } from './components/data-management-screen'

@@ -1,0 +1,326 @@
+import { Download, Loader2, Upload } from 'lucide-react'
+import {
+  useEffect,
+  useRef,
+  type ChangeEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
+
+import { Button } from '@/components/ui/button'
+import { InlineStatus } from '@/components/ui/inline-status'
+import { Surface } from '@/components/ui/surface'
+
+import type { BackupSummary } from '../api/backup-contracts'
+
+interface BackupRestorePanelProps {
+  backup: unknown
+  error: string | null
+  isExporting: boolean
+  isRestoring: boolean
+  isValidating: boolean
+  onExport: () => void
+  onFileSelect: (file: File) => void
+  onOpenRestoreDialog: () => void
+  status: string | null
+  summary: BackupSummary | null
+}
+
+export function BackupRestorePanel({
+  backup,
+  error,
+  isExporting,
+  isRestoring,
+  isValidating,
+  onExport,
+  onFileSelect,
+  onOpenRestoreDialog,
+  status,
+  summary,
+}: BackupRestorePanelProps) {
+  return (
+    <Surface aria-labelledby="backup-restore-title" className="grid gap-4">
+      <header className="grid gap-1">
+        <h2
+          className="m-0 text-[length:var(--cp-title-font-size)] font-bold leading-tight"
+          id="backup-restore-title"
+        >
+          Export backup
+        </h2>
+        <p className="m-0 text-[length:var(--cp-copy-font-size)] text-muted-foreground">
+          Save or restore a complete local CogniPace backup.
+        </p>
+      </header>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button disabled={isExporting} onClick={onExport} size="sm">
+          {isExporting ? (
+            <Loader2
+              aria-hidden="true"
+              className="animate-spin motion-reduce:animate-none"
+            />
+          ) : (
+            <Download aria-hidden="true" />
+          )}
+          Export backup
+        </Button>
+      </div>
+
+      <div className="grid gap-2">
+        <label
+          className="text-[length:var(--cp-copy-font-size)] font-bold"
+          htmlFor="backup-import-file"
+        >
+          Import full backup
+        </label>
+        <input
+          accept="application/json,.json"
+          className="block w-full rounded-[var(--cp-control-radius)] border border-border bg-background px-3 py-2 text-[length:var(--cp-copy-font-size)] text-foreground file:mr-3 file:rounded-[var(--cp-control-radius)] file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-foreground"
+          disabled={isValidating || isRestoring}
+          id="backup-import-file"
+          onChange={handleFileChange(onFileSelect)}
+          type="file"
+        />
+      </div>
+
+      {error ? (
+        <InlineStatus role="alert" tone="danger">
+          {error}
+        </InlineStatus>
+      ) : null}
+      {status ? <InlineStatus>{status}</InlineStatus> : null}
+      {isValidating ? <InlineStatus>Validating backup…</InlineStatus> : null}
+      {summary ? <BackupSummaryList summary={summary} /> : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          disabled={!backup || isRestoring || isValidating}
+          onClick={onOpenRestoreDialog}
+          size="sm"
+          variant="destructive"
+        >
+          {isRestoring ? (
+            <Loader2
+              aria-hidden="true"
+              className="animate-spin motion-reduce:animate-none"
+            />
+          ) : (
+            <Upload aria-hidden="true" />
+          )}
+          Restore full backup
+        </Button>
+      </div>
+    </Surface>
+  )
+}
+
+export function BackupSummaryList({ summary }: { summary: BackupSummary }) {
+  const items: Array<[string, number]> = [
+    ['Problems', summary.problems],
+    ['Topics', summary.topics],
+    ['Companies', summary.companies],
+    ['Tracks', summary.tracks],
+    ['Track groups', summary.trackGroups],
+    ['Practice rows', summary.problemPractice],
+    ['FSRS cards', summary.fsrsCards],
+    ['Review attempts', summary.reviewAttempts],
+    ['Settings', summary.settings],
+  ]
+
+  return (
+    <dl className="grid grid-cols-1 gap-2 text-[length:var(--cp-copy-font-size)] sm:grid-cols-2 lg:grid-cols-3">
+      {items.map(([label, value]) => (
+        <div
+          className="rounded-[var(--cp-radius-md)] border border-border bg-muted px-3 py-2"
+          key={label}
+        >
+          <dt className="sr-only">{label}</dt>
+          <dd className="m-0 font-semibold tabular-nums">
+            {label}: {value}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+function handleFileChange(onFileSelect: (file: File) => void) {
+  return (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+
+    if (file) {
+      onFileSelect(file)
+    }
+  }
+}
+
+export function BackupConfirmationDialog({
+  confirmLabel,
+  description,
+  error,
+  isPending,
+  onCancel,
+  onConfirm,
+  title,
+}: {
+  confirmLabel: string
+  description: string
+  error?: ReactNode | undefined
+  isPending: boolean
+  onCancel: () => void
+  onConfirm: () => void
+  title: string
+}) {
+  const cancelButtonRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useRef<HTMLElement>(null)
+  const titleId = `backup-confirmation-${title.toLowerCase().replace(/\W+/g, '-')}`
+  const descriptionId = `${titleId}-description`
+  const errorId = `${titleId}-error`
+
+  useEffect(() => {
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+    const dialog = dialogRef.current
+    const initialFocusTarget =
+      cancelButtonRef.current ??
+      (dialog ? getFocusableElements(dialog)[0] : null)
+
+    initialFocusTarget?.focus()
+
+    return () => {
+      previouslyFocused?.focus()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isPending) {
+      dialogRef.current?.focus()
+    }
+  }, [isPending])
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape' && !isPending) {
+      event.preventDefault()
+      onCancel()
+      return
+    }
+
+    if (event.key !== 'Tab') {
+      return
+    }
+
+    const dialog = dialogRef.current
+    const focusableElements = dialog ? getFocusableElements(dialog) : []
+
+    if (focusableElements.length === 0) {
+      event.preventDefault()
+      dialog?.focus()
+      return
+    }
+
+    const firstElement = focusableElements[0]
+    const lastElement = focusableElements[focusableElements.length - 1]
+
+    if (!firstElement || !lastElement) {
+      return
+    }
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault()
+      lastElement.focus()
+      return
+    }
+
+    if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault()
+      firstElement.focus()
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-background/75 p-4"
+      onKeyDown={handleKeyDown}
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) {
+          event.preventDefault()
+        }
+      }}
+    >
+      <section
+        aria-busy={isPending || undefined}
+        aria-describedby={error ? `${descriptionId} ${errorId}` : descriptionId}
+        aria-labelledby={titleId}
+        aria-modal="true"
+        className="grid w-full max-w-md gap-4 rounded-[var(--cp-panel-radius)] border border-border bg-card p-[var(--cp-panel-padding)] text-card-foreground shadow-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        ref={dialogRef}
+        role="dialog"
+        tabIndex={-1}
+      >
+        <div className="grid gap-2">
+          <h2
+            className="m-0 text-[length:var(--cp-title-font-size)] font-bold leading-tight"
+            id={titleId}
+          >
+            {title}
+          </h2>
+          <p
+            className="m-0 text-[length:var(--cp-copy-font-size)] text-muted-foreground"
+            id={descriptionId}
+          >
+            {description}
+          </p>
+        </div>
+        {error ? (
+          <InlineStatus id={errorId} role="alert" tone="danger">
+            {error}
+          </InlineStatus>
+        ) : null}
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            disabled={isPending}
+            onClick={onCancel}
+            ref={cancelButtonRef}
+            size="sm"
+            variant="ghost"
+          >
+            Cancel
+          </Button>
+          <Button
+            disabled={isPending}
+            onClick={onConfirm}
+            size="sm"
+            variant="destructive"
+          >
+            {isPending ? (
+              <Loader2
+                aria-hidden="true"
+                className="animate-spin motion-reduce:animate-none"
+              />
+            ) : null}
+            {confirmLabel}
+          </Button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+const focusableSelector = [
+  'a[href]',
+  'button:not([disabled])',
+  'textarea:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',')
+
+function getFocusableElements(element: HTMLElement) {
+  return Array.from(element.querySelectorAll<HTMLElement>(focusableSelector))
+    .filter((candidate) => !candidate.hasAttribute('disabled'))
+    .filter((candidate) => candidate.getAttribute('aria-hidden') !== 'true')
+    .filter((candidate) => candidate.tabIndex >= 0)
+}

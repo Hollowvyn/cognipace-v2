@@ -85,10 +85,16 @@ describe('SettingsScreen', () => {
     ).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Experimental' })).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Notifications' })).toBeNull()
-    expect(screen.queryByText(/data management/i)).not.toBeInTheDocument()
     expect(
-      screen.queryByText(/backup|import|global reset/i),
-    ).not.toBeInTheDocument()
+      screen.getByRole('heading', { name: 'Data Management' }),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Export backup' })).toBeVisible()
+    expect(
+      screen.getByRole('heading', { name: 'Selective import' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('heading', { name: 'Reset local data' }),
+    ).toBeVisible()
   })
 
   it('dismisses click-open hints predictably', async () => {
