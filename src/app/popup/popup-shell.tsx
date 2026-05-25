@@ -29,6 +29,7 @@ export function PopupShell({
     <SurfaceRoot
       className="flex flex-col gap-[var(--cp-surface-gap)] p-[var(--cp-surface-padding)]"
       surface="popup"
+      theme={data.settings.appearance.themeMode}
     >
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">

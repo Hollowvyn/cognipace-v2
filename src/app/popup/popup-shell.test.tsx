@@ -102,6 +102,9 @@ const shellData = {
     ],
   },
   settings: {
+    appearance: {
+      themeMode: 'system',
+    },
     practice: {
       dailyGoal: 4,
       mode: 'studyPlan',
@@ -129,6 +132,26 @@ const shellData = {
 } satisfies PopupAppShellData
 
 describe('PopupShell', () => {
+  it('applies the saved appearance theme to the popup surface', () => {
+    render(
+      <PopupShell
+        controller={createController({
+          data: {
+            ...shellData,
+            settings: {
+              ...shellData.settings,
+              appearance: {
+                themeMode: 'dark',
+              },
+            },
+          },
+        })}
+      />,
+    )
+
+    expect(screen.getByRole('main')).toHaveAttribute('data-cp-theme', 'dark')
+  })
+
   it('renders real popup data and routes user actions through callbacks', async () => {
     const user = userEvent.setup()
     const controller = createController({ canShuffleRecommendation: true })

@@ -57,6 +57,9 @@ describe('app-shell service', () => {
         },
       },
       settings: {
+        appearance: {
+          themeMode: 'system',
+        },
         practice: {
           mode: 'studyPlan',
         },
@@ -69,6 +72,9 @@ describe('app-shell service', () => {
     expect(payload.recommendation).toMatchObject({
       category: null,
       problem: null,
+    })
+    expect(payload.settings.appearance).toEqual({
+      themeMode: 'system',
     })
     expect(payload.popup.queuePreview).toHaveLength(0)
   })
@@ -272,6 +278,9 @@ describe('app-shell service', () => {
     expect(payload).toMatchObject({
       surface: 'overlay',
       overlay: {
+        appearance: {
+          themeMode: 'system',
+        },
         automation: {
           autoDetectSolved: true,
         },
@@ -312,6 +321,9 @@ describe('app-shell service', () => {
     expect(payload).toMatchObject({
       surface: 'overlay',
       overlay: {
+        appearance: {
+          themeMode: 'system',
+        },
         automation: {
           autoDetectSolved: true,
         },

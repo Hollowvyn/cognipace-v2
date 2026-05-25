@@ -103,6 +103,7 @@ async function getMainAppShellData(db: Db, now: Date) {
       items: queueItems,
     },
     settings: {
+      appearance: settings.appearance,
       practice: settings.practice,
       review: settings.review,
       assessment: settings.assessment,
@@ -137,6 +138,7 @@ async function getOverlayPayload(
 ) {
   if (!request.problemSlug) {
     return {
+      appearance: settings.appearance,
       automation: serializeOverlayAutomation(settings),
       problem: null,
       practice: null,
@@ -149,6 +151,7 @@ async function getOverlayPayload(
 
   if (!context) {
     return {
+      appearance: settings.appearance,
       automation: serializeOverlayAutomation(settings),
       problem: null,
       practice: null,
@@ -172,6 +175,7 @@ async function getOverlayPayload(
     : null
 
   return {
+    appearance: settings.appearance,
     automation: serializeOverlayAutomation(settings),
     problem: currentProblem,
     practice: serializePracticeDetails(practice),
