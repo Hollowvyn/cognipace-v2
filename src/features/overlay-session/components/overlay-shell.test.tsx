@@ -24,7 +24,11 @@ vi.mock('./modes/expanded/expanded-overlay', () => ({
   }: {
     themeMode: string
     view: { problemTitle: string }
-  }) => <div>Expanded mode: {view.problemTitle}: {themeMode}</div>,
+  }) => (
+    <div>
+      Expanded mode: {view.problemTitle}: {themeMode}
+    </div>
+  ),
 }))
 
 describe('OverlayShell', () => {

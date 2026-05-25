@@ -206,7 +206,9 @@ describe('dashboard routes', () => {
     const themeButton = await screen.findByRole('button', {
       name: 'Cycle theme mode. Current theme: Dark',
     })
-    const dashboardRoot = document.querySelector('[data-cp-surface="dashboard"]')
+    const dashboardRoot = document.querySelector(
+      '[data-cp-surface="dashboard"]',
+    )
     expect(dashboardRoot).toHaveAttribute('data-cp-theme', 'dark')
 
     await user.click(themeButton)

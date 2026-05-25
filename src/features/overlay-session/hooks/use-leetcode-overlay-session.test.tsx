@@ -852,7 +852,6 @@ function createDeferred<T>() {
   }
 }
 
-
 const problemRecord = {
   slug: overlayProblem.problemSlug,
   title: overlayProblem.title,
