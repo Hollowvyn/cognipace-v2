@@ -225,8 +225,10 @@ export function registerBackgroundHandlers() {
       sender,
     )
     return getAppDb().then(async ({ db }) =>
-      syncActionResultSchema.parse(
-        await createSyncServiceForDb(db).validateGithubToken(request.token),
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) =>
+          service.validateGithubToken(request.token),
+        ),
       ),
     )
   })
@@ -240,8 +242,10 @@ export function registerBackgroundHandlers() {
       sender,
     )
     return getAppDb().then(async ({ db }) =>
-      syncActionResultSchema.parse(
-        await createSyncServiceForDb(db).saveGithubToken(request.token),
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) =>
+          service.saveGithubToken(request.token),
+        ),
       ),
     )
   })
@@ -255,8 +259,8 @@ export function registerBackgroundHandlers() {
       sender,
     )
     return getAppDb().then(async ({ db }) =>
-      syncActionResultSchema.parse(
-        await createSyncServiceForDb(db).deleteGithubToken(),
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) => service.deleteGithubToken()),
       ),
     )
   })
@@ -270,8 +274,8 @@ export function registerBackgroundHandlers() {
       sender,
     )
     return getAppDb().then(async ({ db }) =>
-      syncActionResultSchema.parse(
-        await createSyncServiceForDb(db).createGithubGist(),
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) => service.createGithubGist()),
       ),
     )
   })
@@ -285,8 +289,10 @@ export function registerBackgroundHandlers() {
       sender,
     )
     return getAppDb().then(async ({ db }) =>
-      syncActionResultSchema.parse(
-        await createSyncServiceForDb(db).connectGithubGist(request.gistId),
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) =>
+          service.connectGithubGist(request.gistId),
+        ),
       ),
     )
   })
@@ -300,8 +306,10 @@ export function registerBackgroundHandlers() {
       sender,
     )
     return getAppDb().then(async ({ db }) =>
-      syncActionResultSchema.parse(
-        await createSyncServiceForDb(db).setEnabled(request.enabled),
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) =>
+          service.setEnabled(request.enabled),
+        ),
       ),
     )
   })
@@ -316,7 +324,7 @@ export function registerBackgroundHandlers() {
     )
     return getAppDb().then(async ({ db }) =>
       parseNullableSyncActionResult(
-        await createSyncServiceForDb(db).checkOnOpen(),
+        await runQueuedSyncAction(db, (service) => service.checkOnOpen()),
       ),
     )
   })
@@ -326,7 +334,9 @@ export function registerBackgroundHandlers() {
 
     assertCanSenderCallExtensionMethod('sync.syncNow', request.surface, sender)
     return getAppDb().then(async ({ db }) =>
-      parseNullableSyncActionResult(await createSyncServiceForDb(db).syncNow()),
+      parseNullableSyncActionResult(
+        await runQueuedSyncAction(db, (service) => service.syncNow()),
+      ),
     )
   })
 
@@ -339,8 +349,10 @@ export function registerBackgroundHandlers() {
       sender,
     )
     return getAppDb().then(async ({ db }) =>
-      syncActionResultSchema.parse(
-        await createSyncServiceForDb(db).resolveConflict(request.resolution),
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) =>
+          service.resolveConflict(request.resolution),
+        ),
       ),
     )
   })
@@ -1012,15 +1024,35 @@ async function runSettingsMutation(
 }
 
 function createSyncServiceForDb(db: Db) {
+  return createSyncServiceForDbInQueue(db, false)
+}
+
+function createSyncServiceForDbInQueue(db: Db, isInsideMutationQueue: boolean) {
   return createBackgroundSyncService(
     db,
     async () => {
       await broadcastDataManagementInvalidation('dashboard')
     },
     {
-      runRemoteRestore: (work) => runRemoteRestoreInMutationQueue(work),
+      runRemoteRestore: (work) =>
+        runRemoteRestoreInMutationQueue(work, isInsideMutationQueue),
     },
   )
+}
+
+type BackgroundSyncService = ReturnType<typeof createBackgroundSyncService>
+
+function runQueuedSyncAction<T>(
+  db: Db,
+  action: (service: BackgroundSyncService) => Promise<T>,
+) {
+  return runInMutationQueue(() =>
+    action(createSyncServiceForDbInQueue(db, true)),
+  )
+}
+
+function parseSyncActionResult(result: unknown) {
+  return syncActionResultSchema.parse(result)
 }
 
 function parseNullableSyncActionResult(result: unknown) {
@@ -1041,30 +1073,35 @@ function runDbMutation<T>(
   options: { syncMode?: DbMutationSyncMode } = {},
 ) {
   const syncMode = options.syncMode ?? 'mark-dirty'
+  return runInMutationQueue(async () => {
+    const { db } = await getAppDb()
+    const result = await write(db)
+
+    if (syncMode === 'mark-dirty') {
+      await markSyncLocalDataChangedBestEffort()
+    }
+
+    await flushDbSnapshot()
+    await afterFlush?.(result)
+
+    if (syncMode === 'mark-dirty') {
+      scheduleSyncAfterMutation(db)
+    }
+
+    return result
+  })
+}
+
+function runInMutationQueue<T>(work: () => Promise<T>) {
   const queued = dbMutationQueue.then(async () => {
     dbMutationDepth += 1
 
     try {
-      const { db } = await getAppDb()
-      const result = await write(db)
-
-      if (syncMode === 'mark-dirty') {
-        await markSyncLocalDataChangedBestEffort()
-      }
-
-      await flushDbSnapshot()
-      await afterFlush?.(result)
-
-      if (syncMode === 'mark-dirty') {
-        scheduleSyncAfterMutation(db)
-      }
-
-      return result
+      return await work()
     } finally {
       dbMutationDepth -= 1
     }
   })
-
   dbMutationQueue = queued.then(
     () => undefined,
     () => undefined,
@@ -1113,7 +1150,7 @@ async function runSyncAfterMutationWhenQueueIdle(db: Db, generation: number) {
           return null
         }
 
-        return createSyncServiceForDb(db).syncAfterMutation()
+        return createSyncServiceForDbInQueue(db, true).syncAfterMutation()
       },
       undefined,
       { syncMode: 'none' },
@@ -1137,7 +1174,10 @@ async function retryPendingDirtyMark() {
   }
 }
 
-function runRemoteRestoreInMutationQueue<T>(work: () => Promise<T>) {
+function runRemoteRestoreInMutationQueue<T>(
+  work: () => Promise<T>,
+  isInsideMutationQueue: boolean,
+) {
   const guardedWork = async () => {
     const metadata = await readSyncMetadata()
 
@@ -1150,13 +1190,11 @@ function runRemoteRestoreInMutationQueue<T>(work: () => Promise<T>) {
     return work()
   }
 
-  if (dbMutationDepth > 0) {
+  if (isInsideMutationQueue && dbMutationDepth > 0) {
     return guardedWork()
   }
 
-  return runDbMutation(async () => guardedWork(), undefined, {
-    syncMode: 'none',
-  })
+  return runInMutationQueue(guardedWork)
 }
 
 function unrefTimer(timer: ReturnType<typeof setTimeout>) {

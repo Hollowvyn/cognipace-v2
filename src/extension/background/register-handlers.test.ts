@@ -454,10 +454,10 @@ describe('background handler registration', () => {
   it('runs sync remote restores through the queued mutation path without marking dirty', async () => {
     const workOrder: string[] = []
     backgroundMocks.syncService.checkOnOpen.mockImplementation(async () => {
-      await readLatestSyncFactoryOptions().runRemoteRestore(() => {
+      await readLatestSyncFactoryOptions().runRemoteRestore(async () => {
         workOrder.push('remote-restore')
-
-        return Promise.resolve(null)
+        await backgroundMocks.flushDbSnapshot()
+        return null
       })
 
       return syncActionResult
@@ -1016,6 +1016,32 @@ describe('background handler registration', () => {
     expect(backgroundMocks.createProblem).toHaveBeenCalledTimes(2)
   })
 
+  it('queues manual sync so later local mutations wait behind the sync work', async () => {
+    const syncNow = createDeferred<typeof syncActionResult>()
+    backgroundMocks.syncService.syncNow.mockReturnValueOnce(syncNow.promise)
+
+    const syncPromise = sendRuntimeMessage('sync.syncNow', {
+      surface: 'dashboard',
+    })
+    await waitUntil(() => {
+      expect(backgroundMocks.syncService.syncNow).toHaveBeenCalled()
+    })
+
+    const mutationPromise = sendRuntimeMessage(
+      'problems.createProblem',
+      binarySearchCreateRequest(),
+    )
+
+    await Promise.resolve()
+    expect(backgroundMocks.createProblem).not.toHaveBeenCalled()
+
+    syncNow.resolve(syncActionResult)
+    await syncPromise
+    await mutationPromise
+
+    expect(backgroundMocks.createProblem).toHaveBeenCalledTimes(1)
+  })
+
   it('rejects invalid problem writes before mutation side effects', () => {
     expect(() =>
       sendRuntimeMessage('problems.bulkUpdateProblems', {
@@ -1408,6 +1434,22 @@ function createDeferred<T>() {
   })
 
   return { promise, reject, resolve }
+}
+
+async function waitUntil(assertion: () => void) {
+  let lastError: unknown
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      assertion()
+      return
+    } catch (error) {
+      lastError = error
+      await Promise.resolve()
+    }
+  }
+
+  throw lastError
 }
 
 function expectFlushBeforeBroadcast() {
