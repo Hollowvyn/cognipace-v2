@@ -6,8 +6,9 @@ import { queryKeys } from '@/platform/query/query-keys'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import {
-  checkSyncOnOpenViaRuntime,
   connectGithubGistViaRuntime,
+  pullLatestViaRuntime,
+  pushLocalViaRuntime,
   saveGithubTokenViaRuntime,
   useSyncAction,
 } from './sync-api'
@@ -43,13 +44,24 @@ describe('sync API', () => {
     })
   })
 
-  it('allows safe sync checks from non-dashboard surfaces', async () => {
-    vi.mocked(sendMessage).mockResolvedValue(null)
+  it('sends manual pull through the directional runtime boundary', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(syncActionResult)
 
-    await checkSyncOnOpenViaRuntime('content-script')
+    await pullLatestViaRuntime()
 
-    expect(sendMessage).toHaveBeenCalledWith('sync.checkOnOpen', {
-      surface: 'content-script',
+    expect(sendMessage).toHaveBeenCalledWith('sync.pullLatest', {
+      surface: 'dashboard',
+    })
+  })
+
+  it('sends manual push through the directional runtime boundary', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(syncActionResult)
+
+    await pushLocalViaRuntime({ confirmRemoteOverwrite: true })
+
+    expect(sendMessage).toHaveBeenCalledWith('sync.pushLocal', {
+      surface: 'dashboard',
+      confirmRemoteOverwrite: true,
     })
   })
 

@@ -2,13 +2,14 @@ import {
   connectGithubGistViaRuntime,
   createGithubGistViaRuntime,
   deleteGithubTokenViaRuntime,
-  resolveSyncConflictViaRuntime,
+  pullLatestViaRuntime,
+  pushLocalViaRuntime,
   saveGithubTokenViaRuntime,
-  syncNowViaRuntime,
   useSyncAction,
   useSyncStatus,
   validateGithubTokenViaRuntime,
 } from '../api/sync-api'
+import type { SyncActionResult } from '../api/sync-contracts'
 import type { GitHubSyncPanelActions } from '../components/github-sync-panel'
 
 export function useGithubSyncController() {
@@ -27,12 +28,12 @@ export function useGithubSyncController() {
     },
   )
   const deleteToken = useSyncAction(() => deleteGithubTokenViaRuntime())
-  const syncNow = useSyncAction(() => syncNowViaRuntime(), {
+  const pullLatest = useSyncAction(() => pullLatestViaRuntime(), {
     invalidateData: true,
   })
-  const resolveConflict = useSyncAction(
-    (resolution: 'pull-remote' | 'push-local') =>
-      resolveSyncConflictViaRuntime(resolution),
+  const pushLocal = useSyncAction<boolean | undefined, SyncActionResult>(
+    (confirmRemoteOverwrite = false) =>
+      pushLocalViaRuntime({ confirmRemoteOverwrite }),
     {
       invalidateData: true,
     },
@@ -42,9 +43,10 @@ export function useGithubSyncController() {
     onConnectGist: (gistId) => connectGist.mutateAsync(gistId),
     onCreateGist: () => createGist.mutateAsync(),
     onDeleteToken: () => deleteToken.mutateAsync(),
-    onResolveConflict: (resolution) => resolveConflict.mutateAsync(resolution),
+    onPullLatest: () => pullLatest.mutateAsync(),
+    onPushLocal: (confirmRemoteOverwrite) =>
+      pushLocal.mutateAsync(confirmRemoteOverwrite),
     onSaveToken: (token) => saveToken.mutateAsync(token),
-    onSyncNow: () => syncNow.mutateAsync(),
     onValidateToken: (token) => validateToken.mutateAsync(token),
   } satisfies GitHubSyncPanelActions
 
@@ -57,8 +59,8 @@ export function useGithubSyncController() {
       createGist.isPending ||
       connectGist.isPending ||
       deleteToken.isPending ||
-      syncNow.isPending ||
-      resolveConflict.isPending,
+      pullLatest.isPending ||
+      pushLocal.isPending,
     status: status.data ?? null,
   }
 }

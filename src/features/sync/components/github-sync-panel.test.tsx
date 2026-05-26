@@ -16,9 +16,9 @@ describe('GitHubSyncPanel', () => {
           onConnectGist: vi.fn(),
           onCreateGist,
           onDeleteToken: vi.fn(),
-          onResolveConflict: vi.fn(),
+          onPullLatest: vi.fn(),
+          onPushLocal: vi.fn(),
           onSaveToken,
-          onSyncNow: vi.fn(),
           onValidateToken: vi.fn(),
         }}
         status={notConfiguredStatus}
@@ -42,9 +42,9 @@ describe('GitHubSyncPanel', () => {
           onConnectGist: vi.fn(),
           onCreateGist: vi.fn(),
           onDeleteToken: vi.fn(),
-          onResolveConflict: vi.fn(),
+          onPullLatest: vi.fn(),
+          onPushLocal: vi.fn(),
           onSaveToken: vi.fn(),
-          onSyncNow: vi.fn(),
           onValidateToken: vi.fn(),
         }}
         status={{
@@ -66,7 +66,7 @@ describe('GitHubSyncPanel', () => {
 
   it('requires confirmation before resolving a conflict', async () => {
     const user = userEvent.setup()
-    const onResolveConflict = vi.fn().mockResolvedValue(syncActionResult)
+    const onPullLatest = vi.fn().mockResolvedValue(syncActionResult)
 
     render(
       <GitHubSyncPanel
@@ -74,9 +74,9 @@ describe('GitHubSyncPanel', () => {
           onConnectGist: vi.fn(),
           onCreateGist: vi.fn(),
           onDeleteToken: vi.fn(),
-          onResolveConflict,
+          onPullLatest,
+          onPushLocal: vi.fn(),
           onSaveToken: vi.fn(),
-          onSyncNow: vi.fn(),
           onValidateToken: vi.fn(),
         }}
         status={{
@@ -93,13 +93,13 @@ describe('GitHubSyncPanel', () => {
 
     await user.click(screen.getByRole('button', { name: /Pull remote/i }))
 
-    expect(onResolveConflict).not.toHaveBeenCalled()
+    expect(onPullLatest).not.toHaveBeenCalled()
 
     await user.click(
       screen.getByRole('button', { name: /Confirm pull remote/i }),
     )
 
-    expect(onResolveConflict).toHaveBeenCalledWith('pull-remote')
+    expect(onPullLatest).toHaveBeenCalled()
   })
 })
 

@@ -413,6 +413,18 @@ describe('background handler registration', () => {
     }
   })
 
+  it('defaults sync.pushLocal overwrite confirmation to false', async () => {
+    const response = await sendRuntimeMessage('sync.pushLocal', {
+      surface: 'dashboard',
+    })
+
+    expectRuntimePolicy('sync.pushLocal', 'dashboard')
+    expect(backgroundMocks.syncService.pushLocal).toHaveBeenCalledWith({
+      confirmRemoteOverwrite: false,
+    })
+    expect(response).toEqual(syncActionResultSchema.parse(syncActionResult))
+  })
+
   it('runs sync remote restores through the queued mutation path without marking dirty', async () => {
     const workOrder: string[] = []
     backgroundMocks.syncService.pullLatest.mockImplementation(async () => {

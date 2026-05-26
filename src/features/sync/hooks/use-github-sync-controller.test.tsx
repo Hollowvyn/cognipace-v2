@@ -57,6 +57,49 @@ describe('useGithubSyncController', () => {
       queryKey: queryKeys.sync.all,
     })
   })
+
+  it('runs directional pull and push actions through the runtime boundary', async () => {
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'sync.getStatus') {
+        return Promise.resolve(configuredStatus)
+      }
+
+      if (method === 'sync.pullLatest' || method === 'sync.pushLocal') {
+        return Promise.resolve(syncActionResult)
+      }
+
+      return Promise.reject(new Error(`Unexpected method ${method}`))
+    })
+    const { queryClient, wrapper } = createQueryTestHarness()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useGithubSyncController(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.status).toEqual(configuredStatus)
+    })
+
+    await act(async () => {
+      await result.current.actions.onPullLatest()
+      await result.current.actions.onPushLocal(true)
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('sync.pullLatest', {
+      surface: 'dashboard',
+    })
+    expect(sendMessage).toHaveBeenCalledWith('sync.pushLocal', {
+      surface: 'dashboard',
+      confirmRemoteOverwrite: true,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.settings.all,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.appShell.all,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.sync.all,
+    })
+  })
 })
 
 const configuredStatus = {

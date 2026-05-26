@@ -43,7 +43,6 @@ import type {
   SyncErrorSummary,
 } from '../domain/sync-status'
 
-type SyncConflictResolution = 'pull-remote' | 'push-local'
 type MaybePromise<T> = T | Promise<T>
 
 type PushLocalOptions = {
@@ -265,14 +264,6 @@ export function createSyncService(deps: SyncServiceDependencies) {
     })
   }
 
-  async function checkOnOpen(): Promise<null> {
-    return null
-  }
-
-  async function syncNow(): Promise<SyncActionResult> {
-    return pullLatest()
-  }
-
   async function pullLatest(): Promise<SyncActionResult> {
     return runAction('pull-latest', 'pull', async () => {
       const metadata = await deps.readMetadata()
@@ -394,39 +385,6 @@ export function createSyncService(deps: SyncServiceDependencies) {
         message: 'Local data pushed to Gist.',
       })
     })
-  }
-
-  async function syncAfterMutation(): Promise<null> {
-    return null
-  }
-
-  async function resolveConflict(
-    resolution: SyncConflictResolution,
-  ): Promise<SyncActionResult> {
-    const message = await runExclusive(async () => {
-      const metadata = await deps.readMetadata()
-
-      if (!metadata.gistId) {
-        throw new Error('GitHub Gist is not configured.')
-      }
-
-      const client = await readConfiguredClient()
-
-      if (resolution === 'pull-remote') {
-        const gist = await client.getGist(metadata.gistId)
-        await pullRemote(gist)
-
-        return 'Remote data pulled.'
-      }
-
-      const local = await createLocalEnvelopeContent()
-      const gist = await client.updateSyncGist(metadata.gistId, local.content)
-      await recordPush(gist, local.dataUpdatedAt)
-
-      return 'Local data pushed.'
-    })
-
-    return createLegacySyncActionResult(message)
   }
 
   async function pullRemote(gist: GitHubGistSummary) {
@@ -575,10 +533,6 @@ export function createSyncService(deps: SyncServiceDependencies) {
     })
   }
 
-  function createLegacySyncActionResult(message: string) {
-    return createActionResult(mapLegacySyncActionResult(message))
-  }
-
   async function recordError(error: unknown, retryable: boolean) {
     const summary: SyncErrorSummary = {
       kind: classifySyncError(error),
@@ -612,18 +566,14 @@ export function createSyncService(deps: SyncServiceDependencies) {
   }
 
   return {
-    checkOnOpen,
     connectGithubGist,
     createGithubGist,
     deleteGithubToken,
     getStatus,
     pullLatest,
     pushLocal,
-    resolveConflict,
     saveGithubToken,
     setEnabled,
-    syncAfterMutation,
-    syncNow,
     validateGithubToken,
   }
 }
@@ -680,56 +630,6 @@ function createStatus(
     lastBlockingReason: metadata.lastBlockingReason,
     lastError: metadata.lastError,
     conflict: metadata.conflict,
-  }
-}
-
-function mapLegacySyncActionResult(message: string): {
-  action: SyncAction
-  direction: SyncActionDirection
-  message: string
-  outcome?: SyncActionOutcome
-  reason?: SyncActionReason | null
-} {
-  if (message === 'Remote data pulled.') {
-    return {
-      action: 'pull-latest',
-      direction: 'pull',
-      message,
-    }
-  }
-
-  if (message === 'Local data pushed.') {
-    return {
-      action: 'push-local',
-      direction: 'push',
-      message,
-    }
-  }
-
-  if (message === 'Already in sync.') {
-    return {
-      action: 'pull-latest',
-      direction: null,
-      outcome: 'no-change',
-      reason: 'remote-unchanged',
-      message,
-    }
-  }
-
-  if (message === 'Sync conflict detected.') {
-    return {
-      action: 'pull-latest',
-      direction: null,
-      outcome: 'blocked',
-      reason: 'remote-changed',
-      message,
-    }
-  }
-
-  return {
-    action: 'pull-latest',
-    direction: null,
-    message,
   }
 }
 

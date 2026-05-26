@@ -49,21 +49,17 @@ export function setSyncEnabledViaRuntime(enabled: boolean) {
   return sendMessage('sync.setEnabled', { surface: 'dashboard', enabled })
 }
 
-export function syncNowViaRuntime() {
-  return sendMessage('sync.syncNow', { surface: 'dashboard' })
+export function pullLatestViaRuntime() {
+  return sendMessage('sync.pullLatest', { surface: 'dashboard' })
 }
 
-export function resolveSyncConflictViaRuntime(
-  resolution: 'pull-remote' | 'push-local',
+export function pushLocalViaRuntime(
+  options: { confirmRemoteOverwrite?: boolean } = {},
 ) {
-  return sendMessage('sync.resolveConflict', {
+  return sendMessage('sync.pushLocal', {
     surface: 'dashboard',
-    resolution,
+    confirmRemoteOverwrite: options.confirmRemoteOverwrite ?? false,
   })
-}
-
-export function checkSyncOnOpenViaRuntime(surface: UiSurface) {
-  return sendMessage('sync.checkOnOpen', { surface })
 }
 
 export function useSyncStatus(surface: UiSurface = 'dashboard') {

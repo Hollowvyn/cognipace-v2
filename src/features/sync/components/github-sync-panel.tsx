@@ -3,7 +3,7 @@ import {
   GitBranch,
   KeyRound,
   Loader2,
-  RefreshCw,
+  DownloadCloud,
   Trash2,
   UploadCloud,
 } from 'lucide-react'
@@ -29,11 +29,9 @@ export interface GitHubSyncPanelActions {
   onConnectGist: (gistId: string) => GitHubSyncActionResult
   onCreateGist: () => GitHubSyncActionResult
   onDeleteToken: () => GitHubSyncActionResult
-  onResolveConflict: (
-    resolution: SyncConflictResolution,
-  ) => GitHubSyncActionResult
+  onPullLatest: () => GitHubSyncActionResult
+  onPushLocal: (confirmRemoteOverwrite?: boolean) => GitHubSyncActionResult
   onSaveToken: (token: string) => GitHubSyncActionResult
-  onSyncNow: () => GitHubSyncActionResult
   onValidateToken: (token: string) => GitHubSyncActionResult
 }
 
@@ -245,7 +243,10 @@ export function GitHubSyncPanel({
           }}
           onConfirm={(resolution) => {
             void runPanelAction(
-              () => actions.onResolveConflict(resolution),
+              () =>
+                resolution === 'pull-remote'
+                  ? actions.onPullLatest()
+                  : actions.onPushLocal(true),
               resolution === 'pull-remote'
                 ? 'Remote data pulled.'
                 : 'Local data pushed.',
@@ -264,13 +265,30 @@ export function GitHubSyncPanel({
           <Button
             disabled={isPending || !status.configured}
             onClick={() => {
-              void runPanelAction(() => actions.onSyncNow(), 'Sync completed.')
+              void runPanelAction(
+                () => actions.onPullLatest(),
+                'Latest Gist data pulled.',
+              )
             }}
             size="sm"
             variant="outline"
           >
-            <RefreshCw aria-hidden="true" />
-            Sync now
+            <DownloadCloud aria-hidden="true" />
+            Pull latest
+          </Button>
+          <Button
+            disabled={isPending || !status.configured}
+            onClick={() => {
+              void runPanelAction(
+                () => actions.onPushLocal(false),
+                'Local data pushed to Gist.',
+              )
+            }}
+            size="sm"
+            variant="outline"
+          >
+            <UploadCloud aria-hidden="true" />
+            Push local
           </Button>
           <Button
             disabled={isPending || !status.tokenConfigured}
