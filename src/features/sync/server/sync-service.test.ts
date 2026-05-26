@@ -97,6 +97,152 @@ describe('sync service', () => {
     expect(syncActionResultSchema.parse(actionResult)).toEqual(actionResult)
   })
 
+  it('returns confirmation-required when connecting a remote Gist over dirty local data', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:15:00.000Z',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:20:00.000Z',
+        remoteVersion: 'remote_2',
+        content: JSON.stringify({ app: 'cognipace' }),
+      }),
+    )
+
+    const result = await harness.service.connectGithubGist('gist_1')
+    const parsed = syncActionResultSchema.parse(result)
+
+    expect(parsed).toMatchObject({
+      action: 'connect-gist',
+      direction: null,
+      outcome: 'confirmation-required',
+      reason: 'remote-changed',
+      retryable: false,
+      message: 'Choose whether to pull remote data or push local data.',
+      status: {
+        lastBlockingReason: 'remote-changed',
+      },
+    })
+  })
+
+  it('maps legacy sync outputs to structured action results', async () => {
+    const pullHarness = createHarness()
+    pullHarness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: false,
+      lastRemoteVersion: 'remote_1',
+    })
+    pullHarness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:10:00.000Z',
+        remoteVersion: 'remote_2',
+        content: JSON.stringify(
+          buildSyncEnvelope({
+            backup,
+            dataUpdatedAt: '2026-05-26T12:10:00.000Z',
+          }),
+        ),
+      }),
+    )
+
+    await expect(pullHarness.service.checkOnOpen()).resolves.toMatchObject({
+      action: 'pull-latest',
+      direction: 'pull',
+      outcome: 'success',
+      reason: null,
+      message: 'Remote data pulled.',
+    })
+
+    const pushHarness = createHarness()
+    pushHarness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:15:00.000Z',
+      lastRemoteVersion: 'remote_1',
+    })
+    pushHarness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:00:00.000Z',
+        remoteVersion: 'remote_1',
+      }),
+    )
+    pushHarness.githubClient.updateSyncGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: currentTime,
+        remoteVersion: 'remote_2',
+      }),
+    )
+
+    await expect(pushHarness.service.syncNow()).resolves.toMatchObject({
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'success',
+      reason: null,
+      message: 'Local data pushed.',
+    })
+
+    const noChangeHarness = createHarness()
+    noChangeHarness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: false,
+      lastRemoteVersion: 'remote_1',
+    })
+    noChangeHarness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:00:00.000Z',
+        remoteVersion: 'remote_1',
+      }),
+    )
+
+    await expect(noChangeHarness.service.syncNow()).resolves.toMatchObject({
+      action: 'pull-latest',
+      direction: null,
+      outcome: 'no-change',
+      reason: 'remote-unchanged',
+      message: 'Already in sync.',
+    })
+
+    const conflictHarness = createHarness()
+    conflictHarness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:15:00.000Z',
+      lastRemoteVersion: 'remote_1',
+    })
+    conflictHarness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:20:00.000Z',
+        remoteVersion: 'remote_2',
+        content: JSON.stringify(
+          buildSyncEnvelope({
+            backup,
+            dataUpdatedAt: '2026-05-26T12:20:00.000Z',
+          }),
+        ),
+      }),
+    )
+
+    await expect(conflictHarness.service.checkOnOpen()).resolves.toMatchObject({
+      action: 'pull-latest',
+      direction: null,
+      outcome: 'blocked',
+      reason: 'remote-changed',
+      message: 'Sync conflict detected.',
+    })
+  })
+
   it('creates a private Gist from current backup', async () => {
     const harness = createHarness()
     harness.githubClient.createSyncGist.mockResolvedValue(

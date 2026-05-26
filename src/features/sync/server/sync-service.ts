@@ -230,6 +230,17 @@ export function createSyncService(deps: SyncServiceDependencies) {
       return 'Choose whether to pull remote data or push local data.'
     })
 
+    if (message === 'Choose whether to pull remote data or push local data.') {
+      return createActionResult({
+        action: 'connect-gist',
+        direction: null,
+        outcome: 'confirmation-required',
+        reason: 'remote-changed',
+        retryable: false,
+        message,
+      })
+    }
+
     return createActionResult({
       action: 'connect-gist',
       direction: null,
