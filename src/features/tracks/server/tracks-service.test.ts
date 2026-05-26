@@ -207,29 +207,63 @@ describe('tracks service', () => {
     expect(workspace.dueCount).toBe(0)
   })
 
-  it('uses the workspace next-problem algorithm for direct active-track reads', async () => {
-    const handle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
+  it.each([
+    {
+      name: 'due row',
+      setup: async (db: Db) => {
+        await addActiveTrackMembership(db, {
+          groupId: 'leetcode-75:stack',
+          groupTitle: 'Stack',
+          problemSlug: 'valid-parentheses',
+          groupPosition: 2,
+        })
+        await makeProblemDue(db, 'valid-parentheses', {
+          now: new Date('2026-01-10T12:00:00.000Z'),
+        })
+      },
+      expectedSlug: 'valid-parentheses',
+    },
+    {
+      name: 'non-suspended incomplete fallback',
+      setup: async (db: Db) => {
+        await addActiveTrackMembership(db, {
+          groupId: 'leetcode-75:stack',
+          groupTitle: 'Stack',
+          problemSlug: 'valid-parentheses',
+          groupPosition: 2,
+        })
+        await suspendProblem(db, 'two-sum')
+      },
+      expectedSlug: 'valid-parentheses',
+    },
+    {
+      name: 'exhausted track',
+      setup: async (db: Db) => {
+        await completeTrackProblem(db, {
+          groupId: 'leetcode-75:arrays-hashing',
+          problemSlug: 'two-sum',
+        })
+      },
+      expectedSlug: null,
+    },
+  ] as const)(
+    'uses the workspace next-problem algorithm for direct active-track reads: $name',
+    async ({ setup, expectedSlug }) => {
+      const handle = await createTestDb({
+        now: new Date('2026-01-01T00:00:00.000Z'),
+      })
 
-    await makeLeetCodeActive(handle.db)
-    await addActiveTrackMembership(handle.db, {
-      groupId: 'leetcode-75:stack',
-      groupTitle: 'Stack',
-      problemSlug: 'valid-parentheses',
-      groupPosition: 2,
-    })
-    await makeProblemDue(handle.db, 'valid-parentheses', {
-      now: new Date('2026-01-10T12:00:00.000Z'),
-    })
+      await makeLeetCodeActive(handle.db)
+      await setup(handle.db)
 
-    const activeTrack = await getActiveTrack(
-      handle.db,
-      new Date('2026-01-10T12:00:00.000Z'),
-    )
+      const activeTrack = await getActiveTrack(
+        handle.db,
+        new Date('2026-01-10T12:00:00.000Z'),
+      )
 
-    expect(activeTrack?.nextProblem?.slug).toBe('valid-parentheses')
-  })
+      expect(activeTrack?.nextProblem?.slug ?? null).toBe(expectedSlug)
+    },
+  )
 
   it('returns create defaults and searchable Library rows for a new track', async () => {
     const handle = await createTestDb({
@@ -523,6 +557,24 @@ async function makeProblemDue(
         updatedAt: timestamp,
       },
     })
+}
+
+async function suspendProblem(db: Db, problemSlug: string) {
+  const timestamp = new Date('2026-01-02T00:00:00.000Z').getTime()
+
+  await db.insert(problemPractice).values({
+    problemSlug,
+    status: 'suspended',
+    firstSeenAt: timestamp,
+    lastSeenAt: timestamp,
+    lastReviewedAt: null,
+    lastRating: null,
+    solvedCount: 0,
+    attemptCount: 0,
+    isSuspended: true,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  })
 }
 
 async function completeTrackProblem(
