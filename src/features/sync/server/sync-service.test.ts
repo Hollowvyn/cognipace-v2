@@ -108,7 +108,12 @@ describe('sync service', () => {
         id: 'gist_1',
         updatedAt: '2026-05-26T12:20:00.000Z',
         remoteVersion: 'remote_2',
-        content: JSON.stringify({ app: 'cognipace' }),
+        content: JSON.stringify(
+          buildSyncEnvelope({
+            backup,
+            dataUpdatedAt: '2026-05-26T12:20:00.000Z',
+          }),
+        ),
       }),
     )
 
@@ -139,7 +144,12 @@ describe('sync service', () => {
         id: 'gist_1',
         updatedAt: '2026-05-26T12:20:00.000Z',
         remoteVersion: 'remote_2',
-        content: JSON.stringify({ app: 'cognipace' }),
+        content: JSON.stringify(
+          buildSyncEnvelope({
+            backup,
+            dataUpdatedAt: '2026-05-26T12:20:00.000Z',
+          }),
+        ),
       }),
     )
 
@@ -528,7 +538,45 @@ describe('sync service', () => {
     })
   })
 
-  it('connects an existing remote Gist without restoring clean local data', async () => {
+  it('rejects an invalid existing remote Gist without configuring clean local data', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      dirtySinceLastSync: false,
+      localDataUpdatedAt: '2026-05-26T12:00:00.000Z',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:20:00.000Z',
+        remoteVersion: 'remote_2',
+        content: JSON.stringify({
+          syncEnvelopeVersion: 1,
+          app: 'not-cognipace',
+          exportedAt: '2026-05-26T12:20:00.000Z',
+          dataUpdatedAt: '2026-05-26T12:20:00.000Z',
+          backup,
+          problems: [],
+        }),
+      }),
+    )
+
+    await expect(harness.service.connectGithubGist('gist_1')).rejects.toThrow(
+      /CogniPace sync file/i,
+    )
+    expect(harness.restoreBackup).not.toHaveBeenCalled()
+    expect(harness.githubClient.updateSyncGist).not.toHaveBeenCalled()
+    expect(harness.getMetadata()).toMatchObject({
+      enabled: false,
+      gistId: null,
+      lastRemoteVersion: null,
+      lastRemoteUpdatedAt: null,
+    })
+    expect(harness.getMetadata().lastError).toMatchObject({
+      kind: 'remote-invalid',
+    })
+  })
+
+  it('validates an existing remote Gist without restoring or recording clean local data as synced', async () => {
     const harness = createHarness()
     harness.setMetadata({
       dirtySinceLastSync: false,

@@ -211,6 +211,8 @@ export function createSyncService(deps: SyncServiceDependencies) {
         } as const
       }
 
+      parseRemoteSyncEnvelope(gist)
+
       if (!metadata.dirtySinceLastSync) {
         await deps.writeMetadata({
           enabled: true,
@@ -403,22 +405,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
   }
 
   async function pullRemote(gist: GitHubGistSummary) {
-    assertReadableRemoteSyncContent(gist)
-
-    if (!gist.content) {
-      throw new Error('GitHub Gist does not contain CogniPace sync data.')
-    }
-
-    let remotePayload: unknown
-    try {
-      remotePayload = JSON.parse(gist.content)
-    } catch (error) {
-      throw new Error('GitHub Gist sync file contains invalid JSON.', {
-        cause: error,
-      })
-    }
-
-    const envelope = parseSyncEnvelopeForCurrentApp(remotePayload)
+    const envelope = parseRemoteSyncEnvelope(gist)
     await runRemoteRestore(async () => {
       await deps.restoreBackup(envelope.backup)
       await deps.flushDbSnapshot()
@@ -664,6 +651,25 @@ function hasRemoteChanged(remote: GitHubGistSummary, metadata: SyncMetadata) {
 
 function getRemoteIdentity(remote: GitHubGistSummary) {
   return remote.remoteVersion ?? remote.updatedAt
+}
+
+function parseRemoteSyncEnvelope(gist: GitHubGistSummary) {
+  assertReadableRemoteSyncContent(gist)
+
+  if (!gist.content) {
+    throw new Error('GitHub Gist does not contain CogniPace sync data.')
+  }
+
+  let remotePayload: unknown
+  try {
+    remotePayload = JSON.parse(gist.content)
+  } catch (error) {
+    throw new Error('GitHub Gist sync file contains invalid JSON.', {
+      cause: error,
+    })
+  }
+
+  return parseSyncEnvelopeForCurrentApp(remotePayload)
 }
 
 function assertReadableRemoteSyncContent(gist: GitHubGistSummary) {
