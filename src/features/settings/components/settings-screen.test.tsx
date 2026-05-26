@@ -46,6 +46,13 @@ describe('SettingsScreen', () => {
     render(<SettingsScreen />, { wrapper })
 
     await screen.findByRole('heading', { name: 'Practice Defaults' })
+    expect(
+      screen.getByRole('heading', { name: 'Data Management' }),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Export backup' })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Clear local data' }),
+    ).toBeVisible()
     expect(screen.queryByText('Saved')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Settings actions')).toBeVisible()
     expect(screen.getByText('No pending changes')).toBeVisible()
