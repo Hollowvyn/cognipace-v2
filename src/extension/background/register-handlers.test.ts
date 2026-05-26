@@ -536,6 +536,13 @@ describe('background handler registration', () => {
       }),
     ],
     [
+      'settings.toggleStudyMode',
+      () => ({ surface: 'popup' }) as const,
+      backgroundMocks.toggleStudyMode,
+      () => [],
+      () => null,
+    ],
+    [
       'settings.cycleThemeMode',
       () => ({ surface: 'dashboard' }) as const,
       backgroundMocks.cycleThemeMode,
