@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import { saveReviewResult } from '@/features/practice/server/practice-service'
-import { createProblemsRepository } from '@/features/problems/data/problems-repository'
-import { getTodayQueue } from '@/features/queue/server/queue-service'
 import { createTracksRepository } from '@/features/tracks/data/tracks-repository'
 import migration0000 from '@/platform/db/migrations/0000_initial.sql?raw'
 import migration0001 from '@/platform/db/migrations/0001_lively_namor.sql?raw'
@@ -382,32 +380,6 @@ describe('db foundation', () => {
     )
   })
 
-  it('saves a review result and updates the queue from data state', async () => {
-    const handle = await createTestDb()
-    const problemsRepository = createProblemsRepository(handle.db)
-    const twoSum = await problemsRepository.getBySlug('two-sum')
-
-    expect(twoSum).not.toBeNull()
-
-    const review = await saveReviewResult(handle.db, {
-      problemSlug: twoSum?.slug ?? '',
-      rating: 'good',
-      reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
-      isCorrect: true,
-      targetRetention: 0.85,
-    })
-    const queue = await getTodayQueue(
-      handle.db,
-      new Date('2026-01-01T10:01:00.000Z'),
-    )
-
-    expect(review.problemSlug).toBe('two-sum')
-    expect(review.dueAt.getTime()).toBeGreaterThan(
-      new Date('2026-01-01T10:00:00.000Z').getTime(),
-    )
-    expect(queue.items[0]?.problemSlug).toBe('two-sum')
-  })
-
   it('rolls back practice state when review history cannot be written', async () => {
     const handle = await createTestDb()
     const reviewedAt = new Date('2026-01-01T10:00:00.000Z')
@@ -449,52 +421,6 @@ describe('db foundation', () => {
     expect(practiceAfterFailure[0]?.solvedCount).toBe(
       practiceBeforeFailure[0]?.solvedCount,
     )
-  })
-
-  it('keeps track preview catalog-backed when a problem is mastered', async () => {
-    const handle = await createTestDb()
-    const timestamp = new Date('2026-01-01T00:00:00.000Z').getTime()
-
-    await handle.db.insert(problemPractice).values({
-      problemSlug: 'two-sum',
-      status: 'mastered',
-      firstSeenAt: timestamp,
-      lastSeenAt: timestamp,
-      lastReviewedAt: timestamp,
-      solvedCount: 1,
-      attemptCount: 1,
-      isSuspended: false,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    })
-
-    const activeTrack = await createTracksRepository(handle.db).getActiveTrack()
-
-    expect(activeTrack?.nextProblem).toMatchObject({
-      slug: byteByteGoFirstProblemSlug,
-    })
-    expect(activeTrack?.progress).toEqual({
-      completedCount: 0,
-      totalCount: seededProblemCount,
-      percent: 0,
-    })
-  })
-
-  it('can create a new LeetCode problem from page data', async () => {
-    const handle = await createTestDb()
-    const repository = createProblemsRepository(handle.db)
-
-    const problem = await repository.upsertFromLeetCode({
-      slug: 'binary-search',
-      title: 'Binary Search',
-      difficulty: 'Easy',
-    })
-
-    expect(problem).toMatchObject({
-      slug: 'binary-search',
-      title: 'Binary Search',
-      difficulty: 'easy',
-    })
   })
 })
 

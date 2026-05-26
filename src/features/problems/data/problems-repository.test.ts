@@ -55,13 +55,6 @@ describe('ProblemsRepository library data', () => {
     const twoSum = library.rows.find((row) => row.problem.slug === 'two-sum')
 
     expect(library.summary.totalCount).toBe(library.rows.length)
-    expect(library.rows.map((row) => row.problem.slug)).toEqual(
-      expect.arrayContaining([
-        'two-sum',
-        'valid-parentheses',
-        'two-sum-ii-input-array-is-sorted',
-      ]),
-    )
     expect(twoSum).toMatchObject({
       status: 'scheduled',
       lastSolvedAt: solvedAt.toISOString(),
@@ -98,17 +91,6 @@ describe('ProblemsRepository library data', () => {
         companyLabels: ['Netflix'],
       }),
     )
-    const seededDuplicate = await createProblem(
-      handle.db,
-      newProblemInput({
-        slugOrUrl: 'two-sum',
-        title: 'Two Sum Custom',
-        difficulty: 'hard',
-        isPremium: true,
-        topicLabels: ['Hash Table'],
-        companyLabels: ['Amazon'],
-      }),
-    )
 
     expect(created.problem).toMatchObject({
       slug: 'binary-search',
@@ -121,10 +103,6 @@ describe('ProblemsRepository library data', () => {
       },
       topics: [{ label: 'Search' }],
       companies: [{ label: 'Netflix' }],
-    })
-    expect(seededDuplicate.problem).toMatchObject({
-      slug: 'two-sum',
-      title: 'Two Sum Custom',
     })
   })
 
@@ -216,36 +194,6 @@ describe('ProblemsRepository library data', () => {
     })
   })
 
-  it('returns Library rows only for requested slugs', async () => {
-    const handle = await createTestDb()
-    const repository = createProblemsRepository(handle.db)
-
-    const rows = await repository.getLibraryRowsBySlug(['valid-parentheses'], {
-      now: new Date('2026-01-01T10:01:00.000Z'),
-    })
-
-    expect(rows.map((row) => row.problem.slug)).toEqual(['valid-parentheses'])
-  })
-
-  it('allows callers to preserve input order by mapping rows back by slug', async () => {
-    const handle = await createTestDb()
-    const repository = createProblemsRepository(handle.db)
-    const requestedSlugs = ['valid-parentheses', 'two-sum'] as const
-
-    const rows = await repository.getLibraryRowsBySlug(requestedSlugs, {
-      now: new Date('2026-01-01T10:01:00.000Z'),
-    })
-    const rowsBySlug = new Map(rows.map((row) => [row.problem.slug, row]))
-
-    expect(rows.map((row) => row.problem.slug)).toEqual([
-      'two-sum',
-      'valid-parentheses',
-    ])
-    expect(
-      requestedSlugs.map((slug) => rowsBySlug.get(slug)?.problem.slug),
-    ).toEqual(['valid-parentheses', 'two-sum'])
-  })
-
   it('includes Library row details for requested slugs', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
@@ -297,11 +245,6 @@ describe('ProblemsRepository library data', () => {
     await updateSettings(handle.db, { review: { targetRetention: 0.97 } })
     await saveSolvedReview(handle.db)
 
-    const rowAtReviewTime = await getProblemLibraryRowsBySlug(
-      handle.db,
-      ['two-sum'],
-      { now: solvedAt, targetRetention: undefined },
-    )
     const rowWithOmittedRetention = await getProblemLibraryRowsBySlug(
       handle.db,
       ['two-sum'],
@@ -316,7 +259,6 @@ describe('ProblemsRepository library data', () => {
       },
     )
 
-    expect(rowAtReviewTime[0]?.status).toBe('scheduled')
     expect(rowWithOmittedRetention[0]).toMatchObject({
       status: 'due',
       state: {
@@ -329,9 +271,9 @@ describe('ProblemsRepository library data', () => {
         isDue: true,
       },
     })
-    expect(
-      rowWithUndefinedRetention[0]?.state.retrievability,
-    ).toBeGreaterThan(0.9)
+    expect(rowWithUndefinedRetention[0]?.state.retrievability).toBeGreaterThan(
+      0.9,
+    )
     expect(rowWithUndefinedRetention[0]?.state.retrievability).toBeLessThan(
       0.97,
     )

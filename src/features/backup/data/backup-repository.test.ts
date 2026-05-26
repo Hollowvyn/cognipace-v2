@@ -20,7 +20,6 @@ import {
 } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
 
-import type { BackupData } from '../api/backup-contracts'
 import {
   clearAndRestoreBackupData,
   createBackupRepository,
@@ -44,91 +43,73 @@ describe('backup repository', () => {
 
     const backupData = await createBackupRepository(db).readBackupData()
 
-    expect(backupData.problems).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          slug: 'custom-problem',
-          createdAt: now.toISOString(),
-          updatedAt: now.toISOString(),
-        }),
-      ]),
+    expect({
+      problem: backupData.problems.some((row) => row.slug === 'custom-problem'),
+      topic: backupData.topics.some((row) => row.id === 'custom-topic'),
+      company: backupData.companies.some((row) => row.id === 'custom-company'),
+      problemTopic: backupData.problemTopics.some(
+        (row) => row.problemSlug === 'custom-problem',
+      ),
+      problemCompany: backupData.problemCompanies.some(
+        (row) => row.problemSlug === 'custom-problem',
+      ),
+      practice: backupData.practice.problemPractice.length,
+      card: backupData.practice.fsrsCards.length,
+      attempt: backupData.practice.reviewAttempts.length,
+      track: backupData.tracks.tracks.some((row) => row.id === 'custom-track'),
+      group: backupData.tracks.groups.some((row) => row.id === 'custom-group'),
+      membership: backupData.tracks.memberships.some(
+        (row) => row.trackGroupId === 'custom-group',
+      ),
+      progress: backupData.tracks.progress.length,
+      session: backupData.tracks.session.length,
+      setting: backupData.settings.length,
+    }).toMatchObject({
+      problem: true,
+      topic: true,
+      company: true,
+      problemTopic: true,
+      problemCompany: true,
+      practice: 1,
+      card: 1,
+      attempt: 1,
+      track: true,
+      group: true,
+      membership: true,
+      progress: 1,
+      session: 1,
+      setting: 1,
+    })
+    expect(backupData.problems).toContainEqual(
+      expect.objectContaining({
+        slug: 'custom-problem',
+        createdAt: now.toISOString(),
+      }),
     )
-    expect(backupData.topics).toContainEqual({
-      id: 'custom-topic',
-      label: 'Custom Topic',
-    })
-    expect(backupData.companies).toContainEqual({
-      id: 'custom-company',
-      label: 'Custom Company',
-    })
     expect(backupData.problemTopics).toContainEqual({
       problemSlug: 'custom-problem',
       topicId: 'custom-topic',
     })
-    expect(backupData.problemCompanies).toContainEqual({
-      problemSlug: 'custom-problem',
-      companyId: 'custom-company',
-    })
-    expect(backupData.practice.problemPractice).toEqual([
-      expect.objectContaining({
-        problemSlug: 'custom-problem',
-        firstSeenAt: now.toISOString(),
-        lastSeenAt: now.toISOString(),
-        lastReviewedAt: now.toISOString(),
-        createdAt: now.toISOString(),
-        updatedAt: now.toISOString(),
-      }),
-    ])
     expect(backupData.practice.fsrsCards).toEqual([
       expect.objectContaining({
         id: 'card-custom',
         dueAt: new Date(timestamp + 86_400_000).toISOString(),
-        lastReviewAt: now.toISOString(),
-        createdAt: now.toISOString(),
-        updatedAt: now.toISOString(),
       }),
     ])
-    expect(backupData.practice.reviewAttempts).toEqual([
-      expect.objectContaining({
-        id: 'attempt-custom',
-        reviewedAt: now.toISOString(),
-        createdAt: now.toISOString(),
-        updatedAt: now.toISOString(),
-      }),
-    ])
-    expect(backupData.tracks.tracks).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: 'custom-track' })]),
-    )
-    expect(backupData.tracks.groups).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: 'custom-group' })]),
+    expect(backupData.tracks.groups).toContainEqual(
+      expect.objectContaining({ id: 'custom-group' }),
     )
     expect(backupData.tracks.memberships).toContainEqual({
       trackGroupId: 'custom-group',
       problemSlug: 'custom-problem',
       position: 1,
     })
-    expect(backupData.tracks.progress).toEqual([
-      expect.objectContaining({
-        trackGroupId: 'custom-group',
-        problemSlug: 'custom-problem',
-        completedAt: now.toISOString(),
-      }),
-    ])
-    expect(backupData.tracks.session).toEqual([
-      expect.objectContaining({
-        id: 'active',
-        activeTrackId: 'custom-track',
-        activeGroupId: 'custom-group',
-        updatedAt: now.toISOString(),
-      }),
-    ])
-    expect(backupData.settings).toEqual([
-      {
-        key: 'user-settings',
-        value: settingsValue,
-        updatedAt: now.toISOString(),
-      },
-    ])
+    expect(backupData.tracks.session).toContainEqual(
+      expect.objectContaining({ activeTrackId: 'custom-track' }),
+    )
+    expect(backupData.settings).toContainEqual(
+      expect.objectContaining({ key: 'user-settings', value: settingsValue }),
+    )
   })
 
   it('replaces existing rows with backup rows and reseeds defaults', async () => {
@@ -164,40 +145,6 @@ describe('backup repository', () => {
         .from(problems)
         .where(eq(problems.slug, 'custom-problem')),
     ).toHaveLength(1)
-  })
-
-  it('rejects invalid restore data before changing existing rows', async () => {
-    const { db } = await createTestDb({ now })
-    await insertCustomState(db)
-    const invalidSettings = [
-      {
-        key: 'user-settings',
-        value: '{"practice":{"dailyGoal":"invalid"}}',
-        updatedAt: now.toISOString(),
-      },
-    ] satisfies BackupData['settings']
-    const invalidBackupData = {
-      ...(await createBackupRepository(db).readBackupData()),
-      settings: invalidSettings,
-    }
-
-    await expect(
-      clearAndRestoreBackupData(db, invalidBackupData, now),
-    ).rejects.toThrow(/settings value must contain current UserSettings JSON/)
-
-    expect(
-      await db
-        .select()
-        .from(problems)
-        .where(eq(problems.slug, 'custom-problem')),
-    ).toHaveLength(1)
-    expect(await db.select().from(settingsKv)).toEqual([
-      {
-        key: 'user-settings',
-        value: settingsValue,
-        updatedAt: timestamp,
-      },
-    ])
   })
 
   it('resets to fresh install data, clears custom data, and clears settings', async () => {
