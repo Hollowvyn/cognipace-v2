@@ -168,8 +168,8 @@ The mutation flow is:
 user action
 -> runtime command
 -> DB write
--> snapshot flush
 -> sync metadata dirty mark for local mutations
+-> snapshot flush
 -> invalidation broadcast
 -> query refetch
 -> render
@@ -182,8 +182,9 @@ creates a fresh migrated and seeded database.
 
 The sync feature is manual-first in this pass. Manual `sync.pullLatest` and
 `sync.pushLocal` runtime methods are dashboard-only. Local mutations mark sync
-metadata dirty after the database snapshot flush, but they do not auto-push
-after mutations, and dashboard/popup/overlay surfaces do not auto-pull on open.
+metadata dirty after the local mutation commits and before the database snapshot
+flush, but they do not auto-push after mutations, and dashboard/popup/overlay
+surfaces do not auto-pull on open.
 
 ## External APIs And Secrets
 

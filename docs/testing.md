@@ -229,7 +229,7 @@ Include:
 Docs-only formatting:
 
 ```sh
-npx prettier --check docs/product.md docs/architecture.md docs/testing.md
+npx prettier --check docs/product.md docs/architecture.md docs/testing.md docs/superpowers/README.md
 ```
 
 Focused tests:
