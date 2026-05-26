@@ -158,7 +158,7 @@ describe('createLeetCodePageWatcher', () => {
     renderProblemEditorPage()
     const { events, watcher } = createWatcherTestHarness({
       hydrationDelays: [],
-      submissionResultReadDelays: [0],
+      submissionResultReadDelays: [0, 1000],
       fetch: createLeetCodeSubmissionApiFixtureFetcher(
         leetcodeAcceptedSubmissionApiFixture,
       ),
@@ -188,6 +188,7 @@ describe('createLeetCodePageWatcher', () => {
         },
       },
     })
+    expect(filterEvents(events, 'submission-result-updated')).toHaveLength(1)
   })
 
   it('keeps waiting instead of emitting DOM fallback while API polling is active', async () => {

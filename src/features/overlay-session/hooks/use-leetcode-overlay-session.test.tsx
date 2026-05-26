@@ -233,6 +233,9 @@ describe('useLeetCodeOverlaySession', () => {
   it('auto-saves accepted LeetCode submission results through the review path', async () => {
     const { result } = await renderReadySession({ autoDetectSolved: true })
 
+    await waitFor(() => {
+      expect(result.current.timer.status).toBe('running')
+    })
     emitSubmissionResult()
 
     await waitFor(() => {
