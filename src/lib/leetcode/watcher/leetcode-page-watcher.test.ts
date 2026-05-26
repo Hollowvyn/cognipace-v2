@@ -156,12 +156,13 @@ describe('createLeetCodePageWatcher', () => {
   it('emits API submission details after LeetCode finishes judging', async () => {
     vi.useFakeTimers()
     renderProblemEditorPage()
+    const fetcher = createLeetCodeSubmissionApiFixtureFetcher(
+      leetcodeAcceptedSubmissionApiFixture,
+    )
     const { events, watcher } = createWatcherTestHarness({
       hydrationDelays: [],
       submissionResultReadDelays: [0, 1000],
-      fetch: createLeetCodeSubmissionApiFixtureFetcher(
-        leetcodeAcceptedSubmissionApiFixture,
-      ),
+      fetch: fetcher,
       now: () => 5000,
     })
 
@@ -188,6 +189,7 @@ describe('createLeetCodePageWatcher', () => {
         },
       },
     })
+    expect(fetcher).toHaveBeenCalledTimes(3)
     expect(filterEvents(events, 'submission-result-updated')).toHaveLength(1)
   })
 
