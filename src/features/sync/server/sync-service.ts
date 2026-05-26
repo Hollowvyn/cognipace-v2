@@ -40,6 +40,16 @@ type SyncReason = 'manual' | 'mutation' | 'open'
 type SyncConflictResolution = 'pull-remote' | 'push-local'
 type MaybePromise<T> = T | Promise<T>
 
+export type SyncOperationCoordinator = {
+  isRunning: () => boolean
+  run: <T>(work: () => Promise<T>) => Promise<T>
+}
+
+type SyncOperationState = {
+  queue: Promise<void>
+  running: boolean
+}
+
 export type SyncServiceDependencies = {
   readToken: () => Promise<string | null>
   saveToken: (token: string) => Promise<unknown>
@@ -52,11 +62,47 @@ export type SyncServiceDependencies = {
   restoreBackup: (backup: BackupFile) => Promise<BackupSummary>
   flushDbSnapshot: () => Promise<unknown>
   broadcastInvalidation: () => MaybePromise<void>
+  runRemoteRestore?: (<T>(work: () => Promise<T>) => Promise<T>) | undefined
+  syncCoordinator?: SyncOperationCoordinator | undefined
   now: () => Date
 }
 
+const sharedSyncOperationCoordinator = createSyncOperationCoordinator({
+  queue: Promise.resolve(),
+  running: false,
+})
+
+export function createSyncOperationCoordinator(
+  state: SyncOperationState = {
+    queue: Promise.resolve(),
+    running: false,
+  },
+): SyncOperationCoordinator {
+  return {
+    isRunning: () => state.running,
+    run: (work) => {
+      const queued = state.queue.then(async () => {
+        state.running = true
+
+        try {
+          return await work()
+        } finally {
+          state.running = false
+        }
+      })
+
+      state.queue = queued.then(
+        () => undefined,
+        () => undefined,
+      )
+
+      return queued
+    },
+  }
+}
+
 export function createSyncService(deps: SyncServiceDependencies) {
-  let syncInProgress = false
+  const syncCoordinator = deps.syncCoordinator ?? sharedSyncOperationCoordinator
 
   async function getStatus(): Promise<SerializedSyncStatus> {
     const [metadata, tokenStatus] = await Promise.all([
@@ -64,7 +110,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
       deps.getTokenStatus(),
     ])
 
-    return createStatus(metadata, tokenStatus, syncInProgress)
+    return createStatus(metadata, tokenStatus, syncCoordinator.isRunning())
   }
 
   async function validateGithubToken(token: string): Promise<SyncActionResult> {
@@ -94,14 +140,18 @@ export function createSyncService(deps: SyncServiceDependencies) {
   }
 
   async function deleteGithubToken(): Promise<SyncActionResult> {
-    await deps.deleteToken()
-    await deps.writeMetadata({
-      enabled: false,
-      lastError: null,
-      conflict: null,
+    const message = await runExclusive(async () => {
+      await deps.deleteToken()
+      await deps.writeMetadata({
+        enabled: false,
+        lastError: null,
+        conflict: null,
+      })
+
+      return 'GitHub token deleted.'
     })
 
-    return createActionResult('GitHub token deleted.')
+    return createActionResult(message)
   }
 
   async function createGithubGist(): Promise<SyncActionResult> {
@@ -160,11 +210,13 @@ export function createSyncService(deps: SyncServiceDependencies) {
   }
 
   async function setEnabled(enabled: boolean): Promise<SyncActionResult> {
-    await deps.writeMetadata({ enabled })
+    const message = await runExclusive(async () => {
+      await deps.writeMetadata({ enabled })
 
-    return createActionResult(
-      enabled ? 'GitHub sync enabled.' : 'GitHub sync disabled.',
-    )
+      return enabled ? 'GitHub sync enabled.' : 'GitHub sync disabled.'
+    })
+
+    return createActionResult(message)
   }
 
   async function checkOnOpen(): Promise<SyncActionResult | null> {
@@ -185,7 +237,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
         recordErrors: false,
       })
     } catch (error) {
-      await recordError(error, true)
+      await recordError(error, isRetryableSyncError(error))
     }
 
     return null
@@ -287,9 +339,11 @@ export function createSyncService(deps: SyncServiceDependencies) {
     }
 
     const envelope = parseSyncEnvelopeForCurrentApp(remotePayload)
-    await deps.restoreBackup(envelope.backup)
-    await deps.flushDbSnapshot()
-    await Promise.resolve(deps.broadcastInvalidation())
+    await runRemoteRestore(async () => {
+      await deps.restoreBackup(envelope.backup)
+      await deps.flushDbSnapshot()
+      await Promise.resolve(deps.broadcastInvalidation())
+    })
     await deps.writeMetadata({
       enabled: true,
       gistId: gist.id,
@@ -373,23 +427,21 @@ export function createSyncService(deps: SyncServiceDependencies) {
     work: () => Promise<T>,
     options: { recordErrors?: boolean } = {},
   ): Promise<T> {
-    if (syncInProgress) {
-      throw new Error('Sync already in progress.')
-    }
+    return syncCoordinator.run(async () => {
+      try {
+        return await work()
+      } catch (error) {
+        if (options.recordErrors !== false) {
+          await recordError(error, isRetryableSyncError(error))
+        }
 
-    syncInProgress = true
-
-    try {
-      return await work()
-    } catch (error) {
-      if (options.recordErrors !== false) {
-        await recordError(error, isRetryableSyncError(error))
+        throw error
       }
+    })
+  }
 
-      throw error
-    } finally {
-      syncInProgress = false
-    }
+  function runRemoteRestore<T>(work: () => Promise<T>) {
+    return deps.runRemoteRestore ? deps.runRemoteRestore(work) : work()
   }
 
   return {
@@ -410,6 +462,10 @@ export function createSyncService(deps: SyncServiceDependencies) {
 export function createBackgroundSyncService(
   db: Db,
   broadcastInvalidation: () => MaybePromise<void>,
+  options: {
+    runRemoteRestore?: SyncServiceDependencies['runRemoteRestore']
+    syncCoordinator?: SyncOperationCoordinator
+  } = {},
 ) {
   return createSyncService({
     readToken: () => readSecret('github:gist'),
@@ -423,6 +479,10 @@ export function createBackgroundSyncService(
     restoreBackup: (backup) => restoreValidatedBackupData(db, backup),
     flushDbSnapshot,
     broadcastInvalidation,
+    syncCoordinator: options.syncCoordinator ?? sharedSyncOperationCoordinator,
+    ...(options.runRemoteRestore
+      ? { runRemoteRestore: options.runRemoteRestore }
+      : {}),
     now: () => new Date(),
   })
 }
@@ -451,11 +511,17 @@ function createStatus(
 }
 
 function hasRemoteChanged(remote: GitHubGistSummary, metadata: SyncMetadata) {
-  const currentIdentity = getRemoteIdentity(remote)
-  const lastIdentity =
-    metadata.lastRemoteVersion ?? metadata.lastRemoteUpdatedAt
+  if (remote.remoteVersion && metadata.lastRemoteVersion) {
+    return remote.remoteVersion !== metadata.lastRemoteVersion
+  }
 
-  return lastIdentity === null || currentIdentity !== lastIdentity
+  if (metadata.lastRemoteUpdatedAt) {
+    return remote.updatedAt !== metadata.lastRemoteUpdatedAt
+  }
+
+  return metadata.lastRemoteVersion === null
+    ? true
+    : remote.remoteVersion !== metadata.lastRemoteVersion
 }
 
 function getRemoteIdentity(remote: GitHubGistSummary) {
@@ -467,6 +533,10 @@ function assertReadableRemoteSyncContent(gist: GitHubGistSummary) {
     throw new Error(
       'GitHub Gist sync file is truncated and cannot be read through the GitHub API.',
     )
+  }
+
+  if (gist.content !== null && gist.content.trim().length === 0) {
+    throw new Error('GitHub Gist sync file is empty.')
   }
 }
 

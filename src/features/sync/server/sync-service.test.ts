@@ -11,7 +11,11 @@ import type { SecretStatus } from '@/platform/secrets'
 import { defaultSyncMetadata } from '../data/sync-metadata-store'
 import type { SyncMetadata } from '../data/sync-metadata-store'
 import { buildSyncEnvelope } from '../domain/sync-envelope'
-import { createSyncService } from './sync-service'
+import {
+  createSyncOperationCoordinator,
+  createSyncService,
+  type SyncServiceDependencies,
+} from './sync-service'
 
 const currentTime = '2026-05-26T12:30:00.000Z'
 
@@ -208,6 +212,39 @@ describe('sync service', () => {
     expect(harness.getMetadata().dirtySinceLastSync).toBe(true)
   })
 
+  it('records non-retryable mutation sync errors without failing local mutations', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:00:00.000Z',
+        remoteVersion: 'remote_1',
+        content: JSON.stringify(
+          buildSyncEnvelope({
+            backup,
+            dataUpdatedAt: '2026-05-26T12:00:00.000Z',
+          }),
+        ),
+      }),
+    )
+    harness.githubClient.updateSyncGist.mockRejectedValue(
+      new Error('Bad credentials'),
+    )
+
+    await expect(harness.service.syncAfterMutation()).resolves.toBeNull()
+    expect(harness.getMetadata().lastError).toMatchObject({
+      kind: 'auth',
+      retryable: false,
+    })
+    expect(harness.getMetadata().dirtySinceLastSync).toBe(true)
+  })
+
   it('does not overwrite a truncated remote sync file when connecting a Gist', async () => {
     const harness = createHarness()
     harness.githubClient.getGist.mockResolvedValue(
@@ -223,6 +260,25 @@ describe('sync service', () => {
 
     await expect(harness.service.connectGithubGist('gist_1')).rejects.toThrow(
       /truncated/i,
+    )
+    expect(harness.githubClient.updateSyncGist).not.toHaveBeenCalled()
+    expect(harness.getMetadata().lastError).toMatchObject({
+      kind: 'remote-invalid',
+    })
+  })
+
+  it('does not overwrite an empty remote sync file when connecting a Gist', async () => {
+    const harness = createHarness()
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        remoteVersion: 'remote_1',
+        content: '',
+      }),
+    )
+
+    await expect(harness.service.connectGithubGist('gist_1')).rejects.toThrow(
+      /empty/i,
     )
     expect(harness.githubClient.updateSyncGist).not.toHaveBeenCalled()
     expect(harness.getMetadata().lastError).toMatchObject({
@@ -258,9 +314,126 @@ describe('sync service', () => {
     expect(harness.restoreBackup).toHaveBeenCalledWith(backup)
     expect(harness.getMetadata().conflict).toBeNull()
   })
+
+  it('falls back to updatedAt when remote versions become available later', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:05:00.000Z',
+      lastRemoteVersion: null,
+      lastRemoteUpdatedAt: '2026-05-26T12:00:00.000Z',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:00:00.000Z',
+        remoteVersion: 'remote_1',
+        content: JSON.stringify(
+          buildSyncEnvelope({
+            backup,
+            dataUpdatedAt: '2026-05-26T12:00:00.000Z',
+          }),
+        ),
+      }),
+    )
+    harness.githubClient.updateSyncGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: currentTime,
+        remoteVersion: 'remote_2',
+      }),
+    )
+
+    await expect(harness.service.syncNow()).resolves.toMatchObject({
+      message: 'Local data pushed.',
+    })
+    expect(harness.githubClient.updateSyncGist).toHaveBeenCalled()
+    expect(harness.getMetadata().conflict).toBeNull()
+  })
+
+  it('serializes disable behind an in-flight push', async () => {
+    const harness = createHarness()
+    const push = createDeferred<GitHubGistSummary>()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:05:00.000Z',
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:00:00.000Z',
+        remoteVersion: 'remote_1',
+      }),
+    )
+    harness.githubClient.updateSyncGist.mockReturnValue(push.promise)
+
+    const syncPromise = harness.service.syncNow()
+    await waitUntil(() => {
+      expect(harness.githubClient.updateSyncGist).toHaveBeenCalled()
+    })
+    const disablePromise = harness.service.setEnabled(false)
+
+    push.resolve(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: currentTime,
+        remoteVersion: 'remote_2',
+      }),
+    )
+
+    await syncPromise
+    await disablePromise
+    expect(harness.getMetadata().enabled).toBe(false)
+  })
+
+  it('runs remote pulls through the injected restore coordinator', async () => {
+    const runRemoteRestoreCalls: Array<() => Promise<unknown>> = []
+    const runRemoteRestore: NonNullable<
+      SyncServiceDependencies['runRemoteRestore']
+    > = async (work) => {
+      runRemoteRestoreCalls.push(work)
+      return work()
+    }
+    const harness = createHarness({ runRemoteRestore })
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: false,
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:10:00.000Z',
+        remoteVersion: 'remote_2',
+        content: JSON.stringify(
+          buildSyncEnvelope({
+            backup,
+            dataUpdatedAt: '2026-05-26T12:10:00.000Z',
+          }),
+        ),
+      }),
+    )
+
+    await harness.service.checkOnOpen()
+
+    expect(runRemoteRestoreCalls).toHaveLength(1)
+    expect(harness.restoreBackup).toHaveBeenCalledWith(backup)
+    expect(harness.flushDbSnapshot).toHaveBeenCalled()
+    expect(harness.broadcastInvalidation).toHaveBeenCalled()
+  })
 })
 
-function createHarness() {
+function createHarness(
+  overrides: Partial<
+    Pick<SyncServiceDependencies, 'runRemoteRestore' | 'syncCoordinator'>
+  > = {},
+) {
   let metadata: SyncMetadata = { ...defaultSyncMetadata }
   const restoreBackup = vi.fn().mockResolvedValue(backupSummary)
   const exportFullBackup = vi.fn().mockResolvedValue(backup)
@@ -292,6 +465,11 @@ function createHarness() {
     flushDbSnapshot,
     broadcastInvalidation,
     now: () => new Date(currentTime),
+    syncCoordinator:
+      overrides.syncCoordinator ?? createSyncOperationCoordinator(),
+    ...(overrides.runRemoteRestore
+      ? { runRemoteRestore: overrides.runRemoteRestore }
+      : {}),
   })
 
   return {
@@ -306,6 +484,33 @@ function createHarness() {
     flushDbSnapshot,
     broadcastInvalidation,
   }
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (error: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return { promise, reject, resolve }
+}
+
+async function waitUntil(assertion: () => void) {
+  let lastError: unknown
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      assertion()
+      return
+    } catch (error) {
+      lastError = error
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
+  }
+
+  throw lastError
 }
 
 function createGistSummary(
