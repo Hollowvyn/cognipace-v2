@@ -49,6 +49,7 @@ Implemented or meaningfully wired:
 - Tracks workspace and management
 - Settings
 - Backup, restore, and clear local data from Settings
+- Optional GitHub Gist pseudo-sync from Settings > Data Management
 - FSRS-backed practice scheduling
 - Runtime messaging, cache invalidation, local database, migrations, and seed data
 
@@ -102,8 +103,8 @@ Current behavior:
   create/edit, activation, deletion, and reset progress.
 - Settings manages persisted user preferences through a dirty-state form workflow.
 - Data Management in Settings exports full local backups, validates and restores
-  full backups, shows planned selective import sections, and performs explicit
-  full local clear/reset.
+  full backups, configures optional GitHub Gist pseudo-sync, shows planned
+  selective import sections, and performs explicit full local clear/reset.
 - Overview and Analytics currently reserve route ownership and are not finished
   product surfaces.
 
@@ -117,6 +118,7 @@ The background service worker owns trusted extension runtime work:
 - feature service calls
 - database snapshot persistence
 - cache invalidation broadcasts
+- GitHub Gist sync orchestration and background-only token access
 
 ## Features
 
@@ -149,6 +151,19 @@ Settings owns persisted preferences, defaults, validation, and the dashboard
 settings form. Changes should flow through the settings feature API and
 invalidate affected query families.
 
+### Sync
+
+GitHub Gist sync is optional, BYOK, and pseudo-real-time. A user stores a GitHub
+token locally, creates or connects a private CogniPace Gist, and syncs local
+data on open/reload, first interaction, manual settings actions, and after local
+mutations. Local writes should still succeed when sync fails; retryable sync
+failures are shown in Settings. Clean remote pulls apply automatically, while
+conflicts require an explicit pull-remote or push-local choice.
+
+GitHub tokens are stored in trusted `chrome.storage.local` extension storage and
+are only read by the background service worker. Tokens are not included in
+backup exports, sync envelopes, logs, or UI status payloads.
+
 ### LeetCode Capture
 
 LeetCode capture reads page metadata, page content, and submission result
@@ -159,7 +174,7 @@ messaging.
 
 - account creation
 - authentication
-- cloud sync
+- hosted CogniPace cloud sync service
 - hosted backend services
 - multi-user or team workflows
 - generic SaaS dashboard expansion
@@ -174,7 +189,9 @@ These are possible future directions, not approved work by default:
 - richer analytics
 - selective import conflict policies for topics, companies, tracks, and problems
 - improved notification strategy
-- sync across browsers or devices if local-only scope changes
+- passphrase lock for local BYOK secrets
+- enterprise KMS-backed secret wrapping
+- richer sync conflict previews and selective merge policies
 
 ## Success Criteria
 
@@ -187,7 +204,8 @@ The current product stage is successful when a user can:
 - manage tracks and active progression
 - adjust settings
 - export, restore, and clear local data from Settings
-- keep all persisted state local unless a future product decision changes that
+- optionally keep extension installs aligned through GitHub Gist sync
+- keep all persisted state local unless explicitly using the optional Gist sync
 
 ## Canonicality
 

@@ -12,7 +12,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
-- [`specs/2026-05-26-github-gist-sync-design.md`](./specs/2026-05-26-github-gist-sync-design.md): approved design for GitHub Gist pseudo-sync, reusable local secrets, and shared external API transport. Awaiting written spec review before implementation planning.
+- [`specs/2026-05-26-github-gist-sync-design.md`](./specs/2026-05-26-github-gist-sync-design.md): approved design for GitHub Gist pseudo-sync, reusable local secrets, and shared external API transport. Use as implementation history; verify current behavior against `docs/product.md` and source code.
 - [`specs/2026-05-24-docs-architecture-design.md`](./specs/2026-05-24-docs-architecture-design.md): approved design for the compact docs architecture. Current for this docs pass.
 - [`specs/2026-05-24-tracks-phase-3-design.md`](./specs/2026-05-24-tracks-phase-3-design.md): Tracks phase 3 design artifact. Use as implementation history; verify current behavior against `docs/product.md` and source code.
 

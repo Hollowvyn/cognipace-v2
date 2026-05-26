@@ -37,8 +37,9 @@ generic.
   policy and handler registration.
 - `src/features`: product-owned feature modules.
 - `src/hooks`: shared React hooks that are not owned by one feature.
-- `src/lib`: product integrations such as FSRS and LeetCode readers.
-- `src/platform`: browser, database, query, and time infrastructure.
+- `src/lib`: product integrations such as FSRS, GitHub, and LeetCode readers.
+- `src/platform`: browser, database, HTTP, query, secrets, and time
+  infrastructure.
 - `src/styles`: shared styling support.
 - `src/testing`: shared fixtures, setup, helpers, and boundary tests.
 - `src/types`: shared TypeScript types.
@@ -102,6 +103,8 @@ Not every feature needs every folder. Add only the folder needed for the change.
   group state, progress, and dashboard track management.
 - `settings`: persisted preferences, defaults, validation, and settings form
   behavior.
+- `sync`: GitHub Gist sync contracts, Settings UI, sync metadata, conflict
+  domain rules, and background orchestration.
 - `assessment`: assessment domain rules.
 - `leetcode-capture`: LeetCode metadata, content, and submission result reads
   through the content-script/background bridge.
@@ -176,6 +179,25 @@ Background mutations are serialized through the mutation queue in
 `src/platform/db/instance.ts`, which restores a matching stored snapshot or
 creates a fresh migrated and seeded database.
 
+## External APIs And Secrets
+
+External network calls use request declarations over `src/platform/http`. REST
+and GraphQL integrations should define typed request functions in the owning
+`src/lib/<integration>/api` module and inject `fetch` in tests. Feature services
+or readers call those declarations instead of constructing ad hoc `fetch` calls.
+
+Current integrations:
+
+- `src/lib/github/api`: GitHub Gist REST requests for sync.
+- `src/lib/leetcode/api`: LeetCode GraphQL and submission REST requests used by
+  LeetCode capture readers.
+
+BYOK secrets use `src/platform/secrets`, backed by `chrome.storage.local` with
+trusted-context access. UI surfaces may save or delete secrets through runtime
+messages, but secret reads stay in the background service worker. Secret values
+must not be exported in backups, serialized in sync envelopes, logged, or stored
+in TanStack Query cache payloads.
+
 ## Database And Persistence
 
 Database files live under `src/platform/db`:
@@ -209,7 +231,7 @@ Query keys live in `src/platform/query/query-keys.ts`. Invalidation tag mapping
 lives in `src/platform/query/cache-invalidation.ts`.
 
 Background writes broadcast events with tags such as `practice`, `problems`,
-`queue`, `settings`, `tracks`, and `app-shell`. The listener in
+`queue`, `settings`, `sync`, `tracks`, and `app-shell`. The listener in
 `src/app/providers/cache-invalidation-listener.tsx` parses the event and
 invalidates the mapped query keys.
 
@@ -328,6 +350,16 @@ When adding or changing data dependencies:
 7. Test collapsed, expanded, docked, timer, draft, save, and page-sync behavior
    when the change touches those flows.
 
+### Add Or Change External API Calls
+
+1. Add request declarations in the owning `src/lib/<integration>/api` folder.
+2. Use `src/platform/http` REST or GraphQL helpers instead of direct `fetch`.
+3. Keep product parsing and fallback behavior in the owning feature or reader.
+4. Inject `fetch` or `HttpClient` in tests; do not hit real external services.
+5. Redact credentials and sensitive values from thrown errors or debug payloads.
+6. Add request-shape tests plus focused behavior tests at the reader/service
+   boundary.
+
 ## Validation By Change Type
 
 - Docs-only change: run `npx prettier --check <changed-docs>`.
@@ -340,7 +372,7 @@ When adding or changing data dependencies:
 - Dashboard UI change: run affected component/route tests and manually inspect
   the dashboard route.
 - Popup change: run popup tests and manually inspect the popup in the extension.
-- Overlay change: run overlay-session and LeetCode capture tests, then manually
-  inspect a LeetCode problem page.
+- Overlay or LeetCode capture change: run overlay-session and LeetCode capture
+  tests, then manually inspect a LeetCode problem page.
 - Broad feature change: run targeted tests first, then `npm run check` before
   handoff.
