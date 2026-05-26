@@ -29,125 +29,123 @@ function row(
 }
 
 describe('createGroupsFromInitialDraftRows', () => {
-  it('creates one Main group with selected slugs in order for none grouping', () => {
-    expect(
-      createGroupsFromInitialDraftRows(
-        [
-          row('two-sum', 'Two Sum'),
-          row('valid-parentheses', 'Valid Parentheses'),
-          row('binary-search', 'Binary Search'),
-        ],
-        'none',
-      ),
-    ).toEqual([
-      {
-        key: 'draft-group-1',
-        problemSlugs: ['two-sum', 'valid-parentheses', 'binary-search'],
-        title: 'Main',
-      },
-    ])
-  })
-
-  it('groups by difficulty in product order and omits empty groups', () => {
-    expect(
-      createGroupsFromInitialDraftRows(
-        [
-          row('unknown-problem', 'Unknown Problem', { difficulty: 'unknown' }),
-          row('hard-problem', 'Hard Problem', { difficulty: 'hard' }),
-          row('easy-problem', 'Easy Problem', { difficulty: 'easy' }),
-        ],
-        'difficulty',
-      ),
-    ).toEqual([
-      {
-        key: 'draft-group-1',
-        problemSlugs: ['easy-problem'],
-        title: 'Easy',
-      },
-      {
-        key: 'draft-group-2',
-        problemSlugs: ['hard-problem'],
-        title: 'Hard',
-      },
-      {
-        key: 'draft-group-3',
-        problemSlugs: ['unknown-problem'],
-        title: 'Unknown',
-      },
-    ])
-  })
-
-  it('groups by first topic and falls back to No topic', () => {
-    expect(
-      createGroupsFromInitialDraftRows(
-        [
-          row('two-sum', 'Two Sum', {
-            topics: [
-              { id: 'arrays', label: 'Arrays' },
-              { id: 'hashing', label: 'Hashing' },
-            ],
-          }),
-          row('binary-tree', 'Binary Tree', {
-            topics: [{ id: 'trees', label: 'Trees' }],
-          }),
-          row('untagged', 'Untagged'),
-        ],
-        'topic',
-      ),
-    ).toEqual([
-      {
-        key: 'draft-group-1',
-        problemSlugs: ['two-sum'],
-        title: 'Arrays',
-      },
-      {
-        key: 'draft-group-2',
-        problemSlugs: ['binary-tree'],
-        title: 'Trees',
-      },
-      {
-        key: 'draft-group-3',
-        problemSlugs: ['untagged'],
-        title: 'No topic',
-      },
-    ])
-  })
-
-  it('groups by first company and falls back to No company', () => {
-    expect(
-      createGroupsFromInitialDraftRows(
-        [
-          row('two-sum', 'Two Sum', {
-            companies: [
-              { id: 'meta', label: 'Meta' },
-              { id: 'google', label: 'Google' },
-            ],
-          }),
-          row('merge-intervals', 'Merge Intervals', {
-            companies: [{ id: 'amazon', label: 'Amazon' }],
-          }),
-          row('unlabeled', 'Unlabeled'),
-        ],
-        'company',
-      ),
-    ).toEqual([
-      {
-        key: 'draft-group-1',
-        problemSlugs: ['two-sum'],
-        title: 'Meta',
-      },
-      {
-        key: 'draft-group-2',
-        problemSlugs: ['merge-intervals'],
-        title: 'Amazon',
-      },
-      {
-        key: 'draft-group-3',
-        problemSlugs: ['unlabeled'],
-        title: 'No company',
-      },
-    ])
-  })
+  it.each([
+    {
+      expectedGroups: [
+        {
+          key: 'draft-group-1',
+          problemSlugs: ['two-sum', 'valid-parentheses', 'binary-search'],
+          title: 'Main',
+        },
+      ],
+      groupBy: 'none' as const,
+      name: 'none',
+      problemRows: [
+        row('two-sum', 'Two Sum'),
+        row('valid-parentheses', 'Valid Parentheses'),
+        row('binary-search', 'Binary Search'),
+      ],
+    },
+    {
+      expectedGroups: [
+        {
+          key: 'draft-group-1',
+          problemSlugs: ['easy-problem'],
+          title: 'Easy',
+        },
+        {
+          key: 'draft-group-2',
+          problemSlugs: ['hard-problem'],
+          title: 'Hard',
+        },
+        {
+          key: 'draft-group-3',
+          problemSlugs: ['unknown-problem'],
+          title: 'Unknown',
+        },
+      ],
+      groupBy: 'difficulty' as const,
+      name: 'difficulty',
+      problemRows: [
+        row('unknown-problem', 'Unknown Problem', { difficulty: 'unknown' }),
+        row('hard-problem', 'Hard Problem', { difficulty: 'hard' }),
+        row('easy-problem', 'Easy Problem', { difficulty: 'easy' }),
+      ],
+    },
+    {
+      expectedGroups: [
+        {
+          key: 'draft-group-1',
+          problemSlugs: ['two-sum'],
+          title: 'Arrays',
+        },
+        {
+          key: 'draft-group-2',
+          problemSlugs: ['binary-tree'],
+          title: 'Trees',
+        },
+        {
+          key: 'draft-group-3',
+          problemSlugs: ['untagged'],
+          title: 'No topic',
+        },
+      ],
+      groupBy: 'topic' as const,
+      name: 'topic',
+      problemRows: [
+        row('two-sum', 'Two Sum', {
+          topics: [
+            { id: 'arrays', label: 'Arrays' },
+            { id: 'hashing', label: 'Hashing' },
+          ],
+        }),
+        row('binary-tree', 'Binary Tree', {
+          topics: [{ id: 'trees', label: 'Trees' }],
+        }),
+        row('untagged', 'Untagged'),
+      ],
+    },
+    {
+      expectedGroups: [
+        {
+          key: 'draft-group-1',
+          problemSlugs: ['two-sum'],
+          title: 'Meta',
+        },
+        {
+          key: 'draft-group-2',
+          problemSlugs: ['merge-intervals'],
+          title: 'Amazon',
+        },
+        {
+          key: 'draft-group-3',
+          problemSlugs: ['unlabeled'],
+          title: 'No company',
+        },
+      ],
+      groupBy: 'company' as const,
+      name: 'company',
+      problemRows: [
+        row('two-sum', 'Two Sum', {
+          companies: [
+            { id: 'meta', label: 'Meta' },
+            { id: 'google', label: 'Google' },
+          ],
+        }),
+        row('merge-intervals', 'Merge Intervals', {
+          companies: [{ id: 'amazon', label: 'Amazon' }],
+        }),
+        row('unlabeled', 'Unlabeled'),
+      ],
+    },
+  ])(
+    'creates groups for $name grouping',
+    ({ expectedGroups, groupBy, problemRows }) => {
+      expect(createGroupsFromInitialDraftRows(problemRows, groupBy)).toEqual(
+        expectedGroups,
+      )
+    },
+  )
 })
 
 describe('trackFormGroupByOptions', () => {
