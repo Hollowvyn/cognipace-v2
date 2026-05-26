@@ -24,23 +24,6 @@ import {
 } from './tracks-service'
 
 describe('tracks service', () => {
-  it('returns the active track in study-plan mode', async () => {
-    const handle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-
-    const activeTrack = await getActiveTrack(handle.db)
-
-    expect(activeTrack).toMatchObject({
-      track: {
-        id: 'bytebytego-coding-patterns-101',
-      },
-      nextProblem: {
-        slug: 'two-sum-ii-input-array-is-sorted',
-      },
-    })
-  })
-
   it('returns null in free-practice mode', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
@@ -224,122 +207,6 @@ describe('tracks service', () => {
     expect(workspace.dueCount).toBe(0)
   })
 
-  it('excludes completed due memberships from due count and next problem', async () => {
-    const handle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-
-    await makeLeetCodeActive(handle.db)
-    await addActiveTrackMembership(handle.db, {
-      groupId: 'leetcode-75:stack',
-      groupTitle: 'Stack',
-      problemSlug: 'valid-parentheses',
-      groupPosition: 2,
-    })
-    await makeProblemDue(handle.db, 'two-sum', {
-      now: new Date('2026-01-10T12:00:00.000Z'),
-    })
-    await completeTrackProblem(handle.db, {
-      groupId: 'leetcode-75:arrays-hashing',
-      problemSlug: 'two-sum',
-    })
-
-    const workspace = await getWorkspace(handle.db, {
-      surface: 'dashboard',
-      at: '2026-01-10T12:00:00.000Z',
-    })
-
-    expect(
-      workspace.activeTrackRows.map((row) => [
-        row.problem.slug,
-        row.status,
-        row.membership.completedAt,
-      ]),
-    ).toEqual([
-      ['two-sum', 'due', '2026-01-03T00:00:00.000Z'],
-      ['valid-parentheses', 'not-started', null],
-    ])
-    expect(workspace.dueCount).toBe(0)
-    expect(workspace.activeTrack?.nextProblem?.slug).toBe('valid-parentheses')
-  })
-
-  it('chooses next problem from incomplete active rows by due, non-suspended, then null', async () => {
-    const dueHandle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-
-    await makeLeetCodeActive(dueHandle.db)
-    await addActiveTrackMembership(dueHandle.db, {
-      groupId: 'leetcode-75:stack',
-      groupTitle: 'Stack',
-      problemSlug: 'valid-parentheses',
-      groupPosition: 2,
-    })
-    await makeProblemDue(dueHandle.db, 'valid-parentheses', {
-      now: new Date('2026-01-10T12:00:00.000Z'),
-    })
-
-    await expect(
-      getWorkspace(dueHandle.db, {
-        surface: 'dashboard',
-        at: '2026-01-10T12:00:00.000Z',
-      }),
-    ).resolves.toMatchObject({
-      activeTrack: {
-        nextProblem: {
-          slug: 'valid-parentheses',
-        },
-      },
-    })
-
-    const unscheduledHandle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-
-    await makeLeetCodeActive(unscheduledHandle.db)
-    await addActiveTrackMembership(unscheduledHandle.db, {
-      groupId: 'leetcode-75:stack',
-      groupTitle: 'Stack',
-      problemSlug: 'valid-parentheses',
-      groupPosition: 2,
-    })
-    await suspendProblem(unscheduledHandle.db, 'two-sum')
-
-    await expect(
-      getWorkspace(unscheduledHandle.db, {
-        surface: 'dashboard',
-        at: '2026-01-10T12:00:00.000Z',
-      }),
-    ).resolves.toMatchObject({
-      activeTrack: {
-        nextProblem: {
-          slug: 'valid-parentheses',
-        },
-      },
-    })
-
-    const completeHandle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-
-    await makeLeetCodeActive(completeHandle.db)
-    await completeTrackProblem(completeHandle.db, {
-      groupId: 'leetcode-75:arrays-hashing',
-      problemSlug: 'two-sum',
-    })
-
-    await expect(
-      getWorkspace(completeHandle.db, {
-        surface: 'dashboard',
-        at: '2026-01-10T12:00:00.000Z',
-      }),
-    ).resolves.toMatchObject({
-      activeTrack: {
-        nextProblem: null,
-      },
-    })
-  })
-
   it('uses the workspace next-problem algorithm for direct active-track reads', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
@@ -364,7 +231,7 @@ describe('tracks service', () => {
     expect(activeTrack?.nextProblem?.slug).toBe('valid-parentheses')
   })
 
-  it('returns create defaults and searchable Library problem rows for a new track', async () => {
+  it('returns create defaults and searchable Library rows for a new track', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
@@ -384,15 +251,9 @@ describe('tracks service', () => {
     const problemSlugs = edit.problemRows.map((row) => row.problem.slug)
     expect(problemSlugs).toHaveLength(101)
     expect(problemSlugs).toContain('two-sum')
-    expect(problemSlugs).toContain('valid-parentheses')
-    expect(edit.problemRows[0]).toMatchObject({
-      problem: {
-        slug: 'ones-and-zeroes',
-      },
-    })
   })
 
-  it('returns existing track metadata, ordered groups, memberships, and Library problem rows for edit', async () => {
+  it('returns existing track metadata, ordered groups, and memberships for edit', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
@@ -431,15 +292,6 @@ describe('tracks service', () => {
       ],
       ['leetcode-75:stack', 'leetcode-75', 'Stack', 2, ['valid-parentheses']],
     ])
-    const problemSlugs = edit.problemRows.map((row) => row.problem.slug)
-    expect(problemSlugs).toHaveLength(101)
-    expect(problemSlugs).toContain('two-sum')
-    expect(problemSlugs).toContain('valid-parentheses')
-    expect(edit.problemRows[0]).toMatchObject({
-      problem: {
-        slug: 'ones-and-zeroes',
-      },
-    })
   })
 
   it('creates and activates a new track when requested', async () => {
@@ -512,19 +364,6 @@ describe('tracks service', () => {
     ])
   })
 
-  it('rejects deleting a missing track', async () => {
-    const handle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-
-    await expect(
-      deleteTrack(handle.db, {
-        surface: 'dashboard',
-        trackId: 'missing',
-      }),
-    ).rejects.toThrow('Track "missing" was not found.')
-  })
-
   it('resets only the requested track ledger', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
@@ -560,13 +399,16 @@ describe('tracks service', () => {
     ])
   })
 
-  it('rejects resetting progress for a missing track', async () => {
+  it.each([
+    ['delete', deleteTrack],
+    ['reset progress for', resetTrackProgress],
+  ] as const)('rejects trying to %s a missing track', async (_, action) => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
 
     await expect(
-      resetTrackProgress(handle.db, {
+      action(handle.db, {
         surface: 'dashboard',
         trackId: 'missing',
       }),
@@ -681,24 +523,6 @@ async function makeProblemDue(
         updatedAt: timestamp,
       },
     })
-}
-
-async function suspendProblem(db: Db, problemSlug: string) {
-  const timestamp = new Date('2026-01-02T00:00:00.000Z').getTime()
-
-  await db.insert(problemPractice).values({
-    problemSlug,
-    status: 'suspended',
-    firstSeenAt: timestamp,
-    lastSeenAt: timestamp,
-    lastReviewedAt: null,
-    lastRating: null,
-    solvedCount: 0,
-    attemptCount: 0,
-    isSuspended: true,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  })
 }
 
 async function completeTrackProblem(

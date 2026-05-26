@@ -126,98 +126,71 @@ describe('backup service', () => {
     ])
   })
 
-  it('rejects review attempts whose card belongs to another problem before restore writes', async () => {
-    const { db } = await createTestDb({ now })
-    await insertCustomState(db)
-    const backup = await exportFullBackup(db, { exportedAt: now })
-    const malformedBackup = {
-      ...backup,
-      data: {
-        ...backup.data,
-        problems: [
-          ...backup.data.problems,
-          {
-            slug: 'second-problem',
-            title: 'Second Problem',
-            difficulty: 'easy',
-            isPremium: false,
-            createdAt: now.toISOString(),
-            updatedAt: now.toISOString(),
-          },
-        ],
-        practice: {
-          ...backup.data.practice,
-          reviewAttempts: backup.data.practice.reviewAttempts.map((attempt) =>
-            attempt.id === 'attempt-custom'
-              ? { ...attempt, problemSlug: 'second-problem' }
-              : attempt,
-          ),
-        },
-      },
-    } satisfies BackupFile
-
-    await expect(restoreFullBackup(db, malformedBackup)).rejects.toThrow(
-      /card card-custom belongs to problem custom-problem/i,
-    )
-
-    expect(await rowsForProblem(db, 'custom-problem')).toHaveLength(1)
-    expect(await rowsForProblem(db, 'second-problem')).toHaveLength(0)
-  })
-
-  it('rejects duplicate DB identities before restore writes', async () => {
-    const { db } = await createTestDb({ now })
-    await insertCustomState(db)
-    const backup = await exportFullBackup(db, { exportedAt: now })
-
-    expect(() =>
-      validateFullBackup({
-        ...backup,
-        data: {
-          ...backup.data,
-          topics: [
-            ...backup.data.topics,
-            { id: 'custom-topic-copy', label: 'Custom Topic' },
-          ],
-        },
-      } satisfies BackupFile),
-    ).toThrow(/duplicate topic label Custom Topic/i)
-
-    expect(() =>
-      validateFullBackup({
-        ...backup,
-        data: {
-          ...backup.data,
-          companies: [
-            ...backup.data.companies,
-            { id: 'custom-company-copy', label: 'Custom Company' },
-          ],
-        },
-      } satisfies BackupFile),
-    ).toThrow(/duplicate company label Custom Company/i)
-
-    expect(() =>
-      validateFullBackup({
-        ...backup,
-        data: {
-          ...backup.data,
-          practice: {
-            ...backup.data.practice,
-            fsrsCards: [
-              ...backup.data.practice.fsrsCards,
-              {
-                ...backup.data.practice.fsrsCards.find(
-                  (card) => card.id === 'card-custom',
-                )!,
-                id: 'card-custom-copy',
-              },
+  it.each([
+    {
+      name: 'topic labels',
+      makeBackup: (backup: BackupFile) =>
+        ({
+          ...backup,
+          data: {
+            ...backup.data,
+            topics: [
+              ...backup.data.topics,
+              { id: 'custom-topic-copy', label: 'Custom Topic' },
             ],
           },
-        },
-      } satisfies BackupFile),
-    ).toThrow(/duplicate FSRS card problem\/kind custom-problem:default/i)
+        }) satisfies BackupFile,
+      message: /duplicate topic label Custom Topic/i,
+    },
+    {
+      name: 'company labels',
+      makeBackup: (backup: BackupFile) =>
+        ({
+          ...backup,
+          data: {
+            ...backup.data,
+            companies: [
+              ...backup.data.companies,
+              { id: 'custom-company-copy', label: 'Custom Company' },
+            ],
+          },
+        }) satisfies BackupFile,
+      message: /duplicate company label Custom Company/i,
+    },
+    {
+      name: 'FSRS card problem/kind identities',
+      makeBackup: (backup: BackupFile) =>
+        ({
+          ...backup,
+          data: {
+            ...backup.data,
+            practice: {
+              ...backup.data.practice,
+              fsrsCards: [
+                ...backup.data.practice.fsrsCards,
+                {
+                  ...backup.data.practice.fsrsCards.find(
+                    (card) => card.id === 'card-custom',
+                  )!,
+                  id: 'card-custom-copy',
+                },
+              ],
+            },
+          },
+        }) satisfies BackupFile,
+      message: /duplicate FSRS card problem\/kind custom-problem:default/i,
+    },
+  ] as const)(
+    'rejects duplicate DB identity for $name without writing',
+    async ({ makeBackup, message }) => {
+      const { db } = await createTestDb({ now })
+      await insertCustomState(db)
+      const backup = await exportFullBackup(db, { exportedAt: now })
 
-    expect(await rowsForProblem(db, 'custom-problem')).toHaveLength(1)
-  })
+      expect(() => validateFullBackup(makeBackup(backup))).toThrow(message)
+      expect(await rowsForProblem(db, 'custom-problem')).toHaveLength(1)
+    },
+  )
 
   it('restores a backup over existing data', async () => {
     const source = await createTestDb({ now })

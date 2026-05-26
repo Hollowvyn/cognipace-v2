@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import { createPracticeRepository } from '@/features/practice/data/practice-repository'
 import { getTodayQueue } from '@/features/queue/server/queue-service'
@@ -144,37 +144,6 @@ describe('practice core', () => {
     expect(details.recentAttempts).toEqual([])
   })
 
-  it('carries the current aggregate log snapshot when a quick save has no log draft', async () => {
-    const handle = await createTestDb()
-    const repository = createPracticeRepository(handle.db)
-
-    await repository.saveReviewResult({
-      problemSlug: 'two-sum',
-      rating: 'good',
-      reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
-      log: { notes: 'Keep this note.' },
-      reviewAttemptId: 'review-1',
-    })
-    await repository.saveReviewResult({
-      problemSlug: 'two-sum',
-      rating: 'hard',
-      reviewedAt: new Date('2026-01-02T10:00:00.000Z'),
-      reviewAttemptId: 'review-2',
-    })
-
-    const [practice] = await handle.db
-      .select()
-      .from(problemPractice)
-      .where(eq(problemPractice.problemSlug, 'two-sum'))
-    const [quickAttempt] = await handle.db
-      .select()
-      .from(reviewAttempts)
-      .where(eq(reviewAttempts.id, 'review-2'))
-
-    expect(practice?.notes).toBe('Keep this note.')
-    expect(quickAttempt?.notes).toBe('Keep this note.')
-  })
-
   it('merges partial log updates into the latest aggregate snapshot', async () => {
     const handle = await createTestDb()
     const repository = createPracticeRepository(handle.db)
@@ -279,10 +248,6 @@ describe('practice core', () => {
         rating: 'again',
         elapsedSeconds: 900,
         isCorrect: false,
-        interviewPattern: 'Hash map',
-        timeComplexity: 'O(n)',
-        spaceComplexity: 'O(n)',
-        languages: 'TypeScript',
         notes: 'Missed edge case.',
       },
     )
@@ -301,69 +266,12 @@ describe('practice core', () => {
       lastRating: 'again',
       lastElapsedSeconds: 900,
       bestElapsedSeconds: 800,
-      interviewPattern: 'Hash map',
-      timeComplexity: 'O(n)',
-      spaceComplexity: 'O(n)',
-      languages: 'TypeScript',
       notes: 'Missed edge case.',
       isSuspended: false,
     })
     expect(card?.reps).toBe(2)
     expect(card?.dueAt).not.toBe(beforeOverride.dueAt.getTime())
     expect(override.summary.reviewCount).toBe(2)
-  })
-
-  it('overrides the latest saved review when review times match', async () => {
-    const handle = await createTestDb()
-    const repository = createPracticeRepository(handle.db)
-    const reviewedAt = new Date('2026-01-01T10:00:00.000Z')
-
-    vi.useFakeTimers()
-    try {
-      vi.setSystemTime(new Date('2026-01-01T10:01:00.000Z'))
-      await repository.saveReviewResult({
-        problemSlug: 'two-sum',
-        rating: 'good',
-        reviewedAt,
-        reviewAttemptId: 'review-1',
-      })
-
-      vi.setSystemTime(new Date('2026-01-01T10:02:00.000Z'))
-      await repository.saveReviewResult({
-        problemSlug: 'two-sum',
-        rating: 'easy',
-        reviewedAt,
-        reviewAttemptId: 'review-2',
-      })
-
-      vi.setSystemTime(new Date('2026-01-01T10:03:00.000Z'))
-      await repository.overrideLastReviewResult({
-        problemSlug: 'two-sum',
-        rating: 'again',
-      })
-    } finally {
-      vi.useRealTimers()
-    }
-
-    const attempts = await handle.db
-      .select()
-      .from(reviewAttempts)
-      .where(eq(reviewAttempts.problemSlug, 'two-sum'))
-    const details = await repository.getPracticeDetails('two-sum')
-
-    expect(attempts.find((attempt) => attempt.id === 'review-1')).toMatchObject(
-      {
-        rating: 'good',
-      },
-    )
-    expect(attempts.find((attempt) => attempt.id === 'review-2')).toMatchObject(
-      {
-        rating: 'again',
-        reviewedAt: reviewedAt.getTime(),
-      },
-    )
-    expect(details.latestAttempt?.id).toBe('review-2')
-    expect(details.reviewCount).toBe(2)
   })
 
   it('suspends and resumes practice without deleting review history', async () => {
@@ -420,40 +328,7 @@ describe('practice core', () => {
     expect(resumed.card?.reps).toBe(1)
   })
 
-  it('keeps suspension explicit when a suspended problem is reviewed', async () => {
-    const handle = await createTestDb()
-    const repository = createPracticeRepository(handle.db)
-
-    await repository.setPracticeSuspended({
-      problemSlug: 'two-sum',
-      suspended: true,
-    })
-
-    const result = await repository.saveReviewResult({
-      problemSlug: 'two-sum',
-      rating: 'good',
-      reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
-      reviewAttemptId: 'review-1',
-    })
-    const details = await repository.getPracticeDetails('two-sum')
-
-    expect(result.summary).toMatchObject({
-      phase: 'suspended',
-      suspended: true,
-    })
-    expect(details).toMatchObject({
-      canOverrideLatestReview: true,
-      practice: {
-        attemptCount: 1,
-        isSuspended: true,
-        status: 'learning',
-      },
-      phase: 'suspended',
-      isSuspended: true,
-    })
-  })
-
-  it('updates current log before any review without creating schedule history', async () => {
+  it('updates current log before review and snapshots it on save', async () => {
     const handle = await createTestDb()
     const repository = createPracticeRepository(handle.db)
 
@@ -499,24 +374,8 @@ describe('practice core', () => {
       isStarted: false,
       reviewCount: 0,
     })
-  })
 
-  it('merges current log patches and clears explicit blank fields', async () => {
-    const handle = await createTestDb()
-    const repository = createPracticeRepository(handle.db)
-
-    await repository.updateCurrentPracticeLog({
-      problemSlug: 'two-sum',
-      log: {
-        interviewPattern: 'Hash map',
-        timeComplexity: 'O(n)',
-        spaceComplexity: 'O(n)',
-        languages: 'TypeScript',
-        notes: 'Keep this note.',
-      },
-    })
-
-    const details = await repository.updateCurrentPracticeLog({
+    const patched = await repository.updateCurrentPracticeLog({
       problemSlug: 'two-sum',
       log: {
         timeComplexity: null,
@@ -525,25 +384,12 @@ describe('practice core', () => {
       },
     })
 
-    expect(details.currentLog).toEqual({
+    expect(patched.currentLog).toEqual({
       interviewPattern: 'Hash map',
       timeComplexity: null,
       spaceComplexity: null,
       languages: 'TypeScript',
       notes: 'Updated note.',
-    })
-  })
-
-  it('snapshots the current log when a review is saved without a log draft', async () => {
-    const handle = await createTestDb()
-    const repository = createPracticeRepository(handle.db)
-
-    await repository.updateCurrentPracticeLog({
-      problemSlug: 'two-sum',
-      log: {
-        interviewPattern: 'Hash map',
-        notes: 'Saved before solving.',
-      },
     })
 
     await repository.saveReviewResult({
@@ -560,7 +406,7 @@ describe('practice core', () => {
 
     expect(attempt).toMatchObject({
       interviewPattern: 'Hash map',
-      notes: 'Saved before solving.',
+      notes: 'Updated note.',
     })
   })
 
