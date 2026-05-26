@@ -2,7 +2,10 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { SerializedSyncStatus, SyncActionResult } from '../api/sync-contracts'
+import type {
+  SerializedSyncStatus,
+  SyncActionResult,
+} from '../api/sync-contracts'
 
 import { DashboardSyncActionsView } from './dashboard-sync-actions'
 
@@ -72,9 +75,70 @@ describe('DashboardSyncActionsView', () => {
     expect(onPushLocal).not.toHaveBeenCalledWith({
       confirmRemoteOverwrite: true,
     })
-    expect(await screen.findByRole('alert')).toHaveTextContent(
+    const feedback = await screen.findByRole('alert')
+    expect(feedback).toHaveTextContent(
       'Remote changed. Open Settings to overwrite the Gist.',
     )
+    expect(feedback).not.toHaveClass('sr-only')
+    expect(
+      screen.getByText('Remote changed. Open Settings to overwrite the Gist.'),
+    ).toBeVisible()
+  })
+
+  it('shows compact visible status feedback after a successful pull', async () => {
+    const user = userEvent.setup()
+    const onPullLatest = vi.fn().mockResolvedValue({
+      action: 'pull-latest',
+      direction: 'pull',
+      outcome: 'success',
+      reason: null,
+      retryable: false,
+      message: 'Pulled latest.',
+      status: configuredStatus,
+      occurredAt: '2026-05-26T12:00:00.000Z',
+    } satisfies SyncActionResult)
+
+    render(
+      <DashboardSyncActionsView
+        isPending={false}
+        onPullLatest={onPullLatest}
+        onPushLocal={vi.fn()}
+        status={configuredStatus}
+      />,
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: 'Pull latest from Gist' }),
+    )
+
+    const feedback = await screen.findByRole('status')
+    expect(feedback).toHaveTextContent('Pulled latest.')
+    expect(feedback).not.toHaveClass('sr-only')
+    expect(screen.getByText('Pulled latest.')).toBeVisible()
+  })
+
+  it.each([
+    ['a sync action is pending', { isPending: true, isSyncing: false }],
+    ['sync status is syncing', { isPending: false, isSyncing: true }],
+  ])('disables header sync actions when %s', (_label, state) => {
+    render(
+      <DashboardSyncActionsView
+        isPending={state.isPending}
+        onPullLatest={vi.fn()}
+        onPushLocal={vi.fn()}
+        status={{
+          ...configuredStatus,
+          isSyncing: state.isSyncing,
+        }}
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Pull latest from Gist' }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Push local to Gist' }),
+    ).toBeDisabled()
   })
 })
 

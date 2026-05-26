@@ -245,7 +245,9 @@ describe('dashboard routes', () => {
         return Promise.resolve(createDashboardAppShellData())
       }
 
-      return Promise.resolve(defaultUserSettings)
+      throw new Error(
+        `Unexpected runtime method in sync shortcut test: ${method}`,
+      )
     })
 
     const { user } = renderDashboard('/')

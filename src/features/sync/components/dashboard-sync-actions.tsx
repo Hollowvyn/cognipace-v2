@@ -2,10 +2,14 @@ import { CloudDownload, CloudUpload } from 'lucide-react'
 import { useState } from 'react'
 
 import { IconButton } from '@/components/ui/icon-button'
+import { cn } from '@/utils/cn'
 import { readErrorMessage } from '@/utils/errors'
 
 import { usePullLatest, usePushLocal, useSyncStatus } from '../api/sync-api'
-import type { SerializedSyncStatus, SyncActionResult } from '../api/sync-contracts'
+import type {
+  SerializedSyncStatus,
+  SyncActionResult,
+} from '../api/sync-contracts'
 
 type DashboardSyncActionResult =
   | Promise<SyncActionResult | null | undefined | void>
@@ -111,12 +115,21 @@ export function DashboardSyncActionsView({
       </IconButton>
       {feedback ? (
         <p
-          className="sr-only"
+          aria-atomic="true"
+          className={cn(
+            'm-0 w-[10rem] truncate text-right text-[length:var(--cp-badge-font-size)] font-semibold leading-tight',
+            feedback.tone === 'alert'
+              ? 'text-destructive'
+              : 'text-muted-foreground',
+          )}
           role={feedback.tone === 'alert' ? 'alert' : 'status'}
+          title={feedback.message}
         >
           {feedback.message}
         </p>
-      ) : null}
+      ) : (
+        <span aria-hidden="true" className="block w-[10rem] shrink-0" />
+      )}
     </>
   )
 }
