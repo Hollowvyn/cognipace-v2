@@ -81,9 +81,10 @@ export function useSyncAction<TVariables = void, TResult = unknown>(
 
   return useMutation({
     mutationFn,
-    onSuccess: () => {
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: syncQueryKeys.all })
-
+    },
+    onSuccess: () => {
       if (options.invalidateData) {
         invalidateTaggedQueries(queryClient, broadSyncInvalidationTags)
       }

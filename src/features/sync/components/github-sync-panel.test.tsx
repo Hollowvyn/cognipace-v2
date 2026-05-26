@@ -63,6 +63,44 @@ describe('GitHubSyncPanel', () => {
     expect(screen.getByRole('button', { name: /Pull remote/i })).toBeEnabled()
     expect(screen.getByRole('button', { name: /Push local/i })).toBeEnabled()
   })
+
+  it('requires confirmation before resolving a conflict', async () => {
+    const user = userEvent.setup()
+    const onResolveConflict = vi.fn().mockResolvedValue(syncActionResult)
+
+    render(
+      <GitHubSyncPanel
+        actions={{
+          onConnectGist: vi.fn(),
+          onCreateGist: vi.fn(),
+          onDeleteToken: vi.fn(),
+          onResolveConflict,
+          onSaveToken: vi.fn(),
+          onSyncNow: vi.fn(),
+          onValidateToken: vi.fn(),
+        }}
+        status={{
+          ...configuredStatus,
+          conflict: {
+            detectedAt: '2026-05-26T12:10:00.000Z',
+            localDataUpdatedAt: '2026-05-26T12:08:00.000Z',
+            remoteUpdatedAt: '2026-05-26T12:09:00.000Z',
+            remoteVersion: 'remote_2',
+          },
+        }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Pull remote/i }))
+
+    expect(onResolveConflict).not.toHaveBeenCalled()
+
+    await user.click(
+      screen.getByRole('button', { name: /Confirm pull remote/i }),
+    )
+
+    expect(onResolveConflict).toHaveBeenCalledWith('pull-remote')
+  })
 })
 
 const notConfiguredStatus = {
