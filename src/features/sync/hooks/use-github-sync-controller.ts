@@ -12,6 +12,10 @@ import {
 import type { SyncActionResult } from '../api/sync-contracts'
 import type { GitHubSyncPanelActions } from '../components/github-sync-panel'
 
+function didPullSuccessfully(result: SyncActionResult) {
+  return result.direction === 'pull' && result.outcome === 'success'
+}
+
 export function useGithubSyncController() {
   const status = useSyncStatus()
   const validateToken = useSyncAction((token: string) =>
@@ -24,19 +28,16 @@ export function useGithubSyncController() {
   const connectGist = useSyncAction(
     (gistId: string) => connectGithubGistViaRuntime(gistId),
     {
-      invalidateData: true,
+      invalidateData: didPullSuccessfully,
     },
   )
   const deleteToken = useSyncAction(() => deleteGithubTokenViaRuntime())
   const pullLatest = useSyncAction(() => pullLatestViaRuntime(), {
-    invalidateData: true,
+    invalidateData: didPullSuccessfully,
   })
   const pushLocal = useSyncAction<boolean | undefined, SyncActionResult>(
     (confirmRemoteOverwrite = false) =>
       pushLocalViaRuntime({ confirmRemoteOverwrite }),
-    {
-      invalidateData: true,
-    },
   )
 
   const actions = {

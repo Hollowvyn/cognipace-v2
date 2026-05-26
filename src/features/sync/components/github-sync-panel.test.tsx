@@ -101,6 +101,131 @@ describe('GitHubSyncPanel', () => {
 
     expect(onPullLatest).toHaveBeenCalled()
   })
+
+  it('shows warning feedback and skips token-save cleanup when a resolved action is blocked', async () => {
+    const user = userEvent.setup()
+    const onSaveToken = vi.fn().mockResolvedValue({
+      ...syncActionResult,
+      outcome: 'blocked',
+      reason: 'not-configured',
+      message: 'GitHub token was not saved.',
+    })
+
+    render(
+      <GitHubSyncPanel
+        actions={{
+          onConnectGist: vi.fn(),
+          onCreateGist: vi.fn(),
+          onDeleteToken: vi.fn(),
+          onPullLatest: vi.fn(),
+          onPushLocal: vi.fn(),
+          onSaveToken,
+          onValidateToken: vi.fn(),
+        }}
+        status={notConfiguredStatus}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/GitHub token/i), 'ghp_secret')
+    await user.click(screen.getByRole('button', { name: /Save token/i }))
+
+    const feedback = await screen.findByText('GitHub token was not saved.')
+    expect(feedback.closest('[data-cp-tone]')).toHaveAttribute(
+      'data-cp-tone',
+      'warning',
+    )
+    expect(screen.getByLabelText(/GitHub token/i)).toHaveValue('ghp_secret')
+    expect(
+      screen.getByRole('button', { name: /Create private Gist/i }),
+    ).toBeDisabled()
+  })
+
+  it('shows warning feedback and keeps conflict confirmation open when confirmation is still required', async () => {
+    const user = userEvent.setup()
+    const onPushLocal = vi.fn().mockResolvedValue({
+      ...syncActionResult,
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'confirmation-required',
+      reason: 'remote-changed',
+      message: 'Remote changed. Confirm overwrite before pushing.',
+    })
+
+    render(
+      <GitHubSyncPanel
+        actions={{
+          onConnectGist: vi.fn(),
+          onCreateGist: vi.fn(),
+          onDeleteToken: vi.fn(),
+          onPullLatest: vi.fn(),
+          onPushLocal,
+          onSaveToken: vi.fn(),
+          onValidateToken: vi.fn(),
+        }}
+        status={{
+          ...configuredStatus,
+          conflict: {
+            detectedAt: '2026-05-26T12:10:00.000Z',
+            localDataUpdatedAt: '2026-05-26T12:08:00.000Z',
+            remoteUpdatedAt: '2026-05-26T12:09:00.000Z',
+            remoteVersion: 'remote_2',
+          },
+        }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Push local/i }))
+    await user.click(
+      screen.getByRole('button', { name: /Confirm push local/i }),
+    )
+
+    const feedback = await screen.findByText(
+      'Remote changed. Confirm overwrite before pushing.',
+    )
+    expect(feedback.closest('[data-cp-tone]')).toHaveAttribute(
+      'data-cp-tone',
+      'warning',
+    )
+    expect(
+      screen.getByRole('button', { name: /Confirm push local/i }),
+    ).toBeEnabled()
+  })
+
+  it('shows danger feedback for resolved error outcomes', async () => {
+    const user = userEvent.setup()
+    const onPullLatest = vi.fn().mockResolvedValue({
+      ...syncActionResult,
+      action: 'pull-latest',
+      direction: 'pull',
+      outcome: 'error',
+      reason: 'network',
+      message: 'GitHub is unavailable.',
+      retryable: true,
+    })
+
+    render(
+      <GitHubSyncPanel
+        actions={{
+          onConnectGist: vi.fn(),
+          onCreateGist: vi.fn(),
+          onDeleteToken: vi.fn(),
+          onPullLatest,
+          onPushLocal: vi.fn(),
+          onSaveToken: vi.fn(),
+          onValidateToken: vi.fn(),
+        }}
+        status={configuredStatus}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Pull latest/i }))
+
+    const feedback = await screen.findByText('GitHub is unavailable.')
+    expect(feedback.closest('[data-cp-tone]')).toHaveAttribute(
+      'data-cp-tone',
+      'danger',
+    )
+  })
 })
 
 const notConfiguredStatus = {

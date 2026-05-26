@@ -32,11 +32,6 @@ export const syncPushLocalRequestSchema = z.strictObject({
   confirmRemoteOverwrite: z.boolean().default(false),
 })
 
-export const syncResolveConflictRequestSchema = z.strictObject({
-  surface: z.literal('dashboard'),
-  resolution: z.enum(['pull-remote', 'push-local']),
-})
-
 export const syncActionSchema = z.enum([
   'validate-token',
   'save-token',
@@ -132,8 +127,5 @@ export type SyncGithubTokenRequest = z.infer<
 export type SyncGithubGistRequest = z.infer<typeof syncGithubGistRequestSchema>
 export type SyncSetEnabledRequest = z.infer<typeof syncSetEnabledRequestSchema>
 export type SyncPushLocalRequest = z.infer<typeof syncPushLocalRequestSchema>
-export type SyncResolveConflictRequest = z.infer<
-  typeof syncResolveConflictRequestSchema
->
 export type SerializedSyncStatus = z.infer<typeof syncStatusSchema>
 export type SyncActionResult = z.infer<typeof syncActionResultSchema>

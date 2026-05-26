@@ -71,7 +71,7 @@ export function useSyncStatus(surface: UiSurface = 'dashboard') {
 
 export function useSyncAction<TVariables = void, TResult = unknown>(
   mutationFn: (variables: TVariables) => Promise<TResult>,
-  options: { invalidateData?: boolean } = {},
+  options: { invalidateData?: boolean | ((result: TResult) => boolean) } = {},
 ) {
   const queryClient = useQueryClient()
 
@@ -80,8 +80,13 @@ export function useSyncAction<TVariables = void, TResult = unknown>(
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: syncQueryKeys.all })
     },
-    onSuccess: () => {
-      if (options.invalidateData) {
+    onSuccess: (result) => {
+      const shouldInvalidateData =
+        typeof options.invalidateData === 'function'
+          ? options.invalidateData(result)
+          : options.invalidateData === true
+
+      if (shouldInvalidateData) {
         invalidateTaggedQueries(queryClient, broadSyncInvalidationTags)
       }
     },

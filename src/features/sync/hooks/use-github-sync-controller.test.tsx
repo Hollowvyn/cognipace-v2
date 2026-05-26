@@ -16,14 +16,19 @@ describe('useGithubSyncController', () => {
     vi.clearAllMocks()
   })
 
-  it('broad-invalidates cached views when connecting a Gist may pull remote data', async () => {
+  it('broad-invalidates cached views when connecting a Gist pulls remote data successfully', async () => {
     vi.mocked(sendMessage).mockImplementation((method) => {
       if (method === 'sync.getStatus') {
         return Promise.resolve(configuredStatus)
       }
 
       if (method === 'sync.connectGithubGist') {
-        return Promise.resolve(syncActionResult)
+        return Promise.resolve({
+          ...syncActionResult,
+          action: 'connect-gist',
+          direction: 'pull',
+          outcome: 'success',
+        })
       }
 
       return Promise.reject(new Error(`Unexpected method ${method}`))
@@ -58,14 +63,72 @@ describe('useGithubSyncController', () => {
     })
   })
 
-  it('runs directional pull and push actions through the runtime boundary', async () => {
+  it('does not broad-invalidate cached views when connecting a Gist does not pull successfully', async () => {
     vi.mocked(sendMessage).mockImplementation((method) => {
       if (method === 'sync.getStatus') {
         return Promise.resolve(configuredStatus)
       }
 
-      if (method === 'sync.pullLatest' || method === 'sync.pushLocal') {
-        return Promise.resolve(syncActionResult)
+      if (method === 'sync.connectGithubGist') {
+        return Promise.resolve({
+          ...syncActionResult,
+          action: 'connect-gist',
+          direction: null,
+          outcome: 'no-change',
+        })
+      }
+
+      return Promise.reject(new Error(`Unexpected method ${method}`))
+    })
+    const { queryClient, wrapper } = createQueryTestHarness()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useGithubSyncController(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.status).toEqual(configuredStatus)
+    })
+
+    await act(async () => {
+      await result.current.actions.onConnectGist('gist_1')
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('sync.connectGithubGist', {
+      surface: 'dashboard',
+      gistId: 'gist_1',
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.sync.all,
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: queryKeys.settings.all,
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: queryKeys.appShell.all,
+    })
+  })
+
+  it('broad-invalidates cached views for successful pulls but only refreshes sync status for pushes', async () => {
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'sync.getStatus') {
+        return Promise.resolve(configuredStatus)
+      }
+
+      if (method === 'sync.pullLatest') {
+        return Promise.resolve({
+          ...syncActionResult,
+          action: 'pull-latest',
+          direction: 'pull',
+          outcome: 'success',
+        })
+      }
+
+      if (method === 'sync.pushLocal') {
+        return Promise.resolve({
+          ...syncActionResult,
+          action: 'push-local',
+          direction: 'push',
+          outcome: 'success',
+        })
       }
 
       return Promise.reject(new Error(`Unexpected method ${method}`))
@@ -80,15 +143,10 @@ describe('useGithubSyncController', () => {
 
     await act(async () => {
       await result.current.actions.onPullLatest()
-      await result.current.actions.onPushLocal(true)
     })
 
     expect(sendMessage).toHaveBeenCalledWith('sync.pullLatest', {
       surface: 'dashboard',
-    })
-    expect(sendMessage).toHaveBeenCalledWith('sync.pushLocal', {
-      surface: 'dashboard',
-      confirmRemoteOverwrite: true,
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: queryKeys.settings.all,
@@ -96,8 +154,25 @@ describe('useGithubSyncController', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: queryKeys.appShell.all,
     })
+
+    invalidateQueries.mockClear()
+
+    await act(async () => {
+      await result.current.actions.onPushLocal(true)
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('sync.pushLocal', {
+      surface: 'dashboard',
+      confirmRemoteOverwrite: true,
+    })
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: queryKeys.sync.all,
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: queryKeys.settings.all,
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: queryKeys.appShell.all,
     })
   })
 })

@@ -73,11 +73,13 @@ export function GitHubSyncPanel({
 
     try {
       const result = await action()
-      options.afterSuccess?.()
-      setFeedback({
-        message: readActionMessage(result, fallbackMessage),
-        tone: 'success',
-      })
+      const actionFeedback = readActionFeedback(result, fallbackMessage)
+
+      if (actionFeedback.tone === 'success') {
+        options.afterSuccess?.()
+      }
+
+      setFeedback(actionFeedback)
     } catch (error) {
       setFeedback({
         message: readErrorMessage(error, 'Sync action failed.'),
@@ -454,6 +456,40 @@ function readStatusTone(status: SerializedSyncStatus) {
   }
 
   return status.configured ? 'success' : 'neutral'
+}
+
+function readActionFeedback(result: unknown, fallback: string): Feedback {
+  const message = readActionMessage(result, fallback)
+
+  if (!isSyncActionResult(result)) {
+    return { message, tone: 'success' }
+  }
+
+  if (result.outcome === 'error') {
+    return { message, tone: 'danger' }
+  }
+
+  if (
+    result.outcome === 'blocked' ||
+    result.outcome === 'confirmation-required'
+  ) {
+    return { message, tone: 'warning' }
+  }
+
+  return { message, tone: 'success' }
+}
+
+function isSyncActionResult(result: unknown): result is SyncActionResult {
+  return (
+    result !== null &&
+    typeof result === 'object' &&
+    'outcome' in result &&
+    (result.outcome === 'success' ||
+      result.outcome === 'no-change' ||
+      result.outcome === 'blocked' ||
+      result.outcome === 'confirmation-required' ||
+      result.outcome === 'error')
+  )
 }
 
 function readActionMessage(result: unknown, fallback: string) {

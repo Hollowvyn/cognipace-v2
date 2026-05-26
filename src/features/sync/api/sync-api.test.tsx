@@ -87,19 +87,20 @@ describe('sync API', () => {
     })
   })
 
-  it('broad-invalidates local data views for actions that may pull remote data', async () => {
+  it('broad-invalidates local data views when the resolved action matches the invalidation predicate', async () => {
     const { queryClient, wrapper } = createQueryTestHarness()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const { result } = renderHook(
       () =>
-        useSyncAction((gistId: string) => Promise.resolve({ gistId }), {
-          invalidateData: true,
+        useSyncAction(() => Promise.resolve(syncActionResult), {
+          invalidateData: (result) =>
+            result.direction === 'pull' && result.outcome === 'success',
         }),
       { wrapper },
     )
 
     await act(async () => {
-      await result.current.mutateAsync('gist_1')
+      await result.current.mutateAsync()
     })
 
     expect(invalidateQueries).toHaveBeenCalledWith({
@@ -113,6 +114,44 @@ describe('sync API', () => {
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: queryKeys.sync.all,
+    })
+  })
+
+  it('does not broad-invalidate local data views when the resolved action misses the invalidation predicate', async () => {
+    const { queryClient, wrapper } = createQueryTestHarness()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(
+      () =>
+        useSyncAction(
+          () =>
+            Promise.resolve({
+              ...syncActionResult,
+              outcome: 'blocked',
+              reason: 'local-dirty',
+            }),
+          {
+            invalidateData: (result) =>
+              result.direction === 'pull' && result.outcome === 'success',
+          },
+        ),
+      { wrapper },
+    )
+
+    await act(async () => {
+      await result.current.mutateAsync()
+    })
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.sync.all,
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: queryKeys.settings.all,
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: queryKeys.problems.all,
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: queryKeys.appShell.all,
     })
   })
 })
@@ -141,7 +180,7 @@ const syncActionResult = {
     conflict: null,
   },
   action: 'set-enabled',
-  direction: null,
+  direction: 'pull',
   outcome: 'success',
   reason: null,
   retryable: false,
