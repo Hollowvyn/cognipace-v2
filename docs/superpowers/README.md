@@ -18,6 +18,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Plans
 
+- [`plans/2026-05-26-github-gist-sync.md`](./plans/2026-05-26-github-gist-sync.md): implementation plan for GitHub Gist pseudo-sync, reusable local secrets, shared external API transport, and LeetCode API transport cleanup.
 - [`plans/2026-05-24-docs-architecture.md`](./plans/2026-05-24-docs-architecture.md): implementation plan for this docs pass. Current while the docs pass is in progress.
 - [`plans/2026-05-24-tracks-phase-3.md`](./plans/2026-05-24-tracks-phase-3.md): Tracks phase 3 implementation plan. Historical once the feature has landed.
 - [`plans/2026-05-23-problems-mvp.md`](./plans/2026-05-23-problems-mvp.md): Problems MVP implementation plan. Historical once the feature has landed.
