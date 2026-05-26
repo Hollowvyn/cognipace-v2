@@ -11,6 +11,7 @@ import type { SecretStatus } from '@/platform/secrets'
 import { defaultSyncMetadata } from '../data/sync-metadata-store'
 import type { SyncMetadata } from '../data/sync-metadata-store'
 import { buildSyncEnvelope } from '../domain/sync-envelope'
+import { syncActionResultSchema, syncStatusSchema } from '../api/sync-contracts'
 import {
   createSyncOperationCoordinator,
   createSyncService,
@@ -76,6 +77,26 @@ const tokenStatus: SecretStatus = {
 }
 
 describe('sync service', () => {
+  it('returns status and action results that satisfy sync contracts', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      lastSyncAt: '2026-05-26T12:00:00.000Z',
+      lastSyncDirection: 'push',
+      lastPushAt: '2026-05-26T12:00:00.000Z',
+      dirtySinceLastSync: true,
+      lastBlockingReason: 'local-dirty',
+    })
+
+    const status = await harness.service.getStatus()
+    expect(syncStatusSchema.parse(status)).toEqual(status)
+
+    const actionResult =
+      await harness.service.validateGithubToken('github_pat_secret')
+    expect(syncActionResultSchema.parse(actionResult)).toEqual(actionResult)
+  })
+
   it('creates a private Gist from current backup', async () => {
     const harness = createHarness()
     harness.githubClient.createSyncGist.mockResolvedValue(

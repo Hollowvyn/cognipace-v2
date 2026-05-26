@@ -73,11 +73,21 @@ const configuredStatus = {
   isSyncing: false,
   lastSyncAt: '2026-05-26T12:00:00.000Z',
   lastSyncDirection: 'push',
+  lastPullAt: null,
+  lastPushAt: '2026-05-26T12:00:00.000Z',
+  needsPush: false,
+  lastBlockingReason: null,
   lastError: null,
   conflict: null,
 } as const
 
 const syncActionResult = {
+  action: 'connect-gist',
+  direction: null,
+  outcome: 'success',
+  reason: null,
+  retryable: false,
   message: 'GitHub Gist connected and pulled.',
   status: configuredStatus,
+  occurredAt: '2026-05-26T12:00:00.000Z',
 } as const

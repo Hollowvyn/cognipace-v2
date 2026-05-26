@@ -34,7 +34,14 @@ import {
   buildSyncEnvelope,
   parseSyncEnvelopeForCurrentApp,
 } from '../domain/sync-envelope'
-import type { SyncErrorKind, SyncErrorSummary } from '../domain/sync-status'
+import type {
+  SyncAction,
+  SyncActionDirection,
+  SyncActionOutcome,
+  SyncActionReason,
+  SyncErrorKind,
+  SyncErrorSummary,
+} from '../domain/sync-status'
 
 type SyncReason = 'manual' | 'mutation' | 'open'
 type SyncConflictResolution = 'pull-remote' | 'push-local'
@@ -118,7 +125,11 @@ export function createSyncService(deps: SyncServiceDependencies) {
       const client = deps.createGitHubClient(token)
       await client.validateToken()
 
-      return createActionResult('GitHub token validated.')
+      return createActionResult({
+        action: 'validate-token',
+        direction: null,
+        message: 'GitHub token validated.',
+      })
     } catch (error) {
       await recordError(error, false)
       throw error
@@ -132,7 +143,11 @@ export function createSyncService(deps: SyncServiceDependencies) {
       await deps.saveToken(token)
       await deps.writeMetadata({ lastError: null })
 
-      return createActionResult('GitHub token saved.')
+      return createActionResult({
+        action: 'save-token',
+        direction: null,
+        message: 'GitHub token saved.',
+      })
     } catch (error) {
       await recordError(error, false)
       throw error
@@ -151,7 +166,11 @@ export function createSyncService(deps: SyncServiceDependencies) {
       return 'GitHub token deleted.'
     })
 
-    return createActionResult(message)
+    return createActionResult({
+      action: 'delete-token',
+      direction: null,
+      message,
+    })
   }
 
   async function createGithubGist(): Promise<SyncActionResult> {
@@ -164,7 +183,11 @@ export function createSyncService(deps: SyncServiceDependencies) {
       return 'GitHub Gist created.'
     })
 
-    return createActionResult(message)
+    return createActionResult({
+      action: 'create-gist',
+      direction: null,
+      message,
+    })
   }
 
   async function connectGithubGist(gistId: string): Promise<SyncActionResult> {
@@ -194,6 +217,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
         gistId,
         lastRemoteVersion: gist.remoteVersion,
         lastRemoteUpdatedAt: gist.updatedAt,
+        lastBlockingReason: 'remote-changed',
         conflict: createSyncConflict({
           detectedAt: deps.now(),
           localDataUpdatedAt: metadata.localDataUpdatedAt,
@@ -206,7 +230,11 @@ export function createSyncService(deps: SyncServiceDependencies) {
       return 'Choose whether to pull remote data or push local data.'
     })
 
-    return createActionResult(message)
+    return createActionResult({
+      action: 'connect-gist',
+      direction: null,
+      message,
+    })
   }
 
   async function setEnabled(enabled: boolean): Promise<SyncActionResult> {
@@ -216,19 +244,23 @@ export function createSyncService(deps: SyncServiceDependencies) {
       return enabled ? 'GitHub sync enabled.' : 'GitHub sync disabled.'
     })
 
-    return createActionResult(message)
+    return createActionResult({
+      action: 'set-enabled',
+      direction: null,
+      message,
+    })
   }
 
   async function checkOnOpen(): Promise<SyncActionResult | null> {
     const message = await runExclusive(async () => syncCore('open'))
 
-    return message === null ? null : createActionResult(message)
+    return message === null ? null : createLegacySyncActionResult(message)
   }
 
   async function syncNow(): Promise<SyncActionResult | null> {
     const message = await runExclusive(async () => syncCore('manual'))
 
-    return message === null ? null : createActionResult(message)
+    return message === null ? null : createLegacySyncActionResult(message)
   }
 
   async function syncAfterMutation(): Promise<null> {
@@ -269,7 +301,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
       return 'Local data pushed.'
     })
 
-    return createActionResult(message)
+    return createLegacySyncActionResult(message)
   }
 
   async function syncCore(reason: SyncReason): Promise<string | null> {
@@ -291,6 +323,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
             remoteUpdatedAt: remote.updatedAt,
             remoteVersion: getRemoteIdentity(remote),
           }),
+          lastBlockingReason: 'remote-changed',
           lastError: null,
         })
 
@@ -316,6 +349,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
     await deps.writeMetadata({
       lastSyncAt: deps.now().toISOString(),
       lastSyncDirection: 'no-change',
+      lastBlockingReason: null,
       lastError: null,
     })
 
@@ -348,10 +382,12 @@ export function createSyncService(deps: SyncServiceDependencies) {
         gistId: gist.id,
         lastSyncAt: deps.now().toISOString(),
         lastSyncDirection: 'pull',
+        lastPullAt: deps.now().toISOString(),
         lastRemoteVersion: gist.remoteVersion,
         lastRemoteUpdatedAt: gist.updatedAt,
         localDataUpdatedAt: envelope.dataUpdatedAt,
         dirtySinceLastSync: false,
+        lastBlockingReason: null,
         conflict: null,
         lastError: null,
       })
@@ -370,12 +406,14 @@ export function createSyncService(deps: SyncServiceDependencies) {
       gistId: gist.id,
       lastSyncAt: deps.now().toISOString(),
       lastSyncDirection: 'push',
+      lastPushAt: deps.now().toISOString(),
       lastRemoteVersion: gist.remoteVersion,
       lastRemoteUpdatedAt: gist.updatedAt,
       localDataUpdatedAt: changedDuringPush
         ? metadata.localDataUpdatedAt
         : dataUpdatedAt,
       dirtySinceLastSync: changedDuringPush,
+      lastBlockingReason: null,
       conflict: null,
       lastError: null,
     })
@@ -411,13 +449,28 @@ export function createSyncService(deps: SyncServiceDependencies) {
     return deps.createGitHubClient(token)
   }
 
-  async function createActionResult(
-    message: string,
-  ): Promise<SyncActionResult> {
+  async function createActionResult(input: {
+    action: SyncAction
+    direction: SyncActionDirection
+    message: string
+    outcome?: SyncActionOutcome
+    reason?: SyncActionReason | null
+    retryable?: boolean
+  }): Promise<SyncActionResult> {
     return {
+      action: input.action,
+      direction: input.direction,
+      outcome: input.outcome ?? 'success',
+      reason: input.reason ?? null,
+      retryable: input.retryable ?? false,
+      message: input.message,
       status: await getStatus(),
-      message,
+      occurredAt: deps.now().toISOString(),
     }
+  }
+
+  function createLegacySyncActionResult(message: string) {
+    return createActionResult(mapLegacySyncActionResult(message))
   }
 
   async function recordError(error: unknown, retryable: boolean) {
@@ -513,8 +566,62 @@ function createStatus(
     isSyncing,
     lastSyncAt: metadata.lastSyncAt,
     lastSyncDirection: metadata.lastSyncDirection,
+    lastPullAt: metadata.lastPullAt,
+    lastPushAt: metadata.lastPushAt,
+    needsPush: metadata.dirtySinceLastSync,
+    lastBlockingReason: metadata.lastBlockingReason,
     lastError: metadata.lastError,
     conflict: metadata.conflict,
+  }
+}
+
+function mapLegacySyncActionResult(message: string): {
+  action: SyncAction
+  direction: SyncActionDirection
+  message: string
+  outcome?: SyncActionOutcome
+  reason?: SyncActionReason | null
+} {
+  if (message === 'Remote data pulled.') {
+    return {
+      action: 'pull-latest',
+      direction: 'pull',
+      message,
+    }
+  }
+
+  if (message === 'Local data pushed.') {
+    return {
+      action: 'push-local',
+      direction: 'push',
+      message,
+    }
+  }
+
+  if (message === 'Already in sync.') {
+    return {
+      action: 'pull-latest',
+      direction: null,
+      outcome: 'no-change',
+      reason: 'remote-unchanged',
+      message,
+    }
+  }
+
+  if (message === 'Sync conflict detected.') {
+    return {
+      action: 'pull-latest',
+      direction: null,
+      outcome: 'blocked',
+      reason: 'remote-changed',
+      message,
+    }
+  }
+
+  return {
+    action: 'pull-latest',
+    direction: null,
+    message,
   }
 }
 

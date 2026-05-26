@@ -117,6 +117,10 @@ const notConfiguredStatus = {
   isSyncing: false,
   lastSyncAt: null,
   lastSyncDirection: null,
+  lastPullAt: null,
+  lastPushAt: null,
+  needsPush: false,
+  lastBlockingReason: null,
   lastError: null,
   conflict: null,
 } as const
@@ -135,11 +139,21 @@ const configuredStatus = {
   isSyncing: false,
   lastSyncAt: '2026-05-26T12:00:00.000Z',
   lastSyncDirection: 'push',
+  lastPullAt: null,
+  lastPushAt: '2026-05-26T12:00:00.000Z',
+  needsPush: false,
+  lastBlockingReason: null,
   lastError: null,
   conflict: null,
 } as const
 
 const syncActionResult = {
+  action: 'set-enabled',
+  direction: null,
+  outcome: 'success',
+  reason: null,
+  retryable: false,
   message: 'GitHub sync updated.',
   status: configuredStatus,
+  occurredAt: '2026-05-26T12:00:00.000Z',
 } as const
