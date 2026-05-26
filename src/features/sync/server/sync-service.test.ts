@@ -128,7 +128,251 @@ describe('sync service', () => {
     })
   })
 
-  it('maps legacy sync outputs to structured action results', async () => {
+  it('pullLatest restores remote data when local is clean and remote changed', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: false,
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:10:00.000Z',
+        remoteVersion: 'remote_2',
+        content: JSON.stringify(
+          buildSyncEnvelope({
+            backup,
+            dataUpdatedAt: '2026-05-26T12:10:00.000Z',
+          }),
+        ),
+      }),
+    )
+
+    await expect(harness.service.pullLatest()).resolves.toMatchObject({
+      action: 'pull-latest',
+      direction: 'pull',
+      outcome: 'success',
+      reason: null,
+      retryable: false,
+      message: 'Latest Gist data pulled.',
+    })
+    expect(harness.restoreBackup).toHaveBeenCalledWith(backup)
+    expect(harness.flushDbSnapshot).toHaveBeenCalled()
+    expect(harness.broadcastInvalidation).toHaveBeenCalled()
+    expect(harness.getMetadata()).toMatchObject({
+      dirtySinceLastSync: false,
+      lastPullAt: currentTime,
+      lastRemoteVersion: 'remote_2',
+      lastSyncDirection: 'pull',
+    })
+  })
+
+  it('pullLatest blocks dirty local data without restoring remote data', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:05:00.000Z',
+      lastRemoteVersion: 'remote_1',
+    })
+
+    await expect(harness.service.pullLatest()).resolves.toMatchObject({
+      action: 'pull-latest',
+      direction: 'pull',
+      outcome: 'blocked',
+      reason: 'local-dirty',
+      retryable: false,
+      message: 'Pull blocked: local changes have not been pushed.',
+    })
+    expect(harness.githubClient.getGist).not.toHaveBeenCalled()
+    expect(harness.restoreBackup).not.toHaveBeenCalled()
+    expect(harness.getMetadata()).toMatchObject({
+      dirtySinceLastSync: true,
+      lastBlockingReason: 'local-dirty',
+    })
+  })
+
+  it('pullLatest returns no-change when remote is unchanged', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: false,
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:00:00.000Z',
+        remoteVersion: 'remote_1',
+      }),
+    )
+
+    await expect(harness.service.pullLatest()).resolves.toMatchObject({
+      action: 'pull-latest',
+      direction: 'pull',
+      outcome: 'no-change',
+      reason: 'remote-unchanged',
+      retryable: false,
+      message: 'No remote changes.',
+    })
+    expect(harness.restoreBackup).not.toHaveBeenCalled()
+    expect(harness.getMetadata()).toMatchObject({
+      lastSyncAt: currentTime,
+      lastSyncDirection: 'no-change',
+      lastBlockingReason: null,
+    })
+  })
+
+  it('pushLocal writes local backup when remote is unchanged', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:05:00.000Z',
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:00:00.000Z',
+        remoteVersion: 'remote_1',
+      }),
+    )
+    harness.githubClient.updateSyncGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: currentTime,
+        remoteVersion: 'remote_2',
+      }),
+    )
+
+    await expect(harness.service.pushLocal()).resolves.toMatchObject({
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'success',
+      reason: null,
+      retryable: false,
+      message: 'Local data pushed to Gist.',
+    })
+    expect(harness.githubClient.updateSyncGist).toHaveBeenCalledTimes(1)
+    expect(harness.getMetadata()).toMatchObject({
+      dirtySinceLastSync: false,
+      lastPushAt: currentTime,
+      lastRemoteVersion: 'remote_2',
+      lastSyncDirection: 'push',
+    })
+  })
+
+  it('pushLocal requires confirmation when remote changed elsewhere', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:05:00.000Z',
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:10:00.000Z',
+        remoteVersion: 'remote_2',
+      }),
+    )
+
+    await expect(harness.service.pushLocal()).resolves.toMatchObject({
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'confirmation-required',
+      reason: 'remote-changed',
+      retryable: false,
+      message: 'Remote changed since this browser last synced.',
+    })
+    expect(harness.githubClient.updateSyncGist).not.toHaveBeenCalled()
+    expect(harness.getMetadata()).toMatchObject({
+      conflict: {
+        localDataUpdatedAt: '2026-05-26T12:05:00.000Z',
+        remoteUpdatedAt: '2026-05-26T12:10:00.000Z',
+        remoteVersion: 'remote_2',
+      },
+      lastBlockingReason: 'remote-changed',
+    })
+  })
+
+  it('pushLocal overwrites changed remote data after confirmation', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:05:00.000Z',
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:10:00.000Z',
+        remoteVersion: 'remote_2',
+      }),
+    )
+    harness.githubClient.updateSyncGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: currentTime,
+        remoteVersion: 'remote_3',
+      }),
+    )
+
+    await expect(
+      harness.service.pushLocal({ confirmRemoteOverwrite: true }),
+    ).resolves.toMatchObject({
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'success',
+      reason: null,
+      retryable: false,
+    })
+    expect(harness.githubClient.updateSyncGist).toHaveBeenCalledTimes(1)
+    expect(harness.getMetadata()).toMatchObject({
+      conflict: null,
+      dirtySinceLastSync: false,
+      lastBlockingReason: null,
+      lastPushAt: currentTime,
+    })
+  })
+
+  it('pushLocal returns a redacted retryable error result for network failures', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:05:00.000Z',
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockRejectedValue(
+      new Error('Failed to fetch with Bearer ghp_secret'),
+    )
+
+    await expect(harness.service.pushLocal()).resolves.toMatchObject({
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'error',
+      reason: 'network',
+      retryable: true,
+    })
+    expect(JSON.stringify(harness.getMetadata().lastError)).not.toContain(
+      'ghp_secret',
+    )
+    expect(harness.getMetadata().dirtySinceLastSync).toBe(true)
+  })
+
+  it('keeps compatibility methods inactive and syncNow wrapping pullLatest', async () => {
     const pullHarness = createHarness()
     pullHarness.setMetadata({
       enabled: true,
@@ -150,96 +394,18 @@ describe('sync service', () => {
       }),
     )
 
-    await expect(pullHarness.service.checkOnOpen()).resolves.toMatchObject({
+    await expect(pullHarness.service.checkOnOpen()).resolves.toBeNull()
+    expect(pullHarness.githubClient.getGist).not.toHaveBeenCalled()
+
+    await expect(pullHarness.service.syncAfterMutation()).resolves.toBeNull()
+    expect(pullHarness.githubClient.getGist).not.toHaveBeenCalled()
+
+    await expect(pullHarness.service.syncNow()).resolves.toMatchObject({
       action: 'pull-latest',
       direction: 'pull',
       outcome: 'success',
       reason: null,
-      message: 'Remote data pulled.',
-    })
-
-    const pushHarness = createHarness()
-    pushHarness.setMetadata({
-      enabled: true,
-      gistId: 'gist_1',
-      dirtySinceLastSync: true,
-      localDataUpdatedAt: '2026-05-26T12:15:00.000Z',
-      lastRemoteVersion: 'remote_1',
-    })
-    pushHarness.githubClient.getGist.mockResolvedValue(
-      createGistSummary({
-        id: 'gist_1',
-        updatedAt: '2026-05-26T12:00:00.000Z',
-        remoteVersion: 'remote_1',
-      }),
-    )
-    pushHarness.githubClient.updateSyncGist.mockResolvedValue(
-      createGistSummary({
-        id: 'gist_1',
-        updatedAt: currentTime,
-        remoteVersion: 'remote_2',
-      }),
-    )
-
-    await expect(pushHarness.service.syncNow()).resolves.toMatchObject({
-      action: 'push-local',
-      direction: 'push',
-      outcome: 'success',
-      reason: null,
-      message: 'Local data pushed.',
-    })
-
-    const noChangeHarness = createHarness()
-    noChangeHarness.setMetadata({
-      enabled: true,
-      gistId: 'gist_1',
-      dirtySinceLastSync: false,
-      lastRemoteVersion: 'remote_1',
-    })
-    noChangeHarness.githubClient.getGist.mockResolvedValue(
-      createGistSummary({
-        id: 'gist_1',
-        updatedAt: '2026-05-26T12:00:00.000Z',
-        remoteVersion: 'remote_1',
-      }),
-    )
-
-    await expect(noChangeHarness.service.syncNow()).resolves.toMatchObject({
-      action: 'pull-latest',
-      direction: null,
-      outcome: 'no-change',
-      reason: 'remote-unchanged',
-      message: 'Already in sync.',
-    })
-
-    const conflictHarness = createHarness()
-    conflictHarness.setMetadata({
-      enabled: true,
-      gistId: 'gist_1',
-      dirtySinceLastSync: true,
-      localDataUpdatedAt: '2026-05-26T12:15:00.000Z',
-      lastRemoteVersion: 'remote_1',
-    })
-    conflictHarness.githubClient.getGist.mockResolvedValue(
-      createGistSummary({
-        id: 'gist_1',
-        updatedAt: '2026-05-26T12:20:00.000Z',
-        remoteVersion: 'remote_2',
-        content: JSON.stringify(
-          buildSyncEnvelope({
-            backup,
-            dataUpdatedAt: '2026-05-26T12:20:00.000Z',
-          }),
-        ),
-      }),
-    )
-
-    await expect(conflictHarness.service.checkOnOpen()).resolves.toMatchObject({
-      action: 'pull-latest',
-      direction: null,
-      outcome: 'blocked',
-      reason: 'remote-changed',
-      message: 'Sync conflict detected.',
+      message: 'Latest Gist data pulled.',
     })
   })
 
@@ -299,7 +465,7 @@ describe('sync service', () => {
       }),
     )
 
-    await harness.service.checkOnOpen()
+    await harness.service.pullLatest()
 
     expect(harness.restoreBackup).toHaveBeenCalledWith(backup)
     expect(harness.flushDbSnapshot).toHaveBeenCalled()
@@ -339,11 +505,8 @@ describe('sync service', () => {
 
     expect(harness.restoreBackup).not.toHaveBeenCalled()
     expect(harness.githubClient.updateSyncGist).not.toHaveBeenCalled()
-    expect(harness.getMetadata().conflict).toMatchObject({
-      localDataUpdatedAt: '2026-05-26T12:15:00.000Z',
-      remoteUpdatedAt: '2026-05-26T12:20:00.000Z',
-      remoteVersion: 'remote_2',
-    })
+    expect(harness.githubClient.getGist).not.toHaveBeenCalled()
+    expect(harness.getMetadata().conflict).toBeNull()
   })
 
   it('records retryable push errors without throwing local mutation failures', async () => {
@@ -372,10 +535,8 @@ describe('sync service', () => {
     )
 
     await expect(harness.service.syncAfterMutation()).resolves.toBeNull()
-    expect(harness.getMetadata().lastError).toMatchObject({
-      kind: 'rate-limit',
-      retryable: true,
-    })
+    expect(harness.githubClient.getGist).not.toHaveBeenCalled()
+    expect(harness.getMetadata().lastError).toBeNull()
     expect(harness.getMetadata().dirtySinceLastSync).toBe(true)
   })
 
@@ -405,10 +566,8 @@ describe('sync service', () => {
     )
 
     await expect(harness.service.syncAfterMutation()).resolves.toBeNull()
-    expect(harness.getMetadata().lastError).toMatchObject({
-      kind: 'auth',
-      retryable: false,
-    })
+    expect(harness.githubClient.getGist).not.toHaveBeenCalled()
+    expect(harness.getMetadata().lastError).toBeNull()
     expect(harness.getMetadata().dirtySinceLastSync).toBe(true)
   })
 
@@ -513,8 +672,8 @@ describe('sync service', () => {
       }),
     )
 
-    await expect(harness.service.syncNow()).resolves.toMatchObject({
-      message: 'Local data pushed.',
+    await expect(harness.service.pushLocal()).resolves.toMatchObject({
+      message: 'Local data pushed to Gist.',
     })
     expect(harness.githubClient.updateSyncGist).toHaveBeenCalled()
     expect(harness.getMetadata().conflict).toBeNull()
@@ -539,7 +698,7 @@ describe('sync service', () => {
     )
     harness.githubClient.updateSyncGist.mockReturnValue(push.promise)
 
-    const syncPromise = harness.service.syncNow()
+    const syncPromise = harness.service.pushLocal()
     await waitUntil(() => {
       expect(harness.githubClient.updateSyncGist).toHaveBeenCalled()
     })
@@ -577,7 +736,7 @@ describe('sync service', () => {
     )
     harness.githubClient.updateSyncGist.mockReturnValue(push.promise)
 
-    const syncPromise = harness.service.syncNow()
+    const syncPromise = harness.service.pushLocal()
     await waitUntil(() => {
       expect(harness.githubClient.updateSyncGist).toHaveBeenCalled()
     })
@@ -641,7 +800,7 @@ describe('sync service', () => {
       }),
     )
 
-    await harness.service.checkOnOpen()
+    await harness.service.pullLatest()
 
     expect(runRemoteRestoreCalls).toHaveLength(1)
     expect(metadataCleanedBeforeRestoreCoordinatorSettled).toBe(true)

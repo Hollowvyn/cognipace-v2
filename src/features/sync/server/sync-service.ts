@@ -43,9 +43,12 @@ import type {
   SyncErrorSummary,
 } from '../domain/sync-status'
 
-type SyncReason = 'manual' | 'mutation' | 'open'
 type SyncConflictResolution = 'pull-remote' | 'push-local'
 type MaybePromise<T> = T | Promise<T>
+
+type PushLocalOptions = {
+  confirmRemoteOverwrite?: boolean
+}
 
 export type SyncOperationCoordinator = {
   isRunning: () => boolean
@@ -262,27 +265,135 @@ export function createSyncService(deps: SyncServiceDependencies) {
     })
   }
 
-  async function checkOnOpen(): Promise<SyncActionResult | null> {
-    const message = await runExclusive(async () => syncCore('open'))
-
-    return message === null ? null : createLegacySyncActionResult(message)
+  async function checkOnOpen(): Promise<null> {
+    return null
   }
 
-  async function syncNow(): Promise<SyncActionResult | null> {
-    const message = await runExclusive(async () => syncCore('manual'))
+  async function syncNow(): Promise<SyncActionResult> {
+    return pullLatest()
+  }
 
-    return message === null ? null : createLegacySyncActionResult(message)
+  async function pullLatest(): Promise<SyncActionResult> {
+    return runAction('pull-latest', 'pull', async () => {
+      const metadata = await deps.readMetadata()
+
+      if (!metadata.enabled || !metadata.gistId) {
+        await deps.writeMetadata({ lastBlockingReason: 'not-configured' })
+
+        return createActionResult({
+          action: 'pull-latest',
+          direction: 'pull',
+          outcome: 'blocked',
+          reason: 'not-configured',
+          message: 'GitHub Gist sync is not configured.',
+        })
+      }
+
+      if (metadata.dirtySinceLastSync) {
+        await deps.writeMetadata({ lastBlockingReason: 'local-dirty' })
+
+        return createActionResult({
+          action: 'pull-latest',
+          direction: 'pull',
+          outcome: 'blocked',
+          reason: 'local-dirty',
+          message: 'Pull blocked: local changes have not been pushed.',
+        })
+      }
+
+      const client = await readConfiguredClient()
+      const remote = await client.getGist(metadata.gistId)
+
+      if (!hasRemoteChanged(remote, metadata)) {
+        await deps.writeMetadata({
+          lastSyncAt: deps.now().toISOString(),
+          lastSyncDirection: 'no-change',
+          lastRemoteVersion: remote.remoteVersion,
+          lastRemoteUpdatedAt: remote.updatedAt,
+          lastBlockingReason: null,
+          lastError: null,
+        })
+
+        return createActionResult({
+          action: 'pull-latest',
+          direction: 'pull',
+          outcome: 'no-change',
+          reason: 'remote-unchanged',
+          message: 'No remote changes.',
+        })
+      }
+
+      await pullRemote(remote)
+
+      return createActionResult({
+        action: 'pull-latest',
+        direction: 'pull',
+        message: 'Latest Gist data pulled.',
+      })
+    })
+  }
+
+  async function pushLocal(
+    options: PushLocalOptions = {},
+  ): Promise<SyncActionResult> {
+    return runAction('push-local', 'push', async () => {
+      const metadata = await deps.readMetadata()
+
+      if (!metadata.enabled || !metadata.gistId) {
+        await deps.writeMetadata({ lastBlockingReason: 'not-configured' })
+
+        return createActionResult({
+          action: 'push-local',
+          direction: 'push',
+          outcome: 'blocked',
+          reason: 'not-configured',
+          message: 'GitHub Gist sync is not configured.',
+        })
+      }
+
+      const client = await readConfiguredClient()
+      const remote = await client.getGist(metadata.gistId)
+
+      if (
+        hasRemoteChanged(remote, metadata) &&
+        options.confirmRemoteOverwrite !== true
+      ) {
+        await deps.writeMetadata({
+          conflict: createSyncConflict({
+            detectedAt: deps.now(),
+            localDataUpdatedAt: metadata.localDataUpdatedAt,
+            remoteUpdatedAt: remote.updatedAt,
+            remoteVersion: getRemoteIdentity(remote),
+          }),
+          lastBlockingReason: 'remote-changed',
+          lastError: null,
+        })
+
+        return createActionResult({
+          action: 'push-local',
+          direction: 'push',
+          outcome: 'confirmation-required',
+          reason: 'remote-changed',
+          message: 'Remote changed since this browser last synced.',
+        })
+      }
+
+      const local = await createLocalEnvelopeContent()
+      const updated = await client.updateSyncGist(
+        metadata.gistId,
+        local.content,
+      )
+      await recordPush(updated, local.dataUpdatedAt)
+
+      return createActionResult({
+        action: 'push-local',
+        direction: 'push',
+        message: 'Local data pushed to Gist.',
+      })
+    })
   }
 
   async function syncAfterMutation(): Promise<null> {
-    try {
-      await runExclusive(async () => syncCore('mutation'), {
-        recordErrors: false,
-      })
-    } catch (error) {
-      await recordError(error, isRetryableSyncError(error))
-    }
-
     return null
   }
 
@@ -313,58 +424,6 @@ export function createSyncService(deps: SyncServiceDependencies) {
     })
 
     return createLegacySyncActionResult(message)
-  }
-
-  async function syncCore(reason: SyncReason): Promise<string | null> {
-    const metadata = await deps.readMetadata()
-
-    if (!metadata.enabled || !metadata.gistId || metadata.conflict) {
-      return null
-    }
-
-    const client = await readConfiguredClient()
-    const remote = await client.getGist(metadata.gistId)
-
-    if (hasRemoteChanged(remote, metadata)) {
-      if (metadata.dirtySinceLastSync) {
-        await deps.writeMetadata({
-          conflict: createSyncConflict({
-            detectedAt: deps.now(),
-            localDataUpdatedAt: metadata.localDataUpdatedAt,
-            remoteUpdatedAt: remote.updatedAt,
-            remoteVersion: getRemoteIdentity(remote),
-          }),
-          lastBlockingReason: 'remote-changed',
-          lastError: null,
-        })
-
-        return 'Sync conflict detected.'
-      }
-
-      await pullRemote(remote)
-
-      return 'Remote data pulled.'
-    }
-
-    if (metadata.dirtySinceLastSync) {
-      const local = await createLocalEnvelopeContent()
-      const updated = await client.updateSyncGist(
-        metadata.gistId,
-        local.content,
-      )
-      await recordPush(updated, local.dataUpdatedAt)
-
-      return 'Local data pushed.'
-    }
-
-    await deps.writeMetadata({
-      lastSyncAt: deps.now().toISOString(),
-      lastSyncDirection: 'no-change',
-      lastBlockingReason: null,
-      lastError: null,
-    })
-
-    return reason === 'manual' ? 'Already in sync.' : null
   }
 
   async function pullRemote(gist: GitHubGistSummary) {
@@ -480,6 +539,39 @@ export function createSyncService(deps: SyncServiceDependencies) {
     }
   }
 
+  async function createErrorActionResult(
+    action: SyncAction,
+    direction: SyncActionDirection,
+    error: unknown,
+  ): Promise<SyncActionResult> {
+    const retryable = isRetryableSyncError(error)
+
+    await recordError(error, retryable)
+
+    return createActionResult({
+      action,
+      direction,
+      outcome: 'error',
+      reason: mapErrorKindToActionReason(classifySyncError(error)),
+      retryable,
+      message: createSafeSyncErrorMessage(error),
+    })
+  }
+
+  async function runAction(
+    action: SyncAction,
+    direction: SyncActionDirection,
+    work: () => Promise<SyncActionResult>,
+  ): Promise<SyncActionResult> {
+    return syncCoordinator.run(async () => {
+      try {
+        return await work()
+      } catch (error) {
+        return createErrorActionResult(action, direction, error)
+      }
+    })
+  }
+
   function createLegacySyncActionResult(message: string) {
     return createActionResult(mapLegacySyncActionResult(message))
   }
@@ -522,6 +614,8 @@ export function createSyncService(deps: SyncServiceDependencies) {
     createGithubGist,
     deleteGithubToken,
     getStatus,
+    pullLatest,
+    pushLocal,
     resolveConflict,
     saveGithubToken,
     setEnabled,
@@ -739,6 +833,27 @@ function isRetryableSyncError(error: unknown) {
   const kind = classifySyncError(error)
 
   return kind === 'network' || kind === 'rate-limit' || kind === 'unknown'
+}
+
+function mapErrorKindToActionReason(kind: SyncErrorKind): SyncActionReason {
+  switch (kind) {
+    case 'auth':
+      return 'auth'
+    case 'gist-missing':
+      return 'missing-gist'
+    case 'network':
+      return 'network'
+    case 'rate-limit':
+      return 'rate-limit'
+    case 'remote-invalid':
+      return 'invalid-remote'
+    case 'schema-unsupported':
+      return 'unsupported-schema'
+    case 'conflict':
+      return 'remote-changed'
+    case 'unknown':
+      return 'unknown'
+  }
 }
 
 function createSafeSyncErrorMessage(error: unknown) {
