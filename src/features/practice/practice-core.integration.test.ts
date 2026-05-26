@@ -328,6 +328,44 @@ describe('practice core', () => {
     expect(resumed.card?.reps).toBe(1)
   })
 
+  it('keeps practice suspended when saving a first review after suspension', async () => {
+    const handle = await createTestDb()
+    const repository = createPracticeRepository(handle.db)
+    const reviewedAt = new Date('2026-01-01T10:00:00.000Z')
+
+    await repository.setPracticeSuspended({
+      problemSlug: 'two-sum',
+      suspended: true,
+    })
+
+    const result = await repository.saveReviewResult({
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt,
+      reviewAttemptId: 'review-while-suspended',
+    })
+    const details = await repository.getPracticeDetails('two-sum', {
+      now: new Date('2026-01-01T10:01:00.000Z'),
+    })
+
+    expect(result.summary).toMatchObject({
+      phase: 'suspended',
+      suspended: true,
+      reviewCount: 1,
+      isDue: false,
+    })
+    expect(details).toMatchObject({
+      latestAttempt: { id: 'review-while-suspended' },
+      practice: {
+        attemptCount: 1,
+        isSuspended: true,
+      },
+      phase: 'suspended',
+      isSuspended: true,
+      reviewCount: 1,
+    })
+  })
+
   it('updates current log before review and snapshots it on save', async () => {
     const handle = await createTestDb()
     const repository = createPracticeRepository(handle.db)

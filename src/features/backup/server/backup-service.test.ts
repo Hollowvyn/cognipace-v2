@@ -126,6 +126,39 @@ describe('backup service', () => {
     ])
   })
 
+  it('rejects review attempts that reference a card from another problem without writing', async () => {
+    const { db } = await createTestDb({ now })
+    await insertCustomState(db)
+    const backup = await exportFullBackup(db, { exportedAt: now })
+    const malformedBackup = {
+      ...backup,
+      data: {
+        ...backup.data,
+        practice: {
+          ...backup.data.practice,
+          fsrsCards: backup.data.practice.fsrsCards.map((card) =>
+            card.id === 'card-custom'
+              ? { ...card, problemSlug: 'two-sum' }
+              : card,
+          ),
+        },
+      },
+    } satisfies BackupFile
+
+    await expect(restoreFullBackup(db, malformedBackup)).rejects.toThrow(
+      /card card-custom belongs to problem two-sum, not custom-problem/i,
+    )
+
+    expect(await rowsForProblem(db, 'custom-problem')).toHaveLength(1)
+    expect(await db.select().from(reviewAttempts)).toEqual([
+      expect.objectContaining({
+        id: 'attempt-custom',
+        problemSlug: 'custom-problem',
+        cardId: 'card-custom',
+      }),
+    ])
+  })
+
   it.each([
     {
       name: 'topic labels',
