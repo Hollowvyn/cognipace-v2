@@ -169,6 +169,30 @@ describe('runtime-policy', () => {
     }
   })
 
+  it('allows sync status reads and open checks from every UI surface', () => {
+    for (const surface of ['popup', 'dashboard', 'content-script'] as const) {
+      expect(canCallExtensionMethod('sync.getStatus', surface)).toBe(true)
+      expect(canCallExtensionMethod('sync.checkOnOpen', surface)).toBe(true)
+    }
+  })
+
+  it('keeps privileged sync writes dashboard-only', () => {
+    for (const method of [
+      'sync.validateGithubToken',
+      'sync.saveGithubToken',
+      'sync.deleteGithubToken',
+      'sync.createGithubGist',
+      'sync.connectGithubGist',
+      'sync.setEnabled',
+      'sync.syncNow',
+      'sync.resolveConflict',
+    ]) {
+      expect(canCallExtensionMethod(method, 'dashboard')).toBe(true)
+      expect(canCallExtensionMethod(method, 'popup')).toBe(false)
+      expect(canCallExtensionMethod(method, 'content-script')).toBe(false)
+    }
+  })
+
   it('allows popup and dashboard senders to update study mode', () => {
     expect(canCallExtensionMethod('settings.toggleStudyMode', 'popup')).toBe(
       true,

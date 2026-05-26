@@ -80,6 +80,24 @@ import {
   type SettingsUpdateRequest,
 } from '@/features/settings/api/settings-contracts'
 import type {
+  SerializedSyncStatus,
+  SyncActionResult,
+  SyncGithubGistRequest,
+  SyncGithubTokenRequest,
+  SyncRequest,
+  SyncResolveConflictRequest,
+  SyncSetEnabledRequest,
+} from '@/features/sync'
+export {
+  syncActionResultSchema,
+  syncGithubGistRequestSchema,
+  syncGithubTokenRequestSchema,
+  syncRequestSchema,
+  syncResolveConflictRequestSchema,
+  syncSetEnabledRequestSchema,
+  syncStatusSchema,
+} from '@/features/sync'
+import type {
   SerializedActiveTrack,
   TrackDeleteResponse,
   TrackForEditResponse,
@@ -241,6 +259,16 @@ export interface ProtocolMap {
   'backup.validateFullBackup'(request: BackupPayloadRequest): BackupSummary
   'backup.restoreFullBackup'(request: BackupPayloadRequest): BackupSummary
   'backup.resetLocalData'(request: BackupRequest): null
+  'sync.getStatus'(request: SyncRequest): SerializedSyncStatus
+  'sync.validateGithubToken'(request: SyncGithubTokenRequest): SyncActionResult
+  'sync.saveGithubToken'(request: SyncGithubTokenRequest): SyncActionResult
+  'sync.deleteGithubToken'(request: SyncRequest): SyncActionResult
+  'sync.createGithubGist'(request: SyncRequest): SyncActionResult
+  'sync.connectGithubGist'(request: SyncGithubGistRequest): SyncActionResult
+  'sync.setEnabled'(request: SyncSetEnabledRequest): SyncActionResult
+  'sync.checkOnOpen'(request: SyncRequest): SyncActionResult | null
+  'sync.syncNow'(request: SyncRequest): SyncActionResult | null
+  'sync.resolveConflict'(request: SyncResolveConflictRequest): SyncActionResult
   'problems.upsertFromPage'(
     request: ProblemsUpsertFromPageRequest,
   ): SerializedProblem

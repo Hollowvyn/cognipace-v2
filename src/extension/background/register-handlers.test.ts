@@ -1,10 +1,12 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest'
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 
 import {
   activeTrackSchema,
   backupFileSchema,
   backupSummarySchema,
   queueRequestSchema,
+  syncActionResultSchema,
+  syncStatusSchema,
   trackForEditResponseSchema,
   tracksClearActiveTrackRequestSchema,
   tracksCreateTrackRequestSchema,
@@ -93,6 +95,22 @@ const backgroundMocks = vi.hoisted(() => {
       },
     ),
     updateSettings: vi.fn(),
+    createBackgroundSyncService: vi.fn(),
+    markSyncLocalDataChanged: vi.fn(),
+    readSyncMetadata: vi.fn(),
+    syncService: {
+      checkOnOpen: vi.fn(),
+      connectGithubGist: vi.fn(),
+      createGithubGist: vi.fn(),
+      deleteGithubToken: vi.fn(),
+      getStatus: vi.fn(),
+      resolveConflict: vi.fn(),
+      saveGithubToken: vi.fn(),
+      setEnabled: vi.fn(),
+      syncAfterMutation: vi.fn(),
+      syncNow: vi.fn(),
+      validateGithubToken: vi.fn(),
+    },
   }
 })
 const extensionSender = { id: 'extension-id' }
@@ -186,6 +204,15 @@ vi.mock('@/features/settings/server/settings-service', () => ({
   updateSettings: backgroundMocks.updateSettings,
 }))
 
+vi.mock('@/features/sync/server/sync-service', () => ({
+  createBackgroundSyncService: backgroundMocks.createBackgroundSyncService,
+  markSyncLocalDataChanged: backgroundMocks.markSyncLocalDataChanged,
+}))
+
+vi.mock('@/features/sync/data/sync-metadata-store', () => ({
+  readSyncMetadata: backgroundMocks.readSyncMetadata,
+}))
+
 vi.mock('@/platform/db', () => ({
   flushDbSnapshot: backgroundMocks.flushDbSnapshot,
   getAppDb: backgroundMocks.getAppDb,
@@ -202,6 +229,7 @@ vi.mock('./runtime-policy', () => ({
 
 describe('background handler registration', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     backgroundMocks.handlers.clear()
     vi.clearAllMocks()
     backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
@@ -234,6 +262,41 @@ describe('background handler registration', () => {
     backgroundMocks.toggleStudyMode.mockResolvedValue(defaultUserSettings)
     backgroundMocks.tabsCreate.mockResolvedValue({})
     backgroundMocks.updateSettings.mockResolvedValue(defaultUserSettings)
+    backgroundMocks.createBackgroundSyncService.mockReturnValue(
+      backgroundMocks.syncService,
+    )
+    backgroundMocks.markSyncLocalDataChanged.mockResolvedValue(
+      cleanSyncMetadata,
+    )
+    backgroundMocks.readSyncMetadata.mockResolvedValue(cleanSyncMetadata)
+    backgroundMocks.syncService.checkOnOpen.mockResolvedValue(syncActionResult)
+    backgroundMocks.syncService.connectGithubGist.mockResolvedValue(
+      syncActionResult,
+    )
+    backgroundMocks.syncService.createGithubGist.mockResolvedValue(
+      syncActionResult,
+    )
+    backgroundMocks.syncService.deleteGithubToken.mockResolvedValue(
+      syncActionResult,
+    )
+    backgroundMocks.syncService.getStatus.mockResolvedValue(syncStatus)
+    backgroundMocks.syncService.resolveConflict.mockResolvedValue(
+      syncActionResult,
+    )
+    backgroundMocks.syncService.saveGithubToken.mockResolvedValue(
+      syncActionResult,
+    )
+    backgroundMocks.syncService.setEnabled.mockResolvedValue(syncActionResult)
+    backgroundMocks.syncService.syncAfterMutation.mockResolvedValue(null)
+    backgroundMocks.syncService.syncNow.mockResolvedValue(syncActionResult)
+    backgroundMocks.syncService.validateGithubToken.mockResolvedValue(
+      syncActionResult,
+    )
+  })
+
+  afterEach(() => {
+    vi.clearAllTimers()
+    vi.useRealTimers()
   })
 
   it('registers app-shell payload handling with policy and schema parsing', async () => {
@@ -285,6 +348,157 @@ describe('background handler registration', () => {
     expect(backgroundMocks.getAppDb).not.toHaveBeenCalled()
     expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
     expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
+  })
+
+  it('registers sync status handling with content-script policy and response parsing', async () => {
+    const contentScriptSender = {
+      tab: { id: 7 },
+      url: 'https://leetcode.com/problems/two-sum/',
+    }
+
+    const response = await sendRuntimeMessage(
+      'sync.getStatus',
+      {
+        surface: 'content-script',
+      },
+      contentScriptSender,
+    )
+
+    expectRuntimePolicy('sync.getStatus', 'content-script', contentScriptSender)
+    expectSyncFactoryForDb()
+    expect(backgroundMocks.syncService.getStatus).toHaveBeenCalledTimes(1)
+    expect(response).toEqual(syncStatusSchema.parse(syncStatus))
+  })
+
+  it('registers privileged sync dashboard actions with request and response parsing', async () => {
+    const savedToken = await sendRuntimeMessage('sync.saveGithubToken', {
+      surface: 'dashboard',
+      token: '  github-token  ',
+    })
+    const createdGist = await sendRuntimeMessage('sync.createGithubGist', {
+      surface: 'dashboard',
+    })
+    const connectedGist = await sendRuntimeMessage('sync.connectGithubGist', {
+      surface: 'dashboard',
+      gistId: ' gist_1 ',
+    })
+    const syncedNow = await sendRuntimeMessage('sync.syncNow', {
+      surface: 'dashboard',
+    })
+    const checkedOnOpen = await sendRuntimeMessage(
+      'sync.checkOnOpen',
+      {
+        surface: 'content-script',
+      },
+      {
+        tab: { id: 7 },
+        url: 'https://leetcode.com/problems/two-sum/',
+      },
+    )
+    const resolvedConflict = await sendRuntimeMessage('sync.resolveConflict', {
+      surface: 'dashboard',
+      resolution: 'pull-remote',
+    })
+
+    expectRuntimePolicy('sync.saveGithubToken', 'dashboard')
+    expectRuntimePolicy('sync.createGithubGist', 'dashboard')
+    expectRuntimePolicy('sync.connectGithubGist', 'dashboard')
+    expectRuntimePolicy('sync.syncNow', 'dashboard')
+    expectRuntimePolicy('sync.checkOnOpen', 'content-script', {
+      tab: { id: 7 },
+      url: 'https://leetcode.com/problems/two-sum/',
+    })
+    expectRuntimePolicy('sync.resolveConflict', 'dashboard')
+    expect(backgroundMocks.syncService.saveGithubToken).toHaveBeenCalledWith(
+      'github-token',
+    )
+    expect(backgroundMocks.syncService.createGithubGist).toHaveBeenCalledTimes(
+      1,
+    )
+    expect(backgroundMocks.syncService.connectGithubGist).toHaveBeenCalledWith(
+      'gist_1',
+    )
+    expect(backgroundMocks.syncService.syncNow).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.syncService.checkOnOpen).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.syncService.resolveConflict).toHaveBeenCalledWith(
+      'pull-remote',
+    )
+    for (const response of [
+      savedToken,
+      createdGist,
+      connectedGist,
+      syncedNow,
+      checkedOnOpen,
+      resolvedConflict,
+    ]) {
+      expect(response).toEqual(syncActionResultSchema.parse(syncActionResult))
+    }
+  })
+
+  it('passes nullable sync check responses through the runtime boundary', async () => {
+    backgroundMocks.syncService.checkOnOpen.mockResolvedValueOnce(null)
+    backgroundMocks.syncService.syncNow.mockResolvedValueOnce(null)
+
+    await expect(
+      sendRuntimeMessage('sync.checkOnOpen', {
+        surface: 'popup',
+      }),
+    ).resolves.toBeNull()
+    await expect(
+      sendRuntimeMessage('sync.syncNow', {
+        surface: 'dashboard',
+      }),
+    ).resolves.toBeNull()
+  })
+
+  it('runs sync remote restores through the queued mutation path without marking dirty', async () => {
+    const workOrder: string[] = []
+    backgroundMocks.syncService.checkOnOpen.mockImplementation(async () => {
+      await readLatestSyncFactoryOptions().runRemoteRestore(() => {
+        workOrder.push('remote-restore')
+
+        return Promise.resolve(null)
+      })
+
+      return syncActionResult
+    })
+
+    const response = await sendRuntimeMessage('sync.checkOnOpen', {
+      surface: 'dashboard',
+    })
+
+    expect(response).toEqual(syncActionResult)
+    expect(workOrder).toEqual(['remote-restore'])
+    expect(backgroundMocks.readSyncMetadata).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.markSyncLocalDataChanged).not.toHaveBeenCalled()
+    expect(backgroundMocks.flushDbSnapshot).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(500)
+    expect(backgroundMocks.syncService.syncAfterMutation).not.toHaveBeenCalled()
+  })
+
+  it('aborts queued sync remote restores when local data becomes dirty first', async () => {
+    let remoteWorkRan = false
+    backgroundMocks.readSyncMetadata.mockResolvedValueOnce(dirtySyncMetadata)
+    backgroundMocks.syncService.checkOnOpen.mockImplementation(async () => {
+      await readLatestSyncFactoryOptions().runRemoteRestore(() => {
+        remoteWorkRan = true
+
+        return Promise.resolve(null)
+      })
+
+      return syncActionResult
+    })
+
+    await expect(
+      sendRuntimeMessage('sync.checkOnOpen', {
+        surface: 'dashboard',
+      }),
+    ).rejects.toThrow(/Local data changed/)
+
+    expect(remoteWorkRan).toBe(false)
+    expect(backgroundMocks.markSyncLocalDataChanged).not.toHaveBeenCalled()
+    expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
   })
 
   it('registers active-track handling with runtime serialization', async () => {
@@ -686,6 +900,36 @@ describe('background handler registration', () => {
     expect(response).toEqual(problemForEditResponse)
   })
 
+  it('marks local data dirty and schedules sync after flushed local mutations', async () => {
+    await sendRuntimeMessage(
+      'problems.createProblem',
+      binarySearchCreateRequest(),
+    )
+
+    expect(backgroundMocks.markSyncLocalDataChanged).toHaveBeenCalledTimes(1)
+    const dirtyMarkOrder =
+      backgroundMocks.markSyncLocalDataChanged.mock.invocationCallOrder[0] ?? 0
+    const flushOrder =
+      backgroundMocks.flushDbSnapshot.mock.invocationCallOrder[0] ?? 0
+    const broadcastOrder =
+      backgroundMocks.broadcastCacheInvalidation.mock.invocationCallOrder[0] ??
+      0
+
+    expect(dirtyMarkOrder).toBeGreaterThan(0)
+    expect(dirtyMarkOrder).toBeLessThan(flushOrder)
+    expect(flushOrder).toBeLessThan(broadcastOrder)
+    expect(backgroundMocks.syncService.syncAfterMutation).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(499)
+    expect(backgroundMocks.syncService.syncAfterMutation).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(1)
+    expectSyncFactoryForDb()
+    expect(backgroundMocks.syncService.syncAfterMutation).toHaveBeenCalledTimes(
+      1,
+    )
+  })
+
   it('rejects invalid problem writes before mutation side effects', () => {
     expect(() =>
       sendRuntimeMessage('problems.bulkUpdateProblems', {
@@ -954,6 +1198,51 @@ function expectRuntimePolicy(
   ).toHaveBeenCalledWith(method, surface, sender)
 }
 
+function expectSyncFactoryForDb() {
+  const call = readLatestSyncFactoryCall()
+
+  expect(call[0]).toBe(backgroundMocks.db)
+  expect(typeof call[1]).toBe('function')
+  expect(isSyncFactoryOptions(call[2])).toBe(true)
+}
+
+type SyncFactoryOptions = {
+  runRemoteRestore: <T>(work: () => Promise<T>) => Promise<T>
+}
+
+function readLatestSyncFactoryOptions(): SyncFactoryOptions {
+  const options = readLatestSyncFactoryCall()[2]
+
+  if (!isSyncFactoryOptions(options)) {
+    throw new Error('Expected sync factory runRemoteRestore option.')
+  }
+
+  return options
+}
+
+function readLatestSyncFactoryCall(): [unknown, unknown, unknown] {
+  const call = backgroundMocks.createBackgroundSyncService.mock.calls.at(-1) as
+    | [unknown, unknown, unknown]
+    | undefined
+
+  if (!call) {
+    throw new Error('Expected sync service factory to be called.')
+  }
+
+  return call
+}
+
+function isSyncFactoryOptions(value: unknown): value is SyncFactoryOptions {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+
+  return (
+    typeof (value as { runRemoteRestore?: unknown }).runRemoteRestore ===
+    'function'
+  )
+}
+
 function resetRuntimeMutationMocks() {
   vi.clearAllMocks()
   backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
@@ -962,6 +1251,12 @@ function resetRuntimeMutationMocks() {
   backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
   backgroundMocks.getPracticeDetails.mockResolvedValue(practiceDetails)
   backgroundMocks.saveReviewResult.mockResolvedValue(undefined)
+  backgroundMocks.createBackgroundSyncService.mockReturnValue(
+    backgroundMocks.syncService,
+  )
+  backgroundMocks.markSyncLocalDataChanged.mockResolvedValue(cleanSyncMetadata)
+  backgroundMocks.readSyncMetadata.mockResolvedValue(cleanSyncMetadata)
+  backgroundMocks.syncService.syncAfterMutation.mockResolvedValue(null)
 }
 
 async function expectTrackWrite<TRequest>(input: {
@@ -1140,6 +1435,45 @@ const parsedTrackForEditResponse =
   trackForEditResponseSchema.parse(trackForEditResponse)
 const trackWorkspaceResponse = createTrackWorkspaceResponse()
 const backupTimestamp = '2026-05-25T12:00:00.000Z'
+const syncTimestamp = '2026-05-26T12:00:00.000Z'
+const syncStatus = syncStatusSchema.parse({
+  enabled: true,
+  configured: true,
+  tokenConfigured: true,
+  tokenStatus: {
+    provider: 'github:gist',
+    configured: true,
+    updatedAt: syncTimestamp,
+    fingerprint: '12345678',
+  },
+  gistId: 'gist_1',
+  isSyncing: false,
+  lastSyncAt: syncTimestamp,
+  lastSyncDirection: 'pull',
+  lastError: null,
+  conflict: null,
+})
+const syncActionResult = syncActionResultSchema.parse({
+  status: syncStatus,
+  message: 'Sync complete.',
+})
+const cleanSyncMetadata = {
+  enabled: true,
+  gistId: 'gist_1',
+  lastSyncAt: syncTimestamp,
+  lastSyncDirection: 'pull',
+  lastRemoteVersion: 'remote_1',
+  lastRemoteUpdatedAt: syncTimestamp,
+  localDataUpdatedAt: syncTimestamp,
+  dirtySinceLastSync: false,
+  lastError: null,
+  conflict: null,
+}
+const dirtySyncMetadata = {
+  ...cleanSyncMetadata,
+  dirtySinceLastSync: true,
+  localDataUpdatedAt: '2026-05-26T12:01:00.000Z',
+}
 const validBackup = backupFileSchema.parse({
   schemaVersion: backupSchemaVersion,
   app: 'cognipace',
