@@ -343,22 +343,28 @@ export function createSyncService(deps: SyncServiceDependencies) {
       await deps.restoreBackup(envelope.backup)
       await deps.flushDbSnapshot()
       await Promise.resolve(deps.broadcastInvalidation())
-    })
-    await deps.writeMetadata({
-      enabled: true,
-      gistId: gist.id,
-      lastSyncAt: deps.now().toISOString(),
-      lastSyncDirection: 'pull',
-      lastRemoteVersion: gist.remoteVersion,
-      lastRemoteUpdatedAt: gist.updatedAt,
-      localDataUpdatedAt: envelope.dataUpdatedAt,
-      dirtySinceLastSync: false,
-      conflict: null,
-      lastError: null,
+      await deps.writeMetadata({
+        enabled: true,
+        gistId: gist.id,
+        lastSyncAt: deps.now().toISOString(),
+        lastSyncDirection: 'pull',
+        lastRemoteVersion: gist.remoteVersion,
+        lastRemoteUpdatedAt: gist.updatedAt,
+        localDataUpdatedAt: envelope.dataUpdatedAt,
+        dirtySinceLastSync: false,
+        conflict: null,
+        lastError: null,
+      })
     })
   }
 
   async function recordPush(gist: GitHubGistSummary, dataUpdatedAt: string) {
+    const metadata = await deps.readMetadata()
+    const changedDuringPush =
+      metadata.dirtySinceLastSync &&
+      metadata.localDataUpdatedAt !== null &&
+      metadata.localDataUpdatedAt !== dataUpdatedAt
+
     await deps.writeMetadata({
       enabled: true,
       gistId: gist.id,
@@ -366,8 +372,10 @@ export function createSyncService(deps: SyncServiceDependencies) {
       lastSyncDirection: 'push',
       lastRemoteVersion: gist.remoteVersion,
       lastRemoteUpdatedAt: gist.updatedAt,
-      localDataUpdatedAt: dataUpdatedAt,
-      dirtySinceLastSync: false,
+      localDataUpdatedAt: changedDuringPush
+        ? metadata.localDataUpdatedAt
+        : dataUpdatedAt,
+      dirtySinceLastSync: changedDuringPush,
       conflict: null,
       lastError: null,
     })

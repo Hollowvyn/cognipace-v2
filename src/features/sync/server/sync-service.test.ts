@@ -391,15 +391,69 @@ describe('sync service', () => {
     expect(harness.getMetadata().enabled).toBe(false)
   })
 
+  it('keeps data dirty when local data changes during an in-flight push', async () => {
+    const harness = createHarness()
+    const push = createDeferred<GitHubGistSummary>()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:05:00.000Z',
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:00:00.000Z',
+        remoteVersion: 'remote_1',
+      }),
+    )
+    harness.githubClient.updateSyncGist.mockReturnValue(push.promise)
+
+    const syncPromise = harness.service.syncNow()
+    await waitUntil(() => {
+      expect(harness.githubClient.updateSyncGist).toHaveBeenCalled()
+    })
+    harness.setMetadata({
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:06:00.000Z',
+    })
+
+    push.resolve(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: currentTime,
+        remoteVersion: 'remote_2',
+      }),
+    )
+
+    await syncPromise
+    expect(harness.getMetadata()).toMatchObject({
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:06:00.000Z',
+      lastRemoteVersion: 'remote_2',
+    })
+  })
+
   it('runs remote pulls through the injected restore coordinator', async () => {
     const runRemoteRestoreCalls: Array<() => Promise<unknown>> = []
+    let metadataCleanedBeforeRestoreCoordinatorSettled = false
+    let readMetadata: () => SyncMetadata = () => {
+      throw new Error('Harness metadata is not available.')
+    }
     const runRemoteRestore: NonNullable<
       SyncServiceDependencies['runRemoteRestore']
     > = async (work) => {
       runRemoteRestoreCalls.push(work)
-      return work()
+      const result = await work()
+      metadataCleanedBeforeRestoreCoordinatorSettled =
+        readMetadata().dirtySinceLastSync === false &&
+        readMetadata().lastSyncDirection === 'pull'
+
+      return result
     }
     const harness = createHarness({ runRemoteRestore })
+    readMetadata = harness.getMetadata
     harness.setMetadata({
       enabled: true,
       gistId: 'gist_1',
@@ -423,6 +477,7 @@ describe('sync service', () => {
     await harness.service.checkOnOpen()
 
     expect(runRemoteRestoreCalls).toHaveLength(1)
+    expect(metadataCleanedBeforeRestoreCoordinatorSettled).toBe(true)
     expect(harness.restoreBackup).toHaveBeenCalledWith(backup)
     expect(harness.flushDbSnapshot).toHaveBeenCalled()
     expect(harness.broadcastInvalidation).toHaveBeenCalled()

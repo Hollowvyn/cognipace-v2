@@ -930,6 +930,55 @@ describe('background handler registration', () => {
     )
   })
 
+  it('keeps local mutations successful when dirty metadata marking fails', async () => {
+    backgroundMocks.markSyncLocalDataChanged.mockRejectedValueOnce(
+      new Error('storage unavailable'),
+    )
+
+    await expect(
+      sendRuntimeMessage('problems.createProblem', binarySearchCreateRequest()),
+    ).resolves.toEqual(problemForEditResponse)
+
+    expect(backgroundMocks.markSyncLocalDataChanged).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.flushDbSnapshot).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      problemSlug: 'binary-search',
+      reason: 'problem-catalog-updated',
+      source: 'dashboard',
+      tags: ['problems'],
+    })
+  })
+
+  it('waits for queued mutations before running scheduled mutation sync', async () => {
+    const secondWrite = createDeferred<typeof problemForEditResponse>()
+
+    await sendRuntimeMessage(
+      'problems.createProblem',
+      binarySearchCreateRequest(),
+    )
+
+    backgroundMocks.createProblem.mockReturnValueOnce(secondWrite.promise)
+    const secondMutation = sendRuntimeMessage('problems.createProblem', {
+      ...binarySearchCreateRequest(),
+      slugOrUrl: 'dynamic-programming',
+      title: 'Dynamic Programming',
+    })
+
+    await vi.advanceTimersByTimeAsync(500)
+    expect(backgroundMocks.syncService.syncAfterMutation).not.toHaveBeenCalled()
+
+    secondWrite.resolve(problemForEditResponse)
+    await secondMutation
+
+    await vi.advanceTimersByTimeAsync(499)
+    expect(backgroundMocks.syncService.syncAfterMutation).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(1)
+    expect(backgroundMocks.syncService.syncAfterMutation).toHaveBeenCalledTimes(
+      1,
+    )
+  })
+
   it('rejects invalid problem writes before mutation side effects', () => {
     expect(() =>
       sendRuntimeMessage('problems.bulkUpdateProblems', {
@@ -1311,6 +1360,17 @@ function createTrackRequest() {
     groups: [{ title: 'Arrays', problemSlugs: ['two-sum'] }],
     setActive: true,
   } as const
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (error: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return { promise, reject, resolve }
 }
 
 function expectFlushBeforeBroadcast() {

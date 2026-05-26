@@ -1046,6 +1046,7 @@ type DbMutationSyncMode = 'mark-dirty' | 'none'
 
 let dbMutationQueue: Promise<void> = Promise.resolve()
 let syncAfterMutationTimer: ReturnType<typeof setTimeout> | null = null
+let syncAfterMutationGeneration = 0
 
 function runDbMutation<T>(
   write: (db: Db) => Promise<T>,
@@ -1058,7 +1059,7 @@ function runDbMutation<T>(
     const result = await write(db)
 
     if (syncMode === 'mark-dirty') {
-      await markSyncLocalDataChanged()
+      await markSyncLocalDataChangedBestEffort()
     }
 
     await flushDbSnapshot()
@@ -1080,17 +1081,51 @@ function runDbMutation<T>(
 }
 
 function scheduleSyncAfterMutation(db: Db) {
+  syncAfterMutationGeneration += 1
+  const generation = syncAfterMutationGeneration
+
   if (syncAfterMutationTimer) {
     clearTimeout(syncAfterMutationTimer)
   }
 
   syncAfterMutationTimer = setTimeout(() => {
     syncAfterMutationTimer = null
-    void createSyncServiceForDb(db)
-      .syncAfterMutation()
-      .catch(() => undefined)
+    void runSyncAfterMutationWhenQueueIdle(db, generation)
   }, 500)
   unrefTimer(syncAfterMutationTimer)
+}
+
+async function markSyncLocalDataChangedBestEffort() {
+  try {
+    await markSyncLocalDataChanged()
+  } catch {
+    // Local data is already written; sync metadata failure must not fail saves.
+  }
+}
+
+async function runSyncAfterMutationWhenQueueIdle(db: Db, generation: number) {
+  try {
+    await waitForDbMutationQueueToIdle()
+
+    if (generation !== syncAfterMutationGeneration) {
+      return
+    }
+
+    await createSyncServiceForDb(db).syncAfterMutation()
+  } catch {
+    // Mutation sync is best-effort; the service records retryable status.
+  }
+}
+
+async function waitForDbMutationQueueToIdle() {
+  while (true) {
+    const pendingQueue = dbMutationQueue
+    await pendingQueue
+
+    if (pendingQueue === dbMutationQueue) {
+      return
+    }
+  }
 }
 
 function unrefTimer(timer: ReturnType<typeof setTimeout>) {
