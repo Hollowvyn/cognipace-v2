@@ -103,8 +103,8 @@ Not every feature needs every folder. Add only the folder needed for the change.
   group state, progress, and dashboard track management.
 - `settings`: persisted preferences, defaults, validation, and settings form
   behavior.
-- `sync`: GitHub Gist sync contracts, Settings UI, sync metadata, conflict
-  domain rules, and background orchestration.
+- `sync`: GitHub Gist configuration, sync metadata, directional pull/push
+  rules, Settings/header sync UI, and background orchestration.
 - `assessment`: assessment domain rules.
 - `leetcode-capture`: LeetCode metadata, content, and submission result reads
   through the content-script/background bridge.
@@ -169,6 +169,7 @@ user action
 -> runtime command
 -> DB write
 -> snapshot flush
+-> sync metadata dirty mark for local mutations
 -> invalidation broadcast
 -> query refetch
 -> render
@@ -178,6 +179,11 @@ Background mutations are serialized through the mutation queue in
 `src/extension/background/register-handlers.ts`. The app DB comes from
 `src/platform/db/instance.ts`, which restores a matching stored snapshot or
 creates a fresh migrated and seeded database.
+
+The sync feature is manual-first in this pass. Manual `sync.pullLatest` and
+`sync.pushLocal` runtime methods are dashboard-only. Local mutations mark sync
+metadata dirty after the database snapshot flush, but they do not auto-push
+after mutations, and dashboard/popup/overlay surfaces do not auto-pull on open.
 
 ## External APIs And Secrets
 
@@ -278,7 +284,10 @@ When adding or changing data dependencies:
    service, and parse or serialize the response.
 7. If the method writes data, run it through the DB mutation flow, flush the
    snapshot, and broadcast invalidation tags.
-8. Add focused tests for contracts, authorization, handler behavior, and the
+8. Directional sync methods such as `sync.pullLatest` and `sync.pushLocal` must
+   follow the same Zod parsing, sender authorization, owning service,
+   snapshot-flush, and invalidation rules.
+9. Add focused tests for contracts, authorization, handler behavior, and the
    calling API hook as appropriate.
 
 ### Add Database Table Or Column
