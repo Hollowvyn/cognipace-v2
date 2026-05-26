@@ -47,16 +47,23 @@ describe('TrackProblemTable', () => {
 
     const renderedRows = screen.getAllByRole('row')
     expect(renderedRows).toHaveLength(3)
+    const twoSumRow = renderedRows[1]
+    const binarySearchRow = renderedRows[2]
+
+    if (!twoSumRow || !binarySearchRow) {
+      throw new Error('Expected two rendered problem rows.')
+    }
+
     expect(
-      within(renderedRows[1]).getByRole('button', { name: 'Expand Two Sum' }),
+      within(twoSumRow).getByRole('button', { name: 'Expand Two Sum' }),
     ).toBeVisible()
-    expect(within(renderedRows[1]).getByText('1')).toBeVisible()
+    expect(within(twoSumRow).getByText('1')).toBeVisible()
     expect(
-      within(renderedRows[2]).getByRole('button', {
+      within(binarySearchRow).getByRole('button', {
         name: 'Expand Binary Search',
       }),
     ).toBeVisible()
-    expect(within(renderedRows[2]).getByText('2')).toBeVisible()
+    expect(within(binarySearchRow).getByText('2')).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'Expand Two Sum' }))
 

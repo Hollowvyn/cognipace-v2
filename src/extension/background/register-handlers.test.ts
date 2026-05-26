@@ -288,7 +288,7 @@ describe('background handler registration', () => {
     expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
   })
 
-  it.each([
+  const readOnlyHandlerCases: ReadonlyArray<ReadOnlyHandlerCase> = [
     [
       'reads and serializes active-track data',
       'tracks.getActiveTrack',
@@ -388,10 +388,11 @@ describe('background handler registration', () => {
         ),
       { usesDb: false },
     ],
-  ] satisfies ReadonlyArray<ReadOnlyHandlerCase>)(
-    '%s',
-    async (
-      _name,
+  ]
+
+  it.each(readOnlyHandlerCases)('%s', async (...handlerCase) => {
+    const [
+      ,
       method,
       surface,
       createRequest,
@@ -399,32 +400,31 @@ describe('background handler registration', () => {
       expectedServiceArgs,
       assertResponse,
       options,
-    ) => {
-      const request = createRequest()
-      options?.arrange?.()
+    ] = handlerCase as unknown as ReadOnlyHandlerCase
+    const request = createRequest()
+    options?.arrange?.()
 
-      const response = await sendRuntimeMessage(method, request)
+    const response = await sendRuntimeMessage(method, request)
 
-      expectRuntimePolicy(method, surface)
-      if (options?.usesDb === false) {
-        expect(backgroundMocks.getAppDb).not.toHaveBeenCalled()
-      }
-      expect(service).toHaveBeenCalledWith(...expectedServiceArgs(request))
-      await assertResponse(response)
-      expectNoMutationSideEffects()
+    expectRuntimePolicy(method, surface)
+    if (options?.usesDb === false) {
+      expect(backgroundMocks.getAppDb).not.toHaveBeenCalled()
+    }
+    expect(service).toHaveBeenCalledWith(...expectedServiceArgs(request))
+    await assertResponse(response)
+    expectNoMutationSideEffects()
 
-      if (!options?.invalidServiceResponse) {
-        return
-      }
+    if (!options?.invalidServiceResponse) {
+      return
+    }
 
-      vi.clearAllMocks()
-      backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
-      service.mockResolvedValueOnce(options.invalidServiceResponse())
+    vi.clearAllMocks()
+    backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
+    service.mockResolvedValueOnce(options.invalidServiceResponse())
 
-      await expect(sendRuntimeMessage(method, request)).rejects.toThrow()
-      expectNoMutationSideEffects()
-    },
-  )
+    await expect(sendRuntimeMessage(method, request)).rejects.toThrow()
+    expectNoMutationSideEffects()
+  })
 
   it.each([
     [
@@ -684,49 +684,53 @@ describe('background handler registration', () => {
     expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
   })
 
-  it.each([
+  const practiceMutationHandlerCases: ReadonlyArray<PracticeMutationHandlerCase> =
     [
-      'practice.setSuspended',
-      () =>
-        ({
-          surface: 'dashboard',
-          problemSlug: 'two-sum',
-          suspended: true,
-        }) as const,
-      backgroundMocks.setPracticeSuspended,
-      () => [{ problemSlug: 'two-sum', suspended: true }],
-      (response) =>
-        expect(response).toMatchObject({
-          problemSlug: 'two-sum',
-          isSuspended: false,
-        }),
-    ],
-    [
-      'practice.overrideLastReviewResult',
-      () =>
-        ({
-          surface: 'dashboard',
-          problemSlug: 'two-sum',
-          rating: 'hard',
-        }) as const,
-      backgroundMocks.overrideLastReviewResult,
-      () => [
-        expect.objectContaining({
-          problemSlug: 'two-sum',
-          rating: 'hard',
-        }),
+      [
+        'practice.setSuspended',
+        () =>
+          ({
+            surface: 'dashboard',
+            problemSlug: 'two-sum',
+            suspended: true,
+          }) as const,
+        backgroundMocks.setPracticeSuspended,
+        () => [{ problemSlug: 'two-sum', suspended: true }],
+        (response) =>
+          expect(response).toMatchObject({
+            problemSlug: 'two-sum',
+            isSuspended: false,
+          }),
       ],
-      () => undefined,
-    ],
-  ] satisfies ReadonlyArray<PracticeMutationHandlerCase>)(
+      [
+        'practice.overrideLastReviewResult',
+        () =>
+          ({
+            surface: 'dashboard',
+            problemSlug: 'two-sum',
+            rating: 'hard',
+          }) as const,
+        backgroundMocks.overrideLastReviewResult,
+        () => [
+          expect.objectContaining({
+            problemSlug: 'two-sum',
+            rating: 'hard',
+          }) as unknown,
+        ],
+        () => undefined,
+      ],
+    ]
+
+  it.each(practiceMutationHandlerCases)(
     'flushes and broadcasts practice invalidation for %s',
-    async (
-      method,
-      createRequest,
-      service,
-      expectedServiceArgs,
-      assertResponse,
-    ) => {
+    async (...handlerCase) => {
+      const [
+        method,
+        createRequest,
+        service,
+        expectedServiceArgs,
+        assertResponse,
+      ] = handlerCase as unknown as PracticeMutationHandlerCase
       const response = await sendRuntimeMessage(method, createRequest())
 
       expectRuntimePolicy(method, 'dashboard')
