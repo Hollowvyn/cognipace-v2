@@ -1,7 +1,10 @@
 import { z } from 'zod'
 
-import { parseBackupFileForCurrentApp, type BackupFile } from '@/features/backup'
-import { backupFileSchema } from '@/features/backup/api/backup-contracts'
+import {
+  backupFileSchema,
+  parseBackupFileForCurrentApp,
+  type BackupFile,
+} from '@/features/backup'
 
 export const syncEnvelopeVersion = 1
 

@@ -64,4 +64,16 @@ describe('sync envelope', () => {
       }),
     ).toThrow('Unsupported sync envelope version')
   })
+
+  it('rejects non-CogniPace sync files before restore', () => {
+    expect(() =>
+      parseSyncEnvelopeForCurrentApp({
+        syncEnvelopeVersion,
+        app: 'other-app',
+        exportedAt: '2026-05-26T12:00:00.000Z',
+        dataUpdatedAt: '2026-05-26T12:00:00.000Z',
+        backup,
+      }),
+    ).toThrow('not a CogniPace sync file')
+  })
 })

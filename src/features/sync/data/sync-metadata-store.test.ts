@@ -52,6 +52,19 @@ describe('sync metadata store', () => {
     })
   })
 
+  it('falls back to fresh default metadata when stored metadata is invalid', async () => {
+    storage.set('cognipace_sync_metadata_v1', { enabled: true })
+
+    const firstRead = await readSyncMetadata()
+    firstRead.enabled = true
+
+    await expect(readSyncMetadata()).resolves.toMatchObject({
+      enabled: false,
+      gistId: null,
+      dirtySinceLastSync: false,
+    })
+  })
+
   it('persists metadata patches', async () => {
     await writeSyncMetadata({
       enabled: true,
