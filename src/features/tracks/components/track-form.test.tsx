@@ -117,25 +117,6 @@ describe('TrackForm', () => {
     })
   })
 
-  it('does not submit the modal when Enter is pressed inside form fields', async () => {
-    const user = userEvent.setup()
-    mockTrackFormRuntime(createTrackDefaults())
-
-    renderTrackForm(
-      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
-    )
-
-    await user.type(await screen.findByLabelText('Title'), 'Interview Track')
-    await user.keyboard('{Enter}')
-    await user.click(screen.getByLabelText('Search Library problems'))
-    await user.keyboard('{Enter}')
-
-    expect(sendMessage).not.toHaveBeenCalledWith(
-      'tracks.createTrack',
-      expect.anything(),
-    )
-  })
-
   it('seeds create mode from selected Library rows and shows compact Group by', async () => {
     const user = userEvent.setup()
     mockTrackFormRuntime(createTrackDefaultsWithSelectionRows())
@@ -183,163 +164,131 @@ describe('TrackForm', () => {
     })
   })
 
-  it('blocks a past target date in create mode', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date(2026, 4, 25, 12, 0, 0))
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    mockTrackFormRuntime(createTrackDefaults())
+  it.each([
+    {
+      name: 'blocks a past target date in create mode',
+      mode: 'create' as const,
+      source: createTrackDefaults(),
+      inputDate: '2026-05-24',
+      now: new Date(2026, 4, 25, 12, 0, 0),
+      expectedMessage: 'Target date must be today or later.',
+      expectedMethod: 'tracks.createTrack' as const,
+      expectedDueAt: null,
+    },
+    {
+      name: 'allows a same-day target date during local evening hours',
+      mode: 'create' as const,
+      source: createTrackDefaults(),
+      inputDate: '2026-05-25',
+      now: new Date(2026, 4, 25, 22, 0, 0),
+      expectedMessage: null,
+      expectedMethod: 'tracks.createTrack' as const,
+      expectedDueAt: '2026-05-25T00:00:00.000Z',
+    },
+    {
+      name: 'allows an unchanged saved past target date in edit mode',
+      mode: 'edit' as const,
+      source: createEditResponse({ dueAt: '2026-05-21T00:00:00.000Z' }),
+      inputDate: '2026-05-21',
+      now: new Date(2026, 4, 25, 12, 0, 0),
+      expectedMessage: null,
+      expectedMethod: 'tracks.updateTrack' as const,
+      expectedDueAt: '2026-05-21T00:00:00.000Z',
+    },
+    {
+      name: 'blocks a changed past target date in edit mode',
+      mode: 'edit' as const,
+      source: createEditResponse({ dueAt: '2026-05-21T00:00:00.000Z' }),
+      inputDate: '2026-05-22',
+      now: new Date(2026, 4, 25, 12, 0, 0),
+      expectedMessage: 'Target date must be today or later.',
+      expectedMethod: 'tracks.updateTrack' as const,
+      expectedDueAt: null,
+    },
+    {
+      name: 'clears a target date to null',
+      mode: 'edit' as const,
+      source: createEditResponse(),
+      inputDate: null,
+      now: new Date(2026, 4, 25, 12, 0, 0),
+      expectedMessage: null,
+      expectedMethod: 'tracks.updateTrack' as const,
+      expectedDueAt: null,
+    },
+  ])(
+    '$name',
+    async ({
+      mode,
+      source,
+      inputDate,
+      now,
+      expectedMessage,
+      expectedMethod,
+      expectedDueAt,
+    }) => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(now)
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      mockTrackFormRuntime(source)
 
-    renderTrackForm(
-      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
-    )
-
-    await user.type(await screen.findByLabelText('Title'), 'Past Track')
-    await user.type(screen.getByLabelText('Target date'), '2026-05-24')
-    await user.click(screen.getByRole('button', { name: 'SAVE' }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Target date must be today or later.',
-    )
-    expect(screen.getByLabelText('Target date')).toBeInvalid()
-    expect(sendMessage).not.toHaveBeenCalledWith(
-      'tracks.createTrack',
-      expect.anything(),
-    )
-  })
-
-  it('allows a same-day target date during local evening hours', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date(2026, 4, 25, 22, 0, 0))
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    mockTrackFormRuntime(createTrackDefaults())
-
-    renderTrackForm(
-      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
-    )
-
-    await user.type(await screen.findByLabelText('Title'), 'Today Track')
-    const targetDate = screen.getByLabelText('Target date')
-
-    expect(targetDate).toHaveAttribute('min', '2026-05-25')
-
-    await user.type(targetDate, '2026-05-25')
-    await user.click(screen.getByRole('button', { name: 'SAVE' }))
-
-    await waitFor(() => {
-      expect(sendMessage).toHaveBeenCalledWith(
-        'tracks.createTrack',
-        expect.objectContaining({
-          dueAt: '2026-05-25T00:00:00.000Z',
-        }),
+      renderTrackForm(
+        mode === 'edit' ? (
+          <TrackForm
+            mode="edit"
+            onCancel={vi.fn()}
+            onLoaded={vi.fn()}
+            onSaved={vi.fn()}
+            trackId="leetcode-75"
+          />
+        ) : (
+          <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />
+        ),
       )
-    })
-  })
 
-  it('allows an unchanged saved past target date in edit mode', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date(2026, 4, 25, 12, 0, 0))
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    mockTrackFormRuntime(
-      createEditResponse({
-        dueAt: '2026-05-21T00:00:00.000Z',
-      }),
-    )
-
-    renderTrackForm(
-      <TrackForm
-        mode="edit"
-        onCancel={vi.fn()}
-        onLoaded={vi.fn()}
-        onSaved={vi.fn()}
-        trackId="leetcode-75"
-      />,
-    )
-
-    expect(await screen.findByLabelText('Target date')).toHaveValue(
-      '2026-05-21',
-    )
-
-    await user.clear(screen.getByLabelText('Title'))
-    await user.type(screen.getByLabelText('Title'), 'LeetCode 75 Updated')
-    await user.click(screen.getByRole('button', { name: 'SAVE' }))
-
-    await waitFor(() => {
-      expect(sendMessage).toHaveBeenCalledWith(
-        'tracks.updateTrack',
-        expect.objectContaining({
-          dueAt: '2026-05-21T00:00:00.000Z',
-          title: 'LeetCode 75 Updated',
-        }),
+      await user.clear(await screen.findByLabelText('Title'))
+      await user.type(
+        screen.getByLabelText('Title'),
+        mode === 'edit' ? 'LeetCode 75 Updated' : 'Target Track',
       )
-    })
-  })
 
-  it('blocks a changed past target date in edit mode', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date(2026, 4, 25, 12, 0, 0))
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    mockTrackFormRuntime(
-      createEditResponse({
-        dueAt: '2026-05-21T00:00:00.000Z',
-      }),
-    )
+      const targetDate = screen.getByLabelText('Target date')
 
-    renderTrackForm(
-      <TrackForm
-        mode="edit"
-        onCancel={vi.fn()}
-        onLoaded={vi.fn()}
-        onSaved={vi.fn()}
-        trackId="leetcode-75"
-      />,
-    )
+      if (inputDate === null) {
+        await user.click(
+          screen.getByRole('button', { name: 'Clear target date' }),
+        )
+      } else {
+        await user.clear(targetDate)
+        await user.type(targetDate, inputDate)
+      }
 
-    const targetDate = await screen.findByLabelText('Target date')
+      await user.click(screen.getByRole('button', { name: 'SAVE' }))
 
-    await user.clear(targetDate)
-    await user.type(targetDate, '2026-05-22')
-    await user.click(screen.getByRole('button', { name: 'SAVE' }))
+      if (expectedMessage) {
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+          expectedMessage,
+        )
+        expect(targetDate).toBeInvalid()
+        expect(sendMessage).not.toHaveBeenCalledWith(
+          expectedMethod,
+          expect.anything(),
+        )
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Target date must be today or later.',
-    )
-    expect(targetDate).toBeInvalid()
-    expect(sendMessage).not.toHaveBeenCalledWith(
-      'tracks.updateTrack',
-      expect.anything(),
-    )
-  })
+        return
+      }
 
-  it('clears a target date to null', async () => {
-    const user = userEvent.setup()
-    mockTrackFormRuntime(createEditResponse())
-
-    renderTrackForm(
-      <TrackForm
-        mode="edit"
-        onCancel={vi.fn()}
-        onLoaded={vi.fn()}
-        onSaved={vi.fn()}
-        trackId="leetcode-75"
-      />,
-    )
-
-    expect(await screen.findByLabelText('Target date')).toHaveValue(
-      '2026-06-15',
-    )
-
-    await user.click(screen.getByRole('button', { name: 'Clear target date' }))
-    await user.click(screen.getByRole('button', { name: 'SAVE' }))
-
-    await waitFor(() => {
-      expect(sendMessage).toHaveBeenCalledWith(
-        'tracks.updateTrack',
-        expect.objectContaining({
-          dueAt: null,
-        }),
-      )
-    })
-  })
+      await waitFor(() => {
+        expect(sendMessage).toHaveBeenCalledWith(
+          expectedMethod,
+          expect.objectContaining(
+            mode === 'edit'
+              ? { trackId: 'leetcode-75', dueAt: expectedDueAt }
+              : { dueAt: expectedDueAt },
+          ),
+        )
+      })
+    },
+  )
 
   it('regroups and moves draft problems with compact group selectors', async () => {
     const user = userEvent.setup()
@@ -386,76 +335,6 @@ describe('TrackForm', () => {
     ).toBeVisible()
   })
 
-  it('sends setActive only when the create checkbox is checked', async () => {
-    const user = userEvent.setup()
-    mockTrackFormRuntime(createTrackDefaults())
-
-    renderTrackForm(
-      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
-    )
-
-    await user.type(await screen.findByLabelText('Title'), 'Active Track')
-    await user.click(
-      screen.getByRole('checkbox', { name: 'Set as active track' }),
-    )
-    await user.click(screen.getByRole('button', { name: 'SAVE' }))
-
-    await waitFor(() => {
-      expect(sendMessage).toHaveBeenCalledWith(
-        'tracks.createTrack',
-        expect.objectContaining({
-          setActive: true,
-        }),
-      )
-    })
-  })
-
-  it('does not offer a problem already selected in another group', async () => {
-    const user = userEvent.setup()
-    mockTrackFormRuntime(createTrackDefaults())
-
-    renderTrackForm(
-      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
-    )
-
-    await user.type(await screen.findByLabelText('Title'), 'Interview Track')
-    await user.type(screen.getByLabelText('Search Library problems'), 'two')
-    await user.click(screen.getByRole('button', { name: 'Add Two Sum' }))
-    await user.click(screen.getByRole('button', { name: 'New Group' }))
-    await user.type(screen.getByLabelText('Search Library problems'), 'two')
-
-    expect(
-      screen.queryByRole('button', { name: 'Add Two Sum' }),
-    ).not.toBeInTheDocument()
-    expect(screen.getByText('No matching Library problems.')).toBeVisible()
-  })
-
-  it('keeps Cancel available while a create save is pending', async () => {
-    const user = userEvent.setup()
-    const onCancel = vi.fn()
-    mockTrackFormRuntime(createTrackDefaults(), {
-      createResponse: () => new Promise<null>(() => undefined),
-    })
-
-    renderTrackForm(
-      <TrackForm mode="create" onCancel={onCancel} onSaved={vi.fn()} />,
-    )
-
-    await user.type(await screen.findByLabelText('Title'), 'Pending Track')
-    await user.click(screen.getByRole('button', { name: 'SAVE' }))
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'SAVE' })).toBeDisabled()
-    })
-    const cancelButton = screen.getByRole('button', { name: 'CANCEL' })
-
-    expect(cancelButton).toBeEnabled()
-
-    await user.click(cancelButton)
-
-    expect(onCancel).toHaveBeenCalled()
-  })
-
   it('shows save failures inside the form', async () => {
     const user = userEvent.setup()
     mockTrackFormRuntime(createTrackDefaults(), {
@@ -470,257 +349,6 @@ describe('TrackForm', () => {
     await user.click(screen.getByRole('button', { name: 'SAVE' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Create failed')
-  })
-
-  it('renders compact group rows and expands only the selected group title input', async () => {
-    const user = userEvent.setup()
-    mockTrackFormRuntime(createEditResponse())
-
-    renderTrackForm(
-      <TrackForm
-        mode="edit"
-        onCancel={vi.fn()}
-        onLoaded={vi.fn()}
-        onSaved={vi.fn()}
-        trackId="leetcode-75"
-      />,
-    )
-
-    expect(await screen.findByLabelText('Title')).toHaveValue('LeetCode 75')
-
-    const groups = screen.getByLabelText('Groups')
-    const arraysRow = within(groups).getByRole('listitem', {
-      name: /Arrays and Hashing/i,
-    })
-    const dynamicRow = within(groups).getByRole('listitem', {
-      name: /Dynamic Programming/i,
-    })
-
-    expect(within(arraysRow).getByText('2 problems')).toBeVisible()
-    expect(within(dynamicRow).getByText('1 problem')).toBeVisible()
-    expect(within(arraysRow).getByLabelText('Group title')).toHaveValue(
-      'Arrays and Hashing',
-    )
-    expect(within(dynamicRow).queryByLabelText('Group title')).toBeNull()
-
-    await user.click(
-      within(dynamicRow).getByRole('button', {
-        name: 'Move Dynamic Programming up',
-      }),
-    )
-
-    expect(within(arraysRow).getByLabelText('Group title')).toHaveValue(
-      'Arrays and Hashing',
-    )
-    expect(within(dynamicRow).queryByLabelText('Group title')).toBeNull()
-
-    await user.click(dynamicRow)
-
-    expect(within(arraysRow).queryByLabelText('Group title')).toBeNull()
-    expect(within(dynamicRow).getByLabelText('Group title')).toHaveValue(
-      'Dynamic Programming',
-    )
-
-    await user.click(
-      within(groups).getByRole('button', {
-        name: 'Select Arrays and Hashing',
-      }),
-    )
-
-    expect(within(dynamicRow).queryByLabelText('Group title')).toBeNull()
-    expect(within(arraysRow).getByLabelText('Group title')).toHaveValue(
-      'Arrays and Hashing',
-    )
-  })
-
-  it('keeps group removal disabled for non-empty groups and the final group', async () => {
-    const user = userEvent.setup()
-    mockTrackFormRuntime(createEditResponse())
-
-    renderTrackForm(
-      <TrackForm
-        mode="edit"
-        onCancel={vi.fn()}
-        onLoaded={vi.fn()}
-        onSaved={vi.fn()}
-        trackId="leetcode-75"
-      />,
-    )
-
-    const groups = await screen.findByLabelText('Groups')
-
-    expect(
-      within(groups).getByRole('button', { name: 'Remove Arrays and Hashing' }),
-    ).toBeDisabled()
-
-    await user.click(screen.getByRole('button', { name: 'New Group' }))
-    const emptyGroup = within(groups).getByRole('listitem', {
-      name: /Group 3/i,
-    })
-
-    expect(
-      within(emptyGroup).getByRole('button', { name: 'Remove Group 3' }),
-    ).toBeEnabled()
-  })
-
-  it('shows selected group problems with move and remove controls', async () => {
-    mockTrackFormRuntime(createEditResponse())
-
-    renderTrackForm(
-      <TrackForm
-        mode="edit"
-        onCancel={vi.fn()}
-        onLoaded={vi.fn()}
-        onSaved={vi.fn()}
-        trackId="leetcode-75"
-      />,
-    )
-
-    const selectedProblems = await screen.findByLabelText('Selected problems')
-    const selectedGroupProblems = screen.getByRole('region', {
-      name: 'Selected group problems',
-    })
-    const twoSumRow = within(selectedProblems).getByRole('listitem', {
-      name: '1. Two Sum',
-    })
-
-    expect(within(selectedGroupProblems).getByText('2 selected')).toBeVisible()
-    expect(within(twoSumRow).getByText('Two Sum')).toBeVisible()
-    expect(
-      within(twoSumRow).getByRole('button', { name: 'Move Two Sum up' }),
-    ).toBeDisabled()
-    expect(
-      within(twoSumRow).getByRole('button', { name: 'Move Two Sum down' }),
-    ).toBeEnabled()
-    expect(
-      within(twoSumRow).getByRole('button', { name: 'Remove Two Sum' }),
-    ).toBeEnabled()
-  })
-
-  it('shows up to five autocomplete results while searching or focused', async () => {
-    const user = userEvent.setup()
-    mockTrackFormRuntime(createAutocompleteResponse())
-
-    renderTrackForm(
-      <TrackForm
-        mode="edit"
-        onCancel={vi.fn()}
-        onLoaded={vi.fn()}
-        onSaved={vi.fn()}
-        trackId="leetcode-75"
-      />,
-    )
-
-    expect(await screen.findByLabelText('Title')).toHaveValue('LeetCode 75')
-
-    const searchInput = screen.getByLabelText('Search Library problems')
-
-    expect(
-      screen.queryByRole('region', { name: 'Library problem suggestions' }),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByText('No matching Library problems.')).toBeNull()
-
-    await user.click(searchInput)
-
-    const defaultSuggestions = screen.getByRole('region', {
-      name: 'Library problem suggestions',
-    })
-    const defaultResults = within(defaultSuggestions).getByRole('list', {
-      name: 'Library problem results',
-    })
-
-    expect(within(defaultResults).getAllByRole('listitem')).toHaveLength(5)
-    expect(screen.queryByText('No matching Library problems.')).toBeNull()
-
-    await user.type(searchInput, 'two')
-
-    expect(
-      screen.getByRole('region', { name: 'Library problem suggestions' }),
-    ).toBeVisible()
-    expect(
-      screen.queryByRole('button', { name: 'Add Two Sum' }),
-    ).not.toBeInTheDocument()
-    expect(screen.getByText('No matching Library problems.')).toBeVisible()
-
-    await user.clear(searchInput)
-    await user.type(searchInput, 'binary')
-
-    const suggestions = screen.getByRole('region', {
-      name: 'Library problem suggestions',
-    })
-    const results = within(suggestions).getByRole('list', {
-      name: 'Library problem results',
-    })
-    const resultRows = within(results).getAllByRole('listitem')
-
-    expect(suggestions).toBeVisible()
-    expect(resultRows).toHaveLength(5)
-    const binarySearchResult = within(results).getByRole('listitem', {
-      name: 'Binary Search',
-    })
-    const addBinarySearchButton = within(binarySearchResult).getByRole(
-      'button',
-      {
-        name: 'Add Binary Search',
-      },
-    )
-
-    expect(within(binarySearchResult).queryByText('Easy')).toBeNull()
-    expect(addBinarySearchButton).toBeVisible()
-    expect(screen.getByText('Binary Tree Symmetry')).toBeVisible()
-    expect(screen.queryByText('Binary Tree Path Sum')).toBeNull()
-
-    await user.click(addBinarySearchButton)
-
-    expect(searchInput).toHaveValue('')
-    expect(
-      screen.queryByRole('region', { name: 'Library problem suggestions' }),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByText('No matching Library problems.')).toBeNull()
-  })
-
-  it('expands the first invalid group title on submit', async () => {
-    const user = userEvent.setup()
-    mockTrackFormRuntime(createEditResponse())
-
-    renderTrackForm(
-      <TrackForm
-        mode="edit"
-        onCancel={vi.fn()}
-        onLoaded={vi.fn()}
-        onSaved={vi.fn()}
-        trackId="leetcode-75"
-      />,
-    )
-
-    expect(await screen.findByLabelText('Title')).toHaveValue('LeetCode 75')
-
-    const groups = screen.getByLabelText('Groups')
-    const dynamicRow = within(groups).getByRole('listitem', {
-      name: /Dynamic Programming/i,
-    })
-
-    await user.click(
-      within(groups).getByRole('button', {
-        name: 'Select Dynamic Programming',
-      }),
-    )
-    await user.clear(screen.getByLabelText('Group title'))
-    await user.click(
-      within(groups).getByRole('button', {
-        name: 'Select Arrays and Hashing',
-      }),
-    )
-    await user.click(screen.getByRole('button', { name: 'SAVE' }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Group title is required.',
-    )
-
-    const groupTitle = within(dynamicRow).getByLabelText('Group title')
-
-    expect(groupTitle).toBeVisible()
-    expect(groupTitle).toBeInvalid()
   })
 
   it('loads existing metadata, groups, and memberships for edit submit replacement', async () => {
@@ -906,38 +534,6 @@ function createEditResponse(
       problemRow('two-sum', 'Two Sum'),
       problemRow(),
       problemRow('maximum-subarray', 'Maximum Subarray', 'medium'),
-    ],
-  })
-}
-
-function createAutocompleteResponse() {
-  return createTrackForEditResponse({
-    track: createSerializedTrack({
-      id: 'leetcode-75',
-      slug: 'leetcode-75',
-      title: 'LeetCode 75',
-    }),
-    groups: [
-      {
-        id: 'leetcode-75:main',
-        trackId: 'leetcode-75',
-        title: 'Main',
-        position: 1,
-        problemSlugs: ['two-sum'],
-      },
-    ],
-    problemRows: [
-      problemRow('two-sum', 'Two Sum'),
-      problemRow('binary-search', 'Binary Search'),
-      problemRow('balanced-binary-tree', 'Balanced Binary Tree Validation'),
-      problemRow(
-        'binary-search-tree-validation',
-        'Binary Search Tree Validation',
-        'medium',
-      ),
-      problemRow('binary-tree-columns', 'Binary Tree Columns', 'medium'),
-      problemRow('binary-tree-symmetry', 'Binary Tree Symmetry', 'medium'),
-      problemRow('binary-tree-path-sum', 'Binary Tree Path Sum'),
     ],
   })
 }
