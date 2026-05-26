@@ -59,17 +59,18 @@ export function GitHubSyncPanel({
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [tokenSavedInSession, setTokenSavedInSession] = useState(false)
   const [
-    pushOverwriteConfirmationStatusKey,
-    setPushOverwriteConfirmationStatusKey,
-  ] = useState<string | null>(null)
+    pushOverwriteConfirmationStatusKeys,
+    setPushOverwriteConfirmationStatusKeys,
+  ] = useState<readonly string[] | null>(null)
 
   const hasTokenForActions = status.tokenConfigured || tokenSavedInSession
   const currentPushOverwriteConfirmationStatusKey =
     readPushOverwriteConfirmationStatusKey(status)
   const pushOverwriteConfirmationVisible =
     currentPushOverwriteConfirmationStatusKey !== null &&
-    pushOverwriteConfirmationStatusKey ===
-      currentPushOverwriteConfirmationStatusKey
+    pushOverwriteConfirmationStatusKeys?.includes(
+      currentPushOverwriteConfirmationStatusKey,
+    ) === true
   const gistId =
     gistDraft.sourceGistId === status.gistId
       ? gistDraft.value
@@ -81,7 +82,7 @@ export function GitHubSyncPanel({
     options: { afterSuccess?: () => void } = {},
   ) {
     setFeedback(null)
-    setPushOverwriteConfirmationStatusKey(null)
+    setPushOverwriteConfirmationStatusKeys(null)
 
     try {
       const result = await action()
@@ -110,7 +111,7 @@ export function GitHubSyncPanel({
   async function runPushLocalAction(confirmRemoteOverwrite: boolean) {
     setFeedback(null)
     if (!confirmRemoteOverwrite) {
-      setPushOverwriteConfirmationStatusKey(null)
+      setPushOverwriteConfirmationStatusKeys(null)
     }
 
     try {
@@ -120,10 +121,13 @@ export function GitHubSyncPanel({
         'Local data pushed to Gist.',
       )
 
-      setPushOverwriteConfirmationStatusKey(
+      setPushOverwriteConfirmationStatusKeys(
         isSyncActionResult(result) &&
           result.outcome === 'confirmation-required'
-          ? currentPushOverwriteConfirmationStatusKey
+          ? readPushOverwriteConfirmationStatusKeys(
+              result.status,
+              currentPushOverwriteConfirmationStatusKey,
+            )
           : null,
       )
       setFeedback(actionFeedback)
@@ -299,7 +303,7 @@ export function GitHubSyncPanel({
           <Button
             disabled={isPending}
             onClick={() => {
-              setPushOverwriteConfirmationStatusKey(null)
+              setPushOverwriteConfirmationStatusKeys(null)
             }}
             size="sm"
             variant="ghost"
@@ -377,6 +381,18 @@ function readPushOverwriteConfirmationStatusKey(
     lastSyncAt: status.lastSyncAt,
     lastSyncDirection: status.lastSyncDirection,
   })
+}
+
+function readPushOverwriteConfirmationStatusKeys(
+  resultStatus: SerializedSyncStatus,
+  fallbackStatusKey: string | null,
+): readonly string[] {
+  const resultStatusKey = readPushOverwriteConfirmationStatusKey(resultStatus)
+  const keys = [resultStatusKey, fallbackStatusKey].filter(
+    (key): key is string => key !== null,
+  )
+
+  return Array.from(new Set(keys))
 }
 
 function SyncStatusBlock({ status }: { status: SerializedSyncStatus }) {

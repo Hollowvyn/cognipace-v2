@@ -221,6 +221,66 @@ describe('GitHubSyncPanel', () => {
     })
   })
 
+  it('keeps overwrite confirmation visible after confirmation-required status refetch', async () => {
+    const user = userEvent.setup()
+    const confirmationStatus = {
+      ...configuredStatus,
+      lastBlockingReason: 'remote-changed',
+      conflict: {
+        detectedAt: '2026-05-26T12:10:00.000Z',
+        localDataUpdatedAt: '2026-05-26T12:08:00.000Z',
+        remoteUpdatedAt: '2026-05-26T12:09:00.000Z',
+        remoteVersion: 'remote_2',
+      },
+    } as const
+    const onPushLocal = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ...syncActionResult,
+        action: 'push-local',
+        direction: 'push',
+        outcome: 'confirmation-required',
+        reason: 'remote-changed',
+        message: 'Remote changed. Confirm overwrite before pushing.',
+        status: confirmationStatus,
+      })
+      .mockResolvedValueOnce({
+        ...syncActionResult,
+        action: 'push-local',
+        direction: 'push',
+        outcome: 'success',
+        message: 'Local data pushed to Gist.',
+      })
+    const actions = {
+      onConnectGist: vi.fn(),
+      onCreateGist: vi.fn(),
+      onDeleteToken: vi.fn(),
+      onPullLatest: vi.fn(),
+      onPushLocal,
+      onSaveToken: vi.fn(),
+      onValidateToken: vi.fn(),
+    }
+
+    const { rerender } = render(
+      <GitHubSyncPanel actions={actions} status={configuredStatus} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Push local/i }))
+    expect(
+      await screen.findByRole('button', { name: /Overwrite Gist/i }),
+    ).toBeInTheDocument()
+
+    rerender(
+      <GitHubSyncPanel actions={actions} status={confirmationStatus} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Overwrite Gist/i }))
+
+    expect(onPushLocal).toHaveBeenLastCalledWith({
+      confirmRemoteOverwrite: true,
+    })
+  })
+
   it('clears stale overwrite confirmation when another action starts', async () => {
     const user = userEvent.setup()
     const onCreateGist = vi.fn().mockReturnValue(new Promise(() => {}))

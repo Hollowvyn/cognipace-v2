@@ -212,19 +212,23 @@ export function createSyncService(deps: SyncServiceDependencies) {
       }
 
       if (!metadata.dirtySinceLastSync) {
-        await pullRemote(gist)
+        await deps.writeMetadata({
+          enabled: true,
+          gistId,
+          lastBlockingReason: null,
+          conflict: null,
+          lastError: null,
+        })
 
         return {
-          direction: 'pull',
-          message: 'GitHub Gist connected and pulled.',
+          direction: null,
+          message: 'GitHub Gist connected. Use Pull latest to update this browser.',
         } as const
       }
 
       await deps.writeMetadata({
         enabled: true,
         gistId,
-        lastRemoteVersion: gist.remoteVersion,
-        lastRemoteUpdatedAt: gist.updatedAt,
         lastBlockingReason: 'remote-changed',
         conflict: createSyncConflict({
           detectedAt: deps.now(),

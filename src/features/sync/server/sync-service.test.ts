@@ -128,6 +128,45 @@ describe('sync service', () => {
     })
   })
 
+  it('keeps dirty connected remote unsynced so a later unconfirmed push still requires confirmation', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:15:00.000Z',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:20:00.000Z',
+        remoteVersion: 'remote_2',
+        content: JSON.stringify({ app: 'cognipace' }),
+      }),
+    )
+
+    await expect(harness.service.connectGithubGist('gist_1')).resolves
+      .toMatchObject({
+        action: 'connect-gist',
+        outcome: 'confirmation-required',
+        reason: 'remote-changed',
+      })
+    expect(harness.getMetadata()).toMatchObject({
+      enabled: true,
+      gistId: 'gist_1',
+      lastRemoteVersion: null,
+      lastRemoteUpdatedAt: null,
+      lastBlockingReason: 'remote-changed',
+    })
+
+    await expect(harness.service.pushLocal()).resolves.toMatchObject({
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'confirmation-required',
+      reason: 'remote-changed',
+      message: 'Remote changed since this browser last synced.',
+    })
+    expect(harness.githubClient.updateSyncGist).not.toHaveBeenCalled()
+  })
+
   it('pullLatest restores remote data when local is clean and remote changed', async () => {
     const harness = createHarness()
     harness.setMetadata({
@@ -489,7 +528,7 @@ describe('sync service', () => {
     })
   })
 
-  it('auto-pulls when connecting a remote Gist and local data is clean', async () => {
+  it('connects an existing remote Gist without restoring clean local data', async () => {
     const harness = createHarness()
     harness.setMetadata({
       dirtySinceLastSync: false,
@@ -512,13 +551,28 @@ describe('sync service', () => {
     await expect(harness.service.connectGithubGist('gist_1')).resolves.toEqual(
       expect.objectContaining({
         action: 'connect-gist',
-        direction: 'pull',
+        direction: null,
         outcome: 'success',
-        message: 'GitHub Gist connected and pulled.',
+        message: 'GitHub Gist connected. Use Pull latest to update this browser.',
       }),
     )
-    expect(harness.restoreBackup).toHaveBeenCalledWith(backup)
+    expect(harness.restoreBackup).not.toHaveBeenCalled()
+    expect(harness.getMetadata()).toMatchObject({
+      enabled: true,
+      gistId: 'gist_1',
+      lastRemoteVersion: null,
+      lastRemoteUpdatedAt: null,
+      lastSyncDirection: null,
+    })
     expect(harness.getMetadata().conflict).toBeNull()
+
+    await expect(harness.service.pullLatest()).resolves.toMatchObject({
+      action: 'pull-latest',
+      direction: 'pull',
+      outcome: 'success',
+      message: 'Latest Gist data pulled.',
+    })
+    expect(harness.restoreBackup).toHaveBeenCalledWith(backup)
   })
 
   it('falls back to updatedAt when remote versions become available later', async () => {

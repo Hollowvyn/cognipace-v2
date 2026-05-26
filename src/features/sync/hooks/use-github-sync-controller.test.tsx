@@ -16,7 +16,7 @@ describe('useGithubSyncController', () => {
     vi.clearAllMocks()
   })
 
-  it('broad-invalidates cached views when connecting a Gist pulls remote data successfully', async () => {
+  it('only refreshes sync status when connecting a Gist without applying remote data', async () => {
     vi.mocked(sendMessage).mockImplementation((method) => {
       if (method === 'sync.getStatus') {
         return Promise.resolve(configuredStatus)
@@ -26,8 +26,9 @@ describe('useGithubSyncController', () => {
         return Promise.resolve({
           ...syncActionResult,
           action: 'connect-gist',
-          direction: 'pull',
+          direction: null,
           outcome: 'success',
+          message: 'GitHub Gist connected. Use Pull latest to update this browser.',
         })
       }
 
@@ -50,16 +51,16 @@ describe('useGithubSyncController', () => {
       gistId: 'gist_1',
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.sync.all,
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: queryKeys.settings.all,
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: queryKeys.problems.all,
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: queryKeys.appShell.all,
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: queryKeys.sync.all,
     })
   })
 
@@ -207,7 +208,7 @@ const syncActionResult = {
   outcome: 'success',
   reason: null,
   retryable: false,
-  message: 'GitHub Gist connected and pulled.',
+  message: 'GitHub Gist connected. Use Pull latest to update this browser.',
   status: configuredStatus,
   occurredAt: '2026-05-26T12:00:00.000Z',
 } as const
