@@ -11,6 +11,10 @@ import {
   type LeetCodeGraphQlFetch,
 } from '../core/graphql-client'
 import {
+  requestSubmissionCheck,
+  requestSubmissionList,
+} from '../api/submission-requests'
+import {
   isObjectRecord,
   readBoolean,
   readNumber,
@@ -284,22 +288,18 @@ async function findSubmissionListEntryForClick(options: {
   click: LeetCodeSubmissionClick
   fetch: LeetCodeSubmissionFetch
 }) {
-  const submissionListUrl = new URL(
-    `/api/submissions/${options.location.slug}/`,
-    options.location.url,
-  )
-  submissionListUrl.searchParams.set('offset', '0')
-  submissionListUrl.searchParams.set('limit', '5')
+  let payload: unknown
 
-  const response = await options.fetch(submissionListUrl, {
-    credentials: 'include',
-  })
-
-  if (!response.ok) {
+  try {
+    payload = await requestSubmissionList({
+      fetch: options.fetch,
+      locationUrl: options.location.url,
+      slug: options.location.slug,
+    })
+  } catch {
     return null
   }
 
-  const payload: unknown = await response.json()
   const submissions = readSubmissionListEntries(payload)
   const clickedAtSeconds = Math.floor(options.click.clickedAt / 1000)
 
@@ -318,19 +318,17 @@ async function readSubmissionCheckPayload(options: {
   submissionId: string
   fetch: LeetCodeSubmissionFetch
 }): Promise<SubmissionCheckPayload | null> {
-  const checkUrl = new URL(
-    `/submissions/detail/${options.submissionId}/check/`,
-    options.location.url,
-  )
-  const response = await options.fetch(checkUrl, {
-    credentials: 'include',
-  })
+  let payload: unknown
 
-  if (!response.ok) {
+  try {
+    payload = await requestSubmissionCheck({
+      fetch: options.fetch,
+      locationUrl: options.location.url,
+      submissionId: options.submissionId,
+    })
+  } catch {
     return null
   }
-
-  const payload: unknown = await response.json()
 
   if (!isObjectRecord(payload)) {
     return null
