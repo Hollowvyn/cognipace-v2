@@ -8,12 +8,12 @@ import { dashboardRouteMeta } from '@/app/dashboard/navigation/route-manifest'
 import { SettingsScreen } from '@/features/settings'
 
 export function SettingsPage() {
-  const { themeAction } = useDashboardChrome()
+  const { headerActions } = useDashboardChrome()
 
   return (
     <DashboardPage className="mx-auto w-full max-w-[64rem]">
       <DashboardPageHeader
-        actions={themeAction}
+        actions={headerActions}
         title={dashboardRouteMeta.settings.staticData.title}
       >
         Configure practice, overlay, review, and timing.

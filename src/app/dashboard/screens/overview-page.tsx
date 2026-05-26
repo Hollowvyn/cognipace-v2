@@ -14,12 +14,12 @@ import {
 import { OverviewScreen } from '@/features/app-shell'
 
 export function OverviewPage() {
-  const { themeAction } = useDashboardChrome()
+  const { headerActions } = useDashboardChrome()
 
   return (
     <DashboardPage className="mx-auto w-full max-w-[64rem]">
       <DashboardPageHeader
-        actions={themeAction}
+        actions={headerActions}
         title={dashboardRouteMeta.overview.staticData.title}
       >
         What should I practice now?
