@@ -96,7 +96,7 @@ describe('sync API', () => {
     const { result } = renderHook(
       () =>
         useSyncAction(() => Promise.resolve(syncActionResult), {
-          invalidateData: (result) =>
+          shouldInvalidateData: (result) =>
             result.direction === 'pull' && result.outcome === 'success',
         }),
       { wrapper },
@@ -133,7 +133,7 @@ describe('sync API', () => {
               reason: 'local-dirty',
             }),
           {
-            invalidateData: (result) =>
+            shouldInvalidateData: (result) =>
               result.direction === 'pull' && result.outcome === 'success',
           },
         ),
@@ -278,3 +278,9 @@ const syncActionResult = {
   retryable: false,
   occurredAt: '2026-05-26T12:00:00.000Z',
 } as const
+
+const booleanSyncActionOptions: Parameters<typeof useSyncAction>[1] = {
+  // @ts-expect-error Boolean broad invalidation is intentionally unsupported.
+  shouldInvalidateData: true,
+}
+void booleanSyncActionOptions

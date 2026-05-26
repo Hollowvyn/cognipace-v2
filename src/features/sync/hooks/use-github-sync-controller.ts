@@ -28,7 +28,7 @@ export function useGithubSyncController() {
   const connectGist = useSyncAction(
     (gistId: string) => connectGithubGistViaRuntime(gistId),
     {
-      invalidateData: didPullSuccessfully,
+      shouldInvalidateData: didPullSuccessfully,
     },
   )
   const deleteToken = useSyncAction(() => deleteGithubTokenViaRuntime())

@@ -78,8 +78,7 @@ function didPullSuccessfully(result: SyncActionResult) {
 export function useSyncAction<TVariables = void, TResult = unknown>(
   mutationFn: (variables: TVariables) => Promise<TResult>,
   options: {
-    invalidateData?: boolean | ((result: TResult) => boolean)
-    shouldInvalidateData?: boolean | ((result: TResult) => boolean)
+    shouldInvalidateData?: (result: TResult) => boolean
   } = {},
 ) {
   const queryClient = useQueryClient()
@@ -90,14 +89,7 @@ export function useSyncAction<TVariables = void, TResult = unknown>(
       void queryClient.invalidateQueries({ queryKey: syncQueryKeys.all })
     },
     onSuccess: (result) => {
-      const shouldInvalidateDataOption =
-        options.shouldInvalidateData ?? options.invalidateData
-      const shouldInvalidateData =
-        typeof shouldInvalidateDataOption === 'function'
-          ? shouldInvalidateDataOption(result)
-          : shouldInvalidateDataOption === true
-
-      if (shouldInvalidateData) {
+      if (options.shouldInvalidateData?.(result)) {
         invalidateTaggedQueries(queryClient, broadSyncInvalidationTags)
       }
     },
