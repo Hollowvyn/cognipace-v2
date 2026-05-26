@@ -2,6 +2,40 @@ import type { SecretStatus } from '@/platform/secrets/secret-contracts'
 
 export type SyncDirection = 'no-change' | 'pull' | 'push'
 
+export type SyncAction =
+  | 'validate-token'
+  | 'save-token'
+  | 'delete-token'
+  | 'create-gist'
+  | 'connect-gist'
+  | 'set-enabled'
+  | 'pull-latest'
+  | 'push-local'
+
+export type SyncActionDirection = 'pull' | 'push' | null
+
+export type SyncActionOutcome =
+  | 'success'
+  | 'no-change'
+  | 'blocked'
+  | 'confirmation-required'
+  | 'error'
+
+export type SyncActionReason =
+  | 'not-configured'
+  | 'local-dirty'
+  | 'remote-changed'
+  | 'remote-unchanged'
+  | 'auth'
+  | 'permission'
+  | 'missing-gist'
+  | 'invalid-remote'
+  | 'unsupported-schema'
+  | 'network'
+  | 'rate-limit'
+  | 'already-running'
+  | 'unknown'
+
 export type SyncErrorKind =
   | 'auth'
   | 'conflict'
@@ -28,8 +62,23 @@ export interface SyncStatus {
   isSyncing: boolean
   lastSyncAt: string | null
   lastSyncDirection: SyncDirection | null
+  lastPullAt: string | null
+  lastPushAt: string | null
+  needsPush: boolean
+  lastBlockingReason: SyncActionReason | null
   lastError: SyncErrorSummary | null
   conflict: SyncConflictSummary | null
+}
+
+export interface SyncActionResult {
+  action: SyncAction
+  direction: SyncActionDirection
+  outcome: SyncActionOutcome
+  reason: SyncActionReason | null
+  retryable: boolean
+  message: string
+  status: SyncStatus
+  occurredAt: string
 }
 
 export interface SyncConflictSummary {

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import {
+  syncActionReasonSchema,
   syncConflictSummarySchema,
   syncErrorSummarySchema,
 } from '../api/sync-contracts'
@@ -16,6 +17,9 @@ const syncMetadataSchema = z.strictObject({
   lastRemoteUpdatedAt: z.iso.datetime().nullable(),
   localDataUpdatedAt: z.iso.datetime().nullable(),
   dirtySinceLastSync: z.boolean(),
+  lastPullAt: z.iso.datetime().nullable().default(null),
+  lastPushAt: z.iso.datetime().nullable().default(null),
+  lastBlockingReason: syncActionReasonSchema.nullable().default(null),
   lastError: syncErrorSummarySchema.nullable(),
   conflict: syncConflictSummarySchema.nullable(),
 })
@@ -31,6 +35,9 @@ export const defaultSyncMetadata: SyncMetadata = {
   lastRemoteUpdatedAt: null,
   localDataUpdatedAt: null,
   dirtySinceLastSync: false,
+  lastPullAt: null,
+  lastPushAt: null,
+  lastBlockingReason: null,
   lastError: null,
   conflict: null,
 }
@@ -61,6 +68,7 @@ export function markLocalDataChanged(now = new Date()): Promise<SyncMetadata> {
   return writeSyncMetadata({
     localDataUpdatedAt: now.toISOString(),
     dirtySinceLastSync: true,
+    lastBlockingReason: null,
     lastError: null,
   })
 }

@@ -27,10 +27,52 @@ export const syncSetEnabledRequestSchema = z.strictObject({
   enabled: z.boolean(),
 })
 
+export const syncPushLocalRequestSchema = z.strictObject({
+  surface: z.literal('dashboard'),
+  confirmRemoteOverwrite: z.boolean().default(false),
+})
+
 export const syncResolveConflictRequestSchema = z.strictObject({
   surface: z.literal('dashboard'),
   resolution: z.enum(['pull-remote', 'push-local']),
 })
+
+export const syncActionSchema = z.enum([
+  'validate-token',
+  'save-token',
+  'delete-token',
+  'create-gist',
+  'connect-gist',
+  'set-enabled',
+  'pull-latest',
+  'push-local',
+])
+
+export const syncActionDirectionSchema = z.enum(['pull', 'push']).nullable()
+
+export const syncActionOutcomeSchema = z.enum([
+  'success',
+  'no-change',
+  'blocked',
+  'confirmation-required',
+  'error',
+])
+
+export const syncActionReasonSchema = z.enum([
+  'not-configured',
+  'local-dirty',
+  'remote-changed',
+  'remote-unchanged',
+  'auth',
+  'permission',
+  'missing-gist',
+  'invalid-remote',
+  'unsupported-schema',
+  'network',
+  'rate-limit',
+  'already-running',
+  'unknown',
+])
 
 export const syncErrorSummarySchema = z.strictObject({
   kind: z.enum([
@@ -64,13 +106,23 @@ export const syncStatusSchema = z.strictObject({
   isSyncing: z.boolean(),
   lastSyncAt: z.iso.datetime().nullable(),
   lastSyncDirection: z.enum(['push', 'pull', 'no-change']).nullable(),
+  lastPullAt: z.iso.datetime().nullable(),
+  lastPushAt: z.iso.datetime().nullable(),
+  needsPush: z.boolean(),
+  lastBlockingReason: syncActionReasonSchema.nullable(),
   lastError: syncErrorSummarySchema.nullable(),
   conflict: syncConflictSummarySchema.nullable(),
 })
 
 export const syncActionResultSchema = z.strictObject({
-  status: syncStatusSchema,
+  action: syncActionSchema,
+  direction: syncActionDirectionSchema,
+  outcome: syncActionOutcomeSchema,
+  reason: syncActionReasonSchema.nullable(),
+  retryable: z.boolean(),
   message: z.string(),
+  status: syncStatusSchema,
+  occurredAt: z.iso.datetime(),
 })
 
 export type SyncRequest = z.infer<typeof syncRequestSchema>
@@ -79,6 +131,7 @@ export type SyncGithubTokenRequest = z.infer<
 >
 export type SyncGithubGistRequest = z.infer<typeof syncGithubGistRequestSchema>
 export type SyncSetEnabledRequest = z.infer<typeof syncSetEnabledRequestSchema>
+export type SyncPushLocalRequest = z.infer<typeof syncPushLocalRequestSchema>
 export type SyncResolveConflictRequest = z.infer<
   typeof syncResolveConflictRequestSchema
 >

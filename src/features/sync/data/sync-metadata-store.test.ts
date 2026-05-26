@@ -48,7 +48,33 @@ describe('sync metadata store', () => {
       enabled: false,
       gistId: null,
       dirtySinceLastSync: false,
+      lastPullAt: null,
+      lastPushAt: null,
+      lastBlockingReason: null,
       conflict: null,
+    })
+  })
+
+  it('adds directional defaults when reading metadata written before directional sync', async () => {
+    storage.set('cognipace_sync_metadata_v1', {
+      enabled: true,
+      gistId: 'gist_1',
+      lastSyncAt: '2026-05-26T12:00:00.000Z',
+      lastSyncDirection: 'push',
+      lastRemoteVersion: 'remote_1',
+      lastRemoteUpdatedAt: '2026-05-26T12:00:00.000Z',
+      localDataUpdatedAt: '2026-05-26T11:55:00.000Z',
+      dirtySinceLastSync: false,
+      lastError: null,
+      conflict: null,
+    })
+
+    await expect(readSyncMetadata()).resolves.toMatchObject({
+      enabled: true,
+      gistId: 'gist_1',
+      lastPullAt: null,
+      lastPushAt: null,
+      lastBlockingReason: null,
     })
   })
 
