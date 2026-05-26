@@ -58,9 +58,14 @@ export function GitHubSyncPanel({
   })
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [tokenSavedInSession, setTokenSavedInSession] = useState(false)
-  const [pushOverwriteConfirmationVisible, setPushOverwriteConfirmationVisible] =
-    useState(false)
+  const [pushOverwriteConfirmationGistId, setPushOverwriteConfirmationGistId] =
+    useState<string | null>(null)
+
   const hasTokenForActions = status.tokenConfigured || tokenSavedInSession
+  const pushOverwriteConfirmationVisible =
+    status.configured &&
+    status.gistId !== null &&
+    pushOverwriteConfirmationGistId === status.gistId
   const gistId =
     gistDraft.sourceGistId === status.gistId
       ? gistDraft.value
@@ -72,6 +77,7 @@ export function GitHubSyncPanel({
     options: { afterSuccess?: () => void } = {},
   ) {
     setFeedback(null)
+    setPushOverwriteConfirmationGistId(null)
 
     try {
       const result = await action()
@@ -91,7 +97,6 @@ export function GitHubSyncPanel({
   }
 
   async function runPullLatestAction() {
-    setPushOverwriteConfirmationVisible(false)
     await runPanelAction(
       () => actions.onPullLatest(),
       'Latest Gist data pulled.',
@@ -100,6 +105,9 @@ export function GitHubSyncPanel({
 
   async function runPushLocalAction(confirmRemoteOverwrite: boolean) {
     setFeedback(null)
+    if (!confirmRemoteOverwrite) {
+      setPushOverwriteConfirmationGistId(null)
+    }
 
     try {
       const result = await actions.onPushLocal({ confirmRemoteOverwrite })
@@ -108,9 +116,12 @@ export function GitHubSyncPanel({
         'Local data pushed to Gist.',
       )
 
-      setPushOverwriteConfirmationVisible(
+      setPushOverwriteConfirmationGistId(
         isSyncActionResult(result) &&
-          result.outcome === 'confirmation-required',
+          result.outcome === 'confirmation-required' &&
+          status.gistId !== null
+          ? status.gistId
+          : null,
       )
       setFeedback(actionFeedback)
     } catch (error) {
@@ -285,7 +296,7 @@ export function GitHubSyncPanel({
           <Button
             disabled={isPending}
             onClick={() => {
-              setPushOverwriteConfirmationVisible(false)
+              setPushOverwriteConfirmationGistId(null)
             }}
             size="sm"
             variant="ghost"
@@ -425,21 +436,40 @@ function readStatusTone(status: SerializedSyncStatus) {
 }
 
 function readLastSyncStatus(status: SerializedSyncStatus) {
-  if (status.lastPushAt) {
-    return `Last push: ${formatDateTime(status.lastPushAt)}`
-  }
+  const latestDirectionalSync = readLatestDirectionalSync(status)
 
-  if (status.lastPullAt) {
-    return `Last pull: ${formatDateTime(status.lastPullAt)}`
+  if (latestDirectionalSync) {
+    return `Last ${latestDirectionalSync.label}: ${formatDateTime(
+      latestDirectionalSync.timestamp,
+    )}`
   }
 
   if (status.lastSyncAt) {
-    return `Last ${status.lastSyncDirection ?? 'sync'}: ${formatDateTime(
+    const label =
+      status.lastSyncDirection === 'no-change'
+        ? 'sync check'
+        : (status.lastSyncDirection ?? 'sync')
+
+    return `Last ${label}: ${formatDateTime(
       status.lastSyncAt,
     )}`
   }
 
   return null
+}
+
+function readLatestDirectionalSync(status: SerializedSyncStatus) {
+  const candidates = [
+    status.lastPushAt ? { label: 'push', timestamp: status.lastPushAt } : null,
+    status.lastPullAt ? { label: 'pull', timestamp: status.lastPullAt } : null,
+  ].filter((candidate): candidate is { label: string; timestamp: string } =>
+    Boolean(candidate),
+  )
+
+  return candidates.toSorted(
+    (left, right) =>
+      Date.parse(right.timestamp) - Date.parse(left.timestamp),
+  )[0]
 }
 
 function readActionFeedback(result: unknown, fallback: string): Feedback {

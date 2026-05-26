@@ -224,6 +224,186 @@ describe('GitHubSyncPanel', () => {
     })
   })
 
+  it('clears stale overwrite confirmation when another action starts', async () => {
+    const user = userEvent.setup()
+    const onCreateGist = vi.fn().mockReturnValue(new Promise(() => {}))
+    const onPushLocal = vi.fn().mockResolvedValue({
+      ...syncActionResult,
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'confirmation-required',
+      reason: 'remote-changed',
+      message: 'Remote changed. Confirm overwrite before pushing.',
+    })
+
+    render(
+      <GitHubSyncPanel
+        actions={{
+          onConnectGist: vi.fn(),
+          onCreateGist,
+          onDeleteToken: vi.fn(),
+          onPullLatest: vi.fn(),
+          onPushLocal,
+          onSaveToken: vi.fn(),
+          onValidateToken: vi.fn(),
+        }}
+        status={configuredStatus}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Push local/i }))
+    expect(
+      await screen.findByRole('button', { name: /Overwrite Gist/i }),
+    ).toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', { name: /Create private Gist/i }),
+    )
+
+    expect(onCreateGist).toHaveBeenCalledTimes(1)
+    expect(
+      screen.queryByRole('button', { name: /Overwrite Gist/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('hides stale overwrite confirmation when the configured Gist changes', async () => {
+    const user = userEvent.setup()
+    const onPushLocal = vi.fn().mockResolvedValue({
+      ...syncActionResult,
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'confirmation-required',
+      reason: 'remote-changed',
+      message: 'Remote changed. Confirm overwrite before pushing.',
+    })
+
+    const { rerender } = render(
+      <GitHubSyncPanel
+        actions={{
+          onConnectGist: vi.fn(),
+          onCreateGist: vi.fn(),
+          onDeleteToken: vi.fn(),
+          onPullLatest: vi.fn(),
+          onPushLocal,
+          onSaveToken: vi.fn(),
+          onValidateToken: vi.fn(),
+        }}
+        status={configuredStatus}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Push local/i }))
+    expect(
+      await screen.findByRole('button', { name: /Overwrite Gist/i }),
+    ).toBeInTheDocument()
+
+    rerender(
+      <GitHubSyncPanel
+        actions={{
+          onConnectGist: vi.fn(),
+          onCreateGist: vi.fn(),
+          onDeleteToken: vi.fn(),
+          onPullLatest: vi.fn(),
+          onPushLocal,
+          onSaveToken: vi.fn(),
+          onValidateToken: vi.fn(),
+        }}
+        status={{
+          ...configuredStatus,
+          gistId: 'gist_2',
+        }}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: /Overwrite Gist/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('hides overwrite confirmation after confirmed push success', async () => {
+    const user = userEvent.setup()
+    const onPushLocal = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ...syncActionResult,
+        action: 'push-local',
+        direction: 'push',
+        outcome: 'confirmation-required',
+        reason: 'remote-changed',
+        message: 'Remote changed. Confirm overwrite before pushing.',
+      })
+      .mockResolvedValueOnce({
+        ...syncActionResult,
+        action: 'push-local',
+        direction: 'push',
+        outcome: 'success',
+        message: 'Local data pushed to Gist.',
+      })
+
+    render(
+      <GitHubSyncPanel
+        actions={{
+          onConnectGist: vi.fn(),
+          onCreateGist: vi.fn(),
+          onDeleteToken: vi.fn(),
+          onPullLatest: vi.fn(),
+          onPushLocal,
+          onSaveToken: vi.fn(),
+          onValidateToken: vi.fn(),
+        }}
+        status={configuredStatus}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Push local/i }))
+    await user.click(
+      await screen.findByRole('button', { name: /Overwrite Gist/i }),
+    )
+
+    expect(onPushLocal).toHaveBeenLastCalledWith({
+      confirmRemoteOverwrite: true,
+    })
+    expect(await screen.findByText('Local data pushed to Gist.')).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: /Overwrite Gist/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('cancels overwrite confirmation without pushing', async () => {
+    const user = userEvent.setup()
+    const onPushLocal = vi.fn().mockResolvedValue({
+      ...syncActionResult,
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'confirmation-required',
+      reason: 'remote-changed',
+      message: 'Remote changed. Confirm overwrite before pushing.',
+    })
+
+    render(
+      <GitHubSyncPanel
+        actions={{
+          onConnectGist: vi.fn(),
+          onCreateGist: vi.fn(),
+          onDeleteToken: vi.fn(),
+          onPullLatest: vi.fn(),
+          onPushLocal,
+          onSaveToken: vi.fn(),
+          onValidateToken: vi.fn(),
+        }}
+        status={configuredStatus}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Push local/i }))
+    await user.click(await screen.findByRole('button', { name: /Cancel/i }))
+
+    expect(
+      screen.queryByRole('button', { name: /Overwrite Gist/i }),
+    ).not.toBeInTheDocument()
+    expect(onPushLocal).toHaveBeenCalledTimes(1)
+  })
+
   it('requests a normal local push without remote overwrite confirmation', async () => {
     const user = userEvent.setup()
     const onPushLocal = vi.fn().mockResolvedValue({
@@ -302,7 +482,7 @@ describe('GitHubSyncPanel', () => {
     )
   })
 
-  it('prefers push, then pull, then legacy sync timestamps in status text', () => {
+  it('shows the latest push or pull timestamp before legacy sync timestamps', () => {
     const { rerender } = render(
       <GitHubSyncPanel
         actions={{
@@ -338,8 +518,8 @@ describe('GitHubSyncPanel', () => {
         }}
         status={{
           ...configuredStatus,
-          lastPushAt: null,
-          lastPullAt: '2026-05-26T12:30:00.000Z',
+          lastPushAt: '2026-05-26T12:30:00.000Z',
+          lastPullAt: '2026-05-26T13:00:00.000Z',
           lastSyncAt: '2026-05-26T12:00:00.000Z',
         }}
       />,
@@ -368,7 +548,7 @@ describe('GitHubSyncPanel', () => {
       />,
     )
 
-    expect(screen.getByRole('status')).toHaveTextContent(/Last no-change:/i)
+    expect(screen.getByRole('status')).toHaveTextContent(/Last sync check:/i)
   })
 
   it('shows danger feedback for resolved error outcomes', async () => {
