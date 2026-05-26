@@ -56,6 +56,14 @@ export async function restoreFullBackup(
   input: unknown,
 ): Promise<BackupSummary> {
   const backup = parseBackupFileForCurrentApp(input)
+
+  return restoreValidatedBackupData(db, backup)
+}
+
+export async function restoreValidatedBackupData(
+  db: Db,
+  backup: BackupFile,
+): Promise<BackupSummary> {
   validateBackupReferences(backup.data)
   const summary = createBackupSummary(backup)
 
