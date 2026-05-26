@@ -1,9 +1,10 @@
 import {
   CheckCircle2,
+  CloudDownload,
+  CloudUpload,
   GitBranch,
   KeyRound,
   Loader2,
-  DownloadCloud,
   Trash2,
   UploadCloud,
 } from 'lucide-react'
@@ -20,7 +21,6 @@ import type {
   SyncActionResult,
 } from '../api/sync-contracts'
 
-type SyncConflictResolution = 'pull-remote' | 'push-local'
 type MaybePromise<T> = T | Promise<T>
 
 type GitHubSyncActionResult = MaybePromise<SyncActionResult | null | void>
@@ -58,8 +58,8 @@ export function GitHubSyncPanel({
   })
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [tokenSavedInSession, setTokenSavedInSession] = useState(false)
-  const [resolutionToConfirm, setResolutionToConfirm] =
-    useState<SyncConflictResolution | null>(null)
+  const [pushOverwriteConfirmationVisible, setPushOverwriteConfirmationVisible] =
+    useState(false)
   const hasTokenForActions = status.tokenConfigured || tokenSavedInSession
   const gistId =
     gistDraft.sourceGistId === status.gistId
@@ -81,6 +81,37 @@ export function GitHubSyncPanel({
         options.afterSuccess?.()
       }
 
+      setFeedback(actionFeedback)
+    } catch (error) {
+      setFeedback({
+        message: readErrorMessage(error, 'Sync action failed.'),
+        tone: 'danger',
+      })
+    }
+  }
+
+  async function runPullLatestAction() {
+    setPushOverwriteConfirmationVisible(false)
+    await runPanelAction(
+      () => actions.onPullLatest(),
+      'Latest Gist data pulled.',
+    )
+  }
+
+  async function runPushLocalAction(confirmRemoteOverwrite: boolean) {
+    setFeedback(null)
+
+    try {
+      const result = await actions.onPushLocal({ confirmRemoteOverwrite })
+      const actionFeedback = readActionFeedback(
+        result,
+        'Local data pushed to Gist.',
+      )
+
+      setPushOverwriteConfirmationVisible(
+        isSyncActionResult(result) &&
+          result.outcome === 'confirmation-required',
+      )
       setFeedback(actionFeedback)
     } catch (error) {
       setFeedback({
@@ -239,82 +270,74 @@ export function GitHubSyncPanel({
         </div>
       </div>
 
-      {status.conflict ? (
-        <ConflictActions
-          isPending={isPending}
-          onCancel={() => {
-            setResolutionToConfirm(null)
-          }}
-          onConfirm={(resolution) => {
-            void runPanelAction(
-              () =>
-                resolution === 'pull-remote'
-                  ? actions.onPullLatest()
-                  : actions.onPushLocal({ confirmRemoteOverwrite: true }),
-              resolution === 'pull-remote'
-                ? 'Remote data pulled.'
-                : 'Local data pushed.',
-              {
-                afterSuccess: () => {
-                  setResolutionToConfirm(null)
-                },
-              },
-            )
-          }}
-          onSelect={setResolutionToConfirm}
-          resolutionToConfirm={resolutionToConfirm}
-        />
-      ) : (
+      {pushOverwriteConfirmationVisible ? (
         <div className="flex flex-wrap items-center gap-2">
           <Button
             disabled={isPending || !status.configured}
             onClick={() => {
-              void runPanelAction(
-                () => actions.onPullLatest(),
-                'Latest Gist data pulled.',
-              )
+              void runPushLocalAction(true)
             }}
             size="sm"
-            variant="outline"
+            variant="destructive"
           >
-            <DownloadCloud aria-hidden="true" />
-            Pull latest
+            Overwrite Gist
           </Button>
           <Button
-            disabled={isPending || !status.configured}
+            disabled={isPending}
             onClick={() => {
-              void runPanelAction(
-                () => actions.onPushLocal(),
-                'Local data pushed to Gist.',
-              )
-            }}
-            size="sm"
-            variant="outline"
-          >
-            <UploadCloud aria-hidden="true" />
-            Push local
-          </Button>
-          <Button
-            disabled={isPending || !status.tokenConfigured}
-            onClick={() => {
-              void runPanelAction(
-                () => actions.onDeleteToken(),
-                'GitHub token deleted.',
-                {
-                  afterSuccess: () => {
-                    setTokenSavedInSession(false)
-                  },
-                },
-              )
+              setPushOverwriteConfirmationVisible(false)
             }}
             size="sm"
             variant="ghost"
           >
-            <Trash2 aria-hidden="true" />
-            Delete token
+            Cancel
           </Button>
         </div>
-      )}
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          disabled={isPending || !status.configured}
+          onClick={() => {
+            void runPullLatestAction()
+          }}
+          size="sm"
+          variant="outline"
+        >
+          <CloudDownload aria-hidden="true" />
+          Pull latest
+        </Button>
+        <Button
+          disabled={isPending || !status.configured}
+          onClick={() => {
+            void runPushLocalAction(false)
+          }}
+          size="sm"
+          variant="outline"
+        >
+          <CloudUpload aria-hidden="true" />
+          Push local
+        </Button>
+        <Button
+          disabled={isPending || !status.tokenConfigured}
+          onClick={() => {
+            void runPanelAction(
+              () => actions.onDeleteToken(),
+              'GitHub token deleted.',
+              {
+                afterSuccess: () => {
+                  setTokenSavedInSession(false)
+                },
+              },
+            )
+          }}
+          size="sm"
+          variant="ghost"
+        >
+          <Trash2 aria-hidden="true" />
+          Delete token
+        </Button>
+      </div>
     </Surface>
   )
 }
@@ -347,88 +370,29 @@ function SyncStatusBlock({ status }: { status: SerializedSyncStatus }) {
     )
   }
 
-  return (
-    <InlineStatus tone="success">
-      <CheckCircle2 aria-hidden="true" />
-      {status.lastSyncAt
-        ? `Last ${status.lastSyncDirection ?? 'sync'}: ${formatDateTime(
-            status.lastSyncAt,
-          )}`
-        : 'GitHub sync is ready.'}
-    </InlineStatus>
-  )
-}
-
-function ConflictActions({
-  isPending,
-  onCancel,
-  onConfirm,
-  onSelect,
-  resolutionToConfirm,
-}: {
-  isPending: boolean
-  onCancel: () => void
-  onConfirm: (resolution: SyncConflictResolution) => void
-  onSelect: (resolution: SyncConflictResolution) => void
-  resolutionToConfirm: SyncConflictResolution | null
-}) {
-  if (resolutionToConfirm) {
-    const isPull = resolutionToConfirm === 'pull-remote'
-
+  if (status.lastBlockingReason === 'local-dirty') {
     return (
-      <div className="grid gap-2">
-        <InlineStatus tone="warning">
-          {isPull
-            ? 'Pulling remote data replaces local data with the Gist copy.'
-            : 'Pushing local data replaces the Gist copy with this browser data.'}
-        </InlineStatus>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            disabled={isPending}
-            onClick={() => {
-              onConfirm(resolutionToConfirm)
-            }}
-            size="sm"
-            variant="destructive"
-          >
-            {isPull ? 'Confirm pull remote' : 'Confirm push local'}
-          </Button>
-          <Button
-            disabled={isPending}
-            onClick={onCancel}
-            size="sm"
-            variant="ghost"
-          >
-            Cancel
-          </Button>
-        </div>
-      </div>
+      <InlineStatus tone="warning">
+        Local changes need to be pushed before pulling latest Gist data.
+      </InlineStatus>
     )
   }
 
+  if (status.needsPush) {
+    return (
+      <InlineStatus tone="warning">
+        Local changes are waiting to be pushed to Gist.
+      </InlineStatus>
+    )
+  }
+
+  const lastSyncStatus = readLastSyncStatus(status)
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button
-        disabled={isPending}
-        onClick={() => {
-          onSelect('pull-remote')
-        }}
-        size="sm"
-        variant="outline"
-      >
-        Pull remote
-      </Button>
-      <Button
-        disabled={isPending}
-        onClick={() => {
-          onSelect('push-local')
-        }}
-        size="sm"
-        variant="outline"
-      >
-        Push local
-      </Button>
-    </div>
+    <InlineStatus tone="success">
+      <CheckCircle2 aria-hidden="true" />
+      {lastSyncStatus ?? 'GitHub sync is ready.'}
+    </InlineStatus>
   )
 }
 
@@ -458,6 +422,24 @@ function readStatusTone(status: SerializedSyncStatus) {
   }
 
   return status.configured ? 'success' : 'neutral'
+}
+
+function readLastSyncStatus(status: SerializedSyncStatus) {
+  if (status.lastPushAt) {
+    return `Last push: ${formatDateTime(status.lastPushAt)}`
+  }
+
+  if (status.lastPullAt) {
+    return `Last pull: ${formatDateTime(status.lastPullAt)}`
+  }
+
+  if (status.lastSyncAt) {
+    return `Last ${status.lastSyncDirection ?? 'sync'}: ${formatDateTime(
+      status.lastSyncAt,
+    )}`
+  }
+
+  return null
 }
 
 function readActionFeedback(result: unknown, fallback: string): Feedback {

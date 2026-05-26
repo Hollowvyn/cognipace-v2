@@ -51,5 +51,12 @@ describe('GitHubSyncSettingsSection', () => {
     expect(
       screen.getByRole('heading', { name: /GitHub Sync/i }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Pull latest/i }),
+    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Push local/i })).toBeDisabled()
+    expect(
+      screen.queryByRole('button', { name: /Sync now/i }),
+    ).not.toBeInTheDocument()
   })
 })
