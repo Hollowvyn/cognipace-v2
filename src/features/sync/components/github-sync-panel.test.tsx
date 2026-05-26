@@ -320,6 +320,60 @@ describe('GitHubSyncPanel', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('hides stale overwrite confirmation when same-Gist status identity changes', async () => {
+    const user = userEvent.setup()
+    const onPushLocal = vi.fn().mockResolvedValue({
+      ...syncActionResult,
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'confirmation-required',
+      reason: 'remote-changed',
+      message: 'Remote changed. Confirm overwrite before pushing.',
+    })
+
+    const { rerender } = render(
+      <GitHubSyncPanel
+        actions={{
+          onConnectGist: vi.fn(),
+          onCreateGist: vi.fn(),
+          onDeleteToken: vi.fn(),
+          onPullLatest: vi.fn(),
+          onPushLocal,
+          onSaveToken: vi.fn(),
+          onValidateToken: vi.fn(),
+        }}
+        status={configuredStatus}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Push local/i }))
+    expect(
+      await screen.findByRole('button', { name: /Overwrite Gist/i }),
+    ).toBeInTheDocument()
+
+    rerender(
+      <GitHubSyncPanel
+        actions={{
+          onConnectGist: vi.fn(),
+          onCreateGist: vi.fn(),
+          onDeleteToken: vi.fn(),
+          onPullLatest: vi.fn(),
+          onPushLocal,
+          onSaveToken: vi.fn(),
+          onValidateToken: vi.fn(),
+        }}
+        status={{
+          ...configuredStatus,
+          lastPullAt: '2026-05-26T12:05:00.000Z',
+        }}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: /Overwrite Gist/i }),
+    ).not.toBeInTheDocument()
+  })
+
   it('hides overwrite confirmation after confirmed push success', async () => {
     const user = userEvent.setup()
     const onPushLocal = vi
