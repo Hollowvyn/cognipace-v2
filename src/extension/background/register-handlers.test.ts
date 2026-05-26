@@ -947,6 +947,12 @@ describe('background handler registration', () => {
       source: 'dashboard',
       tags: ['problems'],
     })
+
+    await vi.advanceTimersByTimeAsync(500)
+    expect(backgroundMocks.markSyncLocalDataChanged).toHaveBeenCalledTimes(2)
+    expect(backgroundMocks.syncService.syncAfterMutation).toHaveBeenCalledTimes(
+      1,
+    )
   })
 
   it('waits for queued mutations before running scheduled mutation sync', async () => {
@@ -977,6 +983,37 @@ describe('background handler registration', () => {
     expect(backgroundMocks.syncService.syncAfterMutation).toHaveBeenCalledTimes(
       1,
     )
+  })
+
+  it('queues scheduled mutation sync so later mutations wait behind the push', async () => {
+    const syncAfterMutation = createDeferred<null>()
+    backgroundMocks.syncService.syncAfterMutation.mockReturnValueOnce(
+      syncAfterMutation.promise,
+    )
+
+    await sendRuntimeMessage(
+      'problems.createProblem',
+      binarySearchCreateRequest(),
+    )
+
+    await vi.advanceTimersByTimeAsync(500)
+    expect(backgroundMocks.syncService.syncAfterMutation).toHaveBeenCalledTimes(
+      1,
+    )
+
+    const secondMutation = sendRuntimeMessage('problems.createProblem', {
+      ...binarySearchCreateRequest(),
+      slugOrUrl: 'dynamic-programming',
+      title: 'Dynamic Programming',
+    })
+
+    await Promise.resolve()
+    expect(backgroundMocks.createProblem).toHaveBeenCalledTimes(1)
+
+    syncAfterMutation.resolve(null)
+    await secondMutation
+
+    expect(backgroundMocks.createProblem).toHaveBeenCalledTimes(2)
   })
 
   it('rejects invalid problem writes before mutation side effects', () => {

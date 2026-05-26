@@ -1018,22 +1018,7 @@ function createSyncServiceForDb(db: Db) {
       await broadcastDataManagementInvalidation('dashboard')
     },
     {
-      runRemoteRestore: (work) =>
-        runDbMutation(
-          async () => {
-            const metadata = await readSyncMetadata()
-
-            if (metadata.dirtySinceLastSync) {
-              throw new Error(
-                'Sync conflict detected. Local data changed before remote data could be applied.',
-              )
-            }
-
-            return work()
-          },
-          undefined,
-          { syncMode: 'none' },
-        ),
+      runRemoteRestore: (work) => runRemoteRestoreInMutationQueue(work),
     },
   )
 }
@@ -1045,8 +1030,10 @@ function parseNullableSyncActionResult(result: unknown) {
 type DbMutationSyncMode = 'mark-dirty' | 'none'
 
 let dbMutationQueue: Promise<void> = Promise.resolve()
+let dbMutationDepth = 0
 let syncAfterMutationTimer: ReturnType<typeof setTimeout> | null = null
 let syncAfterMutationGeneration = 0
+let hasPendingDirtyMarkRetry = false
 
 function runDbMutation<T>(
   write: (db: Db) => Promise<T>,
@@ -1055,21 +1042,27 @@ function runDbMutation<T>(
 ) {
   const syncMode = options.syncMode ?? 'mark-dirty'
   const queued = dbMutationQueue.then(async () => {
-    const { db } = await getAppDb()
-    const result = await write(db)
+    dbMutationDepth += 1
 
-    if (syncMode === 'mark-dirty') {
-      await markSyncLocalDataChangedBestEffort()
+    try {
+      const { db } = await getAppDb()
+      const result = await write(db)
+
+      if (syncMode === 'mark-dirty') {
+        await markSyncLocalDataChangedBestEffort()
+      }
+
+      await flushDbSnapshot()
+      await afterFlush?.(result)
+
+      if (syncMode === 'mark-dirty') {
+        scheduleSyncAfterMutation(db)
+      }
+
+      return result
+    } finally {
+      dbMutationDepth -= 1
     }
-
-    await flushDbSnapshot()
-    await afterFlush?.(result)
-
-    if (syncMode === 'mark-dirty') {
-      scheduleSyncAfterMutation(db)
-    }
-
-    return result
   })
 
   dbMutationQueue = queued.then(
@@ -1098,34 +1091,72 @@ function scheduleSyncAfterMutation(db: Db) {
 async function markSyncLocalDataChangedBestEffort() {
   try {
     await markSyncLocalDataChanged()
+    hasPendingDirtyMarkRetry = false
   } catch {
+    hasPendingDirtyMarkRetry = true
     // Local data is already written; sync metadata failure must not fail saves.
   }
 }
 
 async function runSyncAfterMutationWhenQueueIdle(db: Db, generation: number) {
   try {
-    await waitForDbMutationQueueToIdle()
+    await runDbMutation(
+      async () => {
+        if (generation !== syncAfterMutationGeneration) {
+          return null
+        }
 
-    if (generation !== syncAfterMutationGeneration) {
-      return
-    }
+        const dirtyMarkReady = await retryPendingDirtyMark()
 
-    await createSyncServiceForDb(db).syncAfterMutation()
+        if (!dirtyMarkReady) {
+          scheduleSyncAfterMutation(db)
+          return null
+        }
+
+        return createSyncServiceForDb(db).syncAfterMutation()
+      },
+      undefined,
+      { syncMode: 'none' },
+    )
   } catch {
     // Mutation sync is best-effort; the service records retryable status.
   }
 }
 
-async function waitForDbMutationQueueToIdle() {
-  while (true) {
-    const pendingQueue = dbMutationQueue
-    await pendingQueue
-
-    if (pendingQueue === dbMutationQueue) {
-      return
-    }
+async function retryPendingDirtyMark() {
+  if (!hasPendingDirtyMarkRetry) {
+    return true
   }
+
+  try {
+    await markSyncLocalDataChanged()
+    hasPendingDirtyMarkRetry = false
+    return true
+  } catch {
+    return false
+  }
+}
+
+function runRemoteRestoreInMutationQueue<T>(work: () => Promise<T>) {
+  const guardedWork = async () => {
+    const metadata = await readSyncMetadata()
+
+    if (metadata.dirtySinceLastSync) {
+      throw new Error(
+        'Sync conflict detected. Local data changed before remote data could be applied.',
+      )
+    }
+
+    return work()
+  }
+
+  if (dbMutationDepth > 0) {
+    return guardedWork()
+  }
+
+  return runDbMutation(async () => guardedWork(), undefined, {
+    syncMode: 'none',
+  })
 }
 
 function unrefTimer(timer: ReturnType<typeof setTimeout>) {
