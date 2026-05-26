@@ -192,6 +192,17 @@ describe('runtime-policy', () => {
     }
   })
 
+  it('does not expose removed sync runtime methods', () => {
+    for (const method of [
+      'sync.syncNow',
+      'sync.resolveConflict',
+      'sync.checkOnOpen',
+    ]) {
+      expect(isExtensionMethod(method)).toBe(false)
+      expect(canCallExtensionMethod(method, 'dashboard')).toBe(false)
+    }
+  })
+
   it('allows popup and dashboard senders to update study mode', () => {
     expect(canCallExtensionMethod('settings.toggleStudyMode', 'popup')).toBe(
       true,

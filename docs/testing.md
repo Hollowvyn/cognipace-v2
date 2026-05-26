@@ -96,21 +96,27 @@ dialog button changes to a success state labeled Backup exported.
    account.
 2. Open Settings > Data Management.
 3. Save the token under GitHub Sync.
-4. Create a private Gist, then use Pull latest and Push local.
+4. Create a private Gist, then use Pull latest and Push local from Settings.
 5. Export a backup and confirm the token value is not present in the JSON.
 6. Load CogniPace in a second Chrome profile or browser install.
 7. Save the same token, connect the Gist ID, and use Pull latest.
 8. Confirm clean remote data is restored locally.
-9. Change local data while offline or with GitHub unavailable, then confirm the
-   local save succeeds and Settings shows a retryable sync status.
-10. Create a conflict by changing both installs before syncing, then confirm
+9. Confirm the dashboard header shows compact Pull latest from Gist and Push
+   local to Gist shortcuts after sync is configured.
+10. Change local data while offline or with GitHub unavailable, then confirm the
+    local save succeeds and sync status marks local data dirty or needing push.
+11. While still offline or while GitHub is unavailable, use Push local from
+    Settings or the dashboard header and confirm the failed manual action records
+    a retryable sync status.
+12. Create a conflict by changing both installs before syncing, then confirm
     Pull latest is blocked when local data has unpushed changes and Push local
     requires overwrite confirmation before replacing changed remote data.
 
 Expected: sync is pseudo-real-time rather than live collaborative editing.
-Manual pulls and pushes are directional, local writes are not blocked by sync
-failures, and tokens stay in trusted local extension storage rather than backups
-or sync files.
+Manual pulls and pushes are directional, local writes mark sync dirty without
+recording a retryable sync error by themselves, failed manual sync actions record
+retryable sync status, and tokens stay in trusted local extension storage rather
+than backups or sync files.
 
 ### Library
 

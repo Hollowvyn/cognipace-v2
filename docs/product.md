@@ -105,6 +105,8 @@ Current behavior:
 - Data Management in Settings exports full local backups, validates and restores
   full backups, configures optional GitHub Gist pseudo-sync, shows planned
   selective import sections, and performs explicit full local clear/reset.
+- The dashboard header shows compact pull and push shortcuts after GitHub Gist
+  sync is configured.
 - Overview and Analytics currently reserve route ownership and are not finished
   product surfaces.
 
@@ -155,10 +157,13 @@ invalidate affected query families.
 
 GitHub Gist sync is optional, BYOK, and pseudo-real-time. A user stores a GitHub
 token locally, creates or connects a private CogniPace Gist, and uses explicit
-manual Settings actions to pull latest remote data or push local data. Local
-writes should still succeed when sync fails; retryable sync failures are shown in
-Settings. Pulling is blocked when local data has unpushed changes, and pushing
-over changed remote data requires explicit overwrite confirmation.
+manual pull and push actions to move data. Settings is the setup, recovery, and
+full-confirmation surface; once sync is configured, the dashboard header also
+provides compact shortcuts for quick pull and push actions. Local writes should
+still succeed when sync fails; retryable sync failures are shown after an
+explicit manual sync action fails. Pulling is blocked when local data has
+unpushed changes, and pushing over changed remote data requires explicit
+overwrite confirmation.
 
 GitHub tokens are stored in trusted `chrome.storage.local` extension storage and
 are only read by the background service worker. Tokens are not included in
