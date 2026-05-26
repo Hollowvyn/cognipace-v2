@@ -10,8 +10,11 @@ import {
   pullLatestViaRuntime,
   pushLocalViaRuntime,
   saveGithubTokenViaRuntime,
+  usePullLatest,
+  usePushLocal,
   useSyncAction,
 } from './sync-api'
+import type { SyncPushLocalRequest } from '..'
 
 vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
@@ -149,6 +152,95 @@ describe('sync API', () => {
     })
     expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: queryKeys.problems.all,
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: queryKeys.appShell.all,
+    })
+  })
+
+  it('usePullLatest broad-invalidates local data views only after successful pull results', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...syncActionResult,
+      direction: 'pull',
+      outcome: 'success',
+    })
+    const { queryClient, wrapper } = createQueryTestHarness()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => usePullLatest(), { wrapper })
+
+    await act(async () => {
+      await result.current.mutateAsync()
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('sync.pullLatest', {
+      surface: 'dashboard',
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.settings.all,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.problems.all,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.appShell.all,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.sync.all,
+    })
+
+    invalidateQueries.mockClear()
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...syncActionResult,
+      direction: 'pull',
+      outcome: 'blocked',
+      reason: 'local-dirty',
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync()
+    })
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.sync.all,
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: queryKeys.settings.all,
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: queryKeys.problems.all,
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: queryKeys.appShell.all,
+    })
+  })
+
+  it('usePushLocal pushes local data without broad-invalidating local data views', async () => {
+    const input = {
+      confirmRemoteOverwrite: true,
+    } satisfies Partial<SyncPushLocalRequest>
+    vi.mocked(sendMessage).mockResolvedValue({
+      ...syncActionResult,
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'success',
+    })
+    const { queryClient, wrapper } = createQueryTestHarness()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => usePushLocal(), { wrapper })
+
+    await act(async () => {
+      await result.current.mutateAsync(input)
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('sync.pushLocal', {
+      surface: 'dashboard',
+      confirmRemoteOverwrite: true,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.sync.all,
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: queryKeys.settings.all,
     })
     expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: queryKeys.appShell.all,

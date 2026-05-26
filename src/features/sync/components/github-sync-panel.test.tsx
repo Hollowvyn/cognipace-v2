@@ -189,6 +189,38 @@ describe('GitHubSyncPanel', () => {
     expect(
       screen.getByRole('button', { name: /Confirm push local/i }),
     ).toBeEnabled()
+    expect(onPushLocal).toHaveBeenCalledWith({
+      confirmRemoteOverwrite: true,
+    })
+  })
+
+  it('requests a normal local push without remote overwrite confirmation', async () => {
+    const user = userEvent.setup()
+    const onPushLocal = vi.fn().mockResolvedValue({
+      ...syncActionResult,
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'success',
+    })
+
+    render(
+      <GitHubSyncPanel
+        actions={{
+          onConnectGist: vi.fn(),
+          onCreateGist: vi.fn(),
+          onDeleteToken: vi.fn(),
+          onPullLatest: vi.fn(),
+          onPushLocal,
+          onSaveToken: vi.fn(),
+          onValidateToken: vi.fn(),
+        }}
+        status={configuredStatus}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Push local/i }))
+
+    expect(onPushLocal).toHaveBeenCalledWith()
   })
 
   it('shows danger feedback for resolved error outcomes', async () => {

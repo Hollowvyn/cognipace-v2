@@ -158,7 +158,9 @@ describe('useGithubSyncController', () => {
     invalidateQueries.mockClear()
 
     await act(async () => {
-      await result.current.actions.onPushLocal(true)
+      await result.current.actions.onPushLocal({
+        confirmRemoteOverwrite: true,
+      })
     })
 
     expect(sendMessage).toHaveBeenCalledWith('sync.pushLocal', {

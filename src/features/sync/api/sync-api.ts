@@ -7,6 +7,8 @@ import {
 } from '@/platform/query/cache-invalidation'
 import { queryKeys } from '@/platform/query/query-keys'
 
+import type { SyncActionResult } from './sync-contracts'
+
 export const syncQueryKeys = queryKeys.sync
 
 const broadSyncInvalidationTags = [
@@ -69,9 +71,16 @@ export function useSyncStatus(surface: UiSurface = 'dashboard') {
   })
 }
 
+function didPullSuccessfully(result: SyncActionResult) {
+  return result.direction === 'pull' && result.outcome === 'success'
+}
+
 export function useSyncAction<TVariables = void, TResult = unknown>(
   mutationFn: (variables: TVariables) => Promise<TResult>,
-  options: { invalidateData?: boolean | ((result: TResult) => boolean) } = {},
+  options: {
+    invalidateData?: boolean | ((result: TResult) => boolean)
+    shouldInvalidateData?: boolean | ((result: TResult) => boolean)
+  } = {},
 ) {
   const queryClient = useQueryClient()
 
@@ -81,14 +90,29 @@ export function useSyncAction<TVariables = void, TResult = unknown>(
       void queryClient.invalidateQueries({ queryKey: syncQueryKeys.all })
     },
     onSuccess: (result) => {
+      const shouldInvalidateDataOption =
+        options.shouldInvalidateData ?? options.invalidateData
       const shouldInvalidateData =
-        typeof options.invalidateData === 'function'
-          ? options.invalidateData(result)
-          : options.invalidateData === true
+        typeof shouldInvalidateDataOption === 'function'
+          ? shouldInvalidateDataOption(result)
+          : shouldInvalidateDataOption === true
 
       if (shouldInvalidateData) {
         invalidateTaggedQueries(queryClient, broadSyncInvalidationTags)
       }
     },
   })
+}
+
+export function usePullLatest() {
+  return useSyncAction(() => pullLatestViaRuntime(), {
+    shouldInvalidateData: didPullSuccessfully,
+  })
+}
+
+export function usePushLocal() {
+  return useSyncAction<
+    Parameters<typeof pushLocalViaRuntime>[0] | undefined,
+    SyncActionResult
+  >((input) => pushLocalViaRuntime(input))
 }

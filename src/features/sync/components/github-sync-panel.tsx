@@ -30,7 +30,9 @@ export interface GitHubSyncPanelActions {
   onCreateGist: () => GitHubSyncActionResult
   onDeleteToken: () => GitHubSyncActionResult
   onPullLatest: () => GitHubSyncActionResult
-  onPushLocal: (confirmRemoteOverwrite?: boolean) => GitHubSyncActionResult
+  onPushLocal: (input?: {
+    confirmRemoteOverwrite?: boolean
+  }) => GitHubSyncActionResult
   onSaveToken: (token: string) => GitHubSyncActionResult
   onValidateToken: (token: string) => GitHubSyncActionResult
 }
@@ -248,7 +250,7 @@ export function GitHubSyncPanel({
               () =>
                 resolution === 'pull-remote'
                   ? actions.onPullLatest()
-                  : actions.onPushLocal(true),
+                  : actions.onPushLocal({ confirmRemoteOverwrite: true }),
               resolution === 'pull-remote'
                 ? 'Remote data pulled.'
                 : 'Local data pushed.',
@@ -282,7 +284,7 @@ export function GitHubSyncPanel({
             disabled={isPending || !status.configured}
             onClick={() => {
               void runPanelAction(
-                () => actions.onPushLocal(false),
+                () => actions.onPushLocal(),
                 'Local data pushed to Gist.',
               )
             }}

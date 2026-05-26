@@ -2,9 +2,9 @@ import {
   connectGithubGistViaRuntime,
   createGithubGistViaRuntime,
   deleteGithubTokenViaRuntime,
-  pullLatestViaRuntime,
-  pushLocalViaRuntime,
   saveGithubTokenViaRuntime,
+  usePullLatest,
+  usePushLocal,
   useSyncAction,
   useSyncStatus,
   validateGithubTokenViaRuntime,
@@ -32,21 +32,15 @@ export function useGithubSyncController() {
     },
   )
   const deleteToken = useSyncAction(() => deleteGithubTokenViaRuntime())
-  const pullLatest = useSyncAction(() => pullLatestViaRuntime(), {
-    invalidateData: didPullSuccessfully,
-  })
-  const pushLocal = useSyncAction<boolean | undefined, SyncActionResult>(
-    (confirmRemoteOverwrite = false) =>
-      pushLocalViaRuntime({ confirmRemoteOverwrite }),
-  )
+  const pullLatest = usePullLatest()
+  const pushLocal = usePushLocal()
 
   const actions = {
     onConnectGist: (gistId) => connectGist.mutateAsync(gistId),
     onCreateGist: () => createGist.mutateAsync(),
     onDeleteToken: () => deleteToken.mutateAsync(),
     onPullLatest: () => pullLatest.mutateAsync(),
-    onPushLocal: (confirmRemoteOverwrite) =>
-      pushLocal.mutateAsync(confirmRemoteOverwrite),
+    onPushLocal: (input) => pushLocal.mutateAsync(input),
     onSaveToken: (token) => saveToken.mutateAsync(token),
     onValidateToken: (token) => validateToken.mutateAsync(token),
   } satisfies GitHubSyncPanelActions

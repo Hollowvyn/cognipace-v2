@@ -15,6 +15,7 @@ export type {
   SyncActionResult,
   SyncGithubGistRequest,
   SyncGithubTokenRequest,
+  SyncPushLocalRequest,
   SyncRequest,
   SyncSetEnabledRequest,
 } from './api/sync-contracts'
