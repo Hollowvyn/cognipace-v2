@@ -84,16 +84,16 @@ import type {
   SyncActionResult,
   SyncGithubGistRequest,
   SyncGithubTokenRequest,
+  SyncPushLocalRequest,
   SyncRequest,
-  SyncResolveConflictRequest,
   SyncSetEnabledRequest,
 } from '@/features/sync/api/sync-contracts'
 export {
   syncActionResultSchema,
   syncGithubGistRequestSchema,
   syncGithubTokenRequestSchema,
+  syncPushLocalRequestSchema,
   syncRequestSchema,
-  syncResolveConflictRequestSchema,
   syncSetEnabledRequestSchema,
   syncStatusSchema,
 } from '@/features/sync/api/sync-contracts'
@@ -266,9 +266,8 @@ export interface ProtocolMap {
   'sync.createGithubGist'(request: SyncRequest): SyncActionResult
   'sync.connectGithubGist'(request: SyncGithubGistRequest): SyncActionResult
   'sync.setEnabled'(request: SyncSetEnabledRequest): SyncActionResult
-  'sync.checkOnOpen'(request: SyncRequest): SyncActionResult | null
-  'sync.syncNow'(request: SyncRequest): SyncActionResult | null
-  'sync.resolveConflict'(request: SyncResolveConflictRequest): SyncActionResult
+  'sync.pullLatest'(request: SyncRequest): SyncActionResult
+  'sync.pushLocal'(request: SyncPushLocalRequest): SyncActionResult
   'problems.upsertFromPage'(
     request: ProblemsUpsertFromPageRequest,
   ): SerializedProblem

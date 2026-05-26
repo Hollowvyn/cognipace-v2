@@ -28,8 +28,8 @@ import {
   syncActionResultSchema,
   syncGithubGistRequestSchema,
   syncGithubTokenRequestSchema,
+  syncPushLocalRequestSchema,
   syncRequestSchema,
-  syncResolveConflictRequestSchema,
   syncSetEnabledRequestSchema,
   syncStatusSchema,
   todayQueueSchema,
@@ -314,44 +314,31 @@ export function registerBackgroundHandlers() {
     )
   })
 
-  onMessage('sync.checkOnOpen', ({ data, sender }) => {
+  onMessage('sync.pullLatest', ({ data, sender }) => {
     const request = syncRequestSchema.parse(data)
 
     assertCanSenderCallExtensionMethod(
-      'sync.checkOnOpen',
-      request.surface,
-      sender,
-    )
-    return getAppDb().then(async ({ db }) =>
-      parseNullableSyncActionResult(
-        await runQueuedSyncAction(db, (service) => service.checkOnOpen()),
-      ),
-    )
-  })
-
-  onMessage('sync.syncNow', ({ data, sender }) => {
-    const request = syncRequestSchema.parse(data)
-
-    assertCanSenderCallExtensionMethod('sync.syncNow', request.surface, sender)
-    return getAppDb().then(async ({ db }) =>
-      parseNullableSyncActionResult(
-        await runQueuedSyncAction(db, (service) => service.syncNow()),
-      ),
-    )
-  })
-
-  onMessage('sync.resolveConflict', ({ data, sender }) => {
-    const request = syncResolveConflictRequestSchema.parse(data)
-
-    assertCanSenderCallExtensionMethod(
-      'sync.resolveConflict',
+      'sync.pullLatest',
       request.surface,
       sender,
     )
     return getAppDb().then(async ({ db }) =>
       parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) => service.pullLatest()),
+      ),
+    )
+  })
+
+  onMessage('sync.pushLocal', ({ data, sender }) => {
+    const request = syncPushLocalRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod('sync.pushLocal', request.surface, sender)
+    return getAppDb().then(async ({ db }) =>
+      parseSyncActionResult(
         await runQueuedSyncAction(db, (service) =>
-          service.resolveConflict(request.resolution),
+          service.pushLocal({
+            confirmRemoteOverwrite: request.confirmRemoteOverwrite,
+          }),
         ),
       ),
     )
@@ -1046,25 +1033,25 @@ function runQueuedSyncAction<T>(
   db: Db,
   action: (service: BackgroundSyncService) => Promise<T>,
 ) {
-  return runInMutationQueue(() =>
-    action(createSyncServiceForDbInQueue(db, true)),
-  )
+  return runInMutationQueue(async () => {
+    const dirtyMarkReady = await retryPendingDirtyMark()
+
+    if (!dirtyMarkReady) {
+      throw new Error('Local data changed but sync metadata could not be saved.')
+    }
+
+    return action(createSyncServiceForDbInQueue(db, true))
+  })
 }
 
 function parseSyncActionResult(result: unknown) {
   return syncActionResultSchema.parse(result)
 }
 
-function parseNullableSyncActionResult(result: unknown) {
-  return result === null ? null : syncActionResultSchema.parse(result)
-}
-
 type DbMutationSyncMode = 'mark-dirty' | 'none'
 
 let dbMutationQueue: Promise<void> = Promise.resolve()
 let dbMutationDepth = 0
-let syncAfterMutationTimer: ReturnType<typeof setTimeout> | null = null
-let syncAfterMutationGeneration = 0
 let hasPendingDirtyMarkRetry = false
 
 function runDbMutation<T>(
@@ -1083,10 +1070,6 @@ function runDbMutation<T>(
 
     await flushDbSnapshot()
     await afterFlush?.(result)
-
-    if (syncMode === 'mark-dirty') {
-      scheduleSyncAfterMutation(db)
-    }
 
     return result
   })
@@ -1110,21 +1093,6 @@ function runInMutationQueue<T>(work: () => Promise<T>) {
   return queued
 }
 
-function scheduleSyncAfterMutation(db: Db) {
-  syncAfterMutationGeneration += 1
-  const generation = syncAfterMutationGeneration
-
-  if (syncAfterMutationTimer) {
-    clearTimeout(syncAfterMutationTimer)
-  }
-
-  syncAfterMutationTimer = setTimeout(() => {
-    syncAfterMutationTimer = null
-    void runSyncAfterMutationWhenQueueIdle(db, generation)
-  }, 500)
-  unrefTimer(syncAfterMutationTimer)
-}
-
 async function markSyncLocalDataChangedBestEffort() {
   try {
     await markSyncLocalDataChanged()
@@ -1132,31 +1100,6 @@ async function markSyncLocalDataChangedBestEffort() {
   } catch {
     hasPendingDirtyMarkRetry = true
     // Local data is already written; sync metadata failure must not fail saves.
-  }
-}
-
-async function runSyncAfterMutationWhenQueueIdle(db: Db, generation: number) {
-  try {
-    await runDbMutation(
-      async () => {
-        if (generation !== syncAfterMutationGeneration) {
-          return null
-        }
-
-        const dirtyMarkReady = await retryPendingDirtyMark()
-
-        if (!dirtyMarkReady) {
-          scheduleSyncAfterMutation(db)
-          return null
-        }
-
-        return createSyncServiceForDbInQueue(db, true).syncAfterMutation()
-      },
-      undefined,
-      { syncMode: 'none' },
-    )
-  } catch {
-    // Mutation sync is best-effort; the service records retryable status.
   }
 }
 
@@ -1195,13 +1138,6 @@ function runRemoteRestoreInMutationQueue<T>(
   }
 
   return runInMutationQueue(guardedWork)
-}
-
-function unrefTimer(timer: ReturnType<typeof setTimeout>) {
-  if (typeof timer === 'object' && timer !== null) {
-    const maybeNodeTimer = timer as { unref?: () => void }
-    maybeNodeTimer.unref?.()
-  }
 }
 
 function readReviewLogRequest(request: {

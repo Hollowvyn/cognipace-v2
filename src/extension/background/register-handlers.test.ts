@@ -99,16 +99,14 @@ const backgroundMocks = vi.hoisted(() => {
     markSyncLocalDataChanged: vi.fn(),
     readSyncMetadata: vi.fn(),
     syncService: {
-      checkOnOpen: vi.fn(),
       connectGithubGist: vi.fn(),
       createGithubGist: vi.fn(),
       deleteGithubToken: vi.fn(),
       getStatus: vi.fn(),
-      resolveConflict: vi.fn(),
+      pullLatest: vi.fn(),
+      pushLocal: vi.fn(),
       saveGithubToken: vi.fn(),
       setEnabled: vi.fn(),
-      syncAfterMutation: vi.fn(),
-      syncNow: vi.fn(),
       validateGithubToken: vi.fn(),
     },
   }
@@ -269,7 +267,6 @@ describe('background handler registration', () => {
       cleanSyncMetadata,
     )
     backgroundMocks.readSyncMetadata.mockResolvedValue(cleanSyncMetadata)
-    backgroundMocks.syncService.checkOnOpen.mockResolvedValue(syncActionResult)
     backgroundMocks.syncService.connectGithubGist.mockResolvedValue(
       syncActionResult,
     )
@@ -280,15 +277,12 @@ describe('background handler registration', () => {
       syncActionResult,
     )
     backgroundMocks.syncService.getStatus.mockResolvedValue(syncStatus)
-    backgroundMocks.syncService.resolveConflict.mockResolvedValue(
-      syncActionResult,
-    )
+    backgroundMocks.syncService.pullLatest.mockResolvedValue(syncActionResult)
+    backgroundMocks.syncService.pushLocal.mockResolvedValue(syncActionResult)
     backgroundMocks.syncService.saveGithubToken.mockResolvedValue(
       syncActionResult,
     )
     backgroundMocks.syncService.setEnabled.mockResolvedValue(syncActionResult)
-    backgroundMocks.syncService.syncAfterMutation.mockResolvedValue(null)
-    backgroundMocks.syncService.syncNow.mockResolvedValue(syncActionResult)
     backgroundMocks.syncService.validateGithubToken.mockResolvedValue(
       syncActionResult,
     )
@@ -370,7 +364,7 @@ describe('background handler registration', () => {
     expect(response).toEqual(syncStatusSchema.parse(syncStatus))
   })
 
-  it('registers privileged sync dashboard actions with request and response parsing', async () => {
+  it('registers privileged directional sync dashboard actions with request and response parsing', async () => {
     const savedToken = await sendRuntimeMessage('sync.saveGithubToken', {
       surface: 'dashboard',
       token: '  github-token  ',
@@ -382,33 +376,19 @@ describe('background handler registration', () => {
       surface: 'dashboard',
       gistId: ' gist_1 ',
     })
-    const syncedNow = await sendRuntimeMessage('sync.syncNow', {
+    const pulledLatest = await sendRuntimeMessage('sync.pullLatest', {
       surface: 'dashboard',
     })
-    const checkedOnOpen = await sendRuntimeMessage(
-      'sync.checkOnOpen',
-      {
-        surface: 'content-script',
-      },
-      {
-        tab: { id: 7 },
-        url: 'https://leetcode.com/problems/two-sum/',
-      },
-    )
-    const resolvedConflict = await sendRuntimeMessage('sync.resolveConflict', {
+    const pushedLocal = await sendRuntimeMessage('sync.pushLocal', {
       surface: 'dashboard',
-      resolution: 'pull-remote',
+      confirmRemoteOverwrite: true,
     })
 
     expectRuntimePolicy('sync.saveGithubToken', 'dashboard')
     expectRuntimePolicy('sync.createGithubGist', 'dashboard')
     expectRuntimePolicy('sync.connectGithubGist', 'dashboard')
-    expectRuntimePolicy('sync.syncNow', 'dashboard')
-    expectRuntimePolicy('sync.checkOnOpen', 'content-script', {
-      tab: { id: 7 },
-      url: 'https://leetcode.com/problems/two-sum/',
-    })
-    expectRuntimePolicy('sync.resolveConflict', 'dashboard')
+    expectRuntimePolicy('sync.pullLatest', 'dashboard')
+    expectRuntimePolicy('sync.pushLocal', 'dashboard')
     expect(backgroundMocks.syncService.saveGithubToken).toHaveBeenCalledWith(
       'github-token',
     )
@@ -418,42 +398,24 @@ describe('background handler registration', () => {
     expect(backgroundMocks.syncService.connectGithubGist).toHaveBeenCalledWith(
       'gist_1',
     )
-    expect(backgroundMocks.syncService.syncNow).toHaveBeenCalledTimes(1)
-    expect(backgroundMocks.syncService.checkOnOpen).toHaveBeenCalledTimes(1)
-    expect(backgroundMocks.syncService.resolveConflict).toHaveBeenCalledWith(
-      'pull-remote',
-    )
+    expect(backgroundMocks.syncService.pullLatest).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.syncService.pushLocal).toHaveBeenCalledWith({
+      confirmRemoteOverwrite: true,
+    })
     for (const response of [
       savedToken,
       createdGist,
       connectedGist,
-      syncedNow,
-      checkedOnOpen,
-      resolvedConflict,
+      pulledLatest,
+      pushedLocal,
     ]) {
       expect(response).toEqual(syncActionResultSchema.parse(syncActionResult))
     }
   })
 
-  it('passes nullable sync check responses through the runtime boundary', async () => {
-    backgroundMocks.syncService.checkOnOpen.mockResolvedValueOnce(null)
-    backgroundMocks.syncService.syncNow.mockResolvedValueOnce(null)
-
-    await expect(
-      sendRuntimeMessage('sync.checkOnOpen', {
-        surface: 'popup',
-      }),
-    ).resolves.toBeNull()
-    await expect(
-      sendRuntimeMessage('sync.syncNow', {
-        surface: 'dashboard',
-      }),
-    ).resolves.toBeNull()
-  })
-
   it('runs sync remote restores through the queued mutation path without marking dirty', async () => {
     const workOrder: string[] = []
-    backgroundMocks.syncService.checkOnOpen.mockImplementation(async () => {
+    backgroundMocks.syncService.pullLatest.mockImplementation(async () => {
       await readLatestSyncFactoryOptions().runRemoteRestore(async () => {
         workOrder.push('remote-restore')
         await backgroundMocks.flushDbSnapshot()
@@ -463,7 +425,7 @@ describe('background handler registration', () => {
       return syncActionResult
     })
 
-    const response = await sendRuntimeMessage('sync.checkOnOpen', {
+    const response = await sendRuntimeMessage('sync.pullLatest', {
       surface: 'dashboard',
     })
 
@@ -474,13 +436,13 @@ describe('background handler registration', () => {
     expect(backgroundMocks.flushDbSnapshot).toHaveBeenCalledTimes(1)
 
     await vi.advanceTimersByTimeAsync(500)
-    expect(backgroundMocks.syncService.syncAfterMutation).not.toHaveBeenCalled()
+    expect(backgroundMocks.syncService.pushLocal).not.toHaveBeenCalled()
   })
 
   it('aborts queued sync remote restores when local data becomes dirty first', async () => {
     let remoteWorkRan = false
     backgroundMocks.readSyncMetadata.mockResolvedValueOnce(dirtySyncMetadata)
-    backgroundMocks.syncService.checkOnOpen.mockImplementation(async () => {
+    backgroundMocks.syncService.pullLatest.mockImplementation(async () => {
       await readLatestSyncFactoryOptions().runRemoteRestore(() => {
         remoteWorkRan = true
 
@@ -491,7 +453,7 @@ describe('background handler registration', () => {
     })
 
     await expect(
-      sendRuntimeMessage('sync.checkOnOpen', {
+      sendRuntimeMessage('sync.pullLatest', {
         surface: 'dashboard',
       }),
     ).rejects.toThrow(/Local data changed/)
@@ -900,34 +862,18 @@ describe('background handler registration', () => {
     expect(response).toEqual(problemForEditResponse)
   })
 
-  it('marks local data dirty and schedules sync after flushed local mutations', async () => {
+  it('marks local mutations dirty without auto-pushing to Gist', async () => {
+    vi.useFakeTimers()
+
     await sendRuntimeMessage(
       'problems.createProblem',
       binarySearchCreateRequest(),
     )
+    await vi.advanceTimersByTimeAsync(600)
 
     expect(backgroundMocks.markSyncLocalDataChanged).toHaveBeenCalledTimes(1)
-    const dirtyMarkOrder =
-      backgroundMocks.markSyncLocalDataChanged.mock.invocationCallOrder[0] ?? 0
-    const flushOrder =
-      backgroundMocks.flushDbSnapshot.mock.invocationCallOrder[0] ?? 0
-    const broadcastOrder =
-      backgroundMocks.broadcastCacheInvalidation.mock.invocationCallOrder[0] ??
-      0
-
-    expect(dirtyMarkOrder).toBeGreaterThan(0)
-    expect(dirtyMarkOrder).toBeLessThan(flushOrder)
-    expect(flushOrder).toBeLessThan(broadcastOrder)
-    expect(backgroundMocks.syncService.syncAfterMutation).not.toHaveBeenCalled()
-
-    await vi.advanceTimersByTimeAsync(499)
-    expect(backgroundMocks.syncService.syncAfterMutation).not.toHaveBeenCalled()
-
-    await vi.advanceTimersByTimeAsync(1)
-    expectSyncFactoryForDb()
-    expect(backgroundMocks.syncService.syncAfterMutation).toHaveBeenCalledTimes(
-      1,
-    )
+    expect(backgroundMocks.syncService.pushLocal).not.toHaveBeenCalled()
+    expect(backgroundMocks.syncService.pullLatest).not.toHaveBeenCalled()
   })
 
   it('keeps local mutations successful when dirty metadata marking fails', async () => {
@@ -949,82 +895,22 @@ describe('background handler registration', () => {
     })
 
     await vi.advanceTimersByTimeAsync(500)
-    expect(backgroundMocks.markSyncLocalDataChanged).toHaveBeenCalledTimes(2)
-    expect(backgroundMocks.syncService.syncAfterMutation).toHaveBeenCalledTimes(
-      1,
-    )
+    expect(backgroundMocks.markSyncLocalDataChanged).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.syncService.pushLocal).not.toHaveBeenCalled()
+    expect(backgroundMocks.syncService.pullLatest).not.toHaveBeenCalled()
   })
 
-  it('waits for queued mutations before running scheduled mutation sync', async () => {
-    const secondWrite = createDeferred<typeof problemForEditResponse>()
-
-    await sendRuntimeMessage(
-      'problems.createProblem',
-      binarySearchCreateRequest(),
+  it('queues manual pull so later local mutations wait behind the sync work', async () => {
+    const pullLatest = createDeferred<typeof syncActionResult>()
+    backgroundMocks.syncService.pullLatest.mockReturnValueOnce(
+      pullLatest.promise,
     )
 
-    backgroundMocks.createProblem.mockReturnValueOnce(secondWrite.promise)
-    const secondMutation = sendRuntimeMessage('problems.createProblem', {
-      ...binarySearchCreateRequest(),
-      slugOrUrl: 'dynamic-programming',
-      title: 'Dynamic Programming',
-    })
-
-    await vi.advanceTimersByTimeAsync(500)
-    expect(backgroundMocks.syncService.syncAfterMutation).not.toHaveBeenCalled()
-
-    secondWrite.resolve(problemForEditResponse)
-    await secondMutation
-
-    await vi.advanceTimersByTimeAsync(499)
-    expect(backgroundMocks.syncService.syncAfterMutation).not.toHaveBeenCalled()
-
-    await vi.advanceTimersByTimeAsync(1)
-    expect(backgroundMocks.syncService.syncAfterMutation).toHaveBeenCalledTimes(
-      1,
-    )
-  })
-
-  it('queues scheduled mutation sync so later mutations wait behind the push', async () => {
-    const syncAfterMutation = createDeferred<null>()
-    backgroundMocks.syncService.syncAfterMutation.mockReturnValueOnce(
-      syncAfterMutation.promise,
-    )
-
-    await sendRuntimeMessage(
-      'problems.createProblem',
-      binarySearchCreateRequest(),
-    )
-
-    await vi.advanceTimersByTimeAsync(500)
-    expect(backgroundMocks.syncService.syncAfterMutation).toHaveBeenCalledTimes(
-      1,
-    )
-
-    const secondMutation = sendRuntimeMessage('problems.createProblem', {
-      ...binarySearchCreateRequest(),
-      slugOrUrl: 'dynamic-programming',
-      title: 'Dynamic Programming',
-    })
-
-    await Promise.resolve()
-    expect(backgroundMocks.createProblem).toHaveBeenCalledTimes(1)
-
-    syncAfterMutation.resolve(null)
-    await secondMutation
-
-    expect(backgroundMocks.createProblem).toHaveBeenCalledTimes(2)
-  })
-
-  it('queues manual sync so later local mutations wait behind the sync work', async () => {
-    const syncNow = createDeferred<typeof syncActionResult>()
-    backgroundMocks.syncService.syncNow.mockReturnValueOnce(syncNow.promise)
-
-    const syncPromise = sendRuntimeMessage('sync.syncNow', {
+    const syncPromise = sendRuntimeMessage('sync.pullLatest', {
       surface: 'dashboard',
     })
     await waitUntil(() => {
-      expect(backgroundMocks.syncService.syncNow).toHaveBeenCalled()
+      expect(backgroundMocks.syncService.pullLatest).toHaveBeenCalled()
     })
 
     const mutationPromise = sendRuntimeMessage(
@@ -1035,7 +921,7 @@ describe('background handler registration', () => {
     await Promise.resolve()
     expect(backgroundMocks.createProblem).not.toHaveBeenCalled()
 
-    syncNow.resolve(syncActionResult)
+    pullLatest.resolve(syncActionResult)
     await syncPromise
     await mutationPromise
 
@@ -1368,7 +1254,6 @@ function resetRuntimeMutationMocks() {
   )
   backgroundMocks.markSyncLocalDataChanged.mockResolvedValue(cleanSyncMetadata)
   backgroundMocks.readSyncMetadata.mockResolvedValue(cleanSyncMetadata)
-  backgroundMocks.syncService.syncAfterMutation.mockResolvedValue(null)
 }
 
 async function expectTrackWrite<TRequest>(input: {

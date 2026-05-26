@@ -169,10 +169,9 @@ describe('runtime-policy', () => {
     }
   })
 
-  it('allows sync status reads and open checks from every UI surface', () => {
+  it('allows sync status reads from every UI surface', () => {
     for (const surface of ['popup', 'dashboard', 'content-script'] as const) {
       expect(canCallExtensionMethod('sync.getStatus', surface)).toBe(true)
-      expect(canCallExtensionMethod('sync.checkOnOpen', surface)).toBe(true)
     }
   })
 
@@ -184,10 +183,22 @@ describe('runtime-policy', () => {
       'sync.createGithubGist',
       'sync.connectGithubGist',
       'sync.setEnabled',
-      'sync.syncNow',
-      'sync.resolveConflict',
+      'sync.pullLatest',
+      'sync.pushLocal',
     ]) {
       expect(canCallExtensionMethod(method, 'dashboard')).toBe(true)
+      expect(canCallExtensionMethod(method, 'popup')).toBe(false)
+      expect(canCallExtensionMethod(method, 'content-script')).toBe(false)
+    }
+  })
+
+  it('does not expose old smart sync runtime methods', () => {
+    for (const method of [
+      'sync.syncNow',
+      'sync.resolveConflict',
+      'sync.checkOnOpen',
+    ]) {
+      expect(canCallExtensionMethod(method, 'dashboard')).toBe(false)
       expect(canCallExtensionMethod(method, 'popup')).toBe(false)
       expect(canCallExtensionMethod(method, 'content-script')).toBe(false)
     }
