@@ -511,6 +511,9 @@ describe('sync service', () => {
 
     await expect(harness.service.connectGithubGist('gist_1')).resolves.toEqual(
       expect.objectContaining({
+        action: 'connect-gist',
+        direction: 'pull',
+        outcome: 'success',
         message: 'GitHub Gist connected and pulled.',
       }),
     )

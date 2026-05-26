@@ -193,7 +193,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
   }
 
   async function connectGithubGist(gistId: string): Promise<SyncActionResult> {
-    const message = await runExclusive(async () => {
+    const result = await runExclusive(async () => {
       const client = await readConfiguredClient()
       const metadata = await deps.readMetadata()
       const gist = await client.getGist(gistId)
@@ -205,13 +205,19 @@ export function createSyncService(deps: SyncServiceDependencies) {
         const updated = await client.updateSyncGist(gistId, local.content)
         await recordPush(updated, local.dataUpdatedAt)
 
-        return 'GitHub Gist connected and initialized.'
+        return {
+          direction: null,
+          message: 'GitHub Gist connected and initialized.',
+        } as const
       }
 
       if (!metadata.dirtySinceLastSync) {
         await pullRemote(gist)
 
-        return 'GitHub Gist connected and pulled.'
+        return {
+          direction: 'pull',
+          message: 'GitHub Gist connected and pulled.',
+        } as const
       }
 
       await deps.writeMetadata({
@@ -229,24 +235,29 @@ export function createSyncService(deps: SyncServiceDependencies) {
         lastError: null,
       })
 
-      return 'Choose whether to pull remote data or push local data.'
+      return {
+        direction: null,
+        message: 'Choose whether to pull remote data or push local data.',
+      } as const
     })
 
-    if (message === 'Choose whether to pull remote data or push local data.') {
+    if (
+      result.message === 'Choose whether to pull remote data or push local data.'
+    ) {
       return createActionResult({
         action: 'connect-gist',
-        direction: null,
+        direction: result.direction,
         outcome: 'confirmation-required',
         reason: 'remote-changed',
         retryable: false,
-        message,
+        message: result.message,
       })
     }
 
     return createActionResult({
       action: 'connect-gist',
-      direction: null,
-      message,
+      direction: result.direction,
+      message: result.message,
     })
   }
 
