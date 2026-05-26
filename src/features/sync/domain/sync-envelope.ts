@@ -1,20 +1,26 @@
 import { z } from 'zod'
 
 import {
-  backupFileSchema,
   parseBackupFileForCurrentApp,
   type BackupFile,
-} from '@/features/backup'
+} from '@/features/backup/api/backup-contracts'
 
 export const syncEnvelopeVersion = 1
 
-export const syncEnvelopeSchema = z.strictObject({
+const syncEnvelopePayloadSchema = z.strictObject({
   syncEnvelopeVersion: z.literal(syncEnvelopeVersion),
   app: z.literal('cognipace'),
   exportedAt: z.iso.datetime(),
   dataUpdatedAt: z.iso.datetime(),
-  backup: backupFileSchema,
+  backup: z.unknown(),
 })
+
+export const syncEnvelopeSchema = syncEnvelopePayloadSchema.transform(
+  (envelope) => ({
+    ...envelope,
+    backup: parseBackupFileForCurrentApp(envelope.backup),
+  }),
+)
 
 export type SyncEnvelope = z.infer<typeof syncEnvelopeSchema>
 
@@ -52,8 +58,5 @@ export function parseSyncEnvelopeForCurrentApp(input: unknown): SyncEnvelope {
     )
   }
 
-  const parsed = syncEnvelopeSchema.parse(input)
-  parseBackupFileForCurrentApp(parsed.backup)
-
-  return parsed
+  return syncEnvelopeSchema.parse(input)
 }

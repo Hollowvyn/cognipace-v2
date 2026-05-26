@@ -1,3 +1,5 @@
+import type { SecretStatus } from '@/platform/secrets/secret-contracts'
+
 export type SyncDirection = 'no-change' | 'pull' | 'push'
 
 export type SyncErrorKind =
@@ -21,6 +23,7 @@ export interface SyncStatus {
   enabled: boolean
   configured: boolean
   tokenConfigured: boolean
+  tokenStatus: SecretStatus
   gistId: string | null
   isSyncing: boolean
   lastSyncAt: string | null

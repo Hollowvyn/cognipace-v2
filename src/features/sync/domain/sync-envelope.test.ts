@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { type BackupFile } from '@/features/backup'
-import { backupSchemaVersion } from '@/features/backup/api/backup-contracts'
+import {
+  backupSchemaVersion,
+  type BackupFile,
+} from '@/features/backup/api/backup-contracts'
 
 import {
   buildSyncEnvelope,
@@ -75,5 +77,20 @@ describe('sync envelope', () => {
         backup,
       }),
     ).toThrow('not a CogniPace sync file')
+  })
+
+  it('rejects future backup versions with the backup version error', () => {
+    expect(() =>
+      parseSyncEnvelopeForCurrentApp({
+        syncEnvelopeVersion,
+        app: 'cognipace',
+        exportedAt: '2026-05-26T12:00:00.000Z',
+        dataUpdatedAt: '2026-05-26T12:00:00.000Z',
+        backup: {
+          ...backup,
+          schemaVersion: backupSchemaVersion + 1,
+        },
+      }),
+    ).toThrow('Unsupported backup version')
   })
 })
