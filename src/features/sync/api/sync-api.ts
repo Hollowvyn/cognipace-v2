@@ -1,0 +1,92 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
+import { sendMessage, type UiSurface } from '@/extension/messaging'
+import {
+  invalidateTaggedQueries,
+  type CacheInvalidationTag,
+} from '@/platform/query/cache-invalidation'
+import { queryKeys } from '@/platform/query/query-keys'
+
+export const syncQueryKeys = queryKeys.sync
+
+const broadSyncInvalidationTags = [
+  'settings',
+  'problems',
+  'practice',
+  'queue',
+  'tracks',
+  'app-shell',
+] as const satisfies readonly CacheInvalidationTag[]
+
+export function getSyncStatusViaRuntime(surface: UiSurface = 'dashboard') {
+  return sendMessage('sync.getStatus', { surface })
+}
+
+export function validateGithubTokenViaRuntime(token: string) {
+  return sendMessage('sync.validateGithubToken', {
+    surface: 'dashboard',
+    token,
+  })
+}
+
+export function saveGithubTokenViaRuntime(token: string) {
+  return sendMessage('sync.saveGithubToken', { surface: 'dashboard', token })
+}
+
+export function deleteGithubTokenViaRuntime() {
+  return sendMessage('sync.deleteGithubToken', { surface: 'dashboard' })
+}
+
+export function createGithubGistViaRuntime() {
+  return sendMessage('sync.createGithubGist', { surface: 'dashboard' })
+}
+
+export function connectGithubGistViaRuntime(gistId: string) {
+  return sendMessage('sync.connectGithubGist', { surface: 'dashboard', gistId })
+}
+
+export function setSyncEnabledViaRuntime(enabled: boolean) {
+  return sendMessage('sync.setEnabled', { surface: 'dashboard', enabled })
+}
+
+export function syncNowViaRuntime() {
+  return sendMessage('sync.syncNow', { surface: 'dashboard' })
+}
+
+export function resolveSyncConflictViaRuntime(
+  resolution: 'pull-remote' | 'push-local',
+) {
+  return sendMessage('sync.resolveConflict', {
+    surface: 'dashboard',
+    resolution,
+  })
+}
+
+export function checkSyncOnOpenViaRuntime(surface: UiSurface) {
+  return sendMessage('sync.checkOnOpen', { surface })
+}
+
+export function useSyncStatus(surface: UiSurface = 'dashboard') {
+  return useQuery({
+    queryKey: syncQueryKeys.status(surface),
+    queryFn: () => getSyncStatusViaRuntime(surface),
+  })
+}
+
+export function useSyncAction<TVariables = void, TResult = unknown>(
+  mutationFn: (variables: TVariables) => Promise<TResult>,
+  options: { invalidateData?: boolean } = {},
+) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: syncQueryKeys.all })
+
+      if (options.invalidateData) {
+        invalidateTaggedQueries(queryClient, broadSyncInvalidationTags)
+      }
+    },
+  })
+}

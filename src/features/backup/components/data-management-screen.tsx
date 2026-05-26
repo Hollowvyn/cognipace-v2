@@ -4,6 +4,7 @@ import {
   FeedbackToast,
   type FeedbackToastStatus,
 } from '@/components/ui/feedback-toast'
+import { GitHubSyncSettingsSection } from '@/features/sync'
 
 import {
   downloadBackupFile,
@@ -177,6 +178,7 @@ export function DataManagementScreen() {
         label="Data management feedback"
         status={backupToast}
       />
+      <GitHubSyncSettingsSection />
       <SelectiveImportPanel />
       <ResetLocalDataPanel
         error={resetError}

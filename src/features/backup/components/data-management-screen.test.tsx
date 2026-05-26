@@ -12,6 +12,12 @@ vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
 }))
 
+vi.mock('@/features/sync', () => ({
+  GitHubSyncSettingsSection: () => (
+    <section aria-label="GitHub sync settings">GitHub Sync</section>
+  ),
+}))
+
 describe('DataManagementScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -39,6 +45,26 @@ describe('DataManagementScreen', () => {
       await screen.findByRole('status', { name: 'Data management feedback' }),
     ).toHaveTextContent('Backup exported.')
     expect(within(backupPanel).queryByText('Backup exported.')).toBeNull()
+  })
+
+  it('renders GitHub sync settings between full backup and selective import', () => {
+    const { wrapper } = createQueryTestHarness()
+
+    render(<DataManagementScreen />, { wrapper })
+
+    const backup = screen.getByRole('region', { name: 'Export backup' })
+    const sync = screen.getByRole('region', { name: 'GitHub sync settings' })
+    const selectiveImport = screen.getByRole('region', {
+      name: 'Selective import',
+    })
+
+    expect(
+      backup.compareDocumentPosition(sync) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      sync.compareDocumentPosition(selectiveImport) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it('validates an imported backup, shows the selected file, and keeps restore calm', async () => {

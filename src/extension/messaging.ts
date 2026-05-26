@@ -87,7 +87,7 @@ import type {
   SyncRequest,
   SyncResolveConflictRequest,
   SyncSetEnabledRequest,
-} from '@/features/sync'
+} from '@/features/sync/api/sync-contracts'
 export {
   syncActionResultSchema,
   syncGithubGistRequestSchema,
@@ -96,7 +96,7 @@ export {
   syncResolveConflictRequestSchema,
   syncSetEnabledRequestSchema,
   syncStatusSchema,
-} from '@/features/sync'
+} from '@/features/sync/api/sync-contracts'
 import type {
   SerializedActiveTrack,
   TrackDeleteResponse,
