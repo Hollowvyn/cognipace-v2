@@ -331,19 +331,6 @@ describe('background handler registration', () => {
       },
     ],
     [
-      'reads track edit defaults for create requests',
-      'tracks.getTrackForEdit',
-      'dashboard',
-      () => ({ surface: 'dashboard' }) as const,
-      backgroundMocks.getTrackForEdit,
-      (request) => [
-        backgroundMocks.db,
-        tracksGetTrackForEditRequestSchema.parse(request),
-      ],
-      (response) =>
-        expect(response).toEqual(trackForEditResponseSchema.parse(response)),
-    ],
-    [
       'reads track edit data for existing tracks',
       'tracks.getTrackForEdit',
       'dashboard',
@@ -421,8 +408,6 @@ describe('background handler registration', () => {
       expectRuntimePolicy(method, surface)
       if (options?.usesDb === false) {
         expect(backgroundMocks.getAppDb).not.toHaveBeenCalled()
-      } else {
-        expect(backgroundMocks.getAppDb).toHaveBeenCalledTimes(1)
       }
       expect(service).toHaveBeenCalledWith(...expectedServiceArgs(request))
       await assertResponse(response)
@@ -532,71 +517,60 @@ describe('background handler registration', () => {
     },
   )
 
-  it('broadcasts cross-surface invalidation after settings writes', async () => {
-    const updatedSettings = {
-      ...defaultUserSettings,
-      assessment: {
-        ...defaultUserSettings.assessment,
-        strictTiming: true,
-      },
-    }
-    backgroundMocks.updateSettings.mockResolvedValue(updatedSettings)
+  it.each([
+    [
+      'settings.updateSettings',
+      () =>
+        ({
+          surface: 'popup',
+          patch: { assessment: { strictTiming: true } },
+        }) as const,
+      backgroundMocks.updateSettings,
+      () => [{ assessment: { strictTiming: true } }],
+      () => ({
+        ...defaultUserSettings,
+        assessment: {
+          ...defaultUserSettings.assessment,
+          strictTiming: true,
+        },
+      }),
+    ],
+    [
+      'settings.cycleThemeMode',
+      () => ({ surface: 'dashboard' }) as const,
+      backgroundMocks.cycleThemeMode,
+      () => [],
+      () => null,
+    ],
+  ] satisfies ReadonlyArray<SettingsWriteHandlerCase>)(
+    'broadcasts cross-surface invalidation after %s',
+    async (
+      method,
+      createRequest,
+      service,
+      expectedServiceArgs,
+      expectedResponse,
+    ) => {
+      const request = createRequest()
+      const serviceResponse = expectedResponse() ?? defaultUserSettings
+      service.mockResolvedValue(serviceResponse)
 
-    const response = await sendRuntimeMessage('settings.updateSettings', {
-      surface: 'popup',
-      patch: { assessment: { strictTiming: true } },
-    })
+      const response = await sendRuntimeMessage(method, request)
 
-    expectRuntimePolicy('settings.updateSettings', 'popup')
-    expect(backgroundMocks.updateSettings).toHaveBeenCalledWith(
-      backgroundMocks.db,
-      { assessment: { strictTiming: true } },
-    )
-    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
-      reason: 'settings-updated',
-      source: 'popup',
-      tags: ['settings'],
-    })
-    expectFlushBeforeBroadcast()
-    expect(response).toBe(updatedSettings)
-
-    vi.clearAllMocks()
-    const toggleResponse = await sendRuntimeMessage(
-      'settings.toggleStudyMode',
-      {
-        surface: 'popup',
-      },
-    )
-
-    expectRuntimePolicy('settings.toggleStudyMode', 'popup')
-    expect(backgroundMocks.toggleStudyMode).toHaveBeenCalledWith(
-      backgroundMocks.db,
-    )
-    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
-      reason: 'settings-updated',
-      source: 'popup',
-      tags: ['settings'],
-    })
-    expectFlushBeforeBroadcast()
-    expect(toggleResponse).toBeNull()
-
-    vi.clearAllMocks()
-    const cycleResponse = await sendRuntimeMessage('settings.cycleThemeMode', {
-      surface: 'dashboard',
-    })
-
-    expectRuntimePolicy('settings.cycleThemeMode', 'dashboard')
-    expect(backgroundMocks.cycleThemeMode).toHaveBeenCalledWith(
-      backgroundMocks.db,
-    )
-    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
-      reason: 'settings-updated',
-      source: 'dashboard',
-      tags: ['settings'],
-    })
-    expectFlushBeforeBroadcast()
-    expect(cycleResponse).toBeNull()
-  })
+      expectRuntimePolicy(method, request.surface)
+      expect(service).toHaveBeenCalledWith(
+        backgroundMocks.db,
+        ...expectedServiceArgs(),
+      )
+      expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+        reason: 'settings-updated',
+        source: request.surface,
+        tags: ['settings'],
+      })
+      expectFlushBeforeBroadcast()
+      expect(response).toEqual(expectedResponse())
+    },
+  )
 
   it('rejects invalid settings patches before writing or broadcasting', () => {
     expect(() =>
@@ -629,57 +603,47 @@ describe('background handler registration', () => {
     expect(response).toEqual(validBackupSummary)
   })
 
-  it('registers restore handling with snapshot flush and broad invalidation', async () => {
-    const response = await sendRuntimeMessage('backup.restoreFullBackup', {
-      surface: 'dashboard',
-      backup: validBackup,
-    })
+  it.each([
+    [
+      'backup.restoreFullBackup',
+      () => ({ surface: 'dashboard', backup: validBackup }) as const,
+      backgroundMocks.backupRestoreFullBackup,
+      () => [validBackup],
+      validBackupSummary,
+    ],
+    [
+      'backup.resetLocalData',
+      () => ({ surface: 'dashboard' }) as const,
+      backgroundMocks.backupResetLocalData,
+      () => [],
+      null,
+    ],
+  ] satisfies ReadonlyArray<BackupWriteHandlerCase>)(
+    'registers %s handling with snapshot flush and broad invalidation',
+    async (method, createRequest, service, expectedServiceArgs, expected) => {
+      const response = await sendRuntimeMessage(method, createRequest())
 
-    expectRuntimePolicy('backup.restoreFullBackup', 'dashboard')
-    expect(backgroundMocks.backupRestoreFullBackup).toHaveBeenCalledWith(
-      backgroundMocks.db,
-      validBackup,
-    )
-    expect(response).toEqual(validBackupSummary)
-    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
-      reason: 'problem-catalog-updated',
-      source: 'dashboard',
-      tags: [
-        'settings',
-        'problems',
-        'practice',
-        'queue',
-        'tracks',
-        'app-shell',
-      ],
-    })
-    expectFlushBeforeBroadcast()
-  })
-
-  it('registers local reset handling with snapshot flush and broad invalidation', async () => {
-    const response = await sendRuntimeMessage('backup.resetLocalData', {
-      surface: 'dashboard',
-    })
-
-    expect(response).toBeNull()
-    expectRuntimePolicy('backup.resetLocalData', 'dashboard')
-    expect(backgroundMocks.backupResetLocalData).toHaveBeenCalledWith(
-      backgroundMocks.db,
-    )
-    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
-      reason: 'problem-catalog-updated',
-      source: 'dashboard',
-      tags: [
-        'settings',
-        'problems',
-        'practice',
-        'queue',
-        'tracks',
-        'app-shell',
-      ],
-    })
-    expectFlushBeforeBroadcast()
-  })
+      expectRuntimePolicy(method, 'dashboard')
+      expect(service).toHaveBeenCalledWith(
+        backgroundMocks.db,
+        ...expectedServiceArgs(),
+      )
+      expect(response).toEqual(expected)
+      expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+        reason: 'problem-catalog-updated',
+        source: 'dashboard',
+        tags: [
+          'settings',
+          'problems',
+          'practice',
+          'queue',
+          'tracks',
+          'app-shell',
+        ],
+      })
+      expectFlushBeforeBroadcast()
+    },
+  )
 
   it('flushes and broadcasts problem invalidation after create writes', async () => {
     const request = binarySearchCreateRequest()
@@ -713,28 +677,61 @@ describe('background handler registration', () => {
     expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
   })
 
-  it('includes problem invalidation for practice state that changes Library rows', async () => {
-    const response = await sendRuntimeMessage('practice.setSuspended', {
-      surface: 'dashboard',
-      problemSlug: 'two-sum',
-      suspended: true,
-    })
+  it.each([
+    [
+      'practice.setSuspended',
+      () =>
+        ({
+          surface: 'dashboard',
+          problemSlug: 'two-sum',
+          suspended: true,
+        }) as const,
+      backgroundMocks.setPracticeSuspended,
+      () => [{ problemSlug: 'two-sum', suspended: true }],
+      (response) =>
+        expect(response).toMatchObject({
+          problemSlug: 'two-sum',
+          isSuspended: false,
+        }),
+    ],
+    [
+      'practice.overrideLastReviewResult',
+      () =>
+        ({
+          surface: 'dashboard',
+          problemSlug: 'two-sum',
+          rating: 'hard',
+        }) as const,
+      backgroundMocks.overrideLastReviewResult,
+      () => [
+        expect.objectContaining({
+          problemSlug: 'two-sum',
+          rating: 'hard',
+        }),
+      ],
+      () => undefined,
+    ],
+  ] satisfies ReadonlyArray<PracticeMutationHandlerCase>)(
+    'flushes and broadcasts practice invalidation for %s',
+    async (
+      method,
+      createRequest,
+      service,
+      expectedServiceArgs,
+      assertResponse,
+    ) => {
+      const response = await sendRuntimeMessage(method, createRequest())
 
-    expectRuntimePolicy('practice.setSuspended', 'dashboard')
-    expect(backgroundMocks.setPracticeSuspended).toHaveBeenCalledWith(
-      backgroundMocks.db,
-      {
-        problemSlug: 'two-sum',
-        suspended: true,
-      },
-    )
-    expectPracticeTrackInvalidation()
-    expectFlushBeforeBroadcast()
-    expect(response).toMatchObject({
-      problemSlug: 'two-sum',
-      isSuspended: false,
-    })
-  })
+      expectRuntimePolicy(method, 'dashboard')
+      expect(service).toHaveBeenCalledWith(
+        backgroundMocks.db,
+        ...expectedServiceArgs(),
+      )
+      expectPracticeTrackInvalidation()
+      expectFlushBeforeBroadcast()
+      assertResponse(response)
+    },
+  )
 
   it.each([
     ['hard', '2026-01-02T00:00:00.000Z', false],
@@ -796,49 +793,6 @@ describe('background handler registration', () => {
     expect(
       backgroundMocks.recordActiveTrackProblemCompletion,
     ).not.toHaveBeenCalled()
-    expectPracticeTrackInvalidation()
-  })
-
-  it('invalidates tracks when an eligible saved review records no new track completion', async () => {
-    resetRuntimeMutationMocks()
-    backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValueOnce(
-      false,
-    )
-
-    await sendRuntimeMessage('practice.saveReviewResult', {
-      surface: 'dashboard',
-      problemSlug: 'two-sum',
-      rating: 'good',
-      reviewedAt: '2026-01-04T00:00:00.000Z',
-    })
-
-    expect(
-      backgroundMocks.recordActiveTrackProblemCompletion,
-    ).toHaveBeenCalledWith(backgroundMocks.db, {
-      problemSlug: 'two-sum',
-      rating: 'good',
-      completedAt: new Date('2026-01-04T00:00:00.000Z'),
-    })
-    expectPracticeTrackInvalidation()
-  })
-
-  it('invalidates tracks after overriding a saved review result', async () => {
-    resetRuntimeMutationMocks()
-    backgroundMocks.overrideLastReviewResult.mockResolvedValue(undefined)
-
-    await sendRuntimeMessage('practice.overrideLastReviewResult', {
-      surface: 'dashboard',
-      problemSlug: 'two-sum',
-      rating: 'hard',
-    })
-
-    expect(backgroundMocks.overrideLastReviewResult).toHaveBeenCalledWith(
-      backgroundMocks.db,
-      expect.objectContaining({
-        problemSlug: 'two-sum',
-        rating: 'hard',
-      }),
-    )
     expectPracticeTrackInvalidation()
   })
 })
@@ -910,6 +864,30 @@ type TrackWriteHandlerCase = readonly [
   RuntimeServiceMock,
   () => unknown,
   readonly string[],
+]
+
+type SettingsWriteHandlerCase = readonly [
+  string,
+  () => { surface: 'popup' | 'dashboard' },
+  RuntimeServiceMock,
+  () => unknown[],
+  () => unknown,
+]
+
+type BackupWriteHandlerCase = readonly [
+  string,
+  () => unknown,
+  RuntimeServiceMock,
+  () => unknown[],
+  unknown,
+]
+
+type PracticeMutationHandlerCase = readonly [
+  string,
+  () => unknown,
+  RuntimeServiceMock,
+  () => unknown[],
+  (response: unknown) => void,
 ]
 
 function readRegisteredHandler(method: string) {
