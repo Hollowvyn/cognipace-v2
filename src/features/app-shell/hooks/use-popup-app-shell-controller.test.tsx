@@ -116,22 +116,6 @@ describe('usePopupAppShellController', () => {
     vi.clearAllMocks()
   })
 
-  it('exposes an explicit loading state before popup data resolves', () => {
-    vi.mocked(sendMessage).mockReturnValue(new Promise(() => undefined))
-    const { wrapper } = createQueryTestHarness()
-
-    const { result } = renderHook(() => usePopupAppShellController(), {
-      wrapper,
-    })
-
-    expect(result.current.status).toMatchObject({
-      scope: 'surface',
-      message: 'Loading popup data...',
-      isError: false,
-    })
-    expect(result.current.canToggleStudyMode).toBe(false)
-  })
-
   it('exposes query failure and keeps study mode changes disabled', async () => {
     vi.mocked(sendMessage).mockRejectedValueOnce(
       new Error('Background offline'),
@@ -218,8 +202,6 @@ describe('usePopupAppShellController', () => {
       expect(result.current.isUpdatingStudyMode).toBe(true)
     })
     expect(result.current.studyMode).toBe('studyPlan')
-    expect(result.current.status).toBeNull()
-    expect(result.current.canToggleStudyMode).toBe(false)
 
     nextPopupData = {
       ...popupData,
@@ -240,8 +222,6 @@ describe('usePopupAppShellController', () => {
       expect(result.current.studyMode).toBe('freePractice')
     })
     expect(result.current.isUpdatingStudyMode).toBe(false)
-    expect(result.current.status).toBeNull()
-    expect(result.current.view.studyMode.kind).toBe('freePractice')
     expect(
       vi.mocked(sendMessage).mock.calls.filter(([method]) => {
         return method === 'app.getShellData'

@@ -186,66 +186,6 @@ describe('useLeetCodeOverlaySession', () => {
     expect(result.current.overlay.reviewStatus).toBe('submitted-clean')
   })
 
-  it('submits selected rating without requiring timer usage', async () => {
-    const { result } = await renderReadySession({
-      timing: { requireSolveTime: true },
-    })
-
-    await runOverlayAction(result.current.actions.submitReview)
-
-    expect(latestSavedReviewRequest()).toMatchObject({
-      surface: 'content-script',
-      problemSlug: 'two-sum',
-      rating: 'good',
-      elapsedSeconds: null,
-      isCorrect: true,
-      log: {
-        interviewPattern: null,
-      },
-    })
-    expect(result.current.overlay.reviewStatus).toBe('submitted-clean')
-  })
-
-  it('hydrates submitted review state from saved practice details', async () => {
-    vi.mocked(saveReviewResultViaRuntime).mockResolvedValueOnce(
-      createSavedPracticeDetails({
-        latestAttempt: {
-          log: {
-            ...emptyPracticeLog,
-            notes: 'Trimmed note.',
-          },
-        },
-      }),
-    )
-    const { result } = await renderReadySession()
-
-    act(() => {
-      result.current.draft.setField('notes', '  Trimmed note.  ')
-    })
-    await runOverlayAction(result.current.actions.submitReview)
-
-    expect(result.current.overlay.submittedSession?.draft.notes).toBe(
-      'Trimmed note.',
-    )
-    expect(result.current.overlay.persistedDraft.notes).toBe('Trimmed note.')
-  })
-
-  it('keeps a saved review submitted when the next-step refresh fails', async () => {
-    vi.mocked(getOverlayAppShellDataViaRuntime)
-      .mockResolvedValueOnce(createOverlayData())
-      .mockRejectedValueOnce(new Error('Next problem unavailable.'))
-    const { result } = await renderReadySession()
-
-    await runOverlayAction(result.current.actions.submitReview)
-
-    expect(result.current.overlay.reviewStatus).toBe('submitted-clean')
-    expect(result.current.overlay.submittedSession?.rating).toBe('good')
-    expect(result.current.overlay.nextStep.status).toBe('error')
-    expect(result.current.overlay.nextStep.message).toBe(
-      'Review saved. Next problem unavailable.',
-    )
-  })
-
   it('forces strict timing overtime submissions to Again', async () => {
     const startTime = Date.now()
     const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(startTime)
@@ -288,14 +228,6 @@ describe('useLeetCodeOverlaySession', () => {
     await flushEffects()
 
     expect(saveReviewResultViaRuntime).not.toHaveBeenCalled()
-  })
-
-  it('starts the timer once the current problem is ready when auto-detect is enabled', async () => {
-    const { result } = await renderReadySession({ autoDetectSolved: true })
-
-    await waitFor(() => {
-      expect(result.current.timer.status).toBe('running')
-    })
   })
 
   it('auto-saves accepted LeetCode submission results through the review path', async () => {

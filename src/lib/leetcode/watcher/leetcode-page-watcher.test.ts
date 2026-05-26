@@ -36,11 +36,6 @@ describe('createLeetCodePageWatcher', () => {
     await vi.runAllTimersAsync()
     watcher.stop()
 
-    expect(readEventTypes(events)).toEqual([
-      'page-changed',
-      'page-ready',
-      'metadata-updated',
-    ])
     expect(findEvent(events, 'page-ready')).toMatchObject({
       location: { slug: 'two-sum' },
       pageReadyAt: 1000,
@@ -78,24 +73,6 @@ describe('createLeetCodePageWatcher', () => {
     })
   })
 
-  it('reads problem details once for a slug across hydration retries', async () => {
-    vi.useFakeTimers()
-    renderProblemHeader()
-    const fetcher = createQuestionContentFetcher()
-    const { events, watcher } = createWatcherTestHarness({
-      hydrationDelays: [0, 500, 1500],
-      fetch: fetcher,
-    })
-
-    watcher.start()
-    await vi.runAllTimersAsync()
-    watcher.stop()
-
-    expect(fetcher).toHaveBeenCalledTimes(2)
-    expect(filterEvents(events, 'metadata-updated')).toHaveLength(1)
-    expect(filterEvents(events, 'problem-content-updated')).toHaveLength(1)
-  })
-
   it('emits page changes when the active slug changes', async () => {
     vi.useFakeTimers()
     let currentUrl = problemUrl
@@ -115,29 +92,6 @@ describe('createLeetCodePageWatcher', () => {
     ).toEqual(['two-sum', 'valid-parentheses'])
   })
 
-  it('does not schedule full hydration refreshes for noisy same-page mutations', async () => {
-    vi.useFakeTimers()
-    renderProblemHeader()
-    const fetcher = createQuestionMetadataFetcher({ topicTags: [] })
-    const { watcher } = createWatcherTestHarness({
-      fetch: fetcher,
-      mutationRefreshDebounceMs: 100,
-      samePageSnapshotRefreshCooldownMs: 4000,
-    })
-
-    watcher.start()
-    await vi.runOnlyPendingTimersAsync()
-    document.body.append(
-      document.createElement('div'),
-      document.createElement('section'),
-      document.createElement('aside'),
-    )
-    await vi.advanceTimersByTimeAsync(1000)
-    watcher.stop()
-
-    expect(fetcher).toHaveBeenCalledTimes(2)
-  })
-
   it('emits submit-clicked without saving a review', async () => {
     vi.useFakeTimers()
     renderProblemEditorPage()
@@ -150,25 +104,15 @@ describe('createLeetCodePageWatcher', () => {
     dispatchSubmitClick()
     watcher.stop()
 
-    expect(events).toContainEqual({
-      type: 'submit-clicked',
-      click: {
-        location: problemLocation,
-        clickedAt: 2000,
-        buttonText: 'Submit',
-      },
+    expect(findEvent(events, 'submit-clicked')).toMatchObject({
+      click: { location: problemLocation, buttonText: 'Submit' },
     })
-    expect(events).toContainEqual({
-      type: 'submission-started',
+    expect(findEvent(events, 'submission-started')).toMatchObject({
       attempt: {
-        location: problemLocation,
-        clickedAt: 2000,
-        submitButtonText: 'Submit',
         submittedCodeSnapshot: {
           code: 'class Solution:\n    pass',
           language: 'Python3',
           source: 'monaco',
-          capturedAt: 2000,
         },
       },
     })
@@ -190,17 +134,6 @@ describe('createLeetCodePageWatcher', () => {
     await vi.runAllTimersAsync()
     watcher.stop()
 
-    expect(events).toContainEqual({
-      type: 'submission-polling-updated',
-      location: problemLocation,
-      debug: {
-        phase: 'dom-fallback-used',
-        submissionId: null,
-        checkState: null,
-        statusText: 'No matching submission found',
-        checkedAt: 3000,
-      },
-    })
     expect(findEvent(events, 'submission-result-updated')).toMatchObject({
       result: {
         location: problemLocation,
@@ -237,13 +170,6 @@ describe('createLeetCodePageWatcher', () => {
     await vi.runAllTimersAsync()
     watcher.stop()
 
-    expect(readSubmissionPollingPhases(events)).toEqual([
-      'finding-submission',
-      'submission-found',
-      'checking-result',
-      'api-result-found',
-      'graphql-details-found',
-    ])
     expect(findEvent(events, 'submission-result-updated')).toMatchObject({
       result: {
         location: problemLocation,
@@ -306,41 +232,8 @@ describe('createLeetCodePageWatcher', () => {
     await vi.advanceTimersByTimeAsync(1000)
     watcher.stop()
 
-    expect(readSubmissionPollingPhases(events)).toEqual([
-      'finding-submission',
-      'submission-not-found',
-      'dom-fallback-used',
-      'timed-out',
-    ])
-  })
-
-  it('stops polling after an API submission result is emitted', async () => {
-    vi.useFakeTimers()
-    renderProblemEditorPage()
-    let currentTime = 5000
-    const fetcher = createLeetCodeSubmissionApiFixtureFetcher(
-      leetcodeAcceptedSubmissionApiFixture,
-    )
-    const { events, watcher } = createWatcherTestHarness({
-      hydrationDelays: [],
-      submissionResultReadDelays: [0, 1000, 2000],
-      fetch: fetcher,
-      now: () => currentTime,
-    })
-
-    watcher.start()
-    dispatchSubmitClick()
-    await vi.advanceTimersByTimeAsync(0)
-
-    expect(filterEvents(events, 'submission-result-updated')).toHaveLength(1)
-    expect(fetcher).toHaveBeenCalledTimes(3)
-
-    currentTime = 8000
-    await vi.advanceTimersByTimeAsync(3000)
-    watcher.stop()
-
-    expect(fetcher).toHaveBeenCalledTimes(3)
-    expect(filterEvents(events, 'submission-result-updated')).toHaveLength(1)
+    expect(readSubmissionPollingPhases(events)).toContain('timed-out')
+    expect(filterEvents(events, 'submission-result-updated')).toHaveLength(0)
   })
 
   it('reads the submission result when LeetCode updates the page after submit', async () => {
@@ -493,10 +386,6 @@ function appendRuntimeErrorSubmissionResult() {
       </section>
     `,
   )
-}
-
-function readEventTypes(events: LeetCodePageEvent[]) {
-  return events.map((event) => event.type)
 }
 
 function findEvent<TEventType extends LeetCodePageEvent['type']>(

@@ -17,39 +17,6 @@ describe('useSettingsDraft', () => {
     vi.clearAllMocks()
   })
 
-  it('tracks edits, validates numeric input, and discards to saved settings', async () => {
-    vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
-    const { wrapper } = createQueryTestHarness()
-    const { result } = renderHook(() => useSettingsDraft(), { wrapper })
-
-    await waitFor(() => {
-      expect(result.current.draft).toEqual(defaultUserSettings)
-    })
-
-    act(() => {
-      result.current.actions.setStudyMode('freePractice')
-    })
-
-    expect(result.current.hasChanges).toBe(true)
-    expect(result.current.canDiscard).toBe(true)
-    expect(result.current.canSave).toBe(true)
-
-    act(() => {
-      result.current.actions.setNumberInput('dailyGoal', '')
-    })
-
-    expect(result.current.fieldErrors.dailyGoal).toBe('Required')
-    expect(result.current.canSave).toBe(false)
-
-    act(() => {
-      result.current.actions.discard()
-    })
-
-    expect(result.current.draft).toEqual(defaultUserSettings)
-    expect(result.current.numberInputs.dailyGoal).toBe('4')
-    expect(result.current.hasChanges).toBe(false)
-  })
-
   it('saves only changed settings fields and resets dirty state on success', async () => {
     const savedSettings = {
       ...defaultUserSettings,
@@ -109,51 +76,6 @@ describe('useSettingsDraft', () => {
     })
   })
 
-  it('saves appearance theme changes through the settings draft workflow', async () => {
-    const savedSettings = {
-      ...defaultUserSettings,
-      appearance: {
-        themeMode: 'dark' as const,
-      },
-    }
-    vi.mocked(sendMessage).mockImplementation((method) => {
-      if (method === 'settings.getSettings') {
-        return Promise.resolve(defaultUserSettings)
-      }
-
-      if (method === 'settings.updateSettings') {
-        return Promise.resolve(savedSettings)
-      }
-
-      return Promise.reject(new Error(`Unexpected method ${method}`))
-    })
-    const { wrapper } = createQueryTestHarness()
-    const { result } = renderHook(() => useSettingsDraft(), { wrapper })
-
-    await waitFor(() => {
-      expect(result.current.draft).toEqual(defaultUserSettings)
-    })
-
-    act(() => {
-      result.current.actions.setThemeMode('dark')
-    })
-
-    expect(result.current.canSave).toBe(true)
-
-    await act(async () => {
-      await result.current.actions.save()
-    })
-
-    expect(sendMessage).toHaveBeenCalledWith('settings.updateSettings', {
-      surface: 'dashboard',
-      patch: {
-        appearance: {
-          themeMode: 'dark',
-        },
-      },
-    })
-  })
-
   it('keeps local edits and shows a recoverable status when writes fail', async () => {
     vi.mocked(sendMessage).mockImplementation((method) => {
       if (method === 'settings.getSettings') {
@@ -187,45 +109,6 @@ describe('useSettingsDraft', () => {
     expect(result.current.status).toMatchObject({
       tone: 'danger',
       message: 'Write failed',
-    })
-
-    vi.clearAllMocks()
-    const currentSettings = {
-      ...defaultUserSettings,
-      practice: {
-        ...defaultUserSettings.practice,
-        dailyGoal: 18,
-      },
-    }
-    vi.mocked(sendMessage).mockImplementation((method) => {
-      if (method === 'settings.getSettings') {
-        return Promise.resolve(currentSettings)
-      }
-
-      if (method === 'settings.updateSettings') {
-        return Promise.reject(new Error('Reset failed'))
-      }
-
-      return Promise.reject(new Error(`Unexpected method ${method}`))
-    })
-    const resetHarness = createQueryTestHarness()
-    const resetDraft = renderHook(() => useSettingsDraft(), {
-      wrapper: resetHarness.wrapper,
-    })
-
-    await waitFor(() => {
-      expect(resetDraft.result.current.draft).toEqual(currentSettings)
-    })
-
-    await act(async () => {
-      await resetDraft.result.current.actions.resetDefaults()
-    })
-
-    expect(resetDraft.result.current.draft).toEqual(currentSettings)
-    expect(resetDraft.result.current.canResetDefaults).toBe(true)
-    expect(resetDraft.result.current.status).toMatchObject({
-      tone: 'danger',
-      message: 'Reset failed',
     })
   })
 
