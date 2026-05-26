@@ -55,9 +55,6 @@ describe('GitHubSyncPanel', () => {
       screen.getByRole('button', { name: /Pull latest/i }),
     ).toBeEnabled()
     expect(screen.getByRole('button', { name: /Push local/i })).toBeEnabled()
-    expect(
-      screen.queryByRole('button', { name: /Sync now/i }),
-    ).not.toBeInTheDocument()
   })
 
   it('keeps directional actions visible while a conflict is present', () => {

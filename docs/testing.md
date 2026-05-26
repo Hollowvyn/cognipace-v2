@@ -96,19 +96,21 @@ dialog button changes to a success state labeled Backup exported.
    account.
 2. Open Settings > Data Management.
 3. Save the token under GitHub Sync.
-4. Create a private Gist, then use Sync now.
+4. Create a private Gist, then use Pull latest and Push local.
 5. Export a backup and confirm the token value is not present in the JSON.
 6. Load CogniPace in a second Chrome profile or browser install.
-7. Save the same token, connect the Gist ID, and reload/open the dashboard.
-8. Confirm clean remote data pulls automatically.
+7. Save the same token, connect the Gist ID, and use Pull latest.
+8. Confirm clean remote data is restored locally.
 9. Change local data while offline or with GitHub unavailable, then confirm the
    local save succeeds and Settings shows a retryable sync status.
-10. Create a conflict by changing both installs before syncing, then confirm the
-    conflict warning requires an explicit pull-remote or push-local choice.
+10. Create a conflict by changing both installs before syncing, then confirm
+    Pull latest is blocked when local data has unpushed changes and Push local
+    requires overwrite confirmation before replacing changed remote data.
 
-Expected: sync is pseudo-real-time rather than live collaborative editing. Clean
-pulls do not prompt, local writes are not blocked by sync failures, and tokens
-stay in trusted local extension storage rather than backups or sync files.
+Expected: sync is pseudo-real-time rather than live collaborative editing.
+Manual pulls and pushes are directional, local writes are not blocked by sync
+failures, and tokens stay in trusted local extension storage rather than backups
+or sync files.
 
 ### Library
 

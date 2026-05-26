@@ -154,11 +154,11 @@ invalidate affected query families.
 ### Sync
 
 GitHub Gist sync is optional, BYOK, and pseudo-real-time. A user stores a GitHub
-token locally, creates or connects a private CogniPace Gist, and syncs local
-data on open/reload, first interaction, manual settings actions, and after local
-mutations. Local writes should still succeed when sync fails; retryable sync
-failures are shown in Settings. Clean remote pulls apply automatically, while
-conflicts require an explicit pull-remote or push-local choice.
+token locally, creates or connects a private CogniPace Gist, and uses explicit
+manual Settings actions to pull latest remote data or push local data. Local
+writes should still succeed when sync fails; retryable sync failures are shown in
+Settings. Pulling is blocked when local data has unpushed changes, and pushing
+over changed remote data requires explicit overwrite confirmation.
 
 GitHub tokens are stored in trusted `chrome.storage.local` extension storage and
 are only read by the background service worker. Tokens are not included in
