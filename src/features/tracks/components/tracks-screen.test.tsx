@@ -125,6 +125,56 @@ describe('TracksScreen', () => {
     })
   })
 
+  it('runs track management actions from the workspace', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'tracks.getWorkspace') {
+        return Promise.resolve(twoGroupWorkspace)
+      }
+
+      return Promise.resolve(null)
+    })
+
+    renderTracksScreen()
+
+    await screen.findByRole('heading', { name: 'LeetCode 75' })
+    const activeHeaderActions = screen.getByLabelText(
+      'LeetCode 75 track actions',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Show all tracks' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Set Grind 75 active' }),
+    )
+    await user.click(
+      within(activeHeaderActions).getByRole('button', {
+        name: 'Clear Active',
+      }),
+    )
+    await user.click(
+      within(activeHeaderActions).getByRole('button', {
+        name: 'Reset Progress',
+      }),
+    )
+    await user.click(
+      within(
+        screen.getByRole('dialog', { name: 'Reset track progress?' }),
+      ).getByRole('button', { name: 'Reset Progress' }),
+    )
+
+    expect(sendMessage).toHaveBeenCalledWith('tracks.setActiveTrack', {
+      surface: 'dashboard',
+      trackId: 'grind-75',
+    })
+    expect(sendMessage).toHaveBeenCalledWith('tracks.clearActiveTrack', {
+      surface: 'dashboard',
+    })
+    expect(sendMessage).toHaveBeenCalledWith('tracks.resetTrackProgress', {
+      surface: 'dashboard',
+      trackId: 'leetcode-75',
+    })
+  })
+
   it('keeps destructive mutation errors inside the confirmation dialog', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage).mockImplementation((method) => {

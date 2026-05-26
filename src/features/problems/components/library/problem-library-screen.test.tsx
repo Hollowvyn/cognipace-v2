@@ -10,7 +10,10 @@ import {
   createProblemLibraryResponse,
   createSerializedProblem,
 } from '@/testing/problem-fixtures'
-import { createSerializedNormalizedPracticeState } from '@/testing/practice-fixtures'
+import {
+  createSerializedNormalizedPracticeState,
+  createSerializedPracticeDetails,
+} from '@/testing/practice-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import { ProblemLibraryScreen } from './problem-library-screen'
@@ -71,6 +74,91 @@ describe('ProblemLibraryScreen', () => {
     expect(sendMessage).toHaveBeenCalledWith('problems.deleteProblem', {
       surface: 'dashboard',
       problemSlug: 'two-sum',
+    })
+  })
+
+  it('runs selected bulk practice and problem mutations', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'problems.getLibrary') {
+        return Promise.resolve(libraryResponse)
+      }
+
+      if (method === 'problems.bulkDelete') {
+        return Promise.resolve(undefined)
+      }
+
+      return Promise.resolve(createSerializedPracticeDetails())
+    })
+    renderProblemLibrary()
+
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Select Two Sum' }),
+    )
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select Binary Search' }),
+    )
+
+    const bulkBar = screen.getByRole('region', { name: 'Bulk actions' })
+
+    await user.click(within(bulkBar).getByRole('button', { name: 'Suspend' }))
+    await user.click(within(bulkBar).getByRole('button', { name: 'Resume' }))
+    await user.click(
+      within(bulkBar).getByRole('button', { name: 'Reset Schedule' }),
+    )
+    await user.click(
+      within(
+        screen.getByRole('dialog', { name: 'Reset selected schedules?' }),
+      ).getByRole('button', { name: 'Reset Schedule' }),
+    )
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select Two Sum' }))
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select Binary Search' }),
+    )
+    await user.click(
+      within(screen.getByRole('region', { name: 'Bulk actions' })).getByRole(
+        'button',
+        { name: 'Delete Problems' },
+      ),
+    )
+    await user.click(
+      within(
+        screen.getByRole('dialog', { name: 'Delete selected problems?' }),
+      ).getByRole('button', { name: 'Delete Problems' }),
+    )
+
+    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      suspended: true,
+    })
+    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
+      surface: 'dashboard',
+      problemSlug: 'binary-search',
+      suspended: true,
+    })
+    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      suspended: false,
+    })
+    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
+      surface: 'dashboard',
+      problemSlug: 'binary-search',
+      suspended: false,
+    })
+    expect(sendMessage).toHaveBeenCalledWith('practice.resetSchedule', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+    })
+    expect(sendMessage).toHaveBeenCalledWith('practice.resetSchedule', {
+      surface: 'dashboard',
+      problemSlug: 'binary-search',
+    })
+    expect(sendMessage).toHaveBeenCalledWith('problems.bulkDelete', {
+      surface: 'dashboard',
+      problemSlugs: ['two-sum', 'binary-search'],
     })
   })
 
