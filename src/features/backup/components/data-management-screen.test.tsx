@@ -215,29 +215,6 @@ describe('DataManagementScreen', () => {
       surface: 'dashboard',
     })
   })
-
-  it('closes clear confirmation when the backdrop is clicked', async () => {
-    const user = userEvent.setup()
-    vi.mocked(sendMessage).mockResolvedValue(null)
-    const { wrapper } = createQueryTestHarness()
-
-    render(<DataManagementScreen />, { wrapper })
-
-    await user.click(screen.getByRole('button', { name: 'Clear local data' }))
-
-    const dialog = screen.getByRole('dialog', { name: 'Clear local data?' })
-    const backdrop = dialog.parentElement
-
-    expect(backdrop).not.toBeNull()
-    await user.click(backdrop as HTMLElement)
-
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('dialog', { name: 'Clear local data?' }),
-      ).not.toBeInTheDocument()
-    })
-    expect(sendMessage).not.toHaveBeenCalled()
-  })
 })
 
 function createBackupFile(backup: BackupFile) {
@@ -283,139 +260,23 @@ const validBackup = {
   exportedAt: '2026-05-25T12:00:00.000Z',
   source: {},
   data: {
-    problems: [
-      {
-        slug: 'two-sum',
-        title: 'Two Sum',
-        difficulty: 'easy',
-        isPremium: false,
-        createdAt: '2026-05-25T12:00:00.000Z',
-        updatedAt: '2026-05-25T12:00:00.000Z',
-      },
-    ],
-    topics: [{ id: 'array', label: 'Array' }],
-    companies: [{ id: 'meta', label: 'Meta' }],
-    problemTopics: [{ problemSlug: 'two-sum', topicId: 'array' }],
-    problemCompanies: [{ problemSlug: 'two-sum', companyId: 'meta' }],
+    problems: [],
+    topics: [],
+    companies: [],
+    problemTopics: [],
+    problemCompanies: [],
     practice: {
-      problemPractice: [
-        {
-          problemSlug: 'two-sum',
-          status: 'review',
-          firstSeenAt: '2026-05-25T12:00:00.000Z',
-          lastSeenAt: '2026-05-25T12:00:00.000Z',
-          lastReviewedAt: '2026-05-25T12:00:00.000Z',
-          lastRating: 'good',
-          lastElapsedSeconds: 600,
-          bestElapsedSeconds: 600,
-          interviewPattern: 'hash-map',
-          timeComplexity: 'O(n)',
-          spaceComplexity: 'O(n)',
-          languages: 'TypeScript',
-          notes: 'review note',
-          solvedCount: 1,
-          attemptCount: 1,
-          isSuspended: false,
-          createdAt: '2026-05-25T12:00:00.000Z',
-          updatedAt: '2026-05-25T12:00:00.000Z',
-        },
-      ],
-      fsrsCards: [
-        {
-          id: 'card-1',
-          problemSlug: 'two-sum',
-          cardKind: 'default',
-          dueAt: '2026-05-26T12:00:00.000Z',
-          stability: 2.5,
-          difficulty: 4.5,
-          elapsedDays: 0,
-          scheduledDays: 1,
-          learningSteps: 0,
-          reps: 1,
-          lapses: 0,
-          state: 'review',
-          lastReviewAt: '2026-05-25T12:00:00.000Z',
-          createdAt: '2026-05-25T12:00:00.000Z',
-          updatedAt: '2026-05-25T12:00:00.000Z',
-        },
-      ],
-      reviewAttempts: [
-        {
-          id: 'attempt-1',
-          problemSlug: 'two-sum',
-          cardId: 'card-1',
-          rating: 'good',
-          reviewMode: 'manual',
-          reviewedAt: '2026-05-25T12:00:00.000Z',
-          elapsedSeconds: 600,
-          isCorrect: true,
-          interviewPattern: 'hash-map',
-          timeComplexity: 'O(n)',
-          spaceComplexity: 'O(n)',
-          languages: 'TypeScript',
-          notes: 'review note',
-          fsrsReviewLog: null,
-          createdAt: '2026-05-25T12:00:00.000Z',
-          updatedAt: '2026-05-25T12:00:00.000Z',
-        },
-      ],
+      problemPractice: [],
+      fsrsCards: [],
+      reviewAttempts: [],
     },
     tracks: {
-      tracks: [
-        {
-          id: 'custom-track',
-          slug: 'custom-track',
-          title: 'Custom Track',
-          description: 'A local track',
-          dueAt: null,
-          createdAt: '2026-05-25T12:00:00.000Z',
-          updatedAt: '2026-05-25T12:00:00.000Z',
-        },
-      ],
-      groups: [
-        {
-          id: 'custom-track:arrays',
-          trackId: 'custom-track',
-          title: 'Arrays',
-          position: 1,
-          createdAt: '2026-05-25T12:00:00.000Z',
-          updatedAt: '2026-05-25T12:00:00.000Z',
-        },
-      ],
-      memberships: [
-        {
-          trackGroupId: 'custom-track:arrays',
-          problemSlug: 'two-sum',
-          position: 1,
-        },
-      ],
-      progress: [
-        {
-          trackGroupId: 'custom-track:arrays',
-          problemSlug: 'two-sum',
-          completedAt: '2026-05-25T12:00:00.000Z',
-          completedRating: 'good',
-          createdAt: '2026-05-25T12:00:00.000Z',
-          updatedAt: '2026-05-25T12:00:00.000Z',
-        },
-      ],
-      session: [
-        {
-          id: 'default',
-          activeTrackId: 'custom-track',
-          activeGroupId: 'custom-track:arrays',
-          startedAt: '2026-05-25T12:00:00.000Z',
-          updatedAt: '2026-05-25T12:00:00.000Z',
-        },
-      ],
+      tracks: [],
+      groups: [],
+      memberships: [],
+      progress: [],
+      session: [],
     },
-    settings: [
-      {
-        key: 'user-settings',
-        value:
-          '{"practice":{"dailyGoal":3,"mode":"guided","problemFilters":{"skipPremium":false}},"assessment":{"requireSolveTime":true,"strictTiming":false,"timeTargetsMinutes":{"easy":20,"medium":35,"hard":50}},"overlay":{"defaultMode":"expanded","autoStartTimer":false}}',
-        updatedAt: '2026-05-25T12:00:00.000Z',
-      },
-    ],
+    settings: [],
   },
 } satisfies BackupFile

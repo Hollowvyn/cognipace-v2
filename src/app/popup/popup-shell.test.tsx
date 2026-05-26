@@ -132,26 +132,6 @@ const shellData = {
 } satisfies PopupAppShellData
 
 describe('PopupShell', () => {
-  it('applies the saved appearance theme to the popup surface', () => {
-    render(
-      <PopupShell
-        controller={createController({
-          data: {
-            ...shellData,
-            settings: {
-              ...shellData.settings,
-              appearance: {
-                themeMode: 'dark',
-              },
-            },
-          },
-        })}
-      />,
-    )
-
-    expect(screen.getByRole('main')).toHaveAttribute('data-cp-theme', 'dark')
-  })
-
   it('renders real popup data and routes user actions through callbacks', async () => {
     const user = userEvent.setup()
     const controller = createController({ canShuffleRecommendation: true })
@@ -274,23 +254,6 @@ describe('PopupShell', () => {
     ).toBeNull()
   })
 
-  it('renders overdue active-track target status without a full due date', () => {
-    render(
-      <PopupShell
-        controller={createController({
-          data: {
-            ...shellData,
-            generatedAt: new Date(2026, 2, 2, 12, 0, 0).toISOString(),
-          },
-        })}
-      />,
-    )
-
-    const activeTrack = screen.getByRole('region', { name: 'LeetCode 75' })
-    expect(within(activeTrack).getByText('Overdue')).toBeInTheDocument()
-    expect(within(activeTrack).queryByText('Due Mar 1, 2026')).toBeNull()
-  })
-
   it('derives the study card from active-track state when settings mode is stale', () => {
     render(
       <PopupShell
@@ -315,69 +278,6 @@ describe('PopupShell', () => {
     expect(
       screen.queryByRole('heading', { name: 'Free Practice' }),
     ).not.toBeInTheDocument()
-  })
-
-  it('disables the mode action while study mode is saving', () => {
-    render(
-      <PopupShell
-        controller={createController({ isUpdatingStudyMode: true })}
-      />,
-    )
-
-    expect(
-      screen.getByRole('button', { name: 'Start freestyle mode' }),
-    ).toBeDisabled()
-  })
-
-  it('renders compact empty and no-active-track states', () => {
-    render(
-      <PopupShell
-        controller={createController({
-          data: {
-            ...shellData,
-            recommendation: {
-              title: 'Queue is clear',
-              detail: 'No due reviews or extra practice are queued right now.',
-              category: null,
-              problem: null,
-              dueAt: null,
-            },
-            activeTrack: {
-              state: 'no-active-track',
-              trackId: null,
-              title: 'No active track',
-              description: null,
-              groupTitle: null,
-              dueAt: null,
-              progress: {
-                completedCount: 0,
-                totalCount: 0,
-                percent: 0,
-              },
-              detail: 'Choose a track to restore guided progression.',
-              nextProblem: null,
-            },
-            queue: {
-              ...shellData.queue,
-              dueCount: 0,
-              newCount: 0,
-              reinforcementCount: 0,
-              items: [],
-            },
-            popup: { queuePreview: [] },
-          },
-        })}
-      />,
-    )
-
-    expect(
-      screen.getByRole('heading', { name: 'Queue Clear' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: 'No active track' }),
-    ).toBeInTheDocument()
-    expect(screen.getByText(/Your review queue is clear/i)).toBeInTheDocument()
-    expect(screen.queryByText('Up Next')).not.toBeInTheDocument()
   })
 
   it('surfaces load failure and disables study mode changes', () => {

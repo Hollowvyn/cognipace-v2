@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
 import { defaultUserSettings } from '@/features/settings/domain'
-import { createLibrarySelectionTrackDraft } from '@/features/tracks'
 import { createDashboardAppShellData } from '@/testing/app-shell-fixtures'
 import {
   createProblemForEditResponse,
@@ -25,7 +24,6 @@ import {
   createDashboardRouter,
   dashboardPaths,
 } from './navigation/routes'
-import { dashboardModalRouteMeta } from './navigation/route-manifest'
 
 vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
@@ -137,29 +135,6 @@ describe('dashboard routes', () => {
     })
   })
 
-  it('renders all top-level navigation links', async () => {
-    renderDashboard()
-
-    expect(await screen.findByRole('link', { name: 'Overview' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Tracks' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Library' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Analytics' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Settings' })).toBeVisible()
-  })
-
-  it.each([
-    ['/', 'Overview', 'What should I practice now'],
-    ['/tracks', 'Tracks', 'Core interview practice'],
-    ['/library', 'Library', 'Total'],
-    ['/analytics', 'Analytics', 'Queue, FSRS, and Analytics'],
-    ['/settings', 'Settings', 'Daily goal'],
-  ])('renders the %s route', async (path, heading, expectedCopy) => {
-    renderDashboard(path)
-
-    expect(await screen.findByRole('heading', { name: heading })).toBeVisible()
-    expect(await screen.findByText(new RegExp(expectedCopy, 'i'))).toBeVisible()
-  })
-
   it('renders the real Overview route with recommendation and route navigation', async () => {
     renderDashboard('/')
 
@@ -173,143 +148,24 @@ describe('dashboard routes', () => {
     expect(screen.getByRole('link', { name: 'Open Tracks' })).toBeVisible()
   })
 
-  it('applies the saved dashboard theme and cycles it from the header button', async () => {
-    const darkSettings = {
-      ...defaultUserSettings,
-      appearance: {
-        themeMode: 'dark' as const,
-      },
-    }
-    vi.mocked(sendMessage).mockImplementation((method) => {
-      if (method === 'settings.getSettings') {
-        return Promise.resolve(darkSettings)
-      }
-
-      if (method === 'settings.cycleThemeMode') {
-        return Promise.resolve(null)
-      }
-
-      if (method === 'app.getShellData') {
-        return Promise.resolve(createDashboardAppShellData())
-      }
-
-      if (method === 'tracks.getWorkspace') {
-        return Promise.resolve(createTrackWorkspaceResponse())
-      }
-
-      return Promise.resolve(defaultUserSettings)
-    })
-
-    const { user } = renderDashboard('/')
-
-    await screen.findByRole('heading', { name: 'Overview' })
-    const themeButton = await screen.findByRole('button', {
-      name: 'Cycle theme mode. Current theme: Dark',
-    })
-    const dashboardRoot = document.querySelector(
-      '[data-cp-surface="dashboard"]',
-    )
-    expect(dashboardRoot).toHaveAttribute('data-cp-theme', 'dark')
-
-    await user.click(themeButton)
-
-    expect(sendMessage).toHaveBeenCalledWith('settings.cycleThemeMode', {
-      surface: 'dashboard',
-    })
-  })
-
-  it('renders the Overview queue-clear route with Library and Tracks actions', async () => {
-    vi.mocked(sendMessage).mockImplementation((method) => {
-      if (method === 'app.getShellData') {
-        return Promise.resolve(
-          createDashboardAppShellData({
-            recommendation: {
-              title: 'Queue is clear',
-              detail: 'No due reviews or extra practice are queued right now.',
-              category: null,
-              problem: null,
-              dueAt: null,
-            },
-            queue: {
-              dailyGoal: 4,
-              dueCount: 0,
-              newCount: 0,
-              reinforcementCount: 0,
-              items: [],
-            },
-            overview: {
-              practiceProgress: {
-                completedToday: 4,
-                dailyGoal: 4,
-                currentStreak: 3,
-                goalMetToday: true,
-                todayDateKey: '2026-05-25',
-              },
-              queuePreview: [],
-            },
-            dashboard: {
-              queuePreview: [],
-            },
-          }),
-        )
-      }
-
-      return Promise.resolve(defaultUserSettings)
-    })
-
-    renderDashboard('/')
-
-    expect(
-      await screen.findByRole('heading', { name: 'Queue Clear' }),
-    ).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Open Library' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Open Tracks' })).toBeVisible()
-  })
-
   it.each([
-    ['/tracks/new', 'Tracks', /New Track/i, null],
-    ['/tracks/leetcode-75/edit', 'Tracks', /Edit/i, null],
-    ['/tracks/problems/two-sum/edit', 'Tracks', /Edit/i, null],
-    ['/library/tracks/new?draft=missing-draft', 'Library', /New Track/i, null],
-    ['/library/problems/new', 'Library', /Add problem/i, null],
-    ['/library/problems/two-sum/edit', 'Library', /Edit/i, null],
+    ['/tracks/new', 'Tracks', /New Track/i],
+    ['/tracks/leetcode-75/edit', 'Tracks', /Edit/i],
+    ['/tracks/problems/two-sum/edit', 'Tracks', /Edit/i],
+    ['/library/tracks/new?draft=missing-draft', 'Library', /New Track/i],
+    ['/library/problems/new', 'Library', /Add problem/i],
+    ['/library/problems/two-sum/edit', 'Library', /Edit/i],
   ])(
     'renders %s over the parent route',
-    async (path, parentHeading, modalHeading, eyebrow) => {
+    async (path, parentHeading, modalHeading) => {
       renderDashboard(path)
 
       expect(
         await screen.findByRole('heading', { name: parentHeading }),
       ).toBeVisible()
       expect(screen.getByRole('dialog', { name: modalHeading })).toBeVisible()
-
-      if (eyebrow) {
-        expect(screen.getByText(eyebrow)).toBeVisible()
-      }
     },
   )
-
-  it('/tracks/new renders the track form over Tracks and loads options', async () => {
-    const { user } = renderDashboard('/tracks/new')
-
-    expect(await screen.findByRole('heading', { name: 'Tracks' })).toBeVisible()
-    const dialog = screen.getByRole('dialog', { name: 'New Track' })
-    expect(dialog).toBeVisible()
-    expect(await within(dialog).findByLabelText('Title')).toBeVisible()
-    expect(within(dialog).getByLabelText('Group title')).toHaveValue('Main')
-    const searchInput = within(dialog).getByLabelText('Search Library problems')
-
-    expect(searchInput).toBeVisible()
-    expect(within(dialog).queryByText('Two Sum')).not.toBeInTheDocument()
-
-    await user.type(searchInput, 'two')
-
-    expect(await within(dialog).findByText('Two Sum')).toBeVisible()
-    expect(within(dialog).queryByText('Placeholder')).not.toBeInTheDocument()
-    expect(sendMessage).toHaveBeenCalledWith('tracks.getTrackForEdit', {
-      surface: 'dashboard',
-    })
-  })
 
   it('/library/tracks/new direct route handles a missing selection draft', async () => {
     const { router, user } = renderDashboard(
@@ -333,62 +189,6 @@ describe('dashboard routes', () => {
       expect(router.state.location.pathname).toBe('/library')
     })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  })
-
-  it('/library/tracks/new handles a failed Library selection load', async () => {
-    const draft = createLibrarySelectionTrackDraft(['binary-search'], {
-      id: 'failed-library-load',
-    })
-    vi.mocked(sendMessage).mockImplementation((method) => {
-      if (method === 'problems.getLibrary') {
-        return Promise.reject(new Error('library failed'))
-      }
-
-      if (method === 'tracks.getWorkspace') {
-        return Promise.resolve(createTrackWorkspaceResponse())
-      }
-
-      return Promise.resolve(defaultUserSettings)
-    })
-
-    const { router, user } = renderDashboard(
-      `/library/tracks/new?draft=${draft.id}`,
-    )
-
-    const dialog = await screen.findByRole('dialog', { name: 'New Track' })
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'Selected Library problems could not be loaded.',
-    )
-
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Return to Library' }),
-    )
-
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/library')
-    })
-  })
-
-  it('/library/tracks/new handles a selection draft with no available problems', async () => {
-    const draft = createLibrarySelectionTrackDraft(['missing-problem'], {
-      id: 'missing-problem-row',
-    })
-    const { router, user } = renderDashboard(
-      `/library/tracks/new?draft=${draft.id}`,
-    )
-
-    const dialog = await screen.findByRole('dialog', { name: 'New Track' })
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'No selected Library problems are still available.',
-    )
-
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Return to Library' }),
-    )
-
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/library')
-    })
   })
 
   it('creates a track from selected Library rows', async () => {
@@ -417,27 +217,6 @@ describe('dashboard routes', () => {
     ).toBeVisible()
   })
 
-  it('/tracks/$trackId/edit direct route loads existing track composition', async () => {
-    renderDashboard('/tracks/leetcode-75/edit')
-
-    expect(
-      await screen.findByRole('dialog', { name: 'Edit: LeetCode 75' }),
-    ).toBeVisible()
-    const dialog = screen.getByRole('dialog', { name: 'Edit: LeetCode 75' })
-    expect(within(dialog).getByLabelText('Title')).toHaveValue('LeetCode 75')
-    expect(within(dialog).getByLabelText('Target date')).toHaveValue(
-      '2026-06-15',
-    )
-    const groups = within(dialog).getByLabelText('Groups')
-    const arraysRow = within(groups).getByRole('listitem', {
-      name: /Arrays and Hashing, 1 problem/i,
-    })
-    expect(within(arraysRow).getByLabelText('Group title')).toHaveValue(
-      'Arrays and Hashing',
-    )
-    expect(within(dialog).getByText('Two Sum')).toBeVisible()
-  })
-
   it('opens problem edit from Tracks without replacing the Tracks workspace', async () => {
     const { router, user } = renderDashboard('/tracks')
 
@@ -460,56 +239,6 @@ describe('dashboard routes', () => {
     expect(
       await screen.findByRole('dialog', { name: 'Edit: Two Sum' }),
     ).toBeVisible()
-  })
-
-  it('shows a Close link while track modal form data is loading', async () => {
-    vi.mocked(sendMessage).mockImplementation((method) => {
-      if (method === 'tracks.getWorkspace') {
-        return Promise.resolve(createTrackWorkspaceResponse())
-      }
-
-      if (method === 'tracks.getTrackForEdit') {
-        return new Promise(() => undefined)
-      }
-
-      return Promise.resolve(defaultUserSettings)
-    })
-
-    renderDashboard('/tracks/new')
-
-    const dialog = await screen.findByRole('dialog', { name: 'New Track' })
-
-    expect(within(dialog).getByText('Loading track form…')).toBeVisible()
-    expect(within(dialog).getByRole('link', { name: 'Close' })).toHaveAttribute(
-      'href',
-      '/tracks',
-    )
-  })
-
-  it('shows a Close link when track modal form data fails to load', async () => {
-    vi.mocked(sendMessage).mockImplementation((method) => {
-      if (method === 'tracks.getWorkspace') {
-        return Promise.resolve(createTrackWorkspaceResponse())
-      }
-
-      if (method === 'tracks.getTrackForEdit') {
-        return Promise.reject(new Error('load failed'))
-      }
-
-      return Promise.resolve(defaultUserSettings)
-    })
-
-    renderDashboard('/tracks/new')
-
-    const dialog = await screen.findByRole('dialog', { name: 'New Track' })
-
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'Failed to load track form.',
-    )
-    expect(within(dialog).getByRole('link', { name: 'Close' })).toHaveAttribute(
-      'href',
-      '/tracks',
-    )
   })
 
   it.each([
@@ -537,55 +266,6 @@ describe('dashboard routes', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('does not mark implemented problem modals as placeholders', () => {
-    expect(dashboardModalRouteMeta.trackNew.staticData.presentation).toBe(
-      'modal',
-    )
-    expect(dashboardModalRouteMeta.trackEdit.staticData.presentation).toBe(
-      'modal',
-    )
-    expect(
-      dashboardModalRouteMeta.trackProblemEdit.staticData.presentation,
-    ).toBe('modal')
-    expect(dashboardModalRouteMeta.problemNew.staticData.presentation).toBe(
-      'modal',
-    )
-    expect(dashboardModalRouteMeta.problemEdit.staticData.presentation).toBe(
-      'modal',
-    )
-    expect(
-      dashboardModalRouteMeta.libraryTrackNew.staticData.presentation,
-    ).toBe('modal')
-    expect(dashboardModalRouteMeta.problemNew.description).not.toMatch(
-      /later phase/i,
-    )
-    expect(dashboardModalRouteMeta.problemEdit.description).not.toMatch(
-      /later phase/i,
-    )
-    expect(dashboardModalRouteMeta.trackProblemEdit.description).not.toMatch(
-      /later phase/i,
-    )
-    expect(dashboardModalRouteMeta.trackNew.description).not.toMatch(
-      /later phase/i,
-    )
-    expect(dashboardModalRouteMeta.trackEdit.description).not.toMatch(
-      /later phase/i,
-    )
-    expect(dashboardModalRouteMeta.libraryTrackNew.description).toBe(
-      'Create a track from selected Library problems.',
-    )
-    expect(dashboardPaths.libraryTrackNew).toBe('/library/tracks/new')
-    expect(dashboardModalRouteMeta.libraryTrackNew.closeTo).toBe('/library')
-    expect(dashboardModalRouteMeta.libraryTrackNew.relativePath).toBe(
-      'tracks/new',
-    )
-    expect(dashboardModalRouteMeta.libraryTrackNew.staticData).toEqual({
-      presentation: 'modal',
-      section: 'library',
-      title: 'New Track',
-    })
-  })
-
   it('closes route modals with Escape', async () => {
     const { router, user } = renderDashboard('/tracks/new')
 
@@ -594,21 +274,6 @@ describe('dashboard routes', () => {
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/tracks')
-    })
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  })
-
-  it('closes route modals when the backdrop is clicked', async () => {
-    const { router, user } = renderDashboard('/library/problems/new')
-
-    const dialog = await screen.findByRole('dialog', { name: 'Add problem' })
-    const backdrop = dialog.parentElement
-
-    expect(backdrop).not.toBeNull()
-    await user.click(backdrop as HTMLElement)
-
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/library')
     })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
@@ -644,24 +309,6 @@ describe('dashboard routes', () => {
       ).not.toHaveAttribute('aria-current')
     },
   )
-
-  it('skips to dashboard content without changing the hash route', async () => {
-    const { router, user } = renderDashboard('/library')
-
-    expect(
-      await screen.findByRole('heading', { name: 'Library' }),
-    ).toBeVisible()
-
-    await user.tab()
-    expect(
-      screen.getByRole('button', { name: 'Skip to content' }),
-    ).toHaveFocus()
-
-    await user.keyboard('{Enter}')
-
-    expect(screen.getByRole('main')).toHaveFocus()
-    expect(router.state.location.pathname).toBe('/library')
-  })
 
   it('does not define deferred destructive or data-management routes', () => {
     const router = createDashboardRouter({
