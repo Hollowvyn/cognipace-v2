@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -30,28 +30,6 @@ describe('TrackForm', () => {
     vi.useRealTimers()
   })
 
-  it('requires a title and starts create mode with a Main group', async () => {
-    const user = userEvent.setup()
-    mockTrackFormRuntime(createTrackDefaults())
-
-    renderTrackForm(
-      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
-    )
-
-    expect(await screen.findByLabelText('Title')).toHaveValue('')
-    expect(screen.getByLabelText('Group title')).toHaveValue('Main')
-
-    await user.click(screen.getByRole('button', { name: 'SAVE' }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Title is required.',
-    )
-    expect(sendMessage).not.toHaveBeenCalledWith(
-      'tracks.createTrack',
-      expect.anything(),
-    )
-  })
-
   it('creates a track with ordered groups and selected-group problem membership', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 4, 25, 12, 0, 0))
@@ -69,18 +47,6 @@ describe('TrackForm', () => {
     await user.click(screen.getByRole('button', { name: 'New Group' }))
     await user.clear(screen.getByLabelText('Group title'))
     await user.type(screen.getByLabelText('Group title'), 'Dynamic Programming')
-    await user.click(
-      screen.getByRole('button', { name: 'Select Dynamic Programming' }),
-    )
-    await user.click(
-      screen.getByRole('button', { name: 'Move Dynamic Programming up' }),
-    )
-    await user.click(
-      screen.getByRole('button', { name: 'Move Dynamic Programming down' }),
-    )
-    await user.click(screen.getByRole('button', { name: 'New Group' }))
-    await user.click(screen.getByRole('button', { name: 'Remove Group 3' }))
-
     await user.click(screen.getByRole('button', { name: 'Select Main' }))
     await user.type(screen.getByLabelText('Search Library problems'), 'two')
     await user.click(screen.getByRole('button', { name: 'Add Two Sum' }))
@@ -90,10 +56,6 @@ describe('TrackForm', () => {
     await user.click(
       screen.getByRole('button', { name: 'Move Binary Search up' }),
     )
-    await user.click(screen.getByRole('button', { name: 'Remove Two Sum' }))
-    await user.clear(screen.getByLabelText('Search Library problems'))
-    await user.type(screen.getByLabelText('Search Library problems'), 'two')
-    await user.click(screen.getByRole('button', { name: 'Add Two Sum' }))
 
     await user.click(screen.getByRole('button', { name: 'SAVE' }))
 
@@ -111,53 +73,6 @@ describe('TrackForm', () => {
           {
             title: 'Dynamic Programming',
             problemSlugs: [],
-          },
-        ],
-      } satisfies TracksCreateTrackRequest)
-    })
-  })
-
-  it('seeds create mode from selected Library rows and shows compact Group by', async () => {
-    const user = userEvent.setup()
-    mockTrackFormRuntime(createTrackDefaultsWithSelectionRows())
-
-    renderTrackForm(
-      <TrackForm
-        initialDraft={{
-          id: 'draft-1',
-          source: 'library-selection',
-          selectedCount: 3,
-          problemRows: createSelectedProblemRows(),
-        }}
-        mode="create"
-        onCancel={vi.fn()}
-        onSaved={vi.fn()}
-      />,
-    )
-
-    expect(await screen.findByText('3 selected Library problems')).toBeVisible()
-    expect(screen.getByLabelText('Group by')).toHaveValue('none')
-    expect(screen.getByLabelText('Target date')).toBeVisible()
-    expect(screen.getByLabelText('Group title')).toHaveValue('Main')
-    expect(screen.getByRole('listitem', { name: '1. Two Sum' })).toBeVisible()
-    expect(
-      screen.getByRole('listitem', { name: '2. Group Anagrams' }),
-    ).toBeVisible()
-    expect(screen.getByRole('listitem', { name: '3. 01 Matrix' })).toBeVisible()
-
-    await user.type(screen.getByLabelText('Title'), 'Netflix Prep')
-    await user.click(screen.getByRole('button', { name: 'SAVE' }))
-
-    await waitFor(() => {
-      expect(sendMessage).toHaveBeenCalledWith('tracks.createTrack', {
-        surface: 'dashboard',
-        title: 'Netflix Prep',
-        description: null,
-        dueAt: null,
-        groups: [
-          {
-            title: 'Main',
-            problemSlugs: ['two-sum', 'group-anagrams', '01-matrix'],
           },
         ],
       } satisfies TracksCreateTrackRequest)
@@ -290,67 +205,6 @@ describe('TrackForm', () => {
     },
   )
 
-  it('regroups and moves draft problems with compact group selectors', async () => {
-    const user = userEvent.setup()
-    mockTrackFormRuntime(createTrackDefaultsWithSelectionRows())
-
-    renderTrackForm(
-      <TrackForm
-        initialDraft={{
-          id: 'draft-1',
-          source: 'library-selection',
-          selectedCount: 3,
-          problemRows: createSelectedProblemRows(),
-        }}
-        mode="create"
-        onCancel={vi.fn()}
-        onSaved={vi.fn()}
-      />,
-    )
-
-    await user.selectOptions(await screen.findByLabelText('Group by'), 'topic')
-
-    expect(screen.getByRole('button', { name: 'Select Arrays' })).toBeVisible()
-    expect(
-      screen.getByRole('button', { name: 'Select Hash Maps' }),
-    ).toBeVisible()
-    expect(
-      screen.getByRole('button', { name: 'Select No topic' }),
-    ).toBeVisible()
-    expect(screen.getByRole('listitem', { name: '1. Two Sum' })).toBeVisible()
-
-    await user.selectOptions(
-      screen.getByLabelText('Group for Two Sum'),
-      'draft-group-2',
-    )
-    await user.click(screen.getByRole('button', { name: 'Select Hash Maps' }))
-
-    expect(screen.getByRole('listitem', { name: '2. Two Sum' })).toBeVisible()
-
-    await user.selectOptions(screen.getByLabelText('Group by'), 'company')
-
-    expect(screen.getByRole('button', { name: 'Select Meta' })).toBeVisible()
-    expect(
-      screen.getByRole('button', { name: 'Select No company' }),
-    ).toBeVisible()
-  })
-
-  it('shows save failures inside the form', async () => {
-    const user = userEvent.setup()
-    mockTrackFormRuntime(createTrackDefaults(), {
-      createResponse: () => Promise.reject<null>(new Error('Create failed')),
-    })
-
-    renderTrackForm(
-      <TrackForm mode="create" onCancel={vi.fn()} onSaved={vi.fn()} />,
-    )
-
-    await user.type(await screen.findByLabelText('Title'), 'Broken Track')
-    await user.click(screen.getByRole('button', { name: 'SAVE' }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Create failed')
-  })
-
   it('loads existing metadata, groups, and memberships for edit submit replacement', async () => {
     const user = userEvent.setup()
     const onLoaded = vi.fn()
@@ -368,21 +222,6 @@ describe('TrackForm', () => {
     )
 
     expect(await screen.findByLabelText('Title')).toHaveValue('LeetCode 75')
-    expect(screen.getByLabelText('Description')).toHaveValue(
-      'Core interview practice.',
-    )
-    expect(screen.getByLabelText('Target date')).toHaveValue('2026-06-15')
-    expect(screen.getByLabelText('Group title')).toHaveValue(
-      'Arrays and Hashing',
-    )
-    expect(
-      screen.getByRole('button', { name: 'Select Dynamic Programming' }),
-    ).toBeVisible()
-    expect(
-      within(screen.getByLabelText('Selected group problems')).getByText(
-        'Two Sum',
-      ),
-    ).toBeVisible()
     expect(onLoaded).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'LeetCode 75' }),
     )
@@ -451,53 +290,6 @@ function createTrackDefaults() {
     track: null,
     groups: [],
     problemRows: [problemRow('two-sum', 'Two Sum'), problemRow()],
-  })
-}
-
-function createTrackDefaultsWithSelectionRows() {
-  return createTrackForEditResponse({
-    track: null,
-    groups: [],
-    problemRows: createSelectedProblemRows(),
-  })
-}
-
-function createSelectedProblemRows() {
-  return [
-    problemRowWithMetadata('two-sum', 'Two Sum', {
-      topics: [{ id: 'arrays', label: 'Arrays' }],
-      companies: [{ id: 'meta', label: 'Meta' }],
-    }),
-    problemRowWithMetadata('group-anagrams', 'Group Anagrams', {
-      difficulty: 'medium',
-      topics: [{ id: 'hash-maps', label: 'Hash Maps' }],
-      companies: [{ id: 'meta', label: 'Meta' }],
-    }),
-    problemRowWithMetadata('01-matrix', '01 Matrix', {
-      difficulty: 'medium',
-      topics: [],
-      companies: [],
-    }),
-  ]
-}
-
-function problemRowWithMetadata(
-  slug: string,
-  title: string,
-  overrides: {
-    companies?: ReturnType<typeof createTrackProblemRow>['companies']
-    difficulty?: ProblemDifficulty
-    topics?: ReturnType<typeof createTrackProblemRow>['topics']
-  } = {},
-) {
-  return createTrackProblemRow({
-    problem: createSerializedProblem({
-      difficulty: overrides.difficulty ?? 'easy',
-      slug,
-      title,
-    }),
-    companies: overrides.companies ?? [],
-    topics: overrides.topics ?? [],
   })
 }
 

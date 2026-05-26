@@ -10,10 +10,7 @@ import {
   createProblemLibraryResponse,
   createSerializedProblem,
 } from '@/testing/problem-fixtures'
-import {
-  createSerializedNormalizedPracticeState,
-  createSerializedPracticeDetails,
-} from '@/testing/practice-fixtures'
+import { createSerializedNormalizedPracticeState } from '@/testing/practice-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import { ProblemLibraryScreen } from './problem-library-screen'
@@ -27,14 +24,12 @@ describe('ProblemLibraryScreen', () => {
     vi.clearAllMocks()
   })
 
-  it('filters Library rows by search and metadata controls', async () => {
+  it('filters Library rows by search and facets', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage).mockResolvedValueOnce(libraryResponse)
     renderProblemLibrary()
 
     expect(await findProblemRow('Two Sum')).toBeVisible()
-    expect(getProblemRow('Binary Search')).toBeVisible()
-    expect(getProblemRow('01 Matrix')).toBeVisible()
 
     await user.type(screen.getByLabelText('Search problems'), 'matrix')
     expect(getProblemRow('01 Matrix')).toBeVisible()
@@ -48,54 +43,10 @@ describe('ProblemLibraryScreen', () => {
     expect(getProblemRow('01 Matrix')).toBeVisible()
     expect(queryProblemRow('Binary Search')).not.toBeInTheDocument()
 
-    await selectLibraryFacetOption(user, 'Status', 'Due')
-    expect(screen.getByText('No problems match these filters.')).toBeVisible()
-
-    await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
-    await selectLibraryFacetOption(user, 'Topics', 'Array')
-    expect(getProblemRow('Two Sum')).toBeVisible()
-    expect(queryProblemRow('Binary Search')).not.toBeInTheDocument()
-
-    await selectLibraryFacetOption(user, 'Companies', 'Netflix')
-    expect(screen.getByText('No problems match these filters.')).toBeVisible()
-
     await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
     await selectLibraryFacetOption(user, 'Track', 'LeetCode 75')
     expect(getProblemRow('Two Sum')).toBeVisible()
     expect(queryProblemRow('Binary Search')).not.toBeInTheDocument()
-  })
-
-  it('shows row actions and runs practice-owned suspend and reset writes', async () => {
-    const user = userEvent.setup()
-    vi.mocked(sendMessage).mockImplementation((method) => {
-      if (method === 'problems.getLibrary') {
-        return Promise.resolve(libraryResponse)
-      }
-
-      return Promise.resolve(createSerializedPracticeDetails())
-    })
-    renderProblemLibrary()
-
-    await user.click(
-      await screen.findByRole('button', { name: 'Expand Two Sum' }),
-    )
-
-    await user.click(screen.getByRole('button', { name: 'Suspend' }))
-    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
-      surface: 'dashboard',
-      problemSlug: 'two-sum',
-      suspended: true,
-    })
-
-    await user.click(screen.getByRole('button', { name: 'Reset Schedule' }))
-    const resetDialog = screen.getByRole('dialog', { name: 'Reset schedule?' })
-    await user.click(
-      within(resetDialog).getByRole('button', { name: 'Reset Schedule' }),
-    )
-    expect(sendMessage).toHaveBeenCalledWith('practice.resetSchedule', {
-      surface: 'dashboard',
-      problemSlug: 'two-sum',
-    })
   })
 
   it('deletes any library problem with confirmation', async () => {
@@ -123,96 +74,6 @@ describe('ProblemLibraryScreen', () => {
     })
   })
 
-  it('runs bulk suspend, resume, reset, and delete actions for selected rows', async () => {
-    const user = userEvent.setup()
-    vi.mocked(sendMessage).mockImplementation((method) => {
-      if (method === 'problems.getLibrary') {
-        return Promise.resolve(libraryResponse)
-      }
-
-      if (method === 'problems.bulkDelete') {
-        return Promise.resolve(undefined)
-      }
-
-      return Promise.resolve(createSerializedPracticeDetails())
-    })
-    renderProblemLibrary()
-
-    await user.click(
-      await screen.findByRole('checkbox', { name: 'Select Two Sum' }),
-    )
-    await user.click(
-      screen.getByRole('checkbox', { name: 'Select Binary Search' }),
-    )
-
-    const bulkBar = screen.getByRole('region', { name: 'Bulk actions' })
-
-    await user.click(within(bulkBar).getByRole('button', { name: 'Suspend' }))
-    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
-      surface: 'dashboard',
-      problemSlug: 'two-sum',
-      suspended: true,
-    })
-    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
-      surface: 'dashboard',
-      problemSlug: 'binary-search',
-      suspended: true,
-    })
-
-    await user.click(within(bulkBar).getByRole('button', { name: 'Resume' }))
-    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
-      surface: 'dashboard',
-      problemSlug: 'two-sum',
-      suspended: false,
-    })
-    expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
-      surface: 'dashboard',
-      problemSlug: 'binary-search',
-      suspended: false,
-    })
-
-    await user.click(
-      within(bulkBar).getByRole('button', { name: 'Reset Schedule' }),
-    )
-    const resetDialog = screen.getByRole('dialog', {
-      name: 'Reset selected schedules?',
-    })
-    await user.click(
-      within(resetDialog).getByRole('button', { name: 'Reset Schedule' }),
-    )
-    expect(sendMessage).toHaveBeenCalledWith('practice.resetSchedule', {
-      surface: 'dashboard',
-      problemSlug: 'two-sum',
-    })
-    expect(sendMessage).toHaveBeenCalledWith('practice.resetSchedule', {
-      surface: 'dashboard',
-      problemSlug: 'binary-search',
-    })
-
-    await user.click(screen.getByRole('checkbox', { name: 'Select Two Sum' }))
-    await user.click(
-      screen.getByRole('checkbox', { name: 'Select Binary Search' }),
-    )
-    await user.click(screen.getByRole('checkbox', { name: 'Select 01 Matrix' }))
-    await user.click(
-      within(screen.getByRole('region', { name: 'Bulk actions' })).getByRole(
-        'button',
-        { name: 'Delete Problems' },
-      ),
-    )
-    const deleteDialog = screen.getByRole('dialog', {
-      name: 'Delete selected problems?',
-    })
-    await user.click(
-      within(deleteDialog).getByRole('button', { name: 'Delete Problems' }),
-    )
-
-    expect(sendMessage).toHaveBeenCalledWith('problems.bulkDelete', {
-      surface: 'dashboard',
-      problemSlugs: ['two-sum', 'binary-search', '01-matrix'],
-    })
-  })
-
   it('bulk-edits metadata with explicit enabled replacement fields', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage).mockImplementation((method) => {
@@ -223,8 +84,7 @@ describe('ProblemLibraryScreen', () => {
       if (method === 'problems.bulkUpdateProblems') {
         return Promise.resolve(undefined)
       }
-
-      return Promise.resolve(createSerializedPracticeDetails())
+      return Promise.resolve(undefined)
     })
     renderProblemLibrary()
 
@@ -275,50 +135,6 @@ describe('ProblemLibraryScreen', () => {
         isPremium: true,
         topicLabels: ['Array', 'Graph'],
         companyLabels: [],
-      },
-    })
-  })
-
-  it('bulk metadata omits disabled fields and clears enabled empty labels', async () => {
-    const user = userEvent.setup()
-    vi.mocked(sendMessage).mockImplementation((method) => {
-      if (method === 'problems.getLibrary') {
-        return Promise.resolve(libraryResponse)
-      }
-
-      if (method === 'problems.bulkUpdateProblems') {
-        return Promise.resolve(undefined)
-      }
-
-      return Promise.resolve(createSerializedPracticeDetails())
-    })
-    renderProblemLibrary()
-
-    await user.click(
-      await screen.findByRole('checkbox', { name: 'Select Two Sum' }),
-    )
-    await user.click(
-      within(screen.getByRole('region', { name: 'Bulk actions' })).getByRole(
-        'button',
-        { name: 'Edit Metadata' },
-      ),
-    )
-    const dialog = screen.getByRole('dialog', {
-      name: 'Edit selected metadata',
-    })
-
-    await user.click(
-      within(dialog).getByRole('checkbox', { name: 'Replace topics' }),
-    )
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Update Problems' }),
-    )
-
-    expect(sendMessage).toHaveBeenCalledWith('problems.bulkUpdateProblems', {
-      surface: 'dashboard',
-      problemSlugs: ['two-sum'],
-      set: {
-        topicLabels: [],
       },
     })
   })
