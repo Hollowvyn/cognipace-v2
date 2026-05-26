@@ -126,6 +126,8 @@ describe('usePopupAppShellController', () => {
       wrapper,
     })
 
+    expect(result.current.status?.message).toBe('Loading popup data...')
+
     await waitFor(() => {
       expect(result.current.status).toMatchObject({
         scope: 'surface',
@@ -153,11 +155,15 @@ describe('usePopupAppShellController', () => {
 
     act(() => {
       result.current.actions.openSettings()
+      result.current.actions.openTracks()
       result.current.actions.openProblem(twoSum, 'recommendation')
     })
 
     expect(browserMocks.tabsCreate).toHaveBeenCalledWith({
       url: 'chrome-extension://extension-id/dashboard.html#/settings',
+    })
+    expect(browserMocks.tabsCreate).toHaveBeenCalledWith({
+      url: 'chrome-extension://extension-id/dashboard.html#/tracks',
     })
     expect(browserMocks.tabsCreate).toHaveBeenCalledWith({
       url: 'https://leetcode.com/problems/two-sum/',
