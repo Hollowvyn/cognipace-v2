@@ -290,7 +290,10 @@ export function createSyncService(deps: SyncServiceDependencies) {
       }
 
       if (metadata.dirtySinceLastSync) {
-        await deps.writeMetadata({ lastBlockingReason: 'local-dirty' })
+        await deps.writeMetadata({
+          lastBlockingReason: 'local-dirty',
+          lastError: null,
+        })
 
         return createActionResult({
           action: 'pull-latest',

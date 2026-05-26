@@ -177,6 +177,12 @@ describe('sync service', () => {
       dirtySinceLastSync: true,
       localDataUpdatedAt: '2026-05-26T12:05:00.000Z',
       lastRemoteVersion: 'remote_1',
+      lastError: {
+        kind: 'network',
+        message: 'Previous network failure.',
+        occurredAt: '2026-05-26T12:00:00.000Z',
+        retryable: true,
+      },
     })
 
     await expect(harness.service.pullLatest()).resolves.toMatchObject({
@@ -192,6 +198,7 @@ describe('sync service', () => {
     expect(harness.getMetadata()).toMatchObject({
       dirtySinceLastSync: true,
       lastBlockingReason: 'local-dirty',
+      lastError: null,
     })
   })
 
@@ -443,7 +450,7 @@ describe('sync service', () => {
     })
   })
 
-  it('auto-pulls clean local data when remote changed', async () => {
+  it('pullLatest manually restores clean local data when remote changed', async () => {
     const harness = createHarness()
     harness.setMetadata({
       enabled: true,
@@ -478,7 +485,7 @@ describe('sync service', () => {
     })
   })
 
-  it('marks conflict when local and remote both changed', async () => {
+  it('checkOnOpen performs no network work when local and remote both changed', async () => {
     const harness = createHarness()
     harness.setMetadata({
       enabled: true,
@@ -509,7 +516,7 @@ describe('sync service', () => {
     expect(harness.getMetadata().conflict).toBeNull()
   })
 
-  it('records retryable push errors without throwing local mutation failures', async () => {
+  it('syncAfterMutation performs no network work after local mutation failures', async () => {
     const harness = createHarness()
     harness.setMetadata({
       enabled: true,
@@ -540,7 +547,7 @@ describe('sync service', () => {
     expect(harness.getMetadata().dirtySinceLastSync).toBe(true)
   })
 
-  it('records non-retryable mutation sync errors without failing local mutations', async () => {
+  it('syncAfterMutation leaves stale error state unchanged without network work', async () => {
     const harness = createHarness()
     harness.setMetadata({
       enabled: true,
