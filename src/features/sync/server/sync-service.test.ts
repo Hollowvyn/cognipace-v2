@@ -317,22 +317,17 @@ describe('sync service', () => {
       direction: 'pull',
       outcome: 'success',
     })
-    expect(harness.restoreBackup).toHaveBeenCalledWith(
+    expect(harness.restoreBackup).toHaveBeenCalledTimes(1)
+    const restoredBackup = harness.restoreBackup.mock.calls[0]![0]
+
+    expect(restoredBackup.schemaVersion).toBe(backupSchemaVersion)
+    expect(restoredBackup.data.tracks.progress).toEqual([
       expect.objectContaining({
-        schemaVersion: backupSchemaVersion,
-        data: expect.objectContaining({
-          tracks: expect.objectContaining({
-            progress: [
-              expect.objectContaining({
-                trackId: 'leetcode-75',
-                problemSlug: 'two-sum',
-                reviewAttemptId: null,
-              }),
-            ],
-          }),
-        }),
+        trackId: 'leetcode-75',
+        problemSlug: 'two-sum',
+        reviewAttemptId: null,
       }),
-    )
+    ])
   })
 
   it('pullLatest blocks dirty local data without restoring remote data', async () => {
@@ -965,10 +960,18 @@ function createHarness(
   > = {},
 ) {
   let metadata: SyncMetadata = { ...defaultSyncMetadata }
-  const restoreBackup = vi.fn().mockResolvedValue(backupSummary)
-  const exportFullBackup = vi.fn().mockResolvedValue(backup)
-  const flushDbSnapshot = vi.fn().mockResolvedValue(undefined)
-  const broadcastInvalidation = vi.fn().mockResolvedValue(undefined)
+  const restoreBackup = vi
+    .fn<(backup: BackupFile) => Promise<BackupSummary>>()
+    .mockResolvedValue(backupSummary)
+  const exportFullBackup = vi
+    .fn<() => Promise<BackupFile>>()
+    .mockResolvedValue(backup)
+  const flushDbSnapshot = vi
+    .fn<() => Promise<void>>()
+    .mockResolvedValue(undefined)
+  const broadcastInvalidation = vi
+    .fn<() => Promise<void>>()
+    .mockResolvedValue(undefined)
   const githubClient = {
     validateToken: vi
       .fn<() => Promise<{ ok: true; login: string }>>()

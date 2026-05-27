@@ -1023,17 +1023,15 @@ describe('background handler registration', () => {
       backgroundMocks.saveReviewResultWithTrackProgress,
     ).toHaveBeenCalledWith(
       backgroundMocks.db,
-      expect.objectContaining({
+      {
         problemSlug: 'two-sum',
         rating: 'hard',
         reviewedAt: new Date('2026-01-02T00:00:00.000Z'),
         elapsedSeconds: 725,
         isCorrect: false,
-        log: expect.objectContaining({
-          notes: 'Missed a branch.',
-        }),
+        log: { notes: 'Missed a branch.' },
         targetRetention: defaultUserSettings.review.targetRetention,
-      }),
+      },
       defaultUserSettings,
     )
     expect(
@@ -1643,8 +1641,9 @@ const validBackup = backupFileSchema.parse({
       ],
       progress: [
         {
-          trackGroupId: 'custom-track:arrays',
+          trackId: 'custom-track',
           problemSlug: 'two-sum',
+          reviewAttemptId: null,
           completedAt: backupTimestamp,
           completedRating: 'good',
           createdAt: backupTimestamp,
