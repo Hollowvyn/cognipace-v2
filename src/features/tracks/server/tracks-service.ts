@@ -12,6 +12,7 @@ import { createTracksRepository } from '../data/tracks-repository'
 import type { TrackProgress } from '../domain'
 import type {
   Track,
+  TrackCompletionInput,
   TrackGroup,
   TrackProblemMembership,
   TrackReviewProgressInput,
@@ -238,6 +239,13 @@ export async function recordActiveTrackProblemReview(
   input: TrackReviewProgressInput,
 ): Promise<boolean> {
   return createTracksRepository(db).recordActiveTrackProblemReview(input)
+}
+
+export async function recordActiveTrackProblemCompletion(
+  db: Db,
+  input: TrackCompletionInput,
+): Promise<boolean> {
+  return createTracksRepository(db).recordActiveTrackProblemCompletion(input)
 }
 
 export async function reconcileActiveTrackProblemReviewOverride(

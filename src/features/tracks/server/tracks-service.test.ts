@@ -19,6 +19,7 @@ import {
   getActiveTrack,
   getTrackForEdit,
   getWorkspace,
+  recordActiveTrackProblemCompletion,
   resetTrackProgress,
   updateTrack,
 } from './tracks-service'
@@ -558,6 +559,34 @@ describe('tracks service', () => {
       {
         trackId: 'grind-75',
         problemSlug: 'valid-parentheses',
+      },
+    ])
+  })
+
+  it('keeps the legacy completion wrapper writing nullable review attempt ids', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+
+    await makeLeetCodeActive(handle.db)
+
+    await expect(
+      recordActiveTrackProblemCompletion(handle.db, {
+        problemSlug: 'two-sum',
+        rating: 'good',
+        completedAt: new Date('2026-01-03T00:00:00.000Z'),
+      }),
+    ).resolves.toBe(true)
+
+    await expect(
+      handle.db.select().from(trackProblemProgress),
+    ).resolves.toMatchObject([
+      {
+        trackId: 'leetcode-75',
+        problemSlug: 'two-sum',
+        reviewAttemptId: null,
+        completedAt: new Date('2026-01-03T00:00:00.000Z').getTime(),
+        completedRating: 'good',
       },
     ])
   })

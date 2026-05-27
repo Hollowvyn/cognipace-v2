@@ -23,6 +23,7 @@ import type {
   Track,
   TrackCatalogItem,
   TrackCompletedRating,
+  TrackCompletionInput,
   TrackGroup,
   TrackGroupInput,
   TrackProblemCompletion,
@@ -446,6 +447,54 @@ export class TracksRepository {
   async recordActiveTrackProblemReview(
     input: TrackReviewProgressInput,
   ): Promise<boolean> {
+    return this.recordActiveTrackProblemProgress({
+      problemSlug: input.problemSlug,
+      rating: input.rating,
+      reviewedAt: input.reviewedAt,
+      reviewAttemptId: input.reviewAttemptId,
+    })
+  }
+
+  async recordActiveTrackProblemCompletion(
+    input: TrackCompletionInput,
+  ): Promise<boolean> {
+    return this.recordActiveTrackProblemProgress({
+      problemSlug: input.problemSlug,
+      rating: input.rating,
+      reviewedAt: input.completedAt,
+      reviewAttemptId: null,
+    })
+  }
+
+  async reconcileActiveTrackProblemReviewOverride(
+    input: TrackReviewProgressInput,
+  ): Promise<boolean> {
+    const problemSlug = normalizeProblemInput(input.problemSlug)
+    const completion = createCompletionWrite(input)
+
+    const updatedRows = await this.db
+      .update(trackProblemProgress)
+      .set({
+        completedAt: completion.completedAt,
+        completedRating: completion.completedRating,
+        updatedAt: completion.updatedAt,
+      })
+      .where(
+        and(
+          eq(trackProblemProgress.problemSlug, problemSlug),
+          eq(trackProblemProgress.reviewAttemptId, input.reviewAttemptId),
+        ),
+      )
+      .returning({
+        trackId: trackProblemProgress.trackId,
+      })
+
+    return updatedRows.length > 0
+  }
+
+  private async recordActiveTrackProblemProgress(
+    input: TrackProgressWriteInput,
+  ): Promise<boolean> {
     const problemSlug = normalizeProblemInput(input.problemSlug)
     const completion = createCompletionWrite(input)
 
@@ -506,32 +555,6 @@ export class TracksRepository {
 
       return true
     })
-  }
-
-  async reconcileActiveTrackProblemReviewOverride(
-    input: TrackReviewProgressInput,
-  ): Promise<boolean> {
-    const problemSlug = normalizeProblemInput(input.problemSlug)
-    const completion = createCompletionWrite(input)
-
-    const updatedRows = await this.db
-      .update(trackProblemProgress)
-      .set({
-        completedAt: completion.completedAt,
-        completedRating: completion.completedRating,
-        updatedAt: completion.updatedAt,
-      })
-      .where(
-        and(
-          eq(trackProblemProgress.problemSlug, problemSlug),
-          eq(trackProblemProgress.reviewAttemptId, input.reviewAttemptId),
-        ),
-      )
-      .returning({
-        trackId: trackProblemProgress.trackId,
-      })
-
-    return updatedRows.length > 0
   }
 
   private async getNextProblemInTrack(
@@ -1012,7 +1035,7 @@ function normalizeProblemInput(problemInput: string) {
   return parsedInput.slug
 }
 
-function createCompletionWrite(input: TrackReviewProgressInput) {
+function createCompletionWrite(input: TrackProgressWriteInput) {
   const updatedAt = input.reviewedAt.getTime()
   const completedRating = parseTrackCompletedRating(input.rating)
 
@@ -1220,6 +1243,13 @@ interface DesiredTrackMembership {
   groupId: string
   problemSlug: string
   problemPosition: number
+}
+
+interface TrackProgressWriteInput {
+  problemSlug: string
+  rating: 'again' | 'hard' | 'good' | 'easy'
+  reviewedAt: Date
+  reviewAttemptId: string | null
 }
 
 interface TrackProgressAccumulator {

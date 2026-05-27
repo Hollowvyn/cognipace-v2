@@ -53,6 +53,12 @@ export interface TrackReviewProgressInput {
   reviewAttemptId: string
 }
 
+export interface TrackCompletionInput {
+  problemSlug: string
+  rating: TrackCompletedRating
+  completedAt: Date
+}
+
 export interface TrackProblemMembership {
   trackId: string
   groupId: string
