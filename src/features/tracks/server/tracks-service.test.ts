@@ -169,8 +169,7 @@ describe('tracks service', () => {
         row.membership.groupTitle,
         row.membership.groupPosition,
         row.membership.problemPosition,
-        row.membership.completedAt,
-        row.membership.completedRating,
+        row.membership.completion,
       ]),
     ).toEqual([
       [
@@ -180,8 +179,7 @@ describe('tracks service', () => {
         'Arrays and Hashing',
         1,
         1,
-        null,
-        null,
+        { status: 'incomplete', reviewAttemptId: null },
       ],
       [
         'valid-parentheses',
@@ -190,8 +188,7 @@ describe('tracks service', () => {
         'Stack',
         2,
         1,
-        null,
-        null,
+        { status: 'incomplete', reviewAttemptId: null },
       ],
       [
         'valid-sudoku',
@@ -200,8 +197,7 @@ describe('tracks service', () => {
         'Review',
         3,
         1,
-        null,
-        null,
+        { status: 'incomplete', reviewAttemptId: null },
       ],
     ])
   })
@@ -256,11 +252,24 @@ describe('tracks service', () => {
       workspace.activeTrackRows.map((row) => [
         row.problem.slug,
         row.status,
-        row.membership.completedAt,
+        row.membership.completion,
       ]),
     ).toEqual([
-      ['two-sum', 'due', '2026-01-03T00:00:00.000Z'],
-      ['valid-parentheses', 'not-started', null],
+      [
+        'two-sum',
+        'due',
+        {
+          status: 'completed',
+          completedAt: '2026-01-03T00:00:00.000Z',
+          completedRating: 'good',
+          reviewAttemptId: null,
+        },
+      ],
+      [
+        'valid-parentheses',
+        'not-started',
+        { status: 'incomplete', reviewAttemptId: null },
+      ],
     ])
     expect(workspace.dueCount).toBe(0)
     expect(workspace.activeTrack?.nextProblem?.slug).toBe('valid-parentheses')

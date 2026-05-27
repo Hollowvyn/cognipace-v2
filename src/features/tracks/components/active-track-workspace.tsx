@@ -496,7 +496,7 @@ function getGroupProgressById(
 
     progress.totalCount += 1
 
-    if (row.membership.completedAt) {
+    if (row.membership.completion.status === 'completed') {
       progress.completedCount += 1
     }
   }
