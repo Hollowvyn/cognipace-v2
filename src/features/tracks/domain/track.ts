@@ -37,6 +37,22 @@ export interface TrackSessionState {
 
 export type TrackCompletedRating = 'good' | 'easy'
 
+export type TrackProblemCompletion =
+  | { status: 'incomplete'; reviewAttemptId: string | null }
+  | {
+      status: 'completed'
+      completedAt: Date
+      completedRating: TrackCompletedRating
+      reviewAttemptId: string | null
+    }
+
+export interface TrackReviewProgressInput {
+  problemSlug: string
+  rating: 'again' | 'hard' | 'good' | 'easy'
+  reviewedAt: Date
+  reviewAttemptId: string
+}
+
 export interface TrackProblemMembership {
   trackId: string
   groupId: string
@@ -44,6 +60,7 @@ export interface TrackProblemMembership {
   groupPosition: number
   problemSlug: string
   problemPosition: number
+  completion: TrackProblemCompletion
   completedAt: Date | null
   completedRating: TrackCompletedRating | null
 }
@@ -69,12 +86,6 @@ export type CreateTrackInput = TrackMutationInput
 
 export interface UpdateTrackInput extends TrackMutationInput {
   trackId: string
-}
-
-export interface TrackCompletionInput {
-  problemSlug: string
-  rating: string
-  completedAt?: Date | undefined
 }
 
 export interface ActiveTrack {

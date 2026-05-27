@@ -109,12 +109,14 @@ describe('tracks service', () => {
     await handle.db.insert(trackGroupProblems).values([
       {
         trackGroupId: 'leetcode-75:stack',
+        trackId: 'leetcode-75',
         problemSlug: 'valid-parentheses',
         position: 1,
       },
       {
         trackGroupId: 'leetcode-75:review',
-        problemSlug: 'two-sum',
+        trackId: 'leetcode-75',
+        problemSlug: 'valid-sudoku',
         position: 1,
       },
     ])
@@ -191,7 +193,7 @@ describe('tracks service', () => {
         null,
       ],
       [
-        'two-sum',
+        'valid-sudoku',
         'not-started',
         'leetcode-75:review',
         'Review',
@@ -240,7 +242,7 @@ describe('tracks service', () => {
       now: new Date('2026-01-10T12:00:00.000Z'),
     })
     await completeTrackProblem(handle.db, {
-      groupId: 'leetcode-75:arrays-hashing',
+      trackId: 'leetcode-75',
       problemSlug: 'two-sum',
     })
 
@@ -324,7 +326,7 @@ describe('tracks service', () => {
 
     await makeLeetCodeActive(completeHandle.db)
     await completeTrackProblem(completeHandle.db, {
-      groupId: 'leetcode-75:arrays-hashing',
+      trackId: 'leetcode-75',
       problemSlug: 'two-sum',
     })
 
@@ -531,11 +533,11 @@ describe('tracks service', () => {
     })
 
     await completeTrackProblem(handle.db, {
-      groupId: 'leetcode-75:arrays-hashing',
+      trackId: 'leetcode-75',
       problemSlug: 'two-sum',
     })
     await completeTrackProblem(handle.db, {
-      groupId: 'grind-75:stack',
+      trackId: 'grind-75',
       problemSlug: 'valid-parentheses',
     })
 
@@ -548,13 +550,13 @@ describe('tracks service', () => {
       .select()
       .from(trackProblemProgress)
       .orderBy(
-        asc(trackProblemProgress.trackGroupId),
+        asc(trackProblemProgress.trackId),
         asc(trackProblemProgress.problemSlug),
       )
 
     expect(progressRows).toMatchObject([
       {
-        trackGroupId: 'grind-75:stack',
+        trackId: 'grind-75',
         problemSlug: 'valid-parentheses',
       },
     ])
@@ -605,6 +607,7 @@ async function addActiveTrackMembership(
   })
   await db.insert(trackGroupProblems).values({
     trackGroupId: input.groupId,
+    trackId: 'leetcode-75',
     problemSlug: input.problemSlug,
     position: 1,
   })
@@ -704,14 +707,14 @@ async function suspendProblem(db: Db, problemSlug: string) {
 async function completeTrackProblem(
   db: Db,
   input: {
-    groupId: string
+    trackId: string
     problemSlug: string
   },
 ) {
   const timestamp = new Date('2026-01-03T00:00:00.000Z').getTime()
 
   await db.insert(trackProblemProgress).values({
-    trackGroupId: input.groupId,
+    trackId: input.trackId,
     problemSlug: input.problemSlug,
     completedAt: timestamp,
     completedRating: 'good',

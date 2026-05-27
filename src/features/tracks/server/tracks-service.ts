@@ -12,9 +12,9 @@ import { createTracksRepository } from '../data/tracks-repository'
 import type { TrackProgress } from '../domain'
 import type {
   Track,
-  TrackCompletionInput,
   TrackGroup,
   TrackProblemMembership,
+  TrackReviewProgressInput,
   TrackSessionState,
 } from '../domain/track'
 import {
@@ -233,11 +233,20 @@ export async function resetTrackProgress(
   await repository.resetTrackProgress(request.trackId)
 }
 
-export async function recordActiveTrackProblemCompletion(
+export async function recordActiveTrackProblemReview(
   db: Db,
-  input: TrackCompletionInput,
+  input: TrackReviewProgressInput,
 ): Promise<boolean> {
-  return createTracksRepository(db).recordActiveTrackProblemCompletion(input)
+  return createTracksRepository(db).recordActiveTrackProblemReview(input)
+}
+
+export async function reconcileActiveTrackProblemReviewOverride(
+  db: Db,
+  input: TrackReviewProgressInput,
+): Promise<boolean> {
+  return createTracksRepository(db).reconcileActiveTrackProblemReviewOverride(
+    input,
+  )
 }
 
 type ActiveTrackGuidanceInput = {
