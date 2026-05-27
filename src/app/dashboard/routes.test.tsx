@@ -261,6 +261,7 @@ describe('dashboard routes', () => {
 
     expect(sendMessage).toHaveBeenCalledWith('sync.pullLatest', {
       surface: 'dashboard',
+      confirmLocalOverwrite: false,
     })
     expect(sendMessage).toHaveBeenCalledWith('sync.pushLocal', {
       surface: 'dashboard',

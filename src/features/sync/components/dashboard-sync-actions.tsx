@@ -2,14 +2,18 @@ import { CloudDownload, CloudUpload } from 'lucide-react'
 import { useState } from 'react'
 
 import { IconButton } from '@/components/ui/icon-button'
-import { cn } from '@/utils/cn'
-import { readErrorMessage } from '@/utils/errors'
 
 import { usePullLatest, usePushLocal, useSyncStatus } from '../api/sync-api'
 import type {
   SerializedSyncStatus,
   SyncActionResult,
 } from '../api/sync-contracts'
+import {
+  createSyncActionDialogState,
+  createSyncErrorDialogState,
+  SyncActionDialogForState,
+  type SyncDialogState,
+} from './sync-action-dialog'
 
 type DashboardSyncActionResult =
   | Promise<SyncActionResult | null | undefined | void>
@@ -20,16 +24,13 @@ type DashboardSyncActionResult =
 
 interface DashboardSyncActionsViewProps {
   isPending: boolean
-  onPullLatest: () => DashboardSyncActionResult
+  onPullLatest: (options?: {
+    confirmLocalOverwrite?: boolean
+  }) => DashboardSyncActionResult
   onPushLocal: (options: {
-    confirmRemoteOverwrite: false
+    confirmRemoteOverwrite: boolean
   }) => DashboardSyncActionResult
   status: SerializedSyncStatus | null | undefined
-}
-
-type Feedback = {
-  message: string
-  tone: 'alert' | 'status'
 }
 
 export function DashboardSyncActions() {
@@ -40,7 +41,7 @@ export function DashboardSyncActions() {
   return (
     <DashboardSyncActionsView
       isPending={pullLatest.isPending || pushLocal.isPending}
-      onPullLatest={() => pullLatest.mutateAsync()}
+      onPullLatest={(options) => pullLatest.mutateAsync(options)}
       onPushLocal={(options) => pushLocal.mutateAsync(options)}
       status={status.data}
     />
@@ -53,7 +54,7 @@ export function DashboardSyncActionsView({
   onPushLocal,
   status,
 }: DashboardSyncActionsViewProps) {
-  const [feedback, setFeedback] = useState<Feedback | null>(null)
+  const [dialog, setDialog] = useState<SyncDialogState | null>(null)
 
   if (!status?.configured) {
     return null
@@ -61,31 +62,41 @@ export function DashboardSyncActionsView({
 
   const disabled = isPending || status.isSyncing
 
-  async function handlePullLatest() {
-    setFeedback(null)
+  async function handlePullLatest(
+    confirmLocalOverwrite = false,
+    options: { clearDialog?: boolean } = {},
+  ) {
+    if (options.clearDialog !== false) {
+      setDialog(null)
+    }
 
     try {
-      const result = await onPullLatest()
-      setFeedback(readActionFeedback(result, 'Pulled latest from Gist.'))
+      const result = await onPullLatest({ confirmLocalOverwrite })
+      setDialog(createSyncActionDialogState(result, 'Pulled latest from Gist.'))
     } catch (error) {
-      setFeedback({
-        message: readErrorMessage(error, 'Failed to pull latest from Gist.'),
-        tone: 'alert',
-      })
+      setDialog(
+        createSyncErrorDialogState(error, 'Failed to pull latest from Gist.'),
+      )
     }
   }
 
-  async function handlePushLocal() {
-    setFeedback(null)
+  async function handlePushLocal(
+    confirmRemoteOverwrite = false,
+    options: { clearDialog?: boolean } = {},
+  ) {
+    if (options.clearDialog !== false) {
+      setDialog(null)
+    }
 
     try {
-      const result = await onPushLocal({ confirmRemoteOverwrite: false })
-      setFeedback(readActionFeedback(result, 'Pushed local data to Gist.'))
+      const result = await onPushLocal({ confirmRemoteOverwrite })
+      setDialog(
+        createSyncActionDialogState(result, 'Pushed local data to Gist.'),
+      )
     } catch (error) {
-      setFeedback({
-        message: readErrorMessage(error, 'Failed to push local data to Gist.'),
-        tone: 'alert',
-      })
+      setDialog(
+        createSyncErrorDialogState(error, 'Failed to push local data to Gist.'),
+      )
     }
   }
 
@@ -95,7 +106,7 @@ export function DashboardSyncActionsView({
         disabled={disabled}
         label="Pull latest from Gist"
         onClick={() => {
-          void handlePullLatest()
+          void handlePullLatest(false)
         }}
         tooltip="Pull latest from Gist"
         variant="ghost"
@@ -106,47 +117,28 @@ export function DashboardSyncActionsView({
         disabled={disabled}
         label="Push local to Gist"
         onClick={() => {
-          void handlePushLocal()
+          void handlePushLocal(false)
         }}
         tooltip="Push local to Gist"
         variant="ghost"
       >
         <CloudUpload aria-hidden="true" />
       </IconButton>
-      {feedback ? (
-        <p
-          aria-atomic="true"
-          className={cn(
-            'm-0 w-[10rem] truncate text-right text-[length:var(--cp-badge-font-size)] font-semibold leading-tight',
-            feedback.tone === 'alert'
-              ? 'text-destructive'
-              : 'text-muted-foreground',
-          )}
-          role={feedback.tone === 'alert' ? 'alert' : 'status'}
-          title={feedback.message}
-        >
-          {feedback.message}
-        </p>
-      ) : (
-        <span aria-hidden="true" className="block w-[10rem] shrink-0" />
-      )}
+      {dialog ? (
+        <SyncActionDialogForState
+          dialog={dialog}
+          isPending={isPending}
+          onClose={() => {
+            setDialog(null)
+          }}
+          onForcePull={() => {
+            void handlePullLatest(true, { clearDialog: false })
+          }}
+          onForcePush={() => {
+            void handlePushLocal(true, { clearDialog: false })
+          }}
+        />
+      ) : null}
     </>
   )
-}
-
-function readActionFeedback(
-  result: SyncActionResult | null | undefined | void,
-  fallbackMessage: string,
-): Feedback {
-  if (result?.outcome === 'confirmation-required') {
-    return {
-      message: 'Remote changed. Open Settings to overwrite the Gist.',
-      tone: 'alert',
-    }
-  }
-
-  return {
-    message: result?.message || fallbackMessage,
-    tone: result?.outcome === 'error' ? 'alert' : 'status',
-  }
 }

@@ -47,13 +47,15 @@ describe('DashboardSyncActionsView', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Push local to Gist' }))
 
-    expect(onPullLatest).toHaveBeenCalledTimes(1)
+    expect(onPullLatest).toHaveBeenCalledWith({
+      confirmLocalOverwrite: false,
+    })
     expect(onPushLocal).toHaveBeenCalledWith({
       confirmRemoteOverwrite: false,
     })
   })
 
-  it('asks users to open Settings when header push requires overwrite confirmation', async () => {
+  it('opens a force push dialog when header push requires overwrite confirmation', async () => {
     const user = userEvent.setup()
     const onPushLocal = vi.fn().mockResolvedValue(confirmationRequiredResult)
 
@@ -75,17 +77,89 @@ describe('DashboardSyncActionsView', () => {
     expect(onPushLocal).not.toHaveBeenCalledWith({
       confirmRemoteOverwrite: true,
     })
-    const feedback = await screen.findByRole('alert')
-    expect(feedback).toHaveTextContent(
-      'Remote changed. Open Settings to overwrite the Gist.',
-    )
-    expect(feedback).not.toHaveClass('sr-only')
-    expect(
-      screen.getByText('Remote changed. Open Settings to overwrite the Gist.'),
-    ).toBeVisible()
+    const dialog = await screen.findByRole('dialog', {
+      name: /Force push to Gist/i,
+    })
+    expect(dialog).toHaveTextContent(/Remote changed/i)
+    expect(screen.getByRole('button', { name: /Force push/i })).toBeVisible()
   })
 
-  it('shows compact visible status feedback after a successful pull', async () => {
+  it('lets the header force push after overwrite confirmation', async () => {
+    const user = userEvent.setup()
+    const onPushLocal = vi
+      .fn()
+      .mockResolvedValueOnce(confirmationRequiredResult)
+      .mockResolvedValueOnce({
+        ...confirmationRequiredResult,
+        outcome: 'success',
+        reason: null,
+        message: 'Pushed local data.',
+      })
+
+    render(
+      <DashboardSyncActionsView
+        isPending={false}
+        onPullLatest={vi.fn()}
+        onPushLocal={onPushLocal}
+        status={configuredStatus}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Push local to Gist' }))
+    await user.click(await screen.findByRole('button', { name: /Force push/i }))
+
+    expect(onPushLocal).toHaveBeenLastCalledWith({
+      confirmRemoteOverwrite: true,
+    })
+    expect(
+      await screen.findByRole('dialog', { name: /Push complete/i }),
+    ).toHaveTextContent('Pushed local data.')
+  })
+
+  it('lets the header force pull when local changes block pulling', async () => {
+    const user = userEvent.setup()
+    const onPullLatest = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ...confirmationRequiredResult,
+        action: 'pull-latest',
+        direction: 'pull',
+        outcome: 'blocked',
+        reason: 'local-dirty',
+        message: 'Pull blocked: local changes have not been pushed.',
+      })
+      .mockResolvedValueOnce({
+        ...confirmationRequiredResult,
+        action: 'pull-latest',
+        direction: 'pull',
+        outcome: 'success',
+        reason: null,
+        message: 'Pulled latest. Local changes were overwritten.',
+      })
+
+    render(
+      <DashboardSyncActionsView
+        isPending={false}
+        onPullLatest={onPullLatest}
+        onPushLocal={vi.fn()}
+        status={configuredStatus}
+      />,
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: 'Pull latest from Gist' }),
+    )
+    await user.click(await screen.findByRole('button', { name: /Force pull/i }))
+
+    expect(onPullLatest).toHaveBeenLastCalledWith({
+      confirmLocalOverwrite: true,
+    })
+    expect(
+      await screen.findByRole('dialog', { name: /Pull complete/i }),
+    ).toHaveTextContent(/overwritten/i)
+  })
+
+  it('shows a result dialog after a successful pull', async () => {
     const user = userEvent.setup()
     const onPullLatest = vi.fn().mockResolvedValue({
       action: 'pull-latest',
@@ -111,10 +185,13 @@ describe('DashboardSyncActionsView', () => {
       screen.getByRole('button', { name: 'Pull latest from Gist' }),
     )
 
-    const feedback = await screen.findByRole('status')
-    expect(feedback).toHaveTextContent('Pulled latest.')
-    expect(feedback).not.toHaveClass('sr-only')
-    expect(screen.getByText('Pulled latest.')).toBeVisible()
+    const dialog = await screen.findByRole('dialog', {
+      name: /Pull complete/i,
+    })
+    expect(dialog).toHaveTextContent('Pulled latest.')
+    expect(onPullLatest).toHaveBeenCalledWith({
+      confirmLocalOverwrite: false,
+    })
   })
 
   it.each([

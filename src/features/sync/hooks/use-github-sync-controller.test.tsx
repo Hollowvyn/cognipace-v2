@@ -28,7 +28,8 @@ describe('useGithubSyncController', () => {
           action: 'connect-gist',
           direction: null,
           outcome: 'success',
-          message: 'GitHub Gist connected. Use Pull latest to update this browser.',
+          message:
+            'GitHub Gist connected. Use Pull latest to update this browser.',
         })
       }
 
@@ -148,6 +149,7 @@ describe('useGithubSyncController', () => {
 
     expect(sendMessage).toHaveBeenCalledWith('sync.pullLatest', {
       surface: 'dashboard',
+      confirmLocalOverwrite: false,
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: queryKeys.settings.all,
@@ -176,6 +178,42 @@ describe('useGithubSyncController', () => {
     })
     expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: queryKeys.appShell.all,
+    })
+  })
+
+  it('passes force-pull confirmation through the controller action', async () => {
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'sync.getStatus') {
+        return Promise.resolve(configuredStatus)
+      }
+
+      if (method === 'sync.pullLatest') {
+        return Promise.resolve({
+          ...syncActionResult,
+          action: 'pull-latest',
+          direction: 'pull',
+          outcome: 'success',
+        })
+      }
+
+      return Promise.reject(new Error(`Unexpected method ${method}`))
+    })
+    const { wrapper } = createQueryTestHarness()
+    const { result } = renderHook(() => useGithubSyncController(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.status).toEqual(configuredStatus)
+    })
+
+    await act(async () => {
+      await result.current.actions.onPullLatest({
+        confirmLocalOverwrite: true,
+      })
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('sync.pullLatest', {
+      surface: 'dashboard',
+      confirmLocalOverwrite: true,
     })
   })
 })

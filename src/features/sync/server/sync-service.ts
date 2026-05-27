@@ -49,6 +49,10 @@ type PushLocalOptions = {
   confirmRemoteOverwrite?: boolean
 }
 
+type PullLatestOptions = {
+  confirmLocalOverwrite?: boolean
+}
+
 export type SyncOperationCoordinator = {
   isRunning: () => boolean
   run: <T>(work: () => Promise<T>) => Promise<T>
@@ -224,7 +228,8 @@ export function createSyncService(deps: SyncServiceDependencies) {
 
         return {
           direction: null,
-          message: 'GitHub Gist connected. Use Pull latest to update this browser.',
+          message:
+            'GitHub Gist connected. Use Pull latest to update this browser.',
         } as const
       }
 
@@ -248,7 +253,8 @@ export function createSyncService(deps: SyncServiceDependencies) {
     })
 
     if (
-      result.message === 'Choose whether to pull remote data or push local data.'
+      result.message ===
+      'Choose whether to pull remote data or push local data.'
     ) {
       return createActionResult({
         action: 'connect-gist',
@@ -281,7 +287,9 @@ export function createSyncService(deps: SyncServiceDependencies) {
     })
   }
 
-  async function pullLatest(): Promise<SyncActionResult> {
+  async function pullLatest(
+    options: PullLatestOptions = {},
+  ): Promise<SyncActionResult> {
     return runAction('pull-latest', 'pull', async () => {
       const metadata = await deps.readMetadata()
 
@@ -297,7 +305,9 @@ export function createSyncService(deps: SyncServiceDependencies) {
         })
       }
 
-      if (metadata.dirtySinceLastSync) {
+      const localIsDirty = metadata.dirtySinceLastSync
+
+      if (localIsDirty && options.confirmLocalOverwrite !== true) {
         await deps.writeMetadata({
           lastBlockingReason: 'local-dirty',
           lastError: null,
@@ -315,7 +325,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
       const client = await readConfiguredClient()
       const remote = await client.getGist(metadata.gistId)
 
-      if (!hasRemoteChanged(remote, metadata)) {
+      if (!localIsDirty && !hasRemoteChanged(remote, metadata)) {
         await deps.writeMetadata({
           lastSyncAt: deps.now().toISOString(),
           lastSyncDirection: 'no-change',
@@ -339,7 +349,9 @@ export function createSyncService(deps: SyncServiceDependencies) {
       return createActionResult({
         action: 'pull-latest',
         direction: 'pull',
-        message: 'Latest Gist data pulled.',
+        message: localIsDirty
+          ? 'Latest Gist data pulled. Local changes were overwritten.'
+          : 'Latest Gist data pulled.',
       })
     })
   }

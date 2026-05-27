@@ -184,7 +184,10 @@ The sync feature is manual-first in this pass. Manual `sync.pullLatest` and
 `sync.pushLocal` runtime methods are dashboard-only. Local mutations mark sync
 metadata dirty after the local mutation commits and before the database snapshot
 flush, but they do not auto-push after mutations, and dashboard/popup/overlay
-surfaces do not auto-pull on open.
+surfaces do not auto-pull on open. Pull requests default
+`confirmLocalOverwrite` to `false` and push requests default
+`confirmRemoteOverwrite` to `false`; the sync service enforces both defaults so
+force pull and force push only happen after a UI confirmation dialog.
 
 ## External APIs And Secrets
 
@@ -287,7 +290,8 @@ When adding or changing data dependencies:
    snapshot, and broadcast invalidation tags.
 8. Directional sync methods such as `sync.pullLatest` and `sync.pushLocal` must
    follow the same Zod parsing, sender authorization, owning service,
-   snapshot-flush, and invalidation rules.
+   snapshot-flush, and invalidation rules. Destructive overwrite flags must
+   default to `false` in the Zod request schema and be asserted in handler tests.
 9. Add focused tests for contracts, authorization, handler behavior, and the
    calling API hook as appropriate.
 

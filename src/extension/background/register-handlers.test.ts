@@ -378,6 +378,7 @@ describe('background handler registration', () => {
     })
     const pulledLatest = await sendRuntimeMessage('sync.pullLatest', {
       surface: 'dashboard',
+      confirmLocalOverwrite: true,
     })
     const pushedLocal = await sendRuntimeMessage('sync.pushLocal', {
       surface: 'dashboard',
@@ -398,7 +399,9 @@ describe('background handler registration', () => {
     expect(backgroundMocks.syncService.connectGithubGist).toHaveBeenCalledWith(
       'gist_1',
     )
-    expect(backgroundMocks.syncService.pullLatest).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.syncService.pullLatest).toHaveBeenCalledWith({
+      confirmLocalOverwrite: true,
+    })
     expect(backgroundMocks.syncService.pushLocal).toHaveBeenCalledWith({
       confirmRemoteOverwrite: true,
     })
@@ -421,6 +424,18 @@ describe('background handler registration', () => {
     expectRuntimePolicy('sync.pushLocal', 'dashboard')
     expect(backgroundMocks.syncService.pushLocal).toHaveBeenCalledWith({
       confirmRemoteOverwrite: false,
+    })
+    expect(response).toEqual(syncActionResultSchema.parse(syncActionResult))
+  })
+
+  it('defaults sync.pullLatest local overwrite confirmation to false', async () => {
+    const response = await sendRuntimeMessage('sync.pullLatest', {
+      surface: 'dashboard',
+    })
+
+    expectRuntimePolicy('sync.pullLatest', 'dashboard')
+    expect(backgroundMocks.syncService.pullLatest).toHaveBeenCalledWith({
+      confirmLocalOverwrite: false,
     })
     expect(response).toEqual(syncActionResultSchema.parse(syncActionResult))
   })

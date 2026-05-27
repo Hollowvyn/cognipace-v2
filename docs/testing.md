@@ -109,14 +109,19 @@ dialog button changes to a success state labeled Backup exported.
 12. Use Pull latest in the other install and confirm the pushed update appears
     there.
 13. Create a conflict by changing both installs before syncing.
-14. Confirm Pull latest is blocked when local data has unpushed changes.
-15. Confirm Push local reports changed remote data and requires explicit
-    overwrite confirmation before replacing the Gist.
+14. Confirm Pull latest opens a force-pull dialog when local data has unpushed
+    changes, then cancel once before intentionally confirming.
+15. Confirm force pull replaces the local data with the connected Gist data only
+    after confirmation.
+16. Confirm Push local opens a force-push dialog when remote data changed, then
+    cancel once before intentionally confirming.
+17. Confirm force push replaces the Gist with local data only after
+    confirmation.
 
 Expected: sync is pseudo-real-time, with manual directional pull and push actions
 that make data movement clear. Local writes are not blocked by GitHub failures,
-destructive remote overwrite requires confirmation, and tokens stay in trusted
-local extension storage rather than backups or sync files.
+destructive local and remote overwrites require confirmation dialogs, and tokens
+stay in trusted local extension storage rather than backups or sync files.
 
 ### Library
 

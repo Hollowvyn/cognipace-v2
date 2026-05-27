@@ -27,6 +27,11 @@ export const syncSetEnabledRequestSchema = z.strictObject({
   enabled: z.boolean(),
 })
 
+export const syncPullLatestRequestSchema = z.strictObject({
+  surface: z.literal('dashboard'),
+  confirmLocalOverwrite: z.boolean().default(false),
+})
+
 export const syncPushLocalRequestSchema = z.strictObject({
   surface: z.literal('dashboard'),
   confirmRemoteOverwrite: z.boolean().default(false),
@@ -126,6 +131,7 @@ export type SyncGithubTokenRequest = z.infer<
 >
 export type SyncGithubGistRequest = z.infer<typeof syncGithubGistRequestSchema>
 export type SyncSetEnabledRequest = z.infer<typeof syncSetEnabledRequestSchema>
+export type SyncPullLatestRequest = z.infer<typeof syncPullLatestRequestSchema>
 export type SyncPushLocalRequest = z.infer<typeof syncPushLocalRequestSchema>
 export type SerializedSyncStatus = z.infer<typeof syncStatusSchema>
 export type SyncActionResult = z.infer<typeof syncActionResultSchema>

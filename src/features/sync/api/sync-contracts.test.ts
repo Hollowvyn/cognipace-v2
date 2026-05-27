@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  syncActionResultSchema,
-  syncPushLocalRequestSchema,
-} from './sync-contracts'
+import * as syncContracts from './sync-contracts'
+
+const { syncActionResultSchema, syncPushLocalRequestSchema } = syncContracts
 
 describe('sync contracts', () => {
   it('validates directional action instrumentation without secret fields', () => {
@@ -72,6 +71,38 @@ describe('sync contracts', () => {
       syncPushLocalRequestSchema.parse({
         surface: 'popup',
         confirmRemoteOverwrite: true,
+      }),
+    ).toThrow()
+  })
+
+  it('requires explicit confirmation for overwrite pulls at the request boundary', () => {
+    const pullRequestSchema = (
+      syncContracts as unknown as {
+        syncPullLatestRequestSchema: typeof syncPushLocalRequestSchema
+      }
+    ).syncPullLatestRequestSchema
+
+    expect(
+      pullRequestSchema.parse({
+        surface: 'dashboard',
+      }),
+    ).toEqual({
+      surface: 'dashboard',
+      confirmLocalOverwrite: false,
+    })
+    expect(
+      pullRequestSchema.parse({
+        surface: 'dashboard',
+        confirmLocalOverwrite: true,
+      }),
+    ).toEqual({
+      surface: 'dashboard',
+      confirmLocalOverwrite: true,
+    })
+    expect(() =>
+      pullRequestSchema.parse({
+        surface: 'popup',
+        confirmLocalOverwrite: true,
       }),
     ).toThrow()
   })

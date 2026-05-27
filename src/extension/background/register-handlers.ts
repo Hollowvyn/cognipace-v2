@@ -28,6 +28,7 @@ import {
   syncActionResultSchema,
   syncGithubGistRequestSchema,
   syncGithubTokenRequestSchema,
+  syncPullLatestRequestSchema,
   syncPushLocalRequestSchema,
   syncRequestSchema,
   syncSetEnabledRequestSchema,
@@ -315,7 +316,7 @@ export function registerBackgroundHandlers() {
   })
 
   onMessage('sync.pullLatest', ({ data, sender }) => {
-    const request = syncRequestSchema.parse(data)
+    const request = syncPullLatestRequestSchema.parse(data)
 
     assertCanSenderCallExtensionMethod(
       'sync.pullLatest',
@@ -324,7 +325,11 @@ export function registerBackgroundHandlers() {
     )
     return getAppDb().then(async ({ db }) =>
       parseSyncActionResult(
-        await runQueuedSyncAction(db, (service) => service.pullLatest()),
+        await runQueuedSyncAction(db, (service) =>
+          service.pullLatest({
+            confirmLocalOverwrite: request.confirmLocalOverwrite,
+          }),
+        ),
       ),
     )
   })
@@ -332,7 +337,11 @@ export function registerBackgroundHandlers() {
   onMessage('sync.pushLocal', ({ data, sender }) => {
     const request = syncPushLocalRequestSchema.parse(data)
 
-    assertCanSenderCallExtensionMethod('sync.pushLocal', request.surface, sender)
+    assertCanSenderCallExtensionMethod(
+      'sync.pushLocal',
+      request.surface,
+      sender,
+    )
     return getAppDb().then(async ({ db }) =>
       parseSyncActionResult(
         await runQueuedSyncAction(db, (service) =>
@@ -1037,7 +1046,9 @@ function runQueuedSyncAction<T>(
     const dirtyMarkReady = await retryPendingDirtyMark()
 
     if (!dirtyMarkReady) {
-      throw new Error('Local data changed but sync metadata could not be saved.')
+      throw new Error(
+        'Local data changed but sync metadata could not be saved.',
+      )
     }
 
     return action(createSyncServiceForDbInQueue(db, true))

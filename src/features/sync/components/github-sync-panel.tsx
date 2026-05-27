@@ -20,6 +20,12 @@ import type {
   SerializedSyncStatus,
   SyncActionResult,
 } from '../api/sync-contracts'
+import {
+  createSyncActionDialogState,
+  createSyncErrorDialogState,
+  SyncActionDialogForState,
+  type SyncDialogState,
+} from './sync-action-dialog'
 
 type MaybePromise<T> = T | Promise<T>
 
@@ -29,17 +35,14 @@ export interface GitHubSyncPanelActions {
   onConnectGist: (gistId: string) => GitHubSyncActionResult
   onCreateGist: () => GitHubSyncActionResult
   onDeleteToken: () => GitHubSyncActionResult
-  onPullLatest: () => GitHubSyncActionResult
+  onPullLatest: (input?: {
+    confirmLocalOverwrite?: boolean
+  }) => GitHubSyncActionResult
   onPushLocal: (input?: {
     confirmRemoteOverwrite?: boolean
   }) => GitHubSyncActionResult
   onSaveToken: (token: string) => GitHubSyncActionResult
   onValidateToken: (token: string) => GitHubSyncActionResult
-}
-
-type Feedback = {
-  message: string
-  tone: 'danger' | 'neutral' | 'success' | 'warning'
 }
 
 export function GitHubSyncPanel({
@@ -56,21 +59,10 @@ export function GitHubSyncPanel({
     sourceGistId: status.gistId,
     value: status.gistId ?? '',
   })
-  const [feedback, setFeedback] = useState<Feedback | null>(null)
+  const [dialog, setDialog] = useState<SyncDialogState | null>(null)
   const [tokenSavedInSession, setTokenSavedInSession] = useState(false)
-  const [
-    pushOverwriteConfirmationStatusKeys,
-    setPushOverwriteConfirmationStatusKeys,
-  ] = useState<readonly string[] | null>(null)
 
   const hasTokenForActions = status.tokenConfigured || tokenSavedInSession
-  const currentPushOverwriteConfirmationStatusKey =
-    readPushOverwriteConfirmationStatusKey(status)
-  const pushOverwriteConfirmationVisible =
-    currentPushOverwriteConfirmationStatusKey !== null &&
-    pushOverwriteConfirmationStatusKeys?.includes(
-      currentPushOverwriteConfirmationStatusKey,
-    ) === true
   const gistId =
     gistDraft.sourceGistId === status.gistId
       ? gistDraft.value
@@ -79,63 +71,52 @@ export function GitHubSyncPanel({
   async function runPanelAction(
     action: () => GitHubSyncActionResult,
     fallbackMessage: string,
-    options: { afterSuccess?: () => void } = {},
+    options: { afterSuccess?: () => void; clearDialog?: boolean } = {},
   ) {
-    setFeedback(null)
-    setPushOverwriteConfirmationStatusKeys(null)
+    if (options.clearDialog !== false) {
+      setDialog(null)
+    }
 
     try {
       const result = await action()
-      const actionFeedback = readActionFeedback(result, fallbackMessage)
 
-      if (actionFeedback.tone === 'success') {
+      if (isSuccessfulAction(result)) {
         options.afterSuccess?.()
       }
 
-      setFeedback(actionFeedback)
+      setDialog(createSyncActionDialogState(result, fallbackMessage))
     } catch (error) {
-      setFeedback({
-        message: readErrorMessage(error, 'Sync action failed.'),
-        tone: 'danger',
-      })
+      setDialog(createSyncErrorDialogState(error, 'Sync action failed.'))
     }
   }
 
-  async function runPullLatestAction() {
+  async function runPullLatestAction(
+    confirmLocalOverwrite = false,
+    options: { clearDialog?: boolean } = {},
+  ) {
     await runPanelAction(
-      () => actions.onPullLatest(),
+      () => actions.onPullLatest({ confirmLocalOverwrite }),
       'Latest Gist data pulled.',
+      options,
     )
   }
 
-  async function runPushLocalAction(confirmRemoteOverwrite: boolean) {
-    setFeedback(null)
-    if (!confirmRemoteOverwrite) {
-      setPushOverwriteConfirmationStatusKeys(null)
+  async function runPushLocalAction(
+    confirmRemoteOverwrite: boolean,
+    options: { clearDialog?: boolean } = {},
+  ) {
+    if (options.clearDialog !== false) {
+      setDialog(null)
     }
 
     try {
       const result = await actions.onPushLocal({ confirmRemoteOverwrite })
-      const actionFeedback = readActionFeedback(
-        result,
-        'Local data pushed to Gist.',
-      )
 
-      setPushOverwriteConfirmationStatusKeys(
-        isSyncActionResult(result) &&
-          result.outcome === 'confirmation-required'
-          ? readPushOverwriteConfirmationStatusKeys(
-              result.status,
-              currentPushOverwriteConfirmationStatusKey,
-            )
-          : null,
+      setDialog(
+        createSyncActionDialogState(result, 'Local data pushed to Gist.'),
       )
-      setFeedback(actionFeedback)
     } catch (error) {
-      setFeedback({
-        message: readErrorMessage(error, 'Sync action failed.'),
-        tone: 'danger',
-      })
+      setDialog(createSyncErrorDialogState(error, 'Sync action failed.'))
     }
   }
 
@@ -159,14 +140,6 @@ export function GitHubSyncPanel({
       </header>
 
       <SyncStatusBlock status={status} />
-      {feedback ? (
-        <InlineStatus
-          role={feedback.tone === 'danger' ? 'alert' : 'status'}
-          tone={feedback.tone}
-        >
-          {feedback.message}
-        </InlineStatus>
-      ) : null}
 
       <div className="grid gap-2">
         <label
@@ -288,36 +261,11 @@ export function GitHubSyncPanel({
         </div>
       </div>
 
-      {pushOverwriteConfirmationVisible ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            disabled={isPending || !status.configured}
-            onClick={() => {
-              void runPushLocalAction(true)
-            }}
-            size="sm"
-            variant="destructive"
-          >
-            Overwrite Gist
-          </Button>
-          <Button
-            disabled={isPending}
-            onClick={() => {
-              setPushOverwriteConfirmationStatusKeys(null)
-            }}
-            size="sm"
-            variant="ghost"
-          >
-            Cancel
-          </Button>
-        </div>
-      ) : null}
-
       <div className="flex flex-wrap items-center gap-2">
         <Button
           disabled={isPending || !status.configured}
           onClick={() => {
-            void runPullLatestAction()
+            void runPullLatestAction(false)
           }}
           size="sm"
           variant="outline"
@@ -356,43 +304,23 @@ export function GitHubSyncPanel({
           Delete token
         </Button>
       </div>
+      {dialog ? (
+        <SyncActionDialogForState
+          dialog={dialog}
+          isPending={isPending}
+          onClose={() => {
+            setDialog(null)
+          }}
+          onForcePull={() => {
+            void runPullLatestAction(true, { clearDialog: false })
+          }}
+          onForcePush={() => {
+            void runPushLocalAction(true, { clearDialog: false })
+          }}
+        />
+      ) : null}
     </Surface>
   )
-}
-
-function readPushOverwriteConfirmationStatusKey(
-  status: SerializedSyncStatus,
-): string | null {
-  if (!status.configured || status.gistId === null) {
-    return null
-  }
-
-  return JSON.stringify({
-    gistId: status.gistId,
-    enabled: status.enabled,
-    configured: status.configured,
-    conflictDetectedAt: status.conflict?.detectedAt ?? null,
-    conflictRemoteVersion: status.conflict?.remoteVersion ?? null,
-    lastBlockingReason: status.lastBlockingReason,
-    lastErrorOccurredAt: status.lastError?.occurredAt ?? null,
-    needsPush: status.needsPush,
-    lastPullAt: status.lastPullAt,
-    lastPushAt: status.lastPushAt,
-    lastSyncAt: status.lastSyncAt,
-    lastSyncDirection: status.lastSyncDirection,
-  })
-}
-
-function readPushOverwriteConfirmationStatusKeys(
-  resultStatus: SerializedSyncStatus,
-  fallbackStatusKey: string | null,
-): readonly string[] {
-  const resultStatusKey = readPushOverwriteConfirmationStatusKey(resultStatus)
-  const keys = [resultStatusKey, fallbackStatusKey].filter(
-    (key): key is string => key !== null,
-  )
-
-  return Array.from(new Set(keys))
 }
 
 function SyncStatusBlock({ status }: { status: SerializedSyncStatus }) {
@@ -492,9 +420,7 @@ function readLastSyncStatus(status: SerializedSyncStatus) {
         ? 'sync check'
         : (status.lastSyncDirection ?? 'sync')
 
-    return `Last ${label}: ${formatDateTime(
-      status.lastSyncAt,
-    )}`
+    return `Last ${label}: ${formatDateTime(status.lastSyncAt)}`
   }
 
   return null
@@ -509,30 +435,12 @@ function readLatestDirectionalSync(status: SerializedSyncStatus) {
   )
 
   return candidates.toSorted(
-    (left, right) =>
-      Date.parse(right.timestamp) - Date.parse(left.timestamp),
+    (left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp),
   )[0]
 }
 
-function readActionFeedback(result: unknown, fallback: string): Feedback {
-  const message = readActionMessage(result, fallback)
-
-  if (!isSyncActionResult(result)) {
-    return { message, tone: 'success' }
-  }
-
-  if (result.outcome === 'error') {
-    return { message, tone: 'danger' }
-  }
-
-  if (
-    result.outcome === 'blocked' ||
-    result.outcome === 'confirmation-required'
-  ) {
-    return { message, tone: 'warning' }
-  }
-
-  return { message, tone: 'success' }
+function isSuccessfulAction(result: unknown) {
+  return !isSyncActionResult(result) || result.outcome === 'success'
 }
 
 function isSyncActionResult(result: unknown): result is SyncActionResult {
@@ -546,21 +454,4 @@ function isSyncActionResult(result: unknown): result is SyncActionResult {
       result.outcome === 'confirmation-required' ||
       result.outcome === 'error')
   )
-}
-
-function readActionMessage(result: unknown, fallback: string) {
-  if (
-    result &&
-    typeof result === 'object' &&
-    'message' in result &&
-    typeof result.message === 'string'
-  ) {
-    return result.message
-  }
-
-  return fallback
-}
-
-function readErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback
 }

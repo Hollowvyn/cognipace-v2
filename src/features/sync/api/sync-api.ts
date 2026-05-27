@@ -20,6 +20,10 @@ const broadSyncInvalidationTags = [
   'app-shell',
 ] as const satisfies readonly CacheInvalidationTag[]
 
+export type PullLatestOptions = {
+  confirmLocalOverwrite?: boolean
+}
+
 export function getSyncStatusViaRuntime(surface: UiSurface = 'dashboard') {
   return sendMessage('sync.getStatus', { surface })
 }
@@ -51,8 +55,11 @@ export function setSyncEnabledViaRuntime(enabled: boolean) {
   return sendMessage('sync.setEnabled', { surface: 'dashboard', enabled })
 }
 
-export function pullLatestViaRuntime() {
-  return sendMessage('sync.pullLatest', { surface: 'dashboard' })
+export function pullLatestViaRuntime(options: PullLatestOptions = {}) {
+  return sendMessage('sync.pullLatest', {
+    surface: 'dashboard',
+    confirmLocalOverwrite: options.confirmLocalOverwrite ?? false,
+  })
 }
 
 export function pushLocalViaRuntime(
@@ -97,9 +104,12 @@ export function useSyncAction<TVariables = void, TResult = unknown>(
 }
 
 export function usePullLatest() {
-  return useSyncAction(() => pullLatestViaRuntime(), {
-    shouldInvalidateData: didPullSuccessfully,
-  })
+  return useSyncAction<PullLatestOptions | undefined, SyncActionResult>(
+    (input) => pullLatestViaRuntime(input),
+    {
+      shouldInvalidateData: didPullSuccessfully,
+    },
+  )
 }
 
 export function usePushLocal() {

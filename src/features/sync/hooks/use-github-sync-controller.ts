@@ -39,7 +39,7 @@ export function useGithubSyncController() {
     onConnectGist: (gistId) => connectGist.mutateAsync(gistId),
     onCreateGist: () => createGist.mutateAsync(),
     onDeleteToken: () => deleteToken.mutateAsync(),
-    onPullLatest: () => pullLatest.mutateAsync(),
+    onPullLatest: (input = {}) => pullLatest.mutateAsync(input),
     onPushLocal: (input) => pushLocal.mutateAsync(input),
     onSaveToken: (token) => saveToken.mutateAsync(token),
     onValidateToken: (token) => validateToken.mutateAsync(token),

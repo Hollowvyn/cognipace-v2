@@ -162,14 +162,16 @@ data. Pull latest updates this browser from the connected Gist. Push local
 updates the connected Gist from this browser.
 
 Local writes always save locally first and mark data as needing push. Pulling is
-blocked when local changes have not been pushed, and pushing over changed remote
-data requires explicit overwrite confirmation. Retryable sync failures are shown
-in Settings after explicit manual sync actions fail and do not roll back local
-saves.
+blocked by default when local changes have not been pushed, but the user can
+force pull after a confirmation dialog that makes the local overwrite explicit.
+Pushing over changed remote data also requires explicit force-push confirmation
+before replacing the Gist. Manual action feedback is shown in dialogs so the
+direction and result of the operation stay clear. Retryable sync failures are
+shown after explicit manual sync actions fail and do not roll back local saves.
 
-Settings is the setup, recovery, and full-confirmation surface; once sync is
-configured, the dashboard header also provides compact shortcuts for quick pull
-and push actions.
+Settings is the setup and recovery surface; once sync is configured, the
+dashboard header also provides compact shortcuts for quick pull and push actions
+with the same force-pull and force-push confirmation rules.
 
 GitHub tokens are stored in trusted `chrome.storage.local` extension storage and
 are only read by the background service worker. Tokens are not included in

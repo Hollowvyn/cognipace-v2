@@ -84,6 +84,7 @@ import type {
   SyncActionResult,
   SyncGithubGistRequest,
   SyncGithubTokenRequest,
+  SyncPullLatestRequest,
   SyncPushLocalRequest,
   SyncRequest,
   SyncSetEnabledRequest,
@@ -92,6 +93,7 @@ export {
   syncActionResultSchema,
   syncGithubGistRequestSchema,
   syncGithubTokenRequestSchema,
+  syncPullLatestRequestSchema,
   syncPushLocalRequestSchema,
   syncRequestSchema,
   syncSetEnabledRequestSchema,
@@ -266,7 +268,7 @@ export interface ProtocolMap {
   'sync.createGithubGist'(request: SyncRequest): SyncActionResult
   'sync.connectGithubGist'(request: SyncGithubGistRequest): SyncActionResult
   'sync.setEnabled'(request: SyncSetEnabledRequest): SyncActionResult
-  'sync.pullLatest'(request: SyncRequest): SyncActionResult
+  'sync.pullLatest'(request: SyncPullLatestRequest): SyncActionResult
   'sync.pushLocal'(request: SyncPushLocalRequest): SyncActionResult
   'problems.upsertFromPage'(
     request: ProblemsUpsertFromPageRequest,

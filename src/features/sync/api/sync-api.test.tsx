@@ -54,6 +54,22 @@ describe('sync API', () => {
 
     expect(sendMessage).toHaveBeenCalledWith('sync.pullLatest', {
       surface: 'dashboard',
+      confirmLocalOverwrite: false,
+    })
+  })
+
+  it('sends confirmed manual pull through the directional runtime boundary', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(syncActionResult)
+
+    const pullLatest = pullLatestViaRuntime as (options: {
+      confirmLocalOverwrite: boolean
+    }) => Promise<unknown>
+
+    await pullLatest({ confirmLocalOverwrite: true })
+
+    expect(sendMessage).toHaveBeenCalledWith('sync.pullLatest', {
+      surface: 'dashboard',
+      confirmLocalOverwrite: true,
     })
   })
 
@@ -103,7 +119,7 @@ describe('sync API', () => {
     )
 
     await act(async () => {
-      await result.current.mutateAsync()
+      await result.current.mutateAsync(undefined)
     })
 
     expect(invalidateQueries).toHaveBeenCalledWith({
@@ -141,7 +157,7 @@ describe('sync API', () => {
     )
 
     await act(async () => {
-      await result.current.mutateAsync()
+      await result.current.mutateAsync(undefined)
     })
 
     expect(invalidateQueries).toHaveBeenCalledWith({
@@ -169,11 +185,12 @@ describe('sync API', () => {
     const { result } = renderHook(() => usePullLatest(), { wrapper })
 
     await act(async () => {
-      await result.current.mutateAsync()
+      await result.current.mutateAsync(undefined)
     })
 
     expect(sendMessage).toHaveBeenCalledWith('sync.pullLatest', {
       surface: 'dashboard',
+      confirmLocalOverwrite: false,
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: queryKeys.settings.all,
@@ -197,7 +214,7 @@ describe('sync API', () => {
     })
 
     await act(async () => {
-      await result.current.mutateAsync()
+      await result.current.mutateAsync(undefined)
     })
 
     expect(invalidateQueries).toHaveBeenCalledWith({

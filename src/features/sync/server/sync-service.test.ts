@@ -153,12 +153,13 @@ describe('sync service', () => {
       }),
     )
 
-    await expect(harness.service.connectGithubGist('gist_1')).resolves
-      .toMatchObject({
-        action: 'connect-gist',
-        outcome: 'confirmation-required',
-        reason: 'remote-changed',
-      })
+    await expect(
+      harness.service.connectGithubGist('gist_1'),
+    ).resolves.toMatchObject({
+      action: 'connect-gist',
+      outcome: 'confirmation-required',
+      reason: 'remote-changed',
+    })
     expect(harness.getMetadata()).toMatchObject({
       enabled: true,
       gistId: 'gist_1',
@@ -248,6 +249,55 @@ describe('sync service', () => {
       dirtySinceLastSync: true,
       lastBlockingReason: 'local-dirty',
       lastError: null,
+    })
+  })
+
+  it('pullLatest overwrites dirty local data after explicit confirmation', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:05:00.000Z',
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:10:00.000Z',
+        remoteVersion: 'remote_2',
+        content: JSON.stringify(
+          buildSyncEnvelope({
+            backup,
+            dataUpdatedAt: '2026-05-26T12:10:00.000Z',
+          }),
+        ),
+      }),
+    )
+
+    const pullLatest = harness.service.pullLatest as (options: {
+      confirmLocalOverwrite: boolean
+    }) => Promise<unknown>
+
+    await expect(
+      pullLatest({ confirmLocalOverwrite: true }),
+    ).resolves.toMatchObject({
+      action: 'pull-latest',
+      direction: 'pull',
+      outcome: 'success',
+      reason: null,
+      retryable: false,
+      message: 'Latest Gist data pulled. Local changes were overwritten.',
+    })
+    expect(harness.restoreBackup).toHaveBeenCalledWith(backup)
+    expect(harness.flushDbSnapshot).toHaveBeenCalled()
+    expect(harness.broadcastInvalidation).toHaveBeenCalled()
+    expect(harness.getMetadata()).toMatchObject({
+      dirtySinceLastSync: false,
+      lastBlockingReason: null,
+      lastPullAt: currentTime,
+      lastRemoteVersion: 'remote_2',
+      lastSyncDirection: 'pull',
     })
   })
 
@@ -601,7 +651,8 @@ describe('sync service', () => {
         action: 'connect-gist',
         direction: null,
         outcome: 'success',
-        message: 'GitHub Gist connected. Use Pull latest to update this browser.',
+        message:
+          'GitHub Gist connected. Use Pull latest to update this browser.',
       }),
     )
     expect(harness.restoreBackup).not.toHaveBeenCalled()
