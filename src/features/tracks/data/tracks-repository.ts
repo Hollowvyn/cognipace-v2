@@ -752,8 +752,6 @@ async function readMemberships(
         completedRating,
         reviewAttemptId: row.reviewAttemptId,
       }),
-      completedAt,
-      completedRating,
     }
   })
 }

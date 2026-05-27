@@ -321,7 +321,9 @@ async function readActiveTrackGuidance(
 function selectActiveTrackNextRow(
   rows: readonly TrackProblemRowSerializationInput[],
 ) {
-  const incompleteRows = rows.filter((row) => !row.membership.completedAt)
+  const incompleteRows = rows.filter(
+    (row) => row.membership.completion.status !== 'completed',
+  )
   const nextRow =
     incompleteRows.find((row) => row.status === 'due') ??
     incompleteRows.find((row) => row.status !== 'suspended') ??

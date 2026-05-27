@@ -67,8 +67,6 @@ export interface TrackProblemMembership {
   problemSlug: string
   problemPosition: number
   completion: TrackProblemCompletion
-  completedAt: Date | null
-  completedRating: TrackCompletedRating | null
 }
 
 export interface TrackProblemMembershipInput {

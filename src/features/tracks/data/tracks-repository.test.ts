@@ -398,6 +398,12 @@ describe('TracksRepository', () => {
       'valid-parentheses',
       'two-sum',
     ])
+    expect(memberships[0]).not.toHaveProperty('completedAt')
+    expect(memberships[0]).not.toHaveProperty('completedRating')
+    expect(memberships[0]?.completion).toEqual({
+      status: 'incomplete',
+      reviewAttemptId: null,
+    })
   })
 
   it('sets the active track to its first group and writes both session ids', async () => {
