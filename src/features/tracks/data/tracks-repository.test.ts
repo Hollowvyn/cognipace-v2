@@ -911,15 +911,22 @@ describe('TracksRepository', () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
+    const reviewedAt = new Date('2026-01-02T00:00:00.000Z')
     const repository = createTracksRepository(handle.db)
 
     await makeLeetCodeActive(handle.db)
+    await insertReviewAttempt(handle.db, {
+      id: 'review-hard-1',
+      problemSlug: 'two-sum',
+      rating: 'hard',
+      reviewedAt,
+    })
 
     await expect(
       repository.recordActiveTrackProblemReview({
         problemSlug: 'two-sum',
         rating: 'hard',
-        reviewedAt: new Date('2026-01-02T00:00:00.000Z'),
+        reviewedAt,
         reviewAttemptId: 'review-hard-1',
       }),
     ).resolves.toBe(true)
@@ -992,21 +999,51 @@ describe('TracksRepository', () => {
       rating: 'good',
       reviewedAt: timestamp,
     })
-    await handle.db.insert(trackProblemProgress).values({
-      trackId: 'leetcode-75',
-      problemSlug: 'two-sum',
-      reviewAttemptId: 'review-two-sum-1',
-      completedAt: timestamp.getTime(),
-      completedRating: 'good',
-      createdAt: timestamp.getTime(),
-      updatedAt: timestamp.getTime(),
+    await insertReviewAttempt(handle.db, {
+      id: 'review-valid-parentheses-1',
+      problemSlug: 'valid-parentheses',
+      rating: 'easy',
+      reviewedAt: timestamp,
     })
+    await handle.db.insert(trackProblemProgress).values([
+      {
+        trackId: 'leetcode-75',
+        problemSlug: 'two-sum',
+        reviewAttemptId: 'review-two-sum-1',
+        completedAt: timestamp.getTime(),
+        completedRating: 'good',
+        createdAt: timestamp.getTime(),
+        updatedAt: timestamp.getTime(),
+      },
+      {
+        trackId: 'grind-75',
+        problemSlug: 'valid-parentheses',
+        reviewAttemptId: 'review-valid-parentheses-1',
+        completedAt: timestamp.getTime(),
+        completedRating: 'easy',
+        createdAt: timestamp.getTime(),
+        updatedAt: timestamp.getTime(),
+      },
+    ])
 
     await createTracksRepository(handle.db).resetTrackProgress('leetcode-75')
 
-    await expect(
-      handle.db.select().from(trackProblemProgress),
-    ).resolves.toEqual([])
+    const progressRows = await handle.db
+      .select()
+      .from(trackProblemProgress)
+      .orderBy(
+        asc(trackProblemProgress.trackId),
+        asc(trackProblemProgress.problemSlug),
+      )
+
+    expect(progressRows).toMatchObject([
+      {
+        trackId: 'grind-75',
+        problemSlug: 'valid-parentheses',
+        reviewAttemptId: 'review-valid-parentheses-1',
+        completedRating: 'easy',
+      },
+    ])
   })
 
   it('records active-track completion for only the first incomplete good or easy membership', async () => {
