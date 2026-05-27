@@ -142,15 +142,28 @@ const backupTrackProgressV1RowSchema = z.strictObject({
   updatedAt: isoDatetimeSchema,
 })
 
-export const backupTrackProgressRowSchema = z.strictObject({
-  trackId: trackIdSchema,
-  problemSlug: problemSlugSchema,
-  reviewAttemptId: durableIdSchema.nullable(),
-  completedAt: isoDatetimeSchema.nullable(),
-  completedRating: trackCompletedRatingSchema.nullable(),
-  createdAt: isoDatetimeSchema,
-  updatedAt: isoDatetimeSchema,
-})
+export const backupTrackProgressRowSchema = z
+  .strictObject({
+    trackId: trackIdSchema,
+    problemSlug: problemSlugSchema,
+    reviewAttemptId: durableIdSchema.nullable(),
+    completedAt: isoDatetimeSchema.nullable(),
+    completedRating: trackCompletedRatingSchema.nullable(),
+    createdAt: isoDatetimeSchema,
+    updatedAt: isoDatetimeSchema,
+  })
+  .superRefine((row, context) => {
+    const hasCompletedAt = row.completedAt !== null
+    const hasCompletedRating = row.completedRating !== null
+
+    if (hasCompletedAt !== hasCompletedRating) {
+      context.addIssue({
+        code: 'custom',
+        message: 'completedAt and completedRating must both be null or set',
+        path: ['completedAt'],
+      })
+    }
+  })
 
 export const backupTrackSessionRowSchema = z.strictObject({
   id: durableIdSchema,

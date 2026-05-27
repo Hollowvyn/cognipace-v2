@@ -164,6 +164,64 @@ describe('backup service', () => {
     expect(await rowsForProblem(db, 'second-problem')).toHaveLength(0)
   })
 
+  it('rejects progress that references a review attempt for another problem', async () => {
+    const { db } = await createTestDb({ now })
+    await insertCustomState(db)
+    const backup = await exportFullBackup(db, { exportedAt: now })
+    const malformedBackup = {
+      ...backup,
+      data: {
+        ...backup.data,
+        problems: [
+          ...backup.data.problems,
+          {
+            slug: 'second-problem',
+            title: 'Second Problem',
+            difficulty: 'easy',
+            isPremium: false,
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+          },
+        ],
+        practice: {
+          ...backup.data.practice,
+          fsrsCards: [
+            ...backup.data.practice.fsrsCards,
+            {
+              ...backup.data.practice.fsrsCards.find(
+                (card) => card.id === 'card-custom',
+              )!,
+              id: 'card-second',
+              problemSlug: 'second-problem',
+            },
+          ],
+          reviewAttempts: [
+            ...backup.data.practice.reviewAttempts,
+            {
+              ...backup.data.practice.reviewAttempts.find(
+                (attempt) => attempt.id === 'attempt-custom',
+              )!,
+              id: 'attempt-second',
+              problemSlug: 'second-problem',
+              cardId: 'card-second',
+            },
+          ],
+        },
+        tracks: {
+          ...backup.data.tracks,
+          progress: backup.data.tracks.progress.map((row) => ({
+            ...row,
+            reviewAttemptId: 'attempt-second',
+          })),
+        },
+      },
+    } satisfies BackupFile
+
+    expect(() => validateFullBackup(malformedBackup)).toThrow(
+      /progress custom-problem references review attempt attempt-second for problem second-problem/i,
+    )
+  })
+
   it('rejects duplicate DB identities before restore writes', async () => {
     const { db } = await createTestDb({ now })
     await insertCustomState(db)

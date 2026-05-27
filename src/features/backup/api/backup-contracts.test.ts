@@ -320,6 +320,43 @@ describe('backup contracts', () => {
   })
 
   it.each([
+    {
+      label: 'completedAt without completedRating',
+      progressPatch: {
+        completedAt: timestamp,
+        completedRating: null,
+      },
+    },
+    {
+      label: 'completedRating without completedAt',
+      progressPatch: {
+        completedAt: null,
+        completedRating: 'good',
+      },
+    },
+  ])('rejects v2 progress with $label', ({ progressPatch }) => {
+    const backup = createValidBackupFixture()
+
+    expect(() =>
+      backupFileSchema.parse({
+        ...backup,
+        data: {
+          ...backup.data,
+          tracks: {
+            ...backup.data.tracks,
+            progress: [
+              {
+                ...backup.data.tracks.progress[0],
+                ...progressPatch,
+              },
+            ],
+          },
+        },
+      }),
+    ).toThrow(/completedAt and completedRating/i)
+  })
+
+  it.each([
     [
       'topic id',
       (backup: ReturnType<typeof createValidBackupFixture>) => {

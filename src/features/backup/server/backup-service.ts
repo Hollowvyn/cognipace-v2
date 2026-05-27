@@ -91,6 +91,9 @@ function validateBackupReferences(data: BackupData) {
   const fsrsCardsById = new Map(
     data.practice.fsrsCards.map((card) => [card.id, card]),
   )
+  const reviewAttemptsById = new Map(
+    data.practice.reviewAttempts.map((attempt) => [attempt.id, attempt]),
+  )
   const fsrsCardIds = uniqueValues(
     data.practice.fsrsCards,
     (row) => row.id,
@@ -224,6 +227,14 @@ function validateBackupReferences(data: BackupData) {
         'progress',
         'review attempt',
       )
+
+      const attempt = reviewAttemptsById.get(row.reviewAttemptId)
+
+      if (attempt !== undefined && attempt.problemSlug !== row.problemSlug) {
+        throw new Error(
+          `Invalid backup: progress ${row.problemSlug} references review attempt ${row.reviewAttemptId} for problem ${attempt.problemSlug}.`,
+        )
+      }
     }
   }
 
