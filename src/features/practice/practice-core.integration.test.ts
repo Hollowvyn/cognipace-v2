@@ -2,12 +2,20 @@ import { eq } from 'drizzle-orm'
 import { describe, expect, it, vi } from 'vitest'
 
 import { createPracticeRepository } from '@/features/practice/data/practice-repository'
+import {
+  overrideLastReviewResultWithTrackProgress,
+  saveReviewResultWithTrackProgress,
+} from '@/features/practice/server/practice-service'
 import { getTodayQueue } from '@/features/queue/server/queue-service'
+import { defaultUserSettings } from '@/features/settings/domain'
+import { createTracksRepository } from '@/features/tracks/data/tracks-repository'
 import { createTestDb } from '@/platform/db/test-db'
 import {
   fsrsCards,
   problemPractice,
   reviewAttempts,
+  trackGroupProblems,
+  trackProblemProgress,
 } from '@/platform/db/schema'
 
 describe('practice core', () => {
@@ -666,4 +674,223 @@ describe('practice core', () => {
       notes: null,
     })
   })
+
+  it('study plan review completes only the active track for good and easy ratings', async () => {
+    const handle = await createTestDb()
+    const tracksRepository = createTracksRepository(handle.db)
+
+    await tracksRepository.setActiveTrack('leetcode-75')
+    await handle.db.insert(trackGroupProblems).values({
+      trackGroupId: 'grind-75:stack',
+      trackId: 'grind-75',
+      problemSlug: 'two-sum',
+      position: 2,
+    })
+
+    await saveReviewResultWithTrackProgress(
+      handle.db,
+      {
+        problemSlug: 'two-sum',
+        rating: 'good',
+        reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
+        reviewAttemptId: 'workflow-good-1',
+      },
+      defaultUserSettings,
+    )
+
+    const catalogAfterGood = await tracksRepository.getTrackCatalog()
+    expect(
+      readTrackProgress(catalogAfterGood, 'leetcode-75').completedCount,
+    ).toBe(1)
+    expect(readTrackProgress(catalogAfterGood, 'grind-75').completedCount).toBe(
+      0,
+    )
+
+    await tracksRepository.resetTrackProgress('leetcode-75')
+    await saveReviewResultWithTrackProgress(
+      handle.db,
+      {
+        problemSlug: 'two-sum',
+        rating: 'easy',
+        reviewedAt: new Date('2026-01-02T10:00:00.000Z'),
+        reviewAttemptId: 'workflow-easy-1',
+      },
+      defaultUserSettings,
+    )
+
+    const catalogAfterEasy = await tracksRepository.getTrackCatalog()
+    expect(
+      readTrackProgress(catalogAfterEasy, 'leetcode-75').completedCount,
+    ).toBe(1)
+    expect(readTrackProgress(catalogAfterEasy, 'grind-75').completedCount).toBe(
+      0,
+    )
+  })
+
+  it('study plan review writes incomplete active-track progress for hard and again ratings', async () => {
+    const handle = await createTestDb()
+    const tracksRepository = createTracksRepository(handle.db)
+
+    await tracksRepository.setActiveTrack('leetcode-75')
+    await handle.db.insert(trackGroupProblems).values({
+      trackGroupId: 'leetcode-75:arrays-hashing',
+      trackId: 'leetcode-75',
+      problemSlug: 'valid-parentheses',
+      position: 2,
+    })
+    await saveReviewResultWithTrackProgress(
+      handle.db,
+      {
+        problemSlug: 'two-sum',
+        rating: 'hard',
+        reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
+        reviewAttemptId: 'workflow-hard-1',
+      },
+      defaultUserSettings,
+    )
+
+    const catalogAfterHard = await tracksRepository.getTrackCatalog()
+    expect(
+      readTrackProgress(catalogAfterHard, 'leetcode-75').completedCount,
+    ).toBe(0)
+
+    await saveReviewResultWithTrackProgress(
+      handle.db,
+      {
+        problemSlug: 'valid-parentheses',
+        rating: 'again',
+        reviewedAt: new Date('2026-01-02T10:00:00.000Z'),
+        reviewAttemptId: 'workflow-again-1',
+      },
+      defaultUserSettings,
+    )
+
+    const catalogAfterAgain = await tracksRepository.getTrackCatalog()
+    expect(
+      readTrackProgress(catalogAfterAgain, 'leetcode-75').completedCount,
+    ).toBe(0)
+
+    const progressRows = await handle.db.select().from(trackProblemProgress)
+    expect(progressRows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          trackId: 'leetcode-75',
+          problemSlug: 'two-sum',
+          reviewAttemptId: 'workflow-hard-1',
+          completedAt: null,
+          completedRating: null,
+        }),
+        expect.objectContaining({
+          trackId: 'leetcode-75',
+          problemSlug: 'valid-parentheses',
+          reviewAttemptId: 'workflow-again-1',
+          completedAt: null,
+          completedRating: null,
+        }),
+      ]),
+    )
+  })
+
+  it('study plan override from good to hard clears active-track completion for the sourced attempt', async () => {
+    const handle = await createTestDb()
+    const tracksRepository = createTracksRepository(handle.db)
+
+    await tracksRepository.setActiveTrack('leetcode-75')
+    await saveReviewResultWithTrackProgress(
+      handle.db,
+      {
+        problemSlug: 'two-sum',
+        rating: 'good',
+        reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
+        reviewAttemptId: 'workflow-good-to-hard-1',
+      },
+      defaultUserSettings,
+    )
+
+    await overrideLastReviewResultWithTrackProgress(
+      handle.db,
+      {
+        problemSlug: 'two-sum',
+        rating: 'hard',
+      },
+      defaultUserSettings,
+    )
+
+    const catalog = await tracksRepository.getTrackCatalog()
+    expect(readTrackProgress(catalog, 'leetcode-75').completedCount).toBe(0)
+  })
+
+  it('study plan override from hard to good restores active-track completion for the sourced attempt', async () => {
+    const handle = await createTestDb()
+    const tracksRepository = createTracksRepository(handle.db)
+
+    await tracksRepository.setActiveTrack('leetcode-75')
+    await saveReviewResultWithTrackProgress(
+      handle.db,
+      {
+        problemSlug: 'two-sum',
+        rating: 'hard',
+        reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
+        reviewAttemptId: 'workflow-hard-to-good-1',
+      },
+      defaultUserSettings,
+    )
+
+    await overrideLastReviewResultWithTrackProgress(
+      handle.db,
+      {
+        problemSlug: 'two-sum',
+        rating: 'good',
+      },
+      defaultUserSettings,
+    )
+
+    const catalog = await tracksRepository.getTrackCatalog()
+    expect(readTrackProgress(catalog, 'leetcode-75').completedCount).toBe(1)
+  })
+
+  it('free practice saves do not write track progress', async () => {
+    const handle = await createTestDb()
+    const tracksRepository = createTracksRepository(handle.db)
+
+    await tracksRepository.setActiveTrack('leetcode-75')
+    await saveReviewResultWithTrackProgress(
+      handle.db,
+      {
+        problemSlug: 'two-sum',
+        rating: 'good',
+        reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
+        reviewAttemptId: 'workflow-free-practice-1',
+      },
+      {
+        ...defaultUserSettings,
+        practice: {
+          ...defaultUserSettings.practice,
+          mode: 'freePractice',
+        },
+      },
+    )
+
+    const catalog = await tracksRepository.getTrackCatalog()
+    expect(readTrackProgress(catalog, 'leetcode-75').completedCount).toBe(0)
+
+    await expect(
+      handle.db.select().from(trackProblemProgress),
+    ).resolves.toEqual([])
+  })
 })
+
+function readTrackProgress(
+  catalog: Awaited<
+    ReturnType<ReturnType<typeof createTracksRepository>['getTrackCatalog']>
+  >,
+  trackId: string,
+) {
+  const item = catalog.find(({ track }) => track.id === trackId)
+
+  if (!item) {
+    throw new Error(`Track "${trackId}" was not found.`)
+  }
+
+  return item.progress
+}
