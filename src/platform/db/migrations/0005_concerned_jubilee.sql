@@ -1,3 +1,16 @@
+DROP TABLE IF EXISTS `__track_group_problem_unique_preflight`;--> statement-breakpoint
+CREATE TEMP TABLE `__track_group_problem_unique_preflight` (
+	`track_id` text NOT NULL,
+	`problem_slug` text NOT NULL,
+	UNIQUE(`track_id`, `problem_slug`)
+);--> statement-breakpoint
+INSERT INTO `__track_group_problem_unique_preflight`("track_id", "problem_slug")
+SELECT
+	`track_groups`.`track_id`,
+	`track_group_problems`.`problem_slug`
+FROM `track_group_problems`
+INNER JOIN `track_groups` ON `track_groups`.`id` = `track_group_problems`.`track_group_id`;--> statement-breakpoint
+DROP TABLE `__track_group_problem_unique_preflight`;--> statement-breakpoint
 CREATE UNIQUE INDEX `track_groups_id_track_unique` ON `track_groups` (`id`,`track_id`);--> statement-breakpoint
 PRAGMA foreign_keys=OFF;--> statement-breakpoint
 CREATE TABLE `__new_track_group_problems` (
