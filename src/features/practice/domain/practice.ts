@@ -88,6 +88,7 @@ export interface UpdatePracticeLogInput {
 export interface ReviewResult {
   problemSlug: ProblemSlug
   cardId: string
+  reviewAttemptId: string
   rating: ReviewRating
   status: PracticeStatus
   dueAt: Date

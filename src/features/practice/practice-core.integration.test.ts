@@ -46,6 +46,7 @@ describe('practice core', () => {
       reviewCount: 1,
       suspended: false,
     })
+    expect(result.reviewAttemptId).toBe('review-1')
     expect(practice).toMatchObject({
       lastRating: 'good',
       lastElapsedSeconds: 725,
@@ -68,6 +69,24 @@ describe('practice core', () => {
       state: 'new',
       reviewedAt: reviewedAt.toISOString(),
     })
+  })
+
+  it('returns the generated review attempt id when one is not provided', async () => {
+    const handle = await createTestDb()
+    const repository = createPracticeRepository(handle.db)
+
+    const result = await repository.saveReviewResult({
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
+    })
+    const [attempt] = await handle.db
+      .select()
+      .from(reviewAttempts)
+      .where(eq(reviewAttempts.problemSlug, 'two-sum'))
+
+    expect(result.reviewAttemptId).toEqual(expect.any(String))
+    expect(result.reviewAttemptId).toBe(attempt?.id)
   })
 
   it('reads a complete practice details model with the latest five attempts', async () => {
@@ -310,6 +329,7 @@ describe('practice core', () => {
     })
     expect(card?.reps).toBe(2)
     expect(card?.dueAt).not.toBe(beforeOverride.dueAt.getTime())
+    expect(override.reviewAttemptId).toBe('review-2')
     expect(override.summary.reviewCount).toBe(2)
   })
 
