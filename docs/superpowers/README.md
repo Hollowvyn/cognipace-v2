@@ -20,6 +20,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Plans
 
+- [`plans/2026-05-27-track-owned-progress.md`](./plans/2026-05-27-track-owned-progress.md): implementation plan for replacing group-owned track progress with track/problem-owned progress, correction-aware review reconciliation, and backup compatibility.
 - [`plans/2026-05-26-directional-gist-sync.md`](./plans/2026-05-26-directional-gist-sync.md): implementation plan for directional manual GitHub Gist pull/push actions, dashboard header shortcuts, and sync test cleanup.
 - [`plans/2026-05-26-github-gist-sync.md`](./plans/2026-05-26-github-gist-sync.md): implementation plan for GitHub Gist pseudo-sync, reusable local secrets, shared external API transport, and LeetCode API transport cleanup.
 - [`plans/2026-05-24-docs-architecture.md`](./plans/2026-05-24-docs-architecture.md): implementation plan for this docs pass. Current while the docs pass is in progress.

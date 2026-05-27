@@ -51,23 +51,32 @@ Schema direction:
 - Re-key `track_problem_progress` by `(track_id, problem_slug)`.
 - Keep the progress row dependent on the track/problem membership so removing a
   problem from a track clears its progress.
-- Add `completed_by_review_attempt_id` so corrections can reconcile the exact
-  review attempt that created a completion.
+- Add `review_attempt_id` so corrections can reconcile the exact active-track
+  review attempt that currently controls the membership state.
 
-The intended progress row shape is:
+The intended progress row is a track-owned state row. It stores the review
+attempt that currently controls the track/problem state. Completed fields are
+populated only when that controlling attempt is a completing rating.
 
 ```txt
 track_problem_progress
 - track_id
 - problem_slug
-- completed_at
-- completed_rating
-- completed_by_review_attempt_id nullable
+- review_attempt_id nullable
+- completed_at nullable
+- completed_rating nullable
 - created_at
 - updated_at
 ```
 
-`completed_rating` remains constrained to `good | easy`.
+`completed_rating` remains constrained to `good | easy` when present. A row with
+`completed_at = null` and `completed_rating = null` represents a controlling
+active-track review attempt that did not complete the track problem. This state
+is required so a later override from `hard` or `again` to `good` or `easy` can
+complete the same active-track problem without deriving from global practice
+history. `review_attempt_id` is written for all new active-track reviews; it is
+nullable only for restored legacy progress rows or if a global practice reset
+deletes the source review attempt.
 
 ## Write Flow
 
@@ -133,12 +142,12 @@ Migration should preserve current local state when possible:
 4. Rebuild `track_problem_progress` around `(track_id, problem_slug)`.
 5. Backfill existing progress by joining old progress rows through
    `track_groups`.
-6. Add `completed_by_review_attempt_id` as nullable.
+6. Add `review_attempt_id` as nullable storage, while requiring the runtime
+   active-track review workflow to write it for new rows.
 
 If duplicate problem memberships already exist in the same track, the migration
-should either fail clearly or choose the earliest ordered membership and drop the
-duplicate membership. The implementation plan should pick one explicit policy
-before code changes begin.
+should fail when the new uniqueness constraint is applied. The implementation
+must not silently drop duplicate user data.
 
 ## Backup And Sync
 
@@ -154,12 +163,11 @@ Restore should validate:
 - `activeGroupId` is null when `activeTrackId` is null
 - when both active ids exist, the active group belongs to the active track
 
-Because sync envelopes use backup data, the implementation must either:
-
-- bump the backup/sync schema version, or
-- support reading both old and new track progress shapes during restore
-
-The implementation plan should choose the compatibility policy explicitly.
+Because sync envelopes use backup data, the implementation will bump the backup
+schema to version `2`, export only the new track-owned progress shape, and keep
+restore compatibility for version `1` by normalizing old `trackGroupId +
+problemSlug` progress rows through their group track ids. The sync envelope
+version does not need to change because the envelope protocol is unchanged.
 
 ## Contracts And Types
 
@@ -173,7 +181,7 @@ type TrackProblemCompletion =
       status: 'completed'
       completedAt: Date
       completedRating: TrackCompletedRating
-      completedByReviewAttemptId: string | null
+      reviewAttemptId: string | null
     }
 ```
 
