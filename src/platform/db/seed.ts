@@ -631,17 +631,20 @@ const seedTrackGroupProblems = [
   ...byteByteGo101Groups.flatMap((group) =>
     group.problems.map((problem, index) => ({
       trackGroupId: `${byteByteGo101TrackId}:${toSeedId(group.title)}`,
+      trackId: byteByteGo101TrackId,
       problemSlug: problem.slug,
       position: index + 1,
     })),
   ),
   {
     trackGroupId: 'leetcode-75:arrays-hashing',
+    trackId: 'leetcode-75',
     problemSlug: 'two-sum',
     position: 1,
   },
   {
     trackGroupId: 'grind-75:stack',
+    trackId: 'grind-75',
     problemSlug: 'valid-parentheses',
     position: 1,
   },
