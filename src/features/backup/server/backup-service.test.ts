@@ -219,6 +219,153 @@ describe('backup service', () => {
     expect(await rowsForProblem(db, 'custom-problem')).toHaveLength(1)
   })
 
+  it('rejects duplicate problem identity within the same track', async () => {
+    const { db } = await createTestDb({ now })
+    await insertCustomState(db)
+    const backup = await exportFullBackup(db, { exportedAt: now })
+
+    expect(() =>
+      validateFullBackup({
+        ...backup,
+        data: {
+          ...backup.data,
+          tracks: {
+            ...backup.data.tracks,
+            groups: [
+              ...backup.data.tracks.groups,
+              {
+                id: 'custom-group-2',
+                trackId: 'custom-track',
+                title: 'Custom Group 2',
+                position: 2,
+                createdAt: now.toISOString(),
+                updatedAt: now.toISOString(),
+              },
+            ],
+            memberships: [
+              ...backup.data.tracks.memberships,
+              {
+                trackGroupId: 'custom-group-2',
+                problemSlug: 'custom-problem',
+                position: 1,
+              },
+            ],
+          },
+        },
+      } satisfies BackupFile),
+    ).toThrow(/duplicate track problem identity/i)
+  })
+
+  it('rejects invalid active track session states', async () => {
+    const { db } = await createTestDb({ now })
+    await insertCustomState(db)
+    const backup = await exportFullBackup(db, { exportedAt: now })
+
+    expect(() =>
+      validateFullBackup({
+        ...backup,
+        data: {
+          ...backup.data,
+          tracks: {
+            ...backup.data.tracks,
+            session: [
+              {
+                ...backup.data.tracks.session[0]!,
+                id: 'stale',
+              },
+            ],
+          },
+        },
+      } satisfies BackupFile),
+    ).toThrow(/unsupported track session id stale/i)
+
+    expect(() =>
+      validateFullBackup({
+        ...backup,
+        data: {
+          ...backup.data,
+          tracks: {
+            ...backup.data.tracks,
+            session: [
+              {
+                ...backup.data.tracks.session[0]!,
+                activeTrackId: null,
+                activeGroupId: 'custom-group',
+              },
+            ],
+          },
+        },
+      } satisfies BackupFile),
+    ).toThrow(/cannot have an active group without an active track/i)
+
+    expect(() =>
+      validateFullBackup({
+        ...backup,
+        data: {
+          ...backup.data,
+          tracks: {
+            ...backup.data.tracks,
+            tracks: [
+              ...backup.data.tracks.tracks,
+              {
+                id: 'other-track',
+                slug: 'other-track',
+                title: 'Other Track',
+                description: null,
+                dueAt: null,
+                createdAt: now.toISOString(),
+                updatedAt: now.toISOString(),
+              },
+            ],
+            session: [
+              {
+                ...backup.data.tracks.session[0]!,
+                activeTrackId: 'other-track',
+                activeGroupId: 'custom-group',
+              },
+            ],
+          },
+        },
+      } satisfies BackupFile),
+    ).toThrow(/active group custom-group does not belong to active track other-track/i)
+  })
+
+  it('rejects progress rows outside track/problem membership', async () => {
+    const { db } = await createTestDb({ now })
+    await insertCustomState(db)
+    const backup = await exportFullBackup(db, { exportedAt: now })
+
+    expect(() =>
+      validateFullBackup({
+        ...backup,
+        data: {
+          ...backup.data,
+          tracks: {
+            ...backup.data.tracks,
+            tracks: [
+              ...backup.data.tracks.tracks,
+              {
+                id: 'other-track',
+                slug: 'other-track',
+                title: 'Other Track',
+                description: null,
+                dueAt: null,
+                createdAt: now.toISOString(),
+                updatedAt: now.toISOString(),
+              },
+            ],
+            progress: [
+              {
+                ...backup.data.tracks.progress[0]!,
+                trackId: 'other-track',
+              },
+            ],
+          },
+        },
+      } satisfies BackupFile),
+    ).toThrow(/progress references missing membership other-track/i)
+  })
+
   it('restores a backup over existing data', async () => {
     const source = await createTestDb({ now })
     await insertCustomState(source.db)
@@ -364,12 +511,14 @@ async function insertCustomState(db: TestDb) {
   })
   await db.insert(trackGroupProblems).values({
     trackGroupId: 'custom-group',
+    trackId: 'custom-track',
     problemSlug: 'custom-problem',
     position: 1,
   })
   await db.insert(trackProblemProgress).values({
-    trackGroupId: 'custom-group',
+    trackId: 'custom-track',
     problemSlug: 'custom-problem',
+    reviewAttemptId: 'attempt-custom',
     completedAt: timestamp,
     completedRating: 'good',
     createdAt: timestamp,

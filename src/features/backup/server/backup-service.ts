@@ -101,7 +101,7 @@ function validateBackupReferences(data: BackupData) {
     (row) => `${row.problemSlug}:${row.cardKind}`,
     'FSRS card problem/kind',
   )
-  uniqueValues(
+  const reviewAttemptIds = uniqueValues(
     data.practice.reviewAttempts,
     (row) => row.id,
     'review attempt id',
@@ -139,16 +139,27 @@ function validateBackupReferences(data: BackupData) {
     'track membership identity',
   )
   uniqueValues(
+    data.tracks.memberships,
+    (row) => {
+      const group = trackGroupsById.get(row.trackGroupId)
+
+      return `${group?.trackId ?? 'missing'}\u0000${row.problemSlug}`
+    },
+    'track problem identity',
+  )
+  uniqueValues(
     data.tracks.progress,
-    (row) => `${row.trackGroupId}\u0000${row.problemSlug}`,
+    (row) => `${row.trackId}\u0000${row.problemSlug}`,
     'track progress identity',
   )
   uniqueValues(data.tracks.session, (row) => row.id, 'track session identity')
 
   const memberships = new Set(
-    data.tracks.memberships.map(
-      (row) => `${row.trackGroupId}\u0000${row.problemSlug}`,
-    ),
+    data.tracks.memberships.map((row) => {
+      const group = trackGroupsById.get(row.trackGroupId)
+
+      return `${group?.trackId ?? 'missing'}\u0000${row.problemSlug}`
+    }),
   )
 
   for (const row of data.problemTopics) {
@@ -197,19 +208,42 @@ function validateBackupReferences(data: BackupData) {
   }
 
   for (const row of data.tracks.progress) {
-    requireReference(trackGroupIds, row.trackGroupId, 'progress', 'group')
+    requireReference(trackIds, row.trackId, 'progress', 'track')
     requireReference(problemSlugs, row.problemSlug, 'progress', 'problem')
     requireReference(
       memberships,
-      `${row.trackGroupId}\u0000${row.problemSlug}`,
+      `${row.trackId}\u0000${row.problemSlug}`,
       'progress',
       'membership',
     )
+
+    if (row.reviewAttemptId !== null) {
+      requireReference(
+        reviewAttemptIds,
+        row.reviewAttemptId,
+        'progress',
+        'review attempt',
+      )
+    }
+  }
+
+  if (data.tracks.session.length > 1) {
+    throw new Error('Invalid backup: expected at most one active track session.')
   }
 
   for (const row of data.tracks.session) {
+    if (row.id !== 'active') {
+      throw new Error(`Invalid backup: unsupported track session id ${row.id}.`)
+    }
+
     if (row.activeTrackId !== null) {
       requireReference(trackIds, row.activeTrackId, 'session', 'active track')
+    }
+
+    if (row.activeTrackId === null && row.activeGroupId !== null) {
+      throw new Error(
+        `Invalid backup: session ${row.id} cannot have an active group without an active track.`,
+      )
     }
 
     if (row.activeGroupId !== null) {

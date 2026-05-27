@@ -129,8 +129,9 @@ function createValidBackupFixture() {
         ],
         progress: [
           {
-            trackGroupId: 'custom-track:arrays',
+            trackId: 'custom-track',
             problemSlug: 'two-sum',
+            reviewAttemptId: null,
             completedAt: timestamp,
             completedRating: 'good',
             createdAt: timestamp,
@@ -159,7 +160,7 @@ function createValidBackupFixture() {
 }
 
 describe('backup contracts', () => {
-  it('parses a valid v1 CogniPace backup and creates summary counts', () => {
+  it('parses a valid v2 CogniPace backup and creates summary counts', () => {
     const backup = parseBackupFileForCurrentApp(createValidBackupFixture())
 
     expect(backup).toEqual(createValidBackupFixture())
@@ -184,6 +185,65 @@ describe('backup contracts', () => {
         settings: 1,
       },
     })
+  })
+
+  it('normalizes v1 track progress rows to v2 track-owned progress rows', () => {
+    const v1Backup = {
+      ...createValidBackupFixture(),
+      schemaVersion: 1,
+      data: {
+        ...createValidBackupFixture().data,
+        tracks: {
+          ...createValidBackupFixture().data.tracks,
+          progress: [
+            {
+              trackGroupId: 'custom-track:arrays',
+              problemSlug: 'two-sum',
+              completedAt: timestamp,
+              completedRating: 'good',
+              createdAt: timestamp,
+              updatedAt: timestamp,
+            },
+          ],
+        },
+      },
+    }
+
+    const parsed = parseBackupFileForCurrentApp(v1Backup)
+
+    expect(parsed.schemaVersion).toBe(2)
+    expect(parsed.data.tracks.progress[0]).toMatchObject({
+      trackId: 'custom-track',
+      problemSlug: 'two-sum',
+      reviewAttemptId: null,
+    })
+  })
+
+  it('rejects v1 progress rows that reference a missing track group', () => {
+    const v1Backup = {
+      ...createValidBackupFixture(),
+      schemaVersion: 1,
+      data: {
+        ...createValidBackupFixture().data,
+        tracks: {
+          ...createValidBackupFixture().data.tracks,
+          progress: [
+            {
+              trackGroupId: 'missing-group',
+              problemSlug: 'two-sum',
+              completedAt: timestamp,
+              completedRating: 'good',
+              createdAt: timestamp,
+              updatedAt: timestamp,
+            },
+          ],
+        },
+      },
+    }
+
+    expect(() => parseBackupFileForCurrentApp(v1Backup)).toThrow(
+      /progress references missing group missing-group/i,
+    )
   })
 
   it('keeps runtime backup payloads loose for service-owned validation', () => {
@@ -242,7 +302,7 @@ describe('backup contracts', () => {
     ).toThrow(/unsupported backup version/i)
   })
 
-  it('rejects unknown fields in v1 backups', () => {
+  it('rejects unknown fields in v2 backups', () => {
     expect(() =>
       backupFileSchema.parse({
         ...createValidBackupFixture(),
