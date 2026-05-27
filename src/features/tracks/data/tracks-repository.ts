@@ -529,6 +529,45 @@ export class TracksRepository {
         return false
       }
 
+      if (completion.completedAt === null) {
+        const existingProgressRows = await transactionDb
+          .select({
+            completedAt: trackProblemProgress.completedAt,
+          })
+          .from(trackProblemProgress)
+          .where(
+            and(
+              eq(trackProblemProgress.trackId, membership.trackId),
+              eq(trackProblemProgress.problemSlug, membership.problemSlug),
+            ),
+          )
+          .limit(1)
+        const existingProgress = existingProgressRows[0]
+
+        if (existingProgress && existingProgress.completedAt !== null) {
+          return true
+        }
+
+        if (existingProgress) {
+          await transactionDb
+            .update(trackProblemProgress)
+            .set({
+              reviewAttemptId: input.reviewAttemptId,
+              completedAt: null,
+              completedRating: null,
+              updatedAt: completion.updatedAt,
+            })
+            .where(
+              and(
+                eq(trackProblemProgress.trackId, membership.trackId),
+                eq(trackProblemProgress.problemSlug, membership.problemSlug),
+              ),
+            )
+
+          return true
+        }
+      }
+
       await transactionDb
         .insert(trackProblemProgress)
         .values({

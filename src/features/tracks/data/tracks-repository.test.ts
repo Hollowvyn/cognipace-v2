@@ -1115,6 +1115,58 @@ describe('TracksRepository', () => {
     ])
   })
 
+  it('keeps completed active-track progress when a later hard review is saved', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const goodReviewedAt = new Date('2026-01-02T00:00:00.000Z')
+    const hardReviewedAt = new Date('2026-01-03T00:00:00.000Z')
+    const repository = createTracksRepository(handle.db)
+
+    await makeLeetCodeActive(handle.db)
+    await insertReviewAttempt(handle.db, {
+      id: 'review-good-before-hard',
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: goodReviewedAt,
+    })
+    await insertReviewAttempt(handle.db, {
+      id: 'review-hard-after-good',
+      problemSlug: 'two-sum',
+      rating: 'hard',
+      reviewedAt: hardReviewedAt,
+    })
+
+    await expect(
+      repository.recordActiveTrackProblemReview({
+        problemSlug: 'two-sum',
+        rating: 'good',
+        reviewedAt: goodReviewedAt,
+        reviewAttemptId: 'review-good-before-hard',
+      }),
+    ).resolves.toBe(true)
+    await expect(
+      repository.recordActiveTrackProblemReview({
+        problemSlug: 'two-sum',
+        rating: 'hard',
+        reviewedAt: hardReviewedAt,
+        reviewAttemptId: 'review-hard-after-good',
+      }),
+    ).resolves.toBe(true)
+
+    const progressRows = await handle.db.select().from(trackProblemProgress)
+
+    expect(progressRows).toMatchObject([
+      {
+        trackId: 'leetcode-75',
+        problemSlug: 'two-sum',
+        reviewAttemptId: 'review-good-before-hard',
+        completedAt: goodReviewedAt.getTime(),
+        completedRating: 'good',
+      },
+    ])
+  })
+
   it('does not record review progress for inactive tracks with the same problem', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
