@@ -8,6 +8,7 @@ export const cacheInvalidationTags = [
   'problems',
   'queue',
   'settings',
+  'sync',
   'tracks',
 ] as const
 
@@ -31,6 +32,7 @@ const queryKeysByInvalidationTag = {
     queryKeys.queue.all,
     queryKeys.tracks.all,
   ],
+  sync: [queryKeys.sync.all],
   tracks: [queryKeys.tracks.all, queryKeys.appShell.all],
 } satisfies Record<CacheInvalidationTag, readonly QueryKey[]>
 

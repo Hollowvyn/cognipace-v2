@@ -13,6 +13,12 @@ vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
 }))
 
+vi.mock('@/features/sync', () => ({
+  GitHubSyncSettingsSection: () => (
+    <section aria-label="GitHub sync settings">GitHub Sync</section>
+  ),
+}))
+
 describe('SettingsScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()

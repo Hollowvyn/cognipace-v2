@@ -26,6 +26,11 @@ export const queryKeys = {
   settings: {
     all: ['settings'] as const,
   },
+  sync: {
+    all: ['sync'] as const,
+    status: (surface = 'dashboard') =>
+      [...queryKeys.sync.all, 'status', surface] as const,
+  },
   tracks: {
     all: ['tracks'] as const,
     active: (surface?: string | null) =>

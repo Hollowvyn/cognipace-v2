@@ -11,7 +11,11 @@ export default defineConfig({
     name: 'CogniPace',
     description: 'Local-first LeetCode review and study pacing.',
     permissions: ['storage'],
-    host_permissions: ['https://leetcode.com/*', 'https://www.leetcode.com/*'],
+    host_permissions: [
+      'https://leetcode.com/*',
+      'https://www.leetcode.com/*',
+      'https://api.github.com/*',
+    ],
     content_security_policy: {
       extension_pages:
         "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",

@@ -3,7 +3,7 @@ import { createContext, useContext, useState, type ReactNode } from 'react'
 
 import { SurfaceRoot } from '@/components/ui/surface'
 import { DashboardNav } from '@/app/dashboard/navigation/dashboard-nav'
-import { ThemeModeButton } from '@/app/dashboard/components/theme-mode-button'
+import { DashboardHeaderActions } from '@/app/dashboard/components/dashboard-header-actions'
 import {
   useCycleThemeMode,
   useSettings,
@@ -12,7 +12,7 @@ import {
 import { readErrorMessage } from '@/utils/errors'
 
 interface DashboardChromeContextValue {
-  themeAction: ReactNode
+  headerActions: ReactNode
   themeMode: ThemeMode
 }
 
@@ -49,16 +49,16 @@ export function DashboardShell() {
       })
   }
 
-  const themeAction = (
-    <ThemeModeButton
-      isPending={cycleThemeMode.isPending}
+  const headerActions = (
+    <DashboardHeaderActions
+      isThemePending={cycleThemeMode.isPending}
       onCycleThemeMode={handleCycleThemeMode}
       themeMode={themeMode}
     />
   )
 
   return (
-    <DashboardChromeContext.Provider value={{ themeAction, themeMode }}>
+    <DashboardChromeContext.Provider value={{ headerActions, themeMode }}>
       <SurfaceRoot asChild surface="dashboard" theme={themeMode}>
         <div className="flex min-h-screen flex-col bg-background text-foreground lg:flex-row">
           <button

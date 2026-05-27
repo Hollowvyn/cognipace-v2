@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
 import { defaultUserSettings } from '@/features/settings/domain'
+import type { SyncActionResult } from '@/features/sync'
 import { createLibrarySelectionTrackDraft } from '@/features/tracks'
 import { createDashboardAppShellData } from '@/testing/app-shell-fixtures'
 import {
@@ -57,6 +58,10 @@ describe('dashboard routes', () => {
     vi.mocked(sendMessage).mockImplementation((method, request) => {
       if (method === 'app.getShellData') {
         return Promise.resolve(createDashboardAppShellData())
+      }
+
+      if (method === 'sync.getStatus') {
+        return Promise.resolve(notConfiguredSyncStatus)
       }
 
       if (method === 'tracks.getWorkspace') {
@@ -215,6 +220,52 @@ describe('dashboard routes', () => {
 
     expect(sendMessage).toHaveBeenCalledWith('settings.cycleThemeMode', {
       surface: 'dashboard',
+    })
+  })
+
+  it('renders configured dashboard sync shortcuts and runs dashboard sync actions', async () => {
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'settings.getSettings') {
+        return Promise.resolve(defaultUserSettings)
+      }
+
+      if (method === 'sync.getStatus') {
+        return Promise.resolve(configuredSyncStatus)
+      }
+
+      if (method === 'sync.pullLatest') {
+        return Promise.resolve(syncActionResult('pull-latest', 'pull'))
+      }
+
+      if (method === 'sync.pushLocal') {
+        return Promise.resolve(syncActionResult('push-local', 'push'))
+      }
+
+      if (method === 'app.getShellData') {
+        return Promise.resolve(createDashboardAppShellData())
+      }
+
+      throw new Error(
+        `Unexpected runtime method in sync shortcut test: ${method}`,
+      )
+    })
+
+    const { user } = renderDashboard('/')
+
+    await screen.findByRole('heading', { name: 'Overview' })
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Pull latest from Gist' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Push local to Gist' }))
+
+    expect(sendMessage).toHaveBeenCalledWith('sync.pullLatest', {
+      surface: 'dashboard',
+      confirmLocalOverwrite: false,
+    })
+    expect(sendMessage).toHaveBeenCalledWith('sync.pushLocal', {
+      surface: 'dashboard',
+      confirmRemoteOverwrite: false,
     })
   })
 
@@ -679,3 +730,58 @@ describe('dashboard routes', () => {
     )
   })
 })
+
+const notConfiguredSyncStatus = {
+  enabled: false,
+  configured: false,
+  tokenConfigured: false,
+  tokenStatus: {
+    provider: 'github:gist',
+    configured: false,
+    updatedAt: null,
+    fingerprint: null,
+  },
+  gistId: null,
+  isSyncing: false,
+  lastSyncAt: null,
+  lastSyncDirection: null,
+  lastPullAt: null,
+  lastPushAt: null,
+  needsPush: false,
+  lastBlockingReason: null,
+  lastError: null,
+  conflict: null,
+} as const
+
+const configuredSyncStatus = {
+  ...notConfiguredSyncStatus,
+  enabled: true,
+  configured: true,
+  tokenConfigured: true,
+  tokenStatus: {
+    provider: 'github:gist',
+    configured: true,
+    updatedAt: '2026-05-26T12:00:00.000Z',
+    fingerprint: 'abcdef123456',
+  },
+  gistId: 'gist_1',
+  lastSyncAt: '2026-05-26T12:00:00.000Z',
+  lastSyncDirection: 'push',
+  lastPushAt: '2026-05-26T12:00:00.000Z',
+} as const
+
+function syncActionResult(
+  action: SyncActionResult['action'],
+  direction: SyncActionResult['direction'],
+): SyncActionResult {
+  return {
+    action,
+    direction,
+    outcome: 'success',
+    reason: null,
+    retryable: false,
+    message: 'Synced.',
+    status: configuredSyncStatus,
+    occurredAt: '2026-05-26T12:00:00.000Z',
+  }
+}

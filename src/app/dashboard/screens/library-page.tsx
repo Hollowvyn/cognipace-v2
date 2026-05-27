@@ -18,12 +18,12 @@ import {
 
 export function LibraryPage() {
   const navigate = useNavigate()
-  const { themeAction } = useDashboardChrome()
+  const { headerActions } = useDashboardChrome()
 
   return (
     <DashboardPage className="mx-auto w-full max-w-[64rem]">
       <DashboardPageHeader
-        actions={themeAction}
+        actions={headerActions}
         title={dashboardRouteMeta.library.staticData.title}
       >
         Inspect every tracked problem, review state, and metadata.

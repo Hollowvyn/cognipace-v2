@@ -1,9 +1,10 @@
 import { parseLeetCodeDifficulty } from '../domain/difficulty'
-import { createLeetCodeProblemUrl, normalizeLeetCodeSlug } from '../domain/problem-url'
 import {
-  requestLeetCodeGraphQl,
-  type LeetCodeGraphQlFetch,
-} from '../core/graphql-client'
+  createLeetCodeProblemUrl,
+  normalizeLeetCodeSlug,
+} from '../domain/problem-url'
+import { requestLeetCodeProblemMetadata } from '../api/problem-metadata-request'
+import type { LeetCodeGraphQlFetch } from '../core/graphql-client'
 import { isObjectRecord, readTrimmedString } from '../core/value-readers'
 import type {
   LeetCodeMetadataResult,
@@ -21,22 +22,6 @@ type ParsedLeetCodeGraphQlQuestion = {
   topicTags: LeetCodeTopic[]
 }
 
-const leetCodeQuestionMetadataQuery = `
-  query questionTitle($titleSlug: String!) {
-    question(titleSlug: $titleSlug) {
-      title
-      titleSlug
-      questionFrontendId
-      difficulty
-      isPaidOnly
-      topicTags {
-        name
-        slug
-      }
-    }
-  }
-`
-
 export async function fetchLeetCodeProblemMetadata(
   location: LeetCodeProblemLocation,
   options: {
@@ -46,10 +31,9 @@ export async function fetchLeetCodeProblemMetadata(
     now?: (() => number) | undefined
   } = {},
 ): Promise<LeetCodeMetadataResult> {
-  const graphQlResult = await requestLeetCodeGraphQl({
+  const graphQlResult = await requestLeetCodeProblemMetadata({
     locationUrl: location.url,
-    query: leetCodeQuestionMetadataQuery,
-    variables: { titleSlug: location.slug },
+    slug: location.slug,
     fetch: options.fetch,
     document: options.document,
     csrfToken: options.csrfToken,

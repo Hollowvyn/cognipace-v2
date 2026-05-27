@@ -6,10 +6,8 @@ import {
   readTextFromHtml,
   stripRepeatedWhitespace,
 } from '../core/dom-text'
-import {
-  requestLeetCodeGraphQl,
-  type LeetCodeGraphQlFetch,
-} from '../core/graphql-client'
+import { requestLeetCodeProblemContent } from '../api/problem-content-request'
+import type { LeetCodeGraphQlFetch } from '../core/graphql-client'
 import { isObjectRecord, readTrimmedString } from '../core/value-readers'
 import type {
   LeetCodeExample,
@@ -24,15 +22,6 @@ type ParsedGraphQlQuestionContent = {
   contentHtml: string | null
   hints: string[]
 }
-
-const leetCodeQuestionContentQuery = `
-  query questionContent($titleSlug: String!) {
-    question(titleSlug: $titleSlug) {
-      content
-      hints
-    }
-  }
-`
 
 const leetCodeProblemContentRootSelectors = [
   '[data-track-load="description_content"]',
@@ -99,10 +88,9 @@ export async function fetchLeetCodeProblemContent(
     now?: (() => number) | undefined
   } = {},
 ): Promise<LeetCodeProblemContentResult> {
-  const graphQlResult = await requestLeetCodeGraphQl({
+  const graphQlResult = await requestLeetCodeProblemContent({
     locationUrl: location.url,
-    query: leetCodeQuestionContentQuery,
-    variables: { titleSlug: location.slug },
+    slug: location.slug,
     fetch: options.fetch,
     document: options.document,
     csrfToken: options.csrfToken,

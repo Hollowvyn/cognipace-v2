@@ -25,6 +25,14 @@ import {
   settingsRequestSchema,
   settingsToggleStudyModeRequestSchema,
   settingsUpdateRequestSchema,
+  syncActionResultSchema,
+  syncGithubGistRequestSchema,
+  syncGithubTokenRequestSchema,
+  syncPullLatestRequestSchema,
+  syncPushLocalRequestSchema,
+  syncRequestSchema,
+  syncSetEnabledRequestSchema,
+  syncStatusSchema,
   todayQueueSchema,
   trackForEditResponseSchema,
   tracksClearActiveTrackRequestSchema,
@@ -100,6 +108,11 @@ import {
   toggleStudyMode,
   updateSettings,
 } from '@/features/settings/server/settings-service'
+import { readSyncMetadata } from '@/features/sync/data/sync-metadata-store'
+import {
+  createBackgroundSyncService,
+  markSyncLocalDataChanged,
+} from '@/features/sync/server/sync-service'
 import { serializeActiveTrack as serializeActiveTrackContract } from '@/features/tracks/api/tracks-serializers'
 import type { ActiveTrack } from '@/features/tracks/domain'
 import {
@@ -189,6 +202,155 @@ export function registerBackgroundHandlers() {
       sender,
     )
     return backupSummarySchema.parse(validateFullBackup(request.backup))
+  })
+
+  onMessage('sync.getStatus', ({ data, sender }) => {
+    const request = syncRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'sync.getStatus',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      syncStatusSchema.parse(await createSyncServiceForDb(db).getStatus()),
+    )
+  })
+
+  onMessage('sync.validateGithubToken', ({ data, sender }) => {
+    const request = syncGithubTokenRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'sync.validateGithubToken',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) =>
+          service.validateGithubToken(request.token),
+        ),
+      ),
+    )
+  })
+
+  onMessage('sync.saveGithubToken', ({ data, sender }) => {
+    const request = syncGithubTokenRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'sync.saveGithubToken',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) =>
+          service.saveGithubToken(request.token),
+        ),
+      ),
+    )
+  })
+
+  onMessage('sync.deleteGithubToken', ({ data, sender }) => {
+    const request = syncRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'sync.deleteGithubToken',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) => service.deleteGithubToken()),
+      ),
+    )
+  })
+
+  onMessage('sync.createGithubGist', ({ data, sender }) => {
+    const request = syncRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'sync.createGithubGist',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) => service.createGithubGist()),
+      ),
+    )
+  })
+
+  onMessage('sync.connectGithubGist', ({ data, sender }) => {
+    const request = syncGithubGistRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'sync.connectGithubGist',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) =>
+          service.connectGithubGist(request.gistId),
+        ),
+      ),
+    )
+  })
+
+  onMessage('sync.setEnabled', ({ data, sender }) => {
+    const request = syncSetEnabledRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'sync.setEnabled',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) =>
+          service.setEnabled(request.enabled),
+        ),
+      ),
+    )
+  })
+
+  onMessage('sync.pullLatest', ({ data, sender }) => {
+    const request = syncPullLatestRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'sync.pullLatest',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) =>
+          service.pullLatest({
+            confirmLocalOverwrite: request.confirmLocalOverwrite,
+          }),
+        ),
+      ),
+    )
+  })
+
+  onMessage('sync.pushLocal', ({ data, sender }) => {
+    const request = syncPushLocalRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'sync.pushLocal',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) =>
+          service.pushLocal({
+            confirmRemoteOverwrite: request.confirmRemoteOverwrite,
+          }),
+        ),
+      ),
+    )
   })
 
   onMessage('backup.restoreFullBackup', ({ data, sender }) => {
@@ -857,28 +1019,136 @@ async function runSettingsMutation(
   )
 }
 
+function createSyncServiceForDb(db: Db) {
+  return createSyncServiceForDbInQueue(db, false)
+}
+
+function createSyncServiceForDbInQueue(db: Db, isInsideMutationQueue: boolean) {
+  return createBackgroundSyncService(
+    db,
+    async () => {
+      await broadcastDataManagementInvalidation('dashboard')
+    },
+    {
+      runRemoteRestore: (work) =>
+        runRemoteRestoreInMutationQueue(work, isInsideMutationQueue),
+    },
+  )
+}
+
+type BackgroundSyncService = ReturnType<typeof createBackgroundSyncService>
+
+function runQueuedSyncAction<T>(
+  db: Db,
+  action: (service: BackgroundSyncService) => Promise<T>,
+) {
+  return runInMutationQueue(async () => {
+    const dirtyMarkReady = await retryPendingDirtyMark()
+
+    if (!dirtyMarkReady) {
+      throw new Error(
+        'Local data changed but sync metadata could not be saved.',
+      )
+    }
+
+    return action(createSyncServiceForDbInQueue(db, true))
+  })
+}
+
+function parseSyncActionResult(result: unknown) {
+  return syncActionResultSchema.parse(result)
+}
+
+type DbMutationSyncMode = 'mark-dirty' | 'none'
+
 let dbMutationQueue: Promise<void> = Promise.resolve()
+let dbMutationDepth = 0
+let hasPendingDirtyMarkRetry = false
 
 function runDbMutation<T>(
   write: (db: Db) => Promise<T>,
   afterFlush?: (result: T) => unknown,
+  options: { syncMode?: DbMutationSyncMode } = {},
 ) {
-  const queued = dbMutationQueue.then(async () => {
+  const syncMode = options.syncMode ?? 'mark-dirty'
+  return runInMutationQueue(async () => {
     const { db } = await getAppDb()
     const result = await write(db)
+
+    if (syncMode === 'mark-dirty') {
+      await markSyncLocalDataChangedBestEffort()
+    }
 
     await flushDbSnapshot()
     await afterFlush?.(result)
 
     return result
   })
+}
 
+function runInMutationQueue<T>(work: () => Promise<T>) {
+  const queued = dbMutationQueue.then(async () => {
+    dbMutationDepth += 1
+
+    try {
+      return await work()
+    } finally {
+      dbMutationDepth -= 1
+    }
+  })
   dbMutationQueue = queued.then(
     () => undefined,
     () => undefined,
   )
 
   return queued
+}
+
+async function markSyncLocalDataChangedBestEffort() {
+  try {
+    await markSyncLocalDataChanged()
+    hasPendingDirtyMarkRetry = false
+  } catch {
+    hasPendingDirtyMarkRetry = true
+    // Local data is already written; sync metadata failure must not fail saves.
+  }
+}
+
+async function retryPendingDirtyMark() {
+  if (!hasPendingDirtyMarkRetry) {
+    return true
+  }
+
+  try {
+    await markSyncLocalDataChanged()
+    hasPendingDirtyMarkRetry = false
+    return true
+  } catch {
+    return false
+  }
+}
+
+function runRemoteRestoreInMutationQueue<T>(
+  work: () => Promise<T>,
+  isInsideMutationQueue: boolean,
+) {
+  const guardedWork = async () => {
+    const metadata = await readSyncMetadata()
+
+    if (metadata.dirtySinceLastSync) {
+      throw new Error(
+        'Sync conflict detected. Local data changed before remote data could be applied.',
+      )
+    }
+
+    return work()
+  }
+
+  if (isInsideMutationQueue && dbMutationDepth > 0) {
+    return guardedWork()
+  }
+
+  return runInMutationQueue(guardedWork)
 }
 
 function readReviewLogRequest(request: {

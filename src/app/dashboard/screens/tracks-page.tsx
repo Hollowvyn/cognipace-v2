@@ -16,12 +16,12 @@ import { IconButton } from '@/components/ui/icon-button'
 import { TracksScreen } from '@/features/tracks'
 
 export function TracksPage() {
-  const { themeAction } = useDashboardChrome()
+  const { headerActions } = useDashboardChrome()
 
   return (
     <DashboardPage className="mx-auto w-full max-w-[64rem]">
       <DashboardPageHeader
-        actions={themeAction}
+        actions={headerActions}
         title={dashboardRouteMeta.tracks.staticData.title}
       >
         Manage the active curriculum, groups, and ordered practice path.
