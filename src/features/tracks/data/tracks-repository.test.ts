@@ -2,7 +2,9 @@ import { asc, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
 import {
+  fsrsCards,
   problemPractice,
+  reviewAttempts,
   trackGroupProblems,
   trackGroups,
   trackProblemProgress,
@@ -844,6 +846,169 @@ describe('TracksRepository', () => {
     ])
   })
 
+  it('keeps progress when a completed problem moves between groups in the same track', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const timestamp = new Date('2026-01-02T00:00:00.000Z')
+    const repository = createTracksRepository(handle.db)
+
+    await makeLeetCodeActive(handle.db)
+    await insertReviewAttempt(handle.db, {
+      id: 'review-two-sum-1',
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: timestamp,
+    })
+    await handle.db.insert(trackProblemProgress).values({
+      trackId: 'leetcode-75',
+      problemSlug: 'two-sum',
+      reviewAttemptId: 'review-two-sum-1',
+      completedAt: timestamp.getTime(),
+      completedRating: 'good',
+      createdAt: timestamp.getTime(),
+      updatedAt: timestamp.getTime(),
+    })
+
+    await repository.updateTrack({
+      trackId: 'leetcode-75',
+      title: 'LeetCode 75',
+      description: 'Focused starter track for high-signal interview patterns.',
+      dueAt: null,
+      groups: [
+        {
+          id: 'leetcode-75:arrays-hashing',
+          title: 'Arrays and Hashing',
+          problemSlugs: [],
+        },
+        {
+          id: 'leetcode-75:stack',
+          title: 'Stack',
+          problemSlugs: ['valid-parentheses', 'two-sum'],
+        },
+      ],
+    })
+
+    const progressRows = await handle.db
+      .select()
+      .from(trackProblemProgress)
+      .orderBy(
+        asc(trackProblemProgress.trackId),
+        asc(trackProblemProgress.problemSlug),
+      )
+
+    expect(progressRows).toMatchObject([
+      {
+        trackId: 'leetcode-75',
+        problemSlug: 'two-sum',
+        reviewAttemptId: 'review-two-sum-1',
+        completedRating: 'good',
+      },
+    ])
+  })
+
+  it('stores incomplete active-track progress for hard review attempts', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const repository = createTracksRepository(handle.db)
+
+    await makeLeetCodeActive(handle.db)
+
+    await expect(
+      repository.recordActiveTrackProblemReview({
+        problemSlug: 'two-sum',
+        rating: 'hard',
+        reviewedAt: new Date('2026-01-02T00:00:00.000Z'),
+        reviewAttemptId: 'review-hard-1',
+      }),
+    ).resolves.toBe(true)
+
+    await expect(
+      handle.db.select().from(trackProblemProgress),
+    ).resolves.toMatchObject([
+      {
+        trackId: 'leetcode-75',
+        problemSlug: 'two-sum',
+        reviewAttemptId: 'review-hard-1',
+        completedAt: null,
+        completedRating: null,
+      },
+    ])
+  })
+
+  it('reconciles overrides only for the controlling active-track attempt', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const timestamp = new Date('2026-01-02T00:00:00.000Z')
+    const repository = createTracksRepository(handle.db)
+
+    await makeLeetCodeActive(handle.db)
+    await insertReviewAttempt(handle.db, {
+      id: 'review-newer',
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: timestamp,
+    })
+    await handle.db.insert(trackProblemProgress).values({
+      trackId: 'leetcode-75',
+      problemSlug: 'two-sum',
+      reviewAttemptId: 'review-newer',
+      completedAt: timestamp.getTime(),
+      completedRating: 'good',
+      createdAt: timestamp.getTime(),
+      updatedAt: timestamp.getTime(),
+    })
+
+    await expect(
+      repository.reconcileActiveTrackProblemReviewOverride({
+        problemSlug: 'two-sum',
+        rating: 'hard',
+        reviewedAt: timestamp,
+        reviewAttemptId: 'review-older',
+      }),
+    ).resolves.toBe(false)
+
+    await expect(
+      handle.db.select().from(trackProblemProgress),
+    ).resolves.toMatchObject([
+      {
+        reviewAttemptId: 'review-newer',
+        completedRating: 'good',
+      },
+    ])
+  })
+
+  it('reset deletes track progress by track id only', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const timestamp = new Date('2026-01-02T00:00:00.000Z')
+
+    await insertReviewAttempt(handle.db, {
+      id: 'review-two-sum-1',
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: timestamp,
+    })
+    await handle.db.insert(trackProblemProgress).values({
+      trackId: 'leetcode-75',
+      problemSlug: 'two-sum',
+      reviewAttemptId: 'review-two-sum-1',
+      completedAt: timestamp.getTime(),
+      completedRating: 'good',
+      createdAt: timestamp.getTime(),
+      updatedAt: timestamp.getTime(),
+    })
+
+    await createTracksRepository(handle.db).resetTrackProgress('leetcode-75')
+
+    await expect(
+      handle.db.select().from(trackProblemProgress),
+    ).resolves.toEqual([])
+  })
+
   it('records active-track completion for only the first incomplete good or easy membership', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
@@ -963,4 +1128,54 @@ async function makeLeetCodeActive(db: Db) {
       activeGroupId: 'leetcode-75:arrays-hashing',
     })
     .where(eq(trackSession.id, 'active'))
+}
+
+async function insertReviewAttempt(
+  db: Db,
+  input: {
+    id: string
+    problemSlug: string
+    rating: 'again' | 'hard' | 'good' | 'easy'
+    reviewedAt: Date
+  },
+) {
+  const timestamp = input.reviewedAt.getTime()
+  const cardId = `${input.problemSlug}:default`
+
+  await db.insert(fsrsCards).values({
+    id: cardId,
+    problemSlug: input.problemSlug,
+    cardKind: 'default',
+    dueAt: timestamp,
+    stability: 0,
+    difficulty: 0,
+    elapsedDays: 0,
+    scheduledDays: 0,
+    learningSteps: 0,
+    reps: 0,
+    lapses: 0,
+    state: 'new',
+    lastReviewAt: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  })
+
+  await db.insert(reviewAttempts).values({
+    id: input.id,
+    problemSlug: input.problemSlug,
+    cardId,
+    rating: input.rating,
+    reviewMode: 'manual',
+    reviewedAt: timestamp,
+    elapsedSeconds: null,
+    isCorrect: null,
+    interviewPattern: null,
+    timeComplexity: null,
+    spaceComplexity: null,
+    languages: null,
+    notes: null,
+    fsrsReviewLog: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  })
 }
