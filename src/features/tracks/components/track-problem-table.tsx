@@ -187,10 +187,7 @@ function createTrackProblemColumns(): ColumnDef<TrackProblemRow>[] {
     },
     {
       id: trackProblemColumnIds.trackCompletion,
-      accessorFn: (row) =>
-        row.membership.completion.status === 'completed'
-          ? row.membership.completion.completedAt
-          : undefined,
+      accessorFn: (row) => row.membership.completedAt ?? undefined,
       header: 'Completed',
       cell: ({ row }) => <TrackCompletionBadge row={row.original} />,
     },
@@ -263,7 +260,7 @@ function ProblemTitleCell({ row }: { row: TrackProblemRow }) {
 }
 
 function TrackCompletionBadge({ row }: { row: TrackProblemRow }) {
-  const isCompleted = row.membership.completion.status === 'completed'
+  const isCompleted = row.membership.completedAt !== null
 
   return (
     <Badge

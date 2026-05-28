@@ -57,7 +57,6 @@ export function serializeReviewResult(
   return practiceReviewResultSchema.parse({
     problemSlug: result.problemSlug,
     cardId: result.cardId,
-    reviewAttemptId: result.reviewAttemptId,
     rating: result.rating,
     status: result.status,
     dueAt: result.dueAt.toISOString(),

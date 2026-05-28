@@ -83,9 +83,9 @@ import {
 } from '@/features/practice/api/practice-serializers'
 import {
   getPracticeDetails,
-  overrideLastReviewResultWithTrackProgress,
+  overrideLastReviewResult,
   resetPracticeSchedule,
-  saveReviewResultWithTrackProgress,
+  saveReviewResult,
   setPracticeSuspended,
   updateCurrentPracticeLog,
 } from '@/features/practice/server/practice-service'
@@ -122,6 +122,7 @@ import {
   getActiveTrack,
   getTrackForEdit,
   getWorkspace,
+  recordActiveTrackProblemCompletion,
   resetTrackProgress,
   setActiveGroup,
   setActiveTrack,
@@ -570,15 +571,21 @@ export function registerBackgroundHandlers() {
           targetRetention: settings.review.targetRetention,
         }
 
-        await saveReviewResultWithTrackProgress(
-          db,
-          {
-            ...reviewInput,
-            reviewedAt,
-            ...(request.reviewMode ? { reviewMode: request.reviewMode } : {}),
-          },
-          settings,
-        )
+        await saveReviewResult(db, {
+          ...reviewInput,
+          reviewedAt,
+          ...(request.reviewMode ? { reviewMode: request.reviewMode } : {}),
+        })
+        if (
+          settings.practice.mode === 'studyPlan' &&
+          isTrackCompletionRating(request.rating)
+        ) {
+          await recordActiveTrackProblemCompletion(db, {
+            problemSlug: request.problemSlug,
+            rating: request.rating,
+            completedAt: reviewedAt,
+          })
+        }
         const details = await getPracticeDetails(db, request.problemSlug, {
           targetRetention: settings.review.targetRetention,
         })
@@ -605,18 +612,14 @@ export function registerBackgroundHandlers() {
     return runDbMutation(
       async (db) => {
         const settings = await getSettings(db)
-        await overrideLastReviewResultWithTrackProgress(
-          db,
-          {
-            problemSlug: request.problemSlug,
-            rating: request.rating,
-            elapsedSeconds: request.elapsedSeconds,
-            isCorrect: request.isCorrect,
-            log: readReviewLogRequest(request),
-            targetRetention: settings.review.targetRetention,
-          },
-          settings,
-        )
+        await overrideLastReviewResult(db, {
+          problemSlug: request.problemSlug,
+          rating: request.rating,
+          elapsedSeconds: request.elapsedSeconds,
+          isCorrect: request.isCorrect,
+          log: readReviewLogRequest(request),
+          targetRetention: settings.review.targetRetention,
+        })
         const details = await getPracticeDetails(db, request.problemSlug, {
           targetRetention: settings.review.targetRetention,
         })
@@ -1213,6 +1216,10 @@ function broadcastDataManagementInvalidation(source: 'dashboard') {
     source,
     tags: ['settings', 'problems', 'practice', 'queue', 'tracks', 'app-shell'],
   })
+}
+
+function isTrackCompletionRating(rating: string) {
+  return rating === 'good' || rating === 'easy'
 }
 
 function serializeTodayQueue(queue: TodayQueue): SerializedTodayQueue {

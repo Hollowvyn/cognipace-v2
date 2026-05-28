@@ -2,9 +2,7 @@ import { asc, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
 import {
-  fsrsCards,
   problemPractice,
-  reviewAttempts,
   trackGroupProblems,
   trackGroups,
   trackProblemProgress,
@@ -106,7 +104,6 @@ describe('TracksRepository', () => {
     })
     await handle.db.insert(trackGroupProblems).values({
       trackGroupId: 'leetcode-75:stack',
-      trackId: 'leetcode-75',
       problemSlug: 'valid-parentheses',
       position: 1,
     })
@@ -157,7 +154,6 @@ describe('TracksRepository', () => {
     })
     await handle.db.insert(trackGroupProblems).values({
       trackGroupId: 'leetcode-75:stack',
-      trackId: 'leetcode-75',
       problemSlug: 'valid-parentheses',
       position: 1,
     })
@@ -175,7 +171,7 @@ describe('TracksRepository', () => {
       updatedAt: timestamp,
     })
     await handle.db.insert(trackProblemProgress).values({
-      trackId: 'leetcode-75',
+      trackGroupId: 'leetcode-75:arrays-hashing',
       problemSlug: 'two-sum',
       completedAt: timestamp,
       completedRating: 'good',
@@ -199,7 +195,7 @@ describe('TracksRepository', () => {
     const timestamp = new Date('2026-01-01T08:00:00.000Z').getTime()
 
     await handle.db.insert(trackProblemProgress).values({
-      trackId: 'leetcode-75',
+      trackGroupId: 'leetcode-75:arrays-hashing',
       problemSlug: 'two-sum',
       completedAt: timestamp,
       completedRating: 'easy',
@@ -215,7 +211,7 @@ describe('TracksRepository', () => {
       .select()
       .from(trackProblemProgress)
       .orderBy(
-        asc(trackProblemProgress.trackId),
+        asc(trackProblemProgress.trackGroupId),
         asc(trackProblemProgress.problemSlug),
       )
 
@@ -385,7 +381,6 @@ describe('TracksRepository', () => {
 
     await handle.db.insert(trackGroupProblems).values({
       trackGroupId: 'leetcode-75:arrays-hashing',
-      trackId: 'leetcode-75',
       problemSlug: 'valid-parentheses',
       position: 0,
     })
@@ -398,12 +393,6 @@ describe('TracksRepository', () => {
       'valid-parentheses',
       'two-sum',
     ])
-    expect(memberships[0]).not.toHaveProperty('completedAt')
-    expect(memberships[0]).not.toHaveProperty('completedRating')
-    expect(memberships[0]?.completion).toEqual({
-      status: 'incomplete',
-      reviewAttemptId: null,
-    })
   })
 
   it('sets the active track to its first group and writes both session ids', async () => {
@@ -630,7 +619,7 @@ describe('TracksRepository', () => {
     ).rejects.toThrow('Problem "two-sum" can only appear once in a track.')
   })
 
-  it('keeps completed progress when moving a problem out of an omitted group', async () => {
+  it('moves completed progress when moving a problem out of an omitted group', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
@@ -647,12 +636,11 @@ describe('TracksRepository', () => {
     })
     await handle.db.insert(trackGroupProblems).values({
       trackGroupId: 'leetcode-75:stack',
-      trackId: 'leetcode-75',
       problemSlug: 'valid-parentheses',
       position: 1,
     })
     await handle.db.insert(trackProblemProgress).values({
-      trackId: 'leetcode-75',
+      trackGroupId: 'leetcode-75:stack',
       problemSlug: 'valid-parentheses',
       completedAt: timestamp,
       completedRating: 'easy',
@@ -679,7 +667,7 @@ describe('TracksRepository', () => {
       .select()
       .from(trackProblemProgress)
       .orderBy(
-        asc(trackProblemProgress.trackId),
+        asc(trackProblemProgress.trackGroupId),
         asc(trackProblemProgress.problemSlug),
       )
 
@@ -689,7 +677,7 @@ describe('TracksRepository', () => {
     ])
     expect(progressRows).toMatchObject([
       {
-        trackId: 'leetcode-75',
+        trackGroupId: 'leetcode-75:arrays-hashing',
         problemSlug: 'valid-parentheses',
         completedAt: timestamp,
         completedRating: 'easy',
@@ -714,7 +702,6 @@ describe('TracksRepository', () => {
     })
     await handle.db.insert(trackGroupProblems).values({
       trackGroupId: 'leetcode-75:stack',
-      trackId: 'leetcode-75',
       problemSlug: 'valid-parentheses',
       position: 8,
     })
@@ -739,7 +726,7 @@ describe('TracksRepository', () => {
       .select()
       .from(trackProblemProgress)
       .orderBy(
-        asc(trackProblemProgress.trackId),
+        asc(trackProblemProgress.trackGroupId),
         asc(trackProblemProgress.problemSlug),
       )
 
@@ -822,7 +809,7 @@ describe('TracksRepository', () => {
 
     await handle.db.insert(trackProblemProgress).values([
       {
-        trackId: 'leetcode-75',
+        trackGroupId: 'leetcode-75:arrays-hashing',
         problemSlug: 'two-sum',
         completedAt: timestamp,
         completedRating: 'good',
@@ -830,7 +817,7 @@ describe('TracksRepository', () => {
         updatedAt: timestamp,
       },
       {
-        trackId: 'grind-75',
+        trackGroupId: 'grind-75:stack',
         problemSlug: 'valid-parentheses',
         completedAt: timestamp,
         completedRating: 'easy',
@@ -845,355 +832,109 @@ describe('TracksRepository', () => {
       .select()
       .from(trackProblemProgress)
       .orderBy(
-        asc(trackProblemProgress.trackId),
+        asc(trackProblemProgress.trackGroupId),
         asc(trackProblemProgress.problemSlug),
       )
 
     expect(progressRows).toMatchObject([
       {
-        trackId: 'grind-75',
+        trackGroupId: 'grind-75:stack',
         problemSlug: 'valid-parentheses',
       },
     ])
   })
 
-  it('keeps progress when a completed problem moves between groups in the same track', async () => {
+  it('records active-track completion for only the first incomplete good or easy membership', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
-    const timestamp = new Date('2026-01-02T00:00:00.000Z')
+    const timestamp = new Date('2026-01-01T08:00:00.000Z').getTime()
     const repository = createTracksRepository(handle.db)
 
     await makeLeetCodeActive(handle.db)
-    await insertReviewAttempt(handle.db, {
-      id: 'review-two-sum-1',
-      problemSlug: 'two-sum',
-      rating: 'good',
-      reviewedAt: timestamp,
-    })
-    await handle.db.insert(trackProblemProgress).values({
+    await handle.db.insert(trackGroups).values({
+      id: 'leetcode-75:duplicates',
       trackId: 'leetcode-75',
+      title: 'Duplicates',
+      position: 2,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+    await handle.db.insert(trackGroupProblems).values({
+      trackGroupId: 'leetcode-75:duplicates',
       problemSlug: 'two-sum',
-      reviewAttemptId: 'review-two-sum-1',
-      completedAt: timestamp.getTime(),
-      completedRating: 'good',
-      createdAt: timestamp.getTime(),
-      updatedAt: timestamp.getTime(),
-    })
-
-    await repository.updateTrack({
-      trackId: 'leetcode-75',
-      title: 'LeetCode 75',
-      description: 'Focused starter track for high-signal interview patterns.',
-      dueAt: null,
-      groups: [
-        {
-          id: 'leetcode-75:arrays-hashing',
-          title: 'Arrays and Hashing',
-          problemSlugs: [],
-        },
-        {
-          id: 'leetcode-75:stack',
-          title: 'Stack',
-          problemSlugs: ['valid-parentheses', 'two-sum'],
-        },
-      ],
-    })
-
-    const progressRows = await handle.db
-      .select()
-      .from(trackProblemProgress)
-      .orderBy(
-        asc(trackProblemProgress.trackId),
-        asc(trackProblemProgress.problemSlug),
-      )
-
-    expect(progressRows).toMatchObject([
-      {
-        trackId: 'leetcode-75',
-        problemSlug: 'two-sum',
-        reviewAttemptId: 'review-two-sum-1',
-        completedRating: 'good',
-      },
-    ])
-  })
-
-  it('stores incomplete active-track progress for hard review attempts', async () => {
-    const handle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-    const reviewedAt = new Date('2026-01-02T00:00:00.000Z')
-    const repository = createTracksRepository(handle.db)
-
-    await makeLeetCodeActive(handle.db)
-    await insertReviewAttempt(handle.db, {
-      id: 'review-hard-1',
-      problemSlug: 'two-sum',
-      rating: 'hard',
-      reviewedAt,
+      position: 1,
     })
 
     await expect(
-      repository.recordActiveTrackProblemReview({
+      repository.recordActiveTrackProblemCompletion({
         problemSlug: 'two-sum',
         rating: 'hard',
-        reviewedAt,
-        reviewAttemptId: 'review-hard-1',
+        completedAt: new Date('2026-01-02T00:00:00.000Z'),
+      }),
+    ).resolves.toBe(false)
+    await expect(
+      repository.recordActiveTrackProblemCompletion({
+        problemSlug: 'two-sum',
+        rating: 'good',
+        completedAt: new Date('2026-01-02T00:00:00.000Z'),
       }),
     ).resolves.toBe(true)
-
     await expect(
-      handle.db.select().from(trackProblemProgress),
-    ).resolves.toMatchObject([
-      {
-        trackId: 'leetcode-75',
+      repository.recordActiveTrackProblemCompletion({
         problemSlug: 'two-sum',
-        reviewAttemptId: 'review-hard-1',
-        completedAt: null,
-        completedRating: null,
-      },
-    ])
-  })
-
-  it('reconciles overrides only for the controlling active-track attempt', async () => {
-    const handle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-    const timestamp = new Date('2026-01-02T00:00:00.000Z')
-    const repository = createTracksRepository(handle.db)
-
-    await makeLeetCodeActive(handle.db)
-    await insertReviewAttempt(handle.db, {
-      id: 'review-newer',
-      problemSlug: 'two-sum',
-      rating: 'good',
-      reviewedAt: timestamp,
-    })
-    await handle.db.insert(trackProblemProgress).values({
-      trackId: 'leetcode-75',
-      problemSlug: 'two-sum',
-      reviewAttemptId: 'review-newer',
-      completedAt: timestamp.getTime(),
-      completedRating: 'good',
-      createdAt: timestamp.getTime(),
-      updatedAt: timestamp.getTime(),
-    })
-
+        rating: 'easy',
+        completedAt: new Date('2026-01-03T00:00:00.000Z'),
+      }),
+    ).resolves.toBe(true)
     await expect(
-      repository.reconcileActiveTrackProblemReviewOverride({
+      repository.recordActiveTrackProblemCompletion({
         problemSlug: 'two-sum',
-        rating: 'hard',
-        reviewedAt: timestamp,
-        reviewAttemptId: 'review-older',
+        rating: 'good',
+        completedAt: new Date('2026-01-04T00:00:00.000Z'),
       }),
     ).resolves.toBe(false)
 
-    await expect(
-      handle.db.select().from(trackProblemProgress),
-    ).resolves.toMatchObject([
-      {
-        reviewAttemptId: 'review-newer',
-        completedRating: 'good',
-      },
-    ])
-  })
-
-  it('reset deletes track progress by track id only', async () => {
-    const handle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-    const timestamp = new Date('2026-01-02T00:00:00.000Z')
-
-    await insertReviewAttempt(handle.db, {
-      id: 'review-two-sum-1',
-      problemSlug: 'two-sum',
-      rating: 'good',
-      reviewedAt: timestamp,
-    })
-    await insertReviewAttempt(handle.db, {
-      id: 'review-valid-parentheses-1',
-      problemSlug: 'valid-parentheses',
-      rating: 'easy',
-      reviewedAt: timestamp,
-    })
-    await handle.db.insert(trackProblemProgress).values([
-      {
-        trackId: 'leetcode-75',
-        problemSlug: 'two-sum',
-        reviewAttemptId: 'review-two-sum-1',
-        completedAt: timestamp.getTime(),
-        completedRating: 'good',
-        createdAt: timestamp.getTime(),
-        updatedAt: timestamp.getTime(),
-      },
-      {
-        trackId: 'grind-75',
-        problemSlug: 'valid-parentheses',
-        reviewAttemptId: 'review-valid-parentheses-1',
-        completedAt: timestamp.getTime(),
-        completedRating: 'easy',
-        createdAt: timestamp.getTime(),
-        updatedAt: timestamp.getTime(),
-      },
-    ])
-
-    await createTracksRepository(handle.db).resetTrackProgress('leetcode-75')
-
     const progressRows = await handle.db
       .select()
       .from(trackProblemProgress)
       .orderBy(
-        asc(trackProblemProgress.trackId),
+        asc(trackProblemProgress.trackGroupId),
         asc(trackProblemProgress.problemSlug),
       )
 
     expect(progressRows).toMatchObject([
       {
-        trackId: 'grind-75',
-        problemSlug: 'valid-parentheses',
-        reviewAttemptId: 'review-valid-parentheses-1',
+        trackGroupId: 'leetcode-75:arrays-hashing',
+        problemSlug: 'two-sum',
+        completedRating: 'good',
+      },
+      {
+        trackGroupId: 'leetcode-75:duplicates',
+        problemSlug: 'two-sum',
         completedRating: 'easy',
       },
     ])
   })
 
-  it('records active-track reviews by track and problem', async () => {
+  it('does not record completion for inactive tracks with the same problem', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
-    const hardReviewedAt = new Date('2026-01-02T00:00:00.000Z')
-    const goodReviewedAt = new Date('2026-01-03T00:00:00.000Z')
-    const repository = createTracksRepository(handle.db)
-
-    await makeLeetCodeActive(handle.db)
-    await insertReviewAttempt(handle.db, {
-      id: 'review-hard-2',
-      problemSlug: 'two-sum',
-      rating: 'hard',
-      reviewedAt: hardReviewedAt,
-    })
-    await insertReviewAttempt(handle.db, {
-      id: 'review-good-2',
-      problemSlug: 'two-sum',
-      rating: 'good',
-      reviewedAt: goodReviewedAt,
-    })
-
-    await expect(
-      repository.recordActiveTrackProblemReview({
-        problemSlug: 'two-sum',
-        rating: 'hard',
-        reviewedAt: hardReviewedAt,
-        reviewAttemptId: 'review-hard-2',
-      }),
-    ).resolves.toBe(true)
-    await expect(
-      repository.recordActiveTrackProblemReview({
-        problemSlug: 'two-sum',
-        rating: 'good',
-        reviewedAt: goodReviewedAt,
-        reviewAttemptId: 'review-good-2',
-      }),
-    ).resolves.toBe(true)
-
-    const progressRows = await handle.db
-      .select()
-      .from(trackProblemProgress)
-      .orderBy(
-        asc(trackProblemProgress.trackId),
-        asc(trackProblemProgress.problemSlug),
-      )
-
-    expect(progressRows).toMatchObject([
-      {
-        trackId: 'leetcode-75',
-        problemSlug: 'two-sum',
-        reviewAttemptId: 'review-good-2',
-        completedAt: goodReviewedAt.getTime(),
-        completedRating: 'good',
-      },
-    ])
-  })
-
-  it('keeps completed active-track progress when a later hard review is saved', async () => {
-    const handle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-    const goodReviewedAt = new Date('2026-01-02T00:00:00.000Z')
-    const hardReviewedAt = new Date('2026-01-03T00:00:00.000Z')
-    const repository = createTracksRepository(handle.db)
-
-    await makeLeetCodeActive(handle.db)
-    await insertReviewAttempt(handle.db, {
-      id: 'review-good-before-hard',
-      problemSlug: 'two-sum',
-      rating: 'good',
-      reviewedAt: goodReviewedAt,
-    })
-    await insertReviewAttempt(handle.db, {
-      id: 'review-hard-after-good',
-      problemSlug: 'two-sum',
-      rating: 'hard',
-      reviewedAt: hardReviewedAt,
-    })
-
-    await expect(
-      repository.recordActiveTrackProblemReview({
-        problemSlug: 'two-sum',
-        rating: 'good',
-        reviewedAt: goodReviewedAt,
-        reviewAttemptId: 'review-good-before-hard',
-      }),
-    ).resolves.toBe(true)
-    await expect(
-      repository.recordActiveTrackProblemReview({
-        problemSlug: 'two-sum',
-        rating: 'hard',
-        reviewedAt: hardReviewedAt,
-        reviewAttemptId: 'review-hard-after-good',
-      }),
-    ).resolves.toBe(true)
-
-    const progressRows = await handle.db.select().from(trackProblemProgress)
-
-    expect(progressRows).toMatchObject([
-      {
-        trackId: 'leetcode-75',
-        problemSlug: 'two-sum',
-        reviewAttemptId: 'review-good-before-hard',
-        completedAt: goodReviewedAt.getTime(),
-        completedRating: 'good',
-      },
-    ])
-  })
-
-  it('does not record review progress for inactive tracks with the same problem', async () => {
-    const handle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-    const reviewedAt = new Date('2026-01-02T00:00:00.000Z')
     const repository = createTracksRepository(handle.db)
 
     await makeLeetCodeActive(handle.db)
     await handle.db.insert(trackGroupProblems).values({
       trackGroupId: 'grind-75:stack',
-      trackId: 'grind-75',
       problemSlug: 'two-sum',
       position: 2,
     })
-    await insertReviewAttempt(handle.db, {
-      id: 'review-active-only',
-      problemSlug: 'two-sum',
-      rating: 'good',
-      reviewedAt,
-    })
 
     await expect(
-      repository.recordActiveTrackProblemReview({
+      repository.recordActiveTrackProblemCompletion({
         problemSlug: 'two-sum',
         rating: 'good',
-        reviewedAt,
-        reviewAttemptId: 'review-active-only',
+        completedAt: new Date('2026-01-02T00:00:00.000Z'),
       }),
     ).resolves.toBe(true)
 
@@ -1201,13 +942,13 @@ describe('TracksRepository', () => {
       .select()
       .from(trackProblemProgress)
       .orderBy(
-        asc(trackProblemProgress.trackId),
+        asc(trackProblemProgress.trackGroupId),
         asc(trackProblemProgress.problemSlug),
       )
 
     expect(progressRows).toMatchObject([
       {
-        trackId: 'leetcode-75',
+        trackGroupId: 'leetcode-75:arrays-hashing',
         problemSlug: 'two-sum',
       },
     ])
@@ -1222,57 +963,4 @@ async function makeLeetCodeActive(db: Db) {
       activeGroupId: 'leetcode-75:arrays-hashing',
     })
     .where(eq(trackSession.id, 'active'))
-}
-
-async function insertReviewAttempt(
-  db: Db,
-  input: {
-    id: string
-    problemSlug: string
-    rating: 'again' | 'hard' | 'good' | 'easy'
-    reviewedAt: Date
-  },
-) {
-  const timestamp = input.reviewedAt.getTime()
-  const cardId = `${input.problemSlug}:default`
-
-  await db
-    .insert(fsrsCards)
-    .values({
-      id: cardId,
-      problemSlug: input.problemSlug,
-      cardKind: 'default',
-      dueAt: timestamp,
-      stability: 0,
-      difficulty: 0,
-      elapsedDays: 0,
-      scheduledDays: 0,
-      learningSteps: 0,
-      reps: 0,
-      lapses: 0,
-      state: 'new',
-      lastReviewAt: null,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    })
-    .onConflictDoNothing()
-
-  await db.insert(reviewAttempts).values({
-    id: input.id,
-    problemSlug: input.problemSlug,
-    cardId,
-    rating: input.rating,
-    reviewMode: 'manual',
-    reviewedAt: timestamp,
-    elapsedSeconds: null,
-    isCorrect: null,
-    interviewPattern: null,
-    timeComplexity: null,
-    spaceComplexity: null,
-    languages: null,
-    notes: null,
-    fsrsReviewLog: null,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  })
 }

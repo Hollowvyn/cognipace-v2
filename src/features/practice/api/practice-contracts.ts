@@ -99,9 +99,7 @@ export const normalizedPracticeStateSchema = z.object({
   latestAttempt: practiceReviewAttemptSchema.nullable(),
 })
 
-export type SerializedNormalizedPracticeState = z.infer<
-  typeof normalizedPracticeStateSchema
->
+export type SerializedNormalizedPracticeState = z.infer<typeof normalizedPracticeStateSchema>
 
 // Extends the normalized contract with overlay-session fields
 export const practiceDetailsSchema = normalizedPracticeStateSchema.extend({
@@ -116,7 +114,6 @@ export type SerializedPracticeDetails = z.infer<typeof practiceDetailsSchema>
 export const practiceReviewResultSchema = z.object({
   problemSlug: z.string(),
   cardId: z.string(),
-  reviewAttemptId: z.string(),
   rating: z.enum(reviewRatings),
   status: z.enum(practiceStatuses),
   dueAt: z.iso.datetime(),

@@ -12,11 +12,7 @@ import {
   useRestoreFullBackup,
   useValidateFullBackup,
 } from './backup-api'
-import {
-  backupSchemaVersion,
-  type BackupFile,
-  type BackupSummary,
-} from './backup-contracts'
+import type { BackupFile, BackupSummary } from './backup-contracts'
 
 vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
@@ -127,7 +123,7 @@ describe('backup API hooks', () => {
 })
 
 const validSummary = {
-  schemaVersion: backupSchemaVersion,
+  schemaVersion: 1,
   exportedAt: '2026-05-25T12:00:00.000Z',
   source: {},
   counts: {
@@ -149,7 +145,7 @@ const validSummary = {
 } satisfies BackupSummary
 
 const validBackup = {
-  schemaVersion: backupSchemaVersion,
+  schemaVersion: 1,
   app: 'cognipace',
   exportedAt: '2026-05-25T12:00:00.000Z',
   source: {},

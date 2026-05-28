@@ -4,7 +4,12 @@ import type {
   SerializedProblem,
 } from '@/features/problems/api/problems-contracts'
 
-import type { ActiveTrack, Track, TrackGroup, TrackProgress } from '../domain'
+import type {
+  ActiveTrack,
+  Track,
+  TrackGroup,
+  TrackProgress,
+} from '../domain'
 import type { TrackProblemMembership } from '../domain/track'
 import {
   serializedActiveTrackSchema,
@@ -70,15 +75,8 @@ export function serializeTrackProblemRow(
       groupTitle: row.membership.groupTitle,
       groupPosition: row.membership.groupPosition,
       problemPosition: row.membership.problemPosition,
-      completion:
-        row.membership.completion.status === 'completed'
-          ? {
-              status: 'completed',
-              completedAt: row.membership.completion.completedAt.toISOString(),
-              completedRating: row.membership.completion.completedRating,
-              reviewAttemptId: row.membership.completion.reviewAttemptId,
-            }
-          : row.membership.completion,
+      completedAt: row.membership.completedAt?.toISOString() ?? null,
+      completedRating: row.membership.completedRating,
     },
   })
 }

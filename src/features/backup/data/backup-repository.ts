@@ -104,17 +104,10 @@ export class BackupRepository {
           createdAt: toIso(row.createdAt),
           updatedAt: toIso(row.updatedAt),
         })),
-        memberships: membershipRows.map((row) => ({
-          trackGroupId: row.trackGroupId,
-          problemSlug: row.problemSlug,
-          position: row.position,
-        })),
+        memberships: membershipRows,
         progress: progressRows.map((row) => ({
-          trackId: row.trackId,
-          problemSlug: row.problemSlug,
-          reviewAttemptId: row.reviewAttemptId,
-          completedAt: toIsoOrNull(row.completedAt),
-          completedRating: row.completedRating,
+          ...row,
+          completedAt: toIso(row.completedAt),
           createdAt: toIso(row.createdAt),
           updatedAt: toIso(row.updatedAt),
         })),
@@ -223,14 +216,16 @@ async function insertBackupData(db: Db, data: BackupData) {
   }
 
   if (data.tracks.memberships.length > 0) {
-    const trackIdByGroupId = new Map(
-      data.tracks.groups.map((group) => [group.id, group.trackId]),
-    )
+    await db.insert(trackGroupProblems).values(data.tracks.memberships)
+  }
 
-    await db.insert(trackGroupProblems).values(
-      data.tracks.memberships.map((row) => ({
+  if (data.tracks.progress.length > 0) {
+    await db.insert(trackProblemProgress).values(
+      data.tracks.progress.map((row) => ({
         ...row,
-        trackId: requireGroupTrackId(trackIdByGroupId, row.trackGroupId),
+        completedAt: toMillis(row.completedAt),
+        createdAt: toMillis(row.createdAt),
+        updatedAt: toMillis(row.updatedAt),
       })),
     )
   }
@@ -281,20 +276,6 @@ async function insertBackupData(db: Db, data: BackupData) {
     )
   }
 
-  if (data.tracks.progress.length > 0) {
-    await db.insert(trackProblemProgress).values(
-      data.tracks.progress.map((row) => ({
-        trackId: row.trackId,
-        problemSlug: row.problemSlug,
-        reviewAttemptId: row.reviewAttemptId,
-        completedAt: toMillisOrNull(row.completedAt),
-        completedRating: row.completedRating,
-        createdAt: toMillis(row.createdAt),
-        updatedAt: toMillis(row.updatedAt),
-      })),
-    )
-  }
-
   if (data.settings.length > 0) {
     await db.insert(settingsKv).values(
       data.settings.map((row) => ({
@@ -319,19 +300,4 @@ function toMillis(value: string) {
 
 function toMillisOrNull(value: string | null) {
   return value === null ? null : toMillis(value)
-}
-
-function requireGroupTrackId(
-  trackIdByGroupId: ReadonlyMap<string, string>,
-  trackGroupId: string,
-) {
-  const trackId = trackIdByGroupId.get(trackGroupId)
-
-  if (trackId === undefined) {
-    throw new Error(
-      `Invalid backup: membership references missing group ${trackGroupId}.`,
-    )
-  }
-
-  return trackId
 }

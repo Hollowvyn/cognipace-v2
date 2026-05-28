@@ -5,11 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { sendMessage } from '@/extension/messaging'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
-import {
-  backupSchemaVersion,
-  type BackupFile,
-  type BackupSummary,
-} from '../api/backup-contracts'
+import type { BackupFile, BackupSummary } from '../api/backup-contracts'
 import { DataManagementScreen } from './data-management-screen'
 
 vi.mock('@/extension/messaging', () => ({
@@ -97,9 +93,7 @@ describe('DataManagementScreen', () => {
       await screen.findByRole('status', { name: 'Data management feedback' }),
     ).toHaveTextContent('Backup ready to restore.')
     expect(screen.getByText('backup.json')).toBeVisible()
-    expect(
-      screen.getByText(`Schema version: ${backupSchemaVersion}`),
-    ).toBeVisible()
+    expect(screen.getByText('Schema version: 1')).toBeVisible()
     expect(
       screen.getByText(
         `Exported: ${formatExpectedDateTime(validSummary.exportedAt)}`,
@@ -170,9 +164,7 @@ describe('DataManagementScreen', () => {
       await screen.findByRole('status', { name: 'Data management feedback' }),
     ).toHaveTextContent('Backup restored.')
     expect(screen.getByText('No backup file selected')).toBeVisible()
-    expect(
-      screen.queryByText(`Schema version: ${backupSchemaVersion}`),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Schema version: 1')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Restore full backup' }),
     ).not.toBeInTheDocument()
@@ -288,7 +280,7 @@ function formatExpectedDateTime(value: string) {
 }
 
 const validSummary = {
-  schemaVersion: backupSchemaVersion,
+  schemaVersion: 1,
   exportedAt: '2026-05-25T12:00:00.000Z',
   source: {
     appVersion: '0.0.0',
@@ -312,7 +304,7 @@ const validSummary = {
 } satisfies BackupSummary
 
 const validBackup = {
-  schemaVersion: backupSchemaVersion,
+  schemaVersion: 1,
   app: 'cognipace',
   exportedAt: '2026-05-25T12:00:00.000Z',
   source: {},
@@ -425,9 +417,8 @@ const validBackup = {
       ],
       progress: [
         {
-          trackId: 'custom-track',
+          trackGroupId: 'custom-track:arrays',
           problemSlug: 'two-sum',
-          reviewAttemptId: 'attempt-1',
           completedAt: '2026-05-25T12:00:00.000Z',
           completedRating: 'good',
           createdAt: '2026-05-25T12:00:00.000Z',
@@ -436,7 +427,7 @@ const validBackup = {
       ],
       session: [
         {
-          id: 'active',
+          id: 'default',
           activeTrackId: 'custom-track',
           activeGroupId: 'custom-track:arrays',
           startedAt: '2026-05-25T12:00:00.000Z',
