@@ -15,6 +15,7 @@ import type {
   TrackCompletionInput,
   TrackGroup,
   TrackProblemMembership,
+  TrackReviewProgressInput,
   TrackSessionState,
 } from '../domain/track'
 import {
@@ -233,11 +234,27 @@ export async function resetTrackProgress(
   await repository.resetTrackProgress(request.trackId)
 }
 
+export async function recordActiveTrackProblemReview(
+  db: Db,
+  input: TrackReviewProgressInput,
+): Promise<boolean> {
+  return createTracksRepository(db).recordActiveTrackProblemReview(input)
+}
+
 export async function recordActiveTrackProblemCompletion(
   db: Db,
   input: TrackCompletionInput,
 ): Promise<boolean> {
   return createTracksRepository(db).recordActiveTrackProblemCompletion(input)
+}
+
+export async function reconcileActiveTrackProblemReviewOverride(
+  db: Db,
+  input: TrackReviewProgressInput,
+): Promise<boolean> {
+  return createTracksRepository(db).reconcileActiveTrackProblemReviewOverride(
+    input,
+  )
 }
 
 type ActiveTrackGuidanceInput = {
@@ -304,7 +321,9 @@ async function readActiveTrackGuidance(
 function selectActiveTrackNextRow(
   rows: readonly TrackProblemRowSerializationInput[],
 ) {
-  const incompleteRows = rows.filter((row) => !row.membership.completedAt)
+  const incompleteRows = rows.filter(
+    (row) => row.membership.completion.status !== 'completed',
+  )
   const nextRow =
     incompleteRows.find((row) => row.status === 'due') ??
     incompleteRows.find((row) => row.status !== 'suspended') ??

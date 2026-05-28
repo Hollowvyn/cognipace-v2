@@ -19,6 +19,19 @@ export const trackCompletedRatingSchema = z.enum(['good', 'easy'])
 
 export type TrackCompletedRating = z.infer<typeof trackCompletedRatingSchema>
 
+const trackProblemCompletionSchema = z.discriminatedUnion('status', [
+  z.strictObject({
+    status: z.literal('incomplete'),
+    reviewAttemptId: z.string().nullable(),
+  }),
+  z.strictObject({
+    status: z.literal('completed'),
+    completedAt: z.iso.datetime(),
+    completedRating: trackCompletedRatingSchema,
+    reviewAttemptId: z.string().nullable(),
+  }),
+])
+
 export const serializedTrackProgressSchema = z
   .object({
     completedCount: z.number().int().min(0),
@@ -85,14 +98,13 @@ export const activeTrackSchema = serializedActiveTrackSchema
 export type SerializedActiveTrack = z.infer<typeof serializedActiveTrackSchema>
 
 export const trackProblemRowSchema = problemLibraryRowSchema.extend({
-  membership: z.object({
+  membership: z.strictObject({
     trackId: trackIdSchema,
     groupId: trackGroupIdSchema,
     groupTitle: z.string(),
     groupPosition: z.number().int().min(1),
     problemPosition: z.number().int().min(1),
-    completedAt: z.iso.datetime().nullable(),
-    completedRating: trackCompletedRatingSchema.nullable(),
+    completion: trackProblemCompletionSchema,
   }),
 })
 
