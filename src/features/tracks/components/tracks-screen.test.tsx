@@ -1235,7 +1235,8 @@ const twoGroupWorkspace = createTrackWorkspaceResponse({
         groupTitle: 'Arrays and Hashing',
         groupPosition: 1,
         problemPosition: 1,
-        completion: { status: 'incomplete', reviewAttemptId: null },
+        completedAt: null,
+        completedRating: null,
       },
       trackMemberships: [
         {
@@ -1265,12 +1266,8 @@ const twoGroupWorkspace = createTrackWorkspaceResponse({
         groupTitle: 'Arrays and Hashing',
         groupPosition: 1,
         problemPosition: 2,
-        completion: {
-          status: 'completed',
-          completedAt: '2026-01-01T00:00:00.000Z',
-          completedRating: 'good',
-          reviewAttemptId: 'review-two-sum-1',
-        },
+        completedAt: '2026-01-01T00:00:00.000Z',
+        completedRating: 'good',
       },
     }),
     createTrackProblemRow({
@@ -1289,7 +1286,8 @@ const twoGroupWorkspace = createTrackWorkspaceResponse({
         groupTitle: 'Dynamic Programming',
         groupPosition: 2,
         problemPosition: 1,
-        completion: { status: 'incomplete', reviewAttemptId: null },
+        completedAt: null,
+        completedRating: null,
       },
     }),
   ],

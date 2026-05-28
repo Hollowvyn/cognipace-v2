@@ -109,9 +109,8 @@ describe('backup repository', () => {
     })
     expect(backupData.tracks.progress).toEqual([
       expect.objectContaining({
-        trackId: 'custom-track',
+        trackGroupId: 'custom-group',
         problemSlug: 'custom-problem',
-        reviewAttemptId: 'attempt-custom',
         completedAt: now.toISOString(),
       }),
     ])
@@ -322,14 +321,12 @@ async function insertCustomState(db: TestDb) {
   })
   await db.insert(trackGroupProblems).values({
     trackGroupId: 'custom-group',
-    trackId: 'custom-track',
     problemSlug: 'custom-problem',
     position: 1,
   })
   await db.insert(trackProblemProgress).values({
-    trackId: 'custom-track',
+    trackGroupId: 'custom-group',
     problemSlug: 'custom-problem',
-    reviewAttemptId: 'attempt-custom',
     completedAt: timestamp,
     completedRating: 'good',
     createdAt: timestamp,

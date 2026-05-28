@@ -47,76 +47,6 @@ const backup: BackupFile = {
   },
 }
 
-const legacyBackup = {
-  schemaVersion: 1,
-  app: 'cognipace',
-  exportedAt: '2026-05-26T12:00:00.000Z',
-  source: { appVersion: '0.0.0' },
-  data: {
-    problems: [
-      {
-        slug: 'two-sum',
-        title: 'Two Sum',
-        difficulty: 'easy',
-        isPremium: false,
-        createdAt: '2026-05-26T12:00:00.000Z',
-        updatedAt: '2026-05-26T12:00:00.000Z',
-      },
-    ],
-    topics: [],
-    companies: [],
-    problemTopics: [],
-    problemCompanies: [],
-    practice: {
-      problemPractice: [],
-      fsrsCards: [],
-      reviewAttempts: [],
-    },
-    tracks: {
-      tracks: [
-        {
-          id: 'leetcode-75',
-          slug: 'leetcode-75',
-          title: 'LeetCode 75',
-          description: null,
-          dueAt: null,
-          createdAt: '2026-05-26T12:00:00.000Z',
-          updatedAt: '2026-05-26T12:00:00.000Z',
-        },
-      ],
-      groups: [
-        {
-          id: 'leetcode-75:arrays',
-          trackId: 'leetcode-75',
-          title: 'Arrays',
-          position: 1,
-          createdAt: '2026-05-26T12:00:00.000Z',
-          updatedAt: '2026-05-26T12:00:00.000Z',
-        },
-      ],
-      memberships: [
-        {
-          trackGroupId: 'leetcode-75:arrays',
-          problemSlug: 'two-sum',
-          position: 1,
-        },
-      ],
-      progress: [
-        {
-          trackGroupId: 'leetcode-75:arrays',
-          problemSlug: 'two-sum',
-          completedAt: '2026-05-26T12:00:00.000Z',
-          completedRating: 'good',
-          createdAt: '2026-05-26T12:00:00.000Z',
-          updatedAt: '2026-05-26T12:00:00.000Z',
-        },
-      ],
-      session: [],
-    },
-    settings: [],
-  },
-}
-
 const backupSummary: BackupSummary = {
   schemaVersion: backup.schemaVersion,
   exportedAt: backup.exportedAt,
@@ -287,47 +217,6 @@ describe('sync service', () => {
       lastRemoteVersion: 'remote_2',
       lastSyncDirection: 'pull',
     })
-  })
-
-  it('pullLatest restores normalized v1 remote backup data', async () => {
-    const harness = createHarness()
-    harness.setMetadata({
-      enabled: true,
-      gistId: 'gist_1',
-      dirtySinceLastSync: false,
-      lastRemoteVersion: 'remote_1',
-    })
-    harness.githubClient.getGist.mockResolvedValue(
-      createGistSummary({
-        id: 'gist_1',
-        updatedAt: '2026-05-26T12:10:00.000Z',
-        remoteVersion: 'remote_2',
-        content: JSON.stringify({
-          syncEnvelopeVersion: 1,
-          app: 'cognipace',
-          exportedAt: '2026-05-26T12:10:00.000Z',
-          dataUpdatedAt: '2026-05-26T12:10:00.000Z',
-          backup: legacyBackup,
-        }),
-      }),
-    )
-
-    await expect(harness.service.pullLatest()).resolves.toMatchObject({
-      action: 'pull-latest',
-      direction: 'pull',
-      outcome: 'success',
-    })
-    expect(harness.restoreBackup).toHaveBeenCalledTimes(1)
-    const restoredBackup = harness.restoreBackup.mock.calls[0]![0]
-
-    expect(restoredBackup.schemaVersion).toBe(backupSchemaVersion)
-    expect(restoredBackup.data.tracks.progress).toEqual([
-      expect.objectContaining({
-        trackId: 'leetcode-75',
-        problemSlug: 'two-sum',
-        reviewAttemptId: null,
-      }),
-    ])
   })
 
   it('pullLatest blocks dirty local data without restoring remote data', async () => {
@@ -960,18 +849,10 @@ function createHarness(
   > = {},
 ) {
   let metadata: SyncMetadata = { ...defaultSyncMetadata }
-  const restoreBackup = vi
-    .fn<(backup: BackupFile) => Promise<BackupSummary>>()
-    .mockResolvedValue(backupSummary)
-  const exportFullBackup = vi
-    .fn<() => Promise<BackupFile>>()
-    .mockResolvedValue(backup)
-  const flushDbSnapshot = vi
-    .fn<() => Promise<void>>()
-    .mockResolvedValue(undefined)
-  const broadcastInvalidation = vi
-    .fn<() => Promise<void>>()
-    .mockResolvedValue(undefined)
+  const restoreBackup = vi.fn().mockResolvedValue(backupSummary)
+  const exportFullBackup = vi.fn().mockResolvedValue(backup)
+  const flushDbSnapshot = vi.fn().mockResolvedValue(undefined)
+  const broadcastInvalidation = vi.fn().mockResolvedValue(undefined)
   const githubClient = {
     validateToken: vi
       .fn<() => Promise<{ ok: true; login: string }>>()

@@ -72,11 +72,9 @@ const backgroundMocks = vi.hoisted(() => {
     getTrackForEdit: vi.fn(),
     getWorkspace: vi.fn(),
     recordActiveTrackProblemCompletion: vi.fn(),
-    overrideLastReviewResultWithTrackProgress: vi.fn(),
     overrideLastReviewResult: vi.fn(),
     resetPracticeSchedule: vi.fn(),
     resetTrackProgress: vi.fn(),
-    saveReviewResultWithTrackProgress: vi.fn(),
     saveReviewResult: vi.fn(),
     setActiveGroup: vi.fn(),
     setPracticeSuspended: vi.fn(),
@@ -157,12 +155,8 @@ vi.mock(
     return {
       ...actual,
       getPracticeDetails: backgroundMocks.getPracticeDetails,
-      overrideLastReviewResultWithTrackProgress:
-        backgroundMocks.overrideLastReviewResultWithTrackProgress,
       overrideLastReviewResult: backgroundMocks.overrideLastReviewResult,
       resetPracticeSchedule: backgroundMocks.resetPracticeSchedule,
-      saveReviewResultWithTrackProgress:
-        backgroundMocks.saveReviewResultWithTrackProgress,
       saveReviewResult: backgroundMocks.saveReviewResult,
       setPracticeSuspended: backgroundMocks.setPracticeSuspended,
     }
@@ -254,14 +248,8 @@ describe('background handler registration', () => {
     backgroundMocks.getTrackForEdit.mockResolvedValue(trackForEditResponse)
     backgroundMocks.getWorkspace.mockResolvedValue(trackWorkspaceResponse)
     backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValue(false)
-    backgroundMocks.overrideLastReviewResultWithTrackProgress.mockResolvedValue(
-      undefined,
-    )
     backgroundMocks.resetPracticeSchedule.mockResolvedValue(practiceDetails)
     backgroundMocks.resetTrackProgress.mockResolvedValue(undefined)
-    backgroundMocks.saveReviewResultWithTrackProgress.mockResolvedValue(
-      undefined,
-    )
     backgroundMocks.saveReviewResult.mockResolvedValue(undefined)
     backgroundMocks.setActiveGroup.mockResolvedValue(undefined)
     backgroundMocks.setPracticeSuspended.mockResolvedValue(practiceDetails)
@@ -1008,32 +996,101 @@ describe('background handler registration', () => {
     })
   })
 
-  it('saves review results through the atomic practice workflow', async () => {
+  it('records active-track progress only for good and easy saved reviews', async () => {
     await sendRuntimeMessage('practice.saveReviewResult', {
       surface: 'dashboard',
       problemSlug: 'two-sum',
       rating: 'hard',
       reviewedAt: '2026-01-02T00:00:00.000Z',
-      elapsedSeconds: 725,
-      isCorrect: false,
-      notes: 'Missed a branch.',
     })
 
     expect(
-      backgroundMocks.saveReviewResultWithTrackProgress,
-    ).toHaveBeenCalledWith(
-      backgroundMocks.db,
-      {
-        problemSlug: 'two-sum',
-        rating: 'hard',
-        reviewedAt: new Date('2026-01-02T00:00:00.000Z'),
-        elapsedSeconds: 725,
-        isCorrect: false,
-        log: { notes: 'Missed a branch.' },
-        targetRetention: defaultUserSettings.review.targetRetention,
-      },
-      defaultUserSettings,
+      backgroundMocks.recordActiveTrackProblemCompletion,
+    ).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      problemSlug: 'two-sum',
+      reason: 'practice-updated',
+      source: 'dashboard',
+      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
+    })
+
+    vi.clearAllMocks()
+    backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
+    backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
+    backgroundMocks.flushDbSnapshot.mockResolvedValue(undefined)
+    backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
+    backgroundMocks.getPracticeDetails.mockResolvedValue(practiceDetails)
+    backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValueOnce(
+      true,
     )
+
+    await sendRuntimeMessage('practice.saveReviewResult', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: '2026-01-02T00:00:00.000Z',
+    })
+
+    expect(
+      backgroundMocks.recordActiveTrackProblemCompletion,
+    ).toHaveBeenCalledWith(backgroundMocks.db, {
+      problemSlug: 'two-sum',
+      rating: 'good',
+      completedAt: new Date('2026-01-02T00:00:00.000Z'),
+    })
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      problemSlug: 'two-sum',
+      reason: 'practice-updated',
+      source: 'dashboard',
+      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
+    })
+  })
+
+  it('records active-track progress for easy saved reviews', async () => {
+    resetRuntimeMutationMocks()
+    backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValueOnce(
+      true,
+    )
+
+    await sendRuntimeMessage('practice.saveReviewResult', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      rating: 'easy',
+      reviewedAt: '2026-01-03T00:00:00.000Z',
+    })
+
+    expect(
+      backgroundMocks.recordActiveTrackProblemCompletion,
+    ).toHaveBeenCalledWith(backgroundMocks.db, {
+      problemSlug: 'two-sum',
+      rating: 'easy',
+      completedAt: new Date('2026-01-03T00:00:00.000Z'),
+    })
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      problemSlug: 'two-sum',
+      reason: 'practice-updated',
+      source: 'dashboard',
+      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
+    })
+  })
+
+  it('does not record active-track progress for free-practice saved reviews', async () => {
+    resetRuntimeMutationMocks()
+    backgroundMocks.getSettings.mockResolvedValueOnce({
+      ...defaultUserSettings,
+      practice: {
+        ...defaultUserSettings.practice,
+        mode: 'freePractice',
+      },
+    })
+
+    await sendRuntimeMessage('practice.saveReviewResult', {
+      surface: 'dashboard',
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: '2026-01-05T00:00:00.000Z',
+    })
+
     expect(
       backgroundMocks.recordActiveTrackProblemCompletion,
     ).not.toHaveBeenCalled()
@@ -1045,62 +1102,26 @@ describe('background handler registration', () => {
     })
   })
 
-  it('passes free-practice settings into the atomic practice workflow', async () => {
+  it('invalidates tracks when an eligible saved review records no new track completion', async () => {
     resetRuntimeMutationMocks()
-    const freePracticeSettings = {
-      ...defaultUserSettings,
-      practice: {
-        ...defaultUserSettings.practice,
-        mode: 'freePractice' as const,
-      },
-    }
-    backgroundMocks.getSettings.mockResolvedValueOnce(freePracticeSettings)
+    backgroundMocks.recordActiveTrackProblemCompletion.mockResolvedValueOnce(
+      false,
+    )
 
     await sendRuntimeMessage('practice.saveReviewResult', {
       surface: 'dashboard',
       problemSlug: 'two-sum',
       rating: 'good',
-      reviewedAt: '2026-01-03T00:00:00.000Z',
-      reviewMode: 'leetcode',
+      reviewedAt: '2026-01-04T00:00:00.000Z',
     })
 
-    expect(
-      backgroundMocks.saveReviewResultWithTrackProgress,
-    ).toHaveBeenCalledWith(
-      backgroundMocks.db,
-      expect.objectContaining({
-        problemSlug: 'two-sum',
-        rating: 'good',
-        reviewedAt: new Date('2026-01-03T00:00:00.000Z'),
-        reviewMode: 'leetcode',
-      }),
-      freePracticeSettings,
-    )
     expect(
       backgroundMocks.recordActiveTrackProblemCompletion,
-    ).not.toHaveBeenCalled()
-  })
-
-  it('invalidates tracks after saving a review through the atomic workflow', async () => {
-    resetRuntimeMutationMocks()
-
-    await sendRuntimeMessage('practice.saveReviewResult', {
-      surface: 'dashboard',
+    ).toHaveBeenCalledWith(backgroundMocks.db, {
       problemSlug: 'two-sum',
-      rating: 'easy',
-      reviewedAt: '2026-01-03T00:00:00.000Z',
+      rating: 'good',
+      completedAt: new Date('2026-01-04T00:00:00.000Z'),
     })
-
-    expect(
-      backgroundMocks.saveReviewResultWithTrackProgress,
-    ).toHaveBeenCalledWith(
-      backgroundMocks.db,
-      expect.objectContaining({
-        problemSlug: 'two-sum',
-        rating: 'easy',
-      }),
-      defaultUserSettings,
-    )
     expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
       problemSlug: 'two-sum',
       reason: 'practice-updated',
@@ -1111,9 +1132,7 @@ describe('background handler registration', () => {
 
   it('invalidates tracks after overriding a saved review result', async () => {
     resetRuntimeMutationMocks()
-    backgroundMocks.overrideLastReviewResultWithTrackProgress.mockResolvedValue(
-      undefined,
-    )
+    backgroundMocks.overrideLastReviewResult.mockResolvedValue(undefined)
 
     await sendRuntimeMessage('practice.overrideLastReviewResult', {
       surface: 'dashboard',
@@ -1121,17 +1140,13 @@ describe('background handler registration', () => {
       rating: 'hard',
     })
 
-    expect(
-      backgroundMocks.overrideLastReviewResultWithTrackProgress,
-    ).toHaveBeenCalledWith(
+    expect(backgroundMocks.overrideLastReviewResult).toHaveBeenCalledWith(
       backgroundMocks.db,
       expect.objectContaining({
         problemSlug: 'two-sum',
         rating: 'hard',
       }),
-      defaultUserSettings,
     )
-    expect(backgroundMocks.overrideLastReviewResult).not.toHaveBeenCalled()
     expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
       problemSlug: 'two-sum',
       reason: 'practice-updated',
@@ -1260,10 +1275,6 @@ function resetRuntimeMutationMocks() {
   backgroundMocks.flushDbSnapshot.mockResolvedValue(undefined)
   backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
   backgroundMocks.getPracticeDetails.mockResolvedValue(practiceDetails)
-  backgroundMocks.overrideLastReviewResultWithTrackProgress.mockResolvedValue(
-    undefined,
-  )
-  backgroundMocks.saveReviewResultWithTrackProgress.mockResolvedValue(undefined)
   backgroundMocks.saveReviewResult.mockResolvedValue(undefined)
   backgroundMocks.createBackgroundSyncService.mockReturnValue(
     backgroundMocks.syncService,
@@ -1641,9 +1652,8 @@ const validBackup = backupFileSchema.parse({
       ],
       progress: [
         {
-          trackId: 'custom-track',
+          trackGroupId: 'custom-track:arrays',
           problemSlug: 'two-sum',
-          reviewAttemptId: null,
           completedAt: backupTimestamp,
           completedRating: 'good',
           createdAt: backupTimestamp,

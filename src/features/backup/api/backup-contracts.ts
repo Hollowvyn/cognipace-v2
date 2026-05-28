@@ -13,7 +13,7 @@ import {
 } from '@/features/tracks/api/tracks-contracts'
 import { fsrsCardStates, reviewRatings } from '@/lib/fsrs'
 
-export const backupSchemaVersion = 2
+export const backupSchemaVersion = 1
 
 export const minimumSupportedBackupSchemaVersion = 1
 
@@ -133,7 +133,7 @@ export const backupTrackMembershipRowSchema = z.strictObject({
   position: z.number().int().min(1),
 })
 
-const backupTrackProgressV1RowSchema = z.strictObject({
+export const backupTrackProgressRowSchema = z.strictObject({
   trackGroupId: trackGroupIdSchema,
   problemSlug: problemSlugSchema,
   completedAt: isoDatetimeSchema,
@@ -141,29 +141,6 @@ const backupTrackProgressV1RowSchema = z.strictObject({
   createdAt: isoDatetimeSchema,
   updatedAt: isoDatetimeSchema,
 })
-
-export const backupTrackProgressRowSchema = z
-  .strictObject({
-    trackId: trackIdSchema,
-    problemSlug: problemSlugSchema,
-    reviewAttemptId: durableIdSchema.nullable(),
-    completedAt: isoDatetimeSchema.nullable(),
-    completedRating: trackCompletedRatingSchema.nullable(),
-    createdAt: isoDatetimeSchema,
-    updatedAt: isoDatetimeSchema,
-  })
-  .superRefine((row, context) => {
-    const hasCompletedAt = row.completedAt !== null
-    const hasCompletedRating = row.completedRating !== null
-
-    if (hasCompletedAt !== hasCompletedRating) {
-      context.addIssue({
-        code: 'custom',
-        message: 'completedAt and completedRating must both be null or set',
-        path: ['completedAt'],
-      })
-    }
-  })
 
 export const backupTrackSessionRowSchema = z.strictObject({
   id: durableIdSchema,
@@ -205,10 +182,6 @@ export const backupTracksDataSchema = z.strictObject({
   session: z.array(backupTrackSessionRowSchema),
 })
 
-const backupTracksDataV1Schema = backupTracksDataSchema.extend({
-  progress: z.array(backupTrackProgressV1RowSchema),
-})
-
 export const backupDataSchema = z.strictObject({
   problems: z.array(backupProblemRowSchema),
   topics: z.array(backupTopicRowSchema),
@@ -220,10 +193,6 @@ export const backupDataSchema = z.strictObject({
   settings: z.array(backupSettingsKvRowSchema),
 })
 
-const backupDataV1Schema = backupDataSchema.extend({
-  tracks: backupTracksDataV1Schema,
-})
-
 export const backupFileSchema = z.strictObject({
   schemaVersion: z.literal(backupSchemaVersion),
   app: z.literal('cognipace'),
@@ -233,11 +202,6 @@ export const backupFileSchema = z.strictObject({
     extensionVersion: z.string().optional(),
   }),
   data: backupDataSchema,
-})
-
-const backupFileV1Schema = backupFileSchema.extend({
-  schemaVersion: z.literal(1),
-  data: backupDataV1Schema,
 })
 
 export const backupRequestSchema = z.strictObject({
@@ -279,7 +243,6 @@ export const backupSummarySchema = z.strictObject({
 })
 
 export type BackupFile = z.infer<typeof backupFileSchema>
-type BackupFileV1 = z.infer<typeof backupFileV1Schema>
 export type BackupData = z.infer<typeof backupDataSchema>
 export type BackupRequest = z.infer<typeof backupRequestSchema>
 export type BackupPayloadRequest = z.infer<typeof backupPayloadRequestSchema>
@@ -306,47 +269,7 @@ export function parseBackupFileForCurrentApp(input: unknown): BackupFile {
     )
   }
 
-  if (envelope.schemaVersion === 1) {
-    return normalizeBackupV1ToV2(backupFileV1Schema.parse(input))
-  }
-
   return backupFileSchema.parse(input)
-}
-
-function normalizeBackupV1ToV2(backup: BackupFileV1): BackupFile {
-  const groupsById = new Map(
-    backup.data.tracks.groups.map((group) => [group.id, group]),
-  )
-
-  return backupFileSchema.parse({
-    ...backup,
-    schemaVersion: backupSchemaVersion,
-    data: {
-      ...backup.data,
-      tracks: {
-        ...backup.data.tracks,
-        progress: backup.data.tracks.progress.map((row) => {
-          const group = groupsById.get(row.trackGroupId)
-
-          if (!group) {
-            throw new Error(
-              `Invalid backup: progress references missing group ${row.trackGroupId}.`,
-            )
-          }
-
-          return {
-            trackId: group.trackId,
-            problemSlug: row.problemSlug,
-            reviewAttemptId: null,
-            completedAt: row.completedAt,
-            completedRating: row.completedRating,
-            createdAt: row.createdAt,
-            updatedAt: row.updatedAt,
-          }
-        }),
-      },
-    },
-  })
 }
 
 export function createBackupSummary(backup: BackupFile): BackupSummary {

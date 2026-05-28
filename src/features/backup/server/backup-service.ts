@@ -91,9 +91,6 @@ function validateBackupReferences(data: BackupData) {
   const fsrsCardsById = new Map(
     data.practice.fsrsCards.map((card) => [card.id, card]),
   )
-  const reviewAttemptsById = new Map(
-    data.practice.reviewAttempts.map((attempt) => [attempt.id, attempt]),
-  )
   const fsrsCardIds = uniqueValues(
     data.practice.fsrsCards,
     (row) => row.id,
@@ -104,7 +101,7 @@ function validateBackupReferences(data: BackupData) {
     (row) => `${row.problemSlug}:${row.cardKind}`,
     'FSRS card problem/kind',
   )
-  const reviewAttemptIds = uniqueValues(
+  uniqueValues(
     data.practice.reviewAttempts,
     (row) => row.id,
     'review attempt id',
@@ -142,27 +139,16 @@ function validateBackupReferences(data: BackupData) {
     'track membership identity',
   )
   uniqueValues(
-    data.tracks.memberships,
-    (row) => {
-      const group = trackGroupsById.get(row.trackGroupId)
-
-      return `${group?.trackId ?? 'missing'}\u0000${row.problemSlug}`
-    },
-    'track problem identity',
-  )
-  uniqueValues(
     data.tracks.progress,
-    (row) => `${row.trackId}\u0000${row.problemSlug}`,
+    (row) => `${row.trackGroupId}\u0000${row.problemSlug}`,
     'track progress identity',
   )
   uniqueValues(data.tracks.session, (row) => row.id, 'track session identity')
 
   const memberships = new Set(
-    data.tracks.memberships.map((row) => {
-      const group = trackGroupsById.get(row.trackGroupId)
-
-      return `${group?.trackId ?? 'missing'}\u0000${row.problemSlug}`
-    }),
+    data.tracks.memberships.map(
+      (row) => `${row.trackGroupId}\u0000${row.problemSlug}`,
+    ),
   )
 
   for (const row of data.problemTopics) {
@@ -211,50 +197,19 @@ function validateBackupReferences(data: BackupData) {
   }
 
   for (const row of data.tracks.progress) {
-    requireReference(trackIds, row.trackId, 'progress', 'track')
+    requireReference(trackGroupIds, row.trackGroupId, 'progress', 'group')
     requireReference(problemSlugs, row.problemSlug, 'progress', 'problem')
     requireReference(
       memberships,
-      `${row.trackId}\u0000${row.problemSlug}`,
+      `${row.trackGroupId}\u0000${row.problemSlug}`,
       'progress',
       'membership',
     )
-
-    if (row.reviewAttemptId !== null) {
-      requireReference(
-        reviewAttemptIds,
-        row.reviewAttemptId,
-        'progress',
-        'review attempt',
-      )
-
-      const attempt = reviewAttemptsById.get(row.reviewAttemptId)
-
-      if (attempt !== undefined && attempt.problemSlug !== row.problemSlug) {
-        throw new Error(
-          `Invalid backup: progress ${row.problemSlug} references review attempt ${row.reviewAttemptId} for problem ${attempt.problemSlug}.`,
-        )
-      }
-    }
-  }
-
-  if (data.tracks.session.length > 1) {
-    throw new Error('Invalid backup: expected at most one active track session.')
   }
 
   for (const row of data.tracks.session) {
-    if (row.id !== 'active') {
-      throw new Error(`Invalid backup: unsupported track session id ${row.id}.`)
-    }
-
     if (row.activeTrackId !== null) {
       requireReference(trackIds, row.activeTrackId, 'session', 'active track')
-    }
-
-    if (row.activeTrackId === null && row.activeGroupId !== null) {
-      throw new Error(
-        `Invalid backup: session ${row.id} cannot have an active group without an active track.`,
-      )
     }
 
     if (row.activeGroupId !== null) {
