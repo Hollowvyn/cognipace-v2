@@ -70,8 +70,7 @@ export function createTrackProblemRow(
       groupTitle: 'Arrays and Hashing',
       groupPosition: 1,
       problemPosition: 1,
-      completedAt: null,
-      completedRating: null,
+      completion: { status: 'incomplete', reviewAttemptId: null },
     },
     ...overrides,
   }

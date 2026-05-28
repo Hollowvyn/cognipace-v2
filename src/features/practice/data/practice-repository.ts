@@ -56,6 +56,15 @@ export class PracticeRepository {
   constructor(private readonly db: Db) {}
 
   async saveReviewResult(input: SaveReviewResultInput): Promise<ReviewResult> {
+    return this.db.transaction((transactionDb) =>
+      this.saveReviewResultInTransaction(input, transactionDb as unknown as Db),
+    )
+  }
+
+  async saveReviewResultInTransaction(
+    input: SaveReviewResultInput,
+    writeDb: Db,
+  ): Promise<ReviewResult> {
     const reviewedAt = input.reviewedAt ?? new Date()
     const cardKind = input.cardKind ?? defaultFsrsCardKind
     const cardId = createFsrsCardId(input.problemSlug, cardKind)
@@ -66,177 +75,187 @@ export class PracticeRepository {
       input.reviewAttemptId ??
       createReviewAttemptId(input.problemSlug, timestamp)
 
-    return this.db.transaction(async (transactionDb) => {
-      const currentCard =
-        (await this.getCard(input.problemSlug, cardKind, transactionDb)) ??
-        createInitialFsrsCard(reviewedAt)
-      const scheduled = scheduleReview(currentCard, input.rating, reviewedAt, {
-        targetRetention: input.targetRetention,
-      })
-      const status = statusFromReview(input.rating, scheduled.card)
-      const previousPractice = await this.getPracticeState(
-        input.problemSlug,
-        transactionDb,
-      )
-      const reviewLogSnapshot = createPracticeLogSnapshot(
-        previousPractice?.log,
-        input.log,
-      )
-
-      await this.upsertCard(transactionDb, {
-        id: cardId,
-        problemSlug: input.problemSlug,
-        cardKind,
-        card: scheduled.card,
-        now: reviewedAt,
-      })
-
-      await transactionDb.insert(reviewAttempts).values({
-        id: reviewAttemptId,
-        problemSlug: input.problemSlug,
-        cardId,
-        rating: input.rating,
-        reviewMode: input.reviewMode ?? 'manual',
-        reviewedAt: timestamp,
-        elapsedSeconds: normalizeElapsedSeconds(input.elapsedSeconds),
-        isCorrect: input.isCorrect ?? null,
-        ...toReviewLogRow(reviewLogSnapshot),
-        fsrsReviewLog: serializeFsrsReviewLogSnapshot(scheduled.log),
-        createdAt: createdAtTimestamp,
-        updatedAt: createdAtTimestamp,
-      })
-
-      const attempts = await this.readReviewAttempts(transactionDb, {
-        problemSlug: input.problemSlug,
-        cardId,
-      })
-      const practice = await this.upsertPracticeAggregate(transactionDb, {
-        problemSlug: input.problemSlug,
-        status,
-        attempts,
-        log: reviewLogSnapshot,
-        isSuspended: previousPractice?.isSuspended ?? false,
-        now: reviewedAt,
-      })
-      const summary = derivePracticeSummary({
-        practice,
-        card: scheduled.card,
-        now: reviewedAt,
-        targetRetention: input.targetRetention,
-      })
-
-      return {
-        problemSlug: input.problemSlug,
-        cardId,
-        rating: input.rating,
-        status,
-        dueAt: scheduled.card.dueAt,
-        reviewedAt,
-        card: scheduled.card,
-        summary,
-      }
+    const currentCard =
+      (await this.getCard(input.problemSlug, cardKind, writeDb)) ??
+      createInitialFsrsCard(reviewedAt)
+    const scheduled = scheduleReview(currentCard, input.rating, reviewedAt, {
+      targetRetention: input.targetRetention,
     })
+    const status = statusFromReview(input.rating, scheduled.card)
+    const previousPractice = await this.getPracticeState(
+      input.problemSlug,
+      writeDb,
+    )
+    const reviewLogSnapshot = createPracticeLogSnapshot(
+      previousPractice?.log,
+      input.log,
+    )
+
+    await this.upsertCard(writeDb, {
+      id: cardId,
+      problemSlug: input.problemSlug,
+      cardKind,
+      card: scheduled.card,
+      now: reviewedAt,
+    })
+
+    await writeDb.insert(reviewAttempts).values({
+      id: reviewAttemptId,
+      problemSlug: input.problemSlug,
+      cardId,
+      rating: input.rating,
+      reviewMode: input.reviewMode ?? 'manual',
+      reviewedAt: timestamp,
+      elapsedSeconds: normalizeElapsedSeconds(input.elapsedSeconds),
+      isCorrect: input.isCorrect ?? null,
+      ...toReviewLogRow(reviewLogSnapshot),
+      fsrsReviewLog: serializeFsrsReviewLogSnapshot(scheduled.log),
+      createdAt: createdAtTimestamp,
+      updatedAt: createdAtTimestamp,
+    })
+
+    const attempts = await this.readReviewAttempts(writeDb, {
+      problemSlug: input.problemSlug,
+      cardId,
+    })
+    const practice = await this.upsertPracticeAggregate(writeDb, {
+      problemSlug: input.problemSlug,
+      status,
+      attempts,
+      log: reviewLogSnapshot,
+      isSuspended: previousPractice?.isSuspended ?? false,
+      now: reviewedAt,
+    })
+    const summary = derivePracticeSummary({
+      practice,
+      card: scheduled.card,
+      now: reviewedAt,
+      targetRetention: input.targetRetention,
+    })
+
+    return {
+      problemSlug: input.problemSlug,
+      cardId,
+      reviewAttemptId,
+      rating: input.rating,
+      status,
+      dueAt: scheduled.card.dueAt,
+      reviewedAt,
+      card: scheduled.card,
+      summary,
+    }
   }
 
   async overrideLastReviewResult(
     input: OverrideLastReviewResultInput,
   ): Promise<ReviewResult> {
+    return this.db.transaction((transactionDb) =>
+      this.overrideLastReviewResultInTransaction(
+        input,
+        transactionDb as unknown as Db,
+      ),
+    )
+  }
+
+  async overrideLastReviewResultInTransaction(
+    input: OverrideLastReviewResultInput,
+    writeDb: Db,
+  ): Promise<ReviewResult> {
     const cardKind = input.cardKind ?? defaultFsrsCardKind
     const cardId = createFsrsCardId(input.problemSlug, cardKind)
 
-    return this.db.transaction(async (transactionDb) => {
-      const attempts = await this.readReviewAttempts(transactionDb, {
-        problemSlug: input.problemSlug,
-        cardId,
-      })
-      const latestAttempt = attempts.at(-1)
-
-      if (!latestAttempt) {
-        throw new Error('No review result exists to override.')
-      }
-
-      const previousPractice = await this.getPracticeState(
-        input.problemSlug,
-        transactionDb,
-      )
-      const changedAt = new Date()
-      const updatedLogSnapshot = createPracticeLogSnapshot(
-        previousPractice?.log ?? latestAttempt.log,
-        input.log,
-      )
-      const updatedAttempt: StoredPracticeReviewAttempt = {
-        ...latestAttempt,
-        rating: input.rating,
-        reviewedAt: latestAttempt.reviewedAt,
-        elapsedSeconds:
-          input.elapsedSeconds === undefined
-            ? latestAttempt.elapsedSeconds
-            : normalizeElapsedSeconds(input.elapsedSeconds),
-        isCorrect:
-          input.isCorrect === undefined
-            ? latestAttempt.isCorrect
-            : input.isCorrect,
-        log: updatedLogSnapshot,
-        updatedAt: changedAt,
-      }
-      const updatedAttempts = [...attempts.slice(0, -1), updatedAttempt]
-      const replayedReview = replayReviewHistorySequence(updatedAttempts, {
-        targetRetention: input.targetRetention,
-      }).at(-1)
-      if (!replayedReview) {
-        throw new Error('No review result exists to override.')
-      }
-
-      const replayedCard = replayedReview.card
-      const status = statusFromReview(input.rating, replayedCard)
-
-      await this.upsertCard(transactionDb, {
-        id: cardId,
-        problemSlug: input.problemSlug,
-        cardKind,
-        card: replayedCard,
-        now: changedAt,
-      })
-
-      await transactionDb
-        .update(reviewAttempts)
-        .set({
-          rating: updatedAttempt.rating,
-          reviewedAt: updatedAttempt.reviewedAt.getTime(),
-          elapsedSeconds: updatedAttempt.elapsedSeconds,
-          isCorrect: updatedAttempt.isCorrect,
-          ...toReviewLogRow(updatedAttempt.log),
-          fsrsReviewLog: serializeFsrsReviewLogSnapshot(replayedReview.log),
-          updatedAt: updatedAttempt.updatedAt.getTime(),
-        })
-        .where(eq(reviewAttempts.id, updatedAttempt.id))
-
-      const practice = await this.upsertPracticeAggregate(transactionDb, {
-        problemSlug: input.problemSlug,
-        status,
-        attempts: updatedAttempts,
-        log: updatedAttempt.log,
-        isSuspended: previousPractice?.isSuspended ?? false,
-        now: changedAt,
-      })
-      const summary = derivePracticeSummary({
-        practice,
-        card: replayedCard,
-        now: changedAt,
-        targetRetention: input.targetRetention,
-      })
-
-      return {
-        problemSlug: input.problemSlug,
-        cardId,
-        rating: input.rating,
-        status,
-        dueAt: replayedCard.dueAt,
-        reviewedAt: updatedAttempt.reviewedAt,
-        card: replayedCard,
-        summary,
-      }
+    const attempts = await this.readReviewAttempts(writeDb, {
+      problemSlug: input.problemSlug,
+      cardId,
     })
+    const latestAttempt = attempts.at(-1)
+
+    if (!latestAttempt) {
+      throw new Error('No review result exists to override.')
+    }
+
+    const previousPractice = await this.getPracticeState(
+      input.problemSlug,
+      writeDb,
+    )
+    const changedAt = new Date()
+    const updatedLogSnapshot = createPracticeLogSnapshot(
+      previousPractice?.log ?? latestAttempt.log,
+      input.log,
+    )
+    const updatedAttempt: StoredPracticeReviewAttempt = {
+      ...latestAttempt,
+      rating: input.rating,
+      reviewedAt: latestAttempt.reviewedAt,
+      elapsedSeconds:
+        input.elapsedSeconds === undefined
+          ? latestAttempt.elapsedSeconds
+          : normalizeElapsedSeconds(input.elapsedSeconds),
+      isCorrect:
+        input.isCorrect === undefined
+          ? latestAttempt.isCorrect
+          : input.isCorrect,
+      log: updatedLogSnapshot,
+      updatedAt: changedAt,
+    }
+    const updatedAttempts = [...attempts.slice(0, -1), updatedAttempt]
+    const replayedReview = replayReviewHistorySequence(updatedAttempts, {
+      targetRetention: input.targetRetention,
+    }).at(-1)
+    if (!replayedReview) {
+      throw new Error('No review result exists to override.')
+    }
+
+    const replayedCard = replayedReview.card
+    const status = statusFromReview(input.rating, replayedCard)
+
+    await this.upsertCard(writeDb, {
+      id: cardId,
+      problemSlug: input.problemSlug,
+      cardKind,
+      card: replayedCard,
+      now: changedAt,
+    })
+
+    await writeDb
+      .update(reviewAttempts)
+      .set({
+        rating: updatedAttempt.rating,
+        reviewedAt: updatedAttempt.reviewedAt.getTime(),
+        elapsedSeconds: updatedAttempt.elapsedSeconds,
+        isCorrect: updatedAttempt.isCorrect,
+        ...toReviewLogRow(updatedAttempt.log),
+        fsrsReviewLog: serializeFsrsReviewLogSnapshot(replayedReview.log),
+        updatedAt: updatedAttempt.updatedAt.getTime(),
+      })
+      .where(eq(reviewAttempts.id, updatedAttempt.id))
+
+    const practice = await this.upsertPracticeAggregate(writeDb, {
+      problemSlug: input.problemSlug,
+      status,
+      attempts: updatedAttempts,
+      log: updatedAttempt.log,
+      isSuspended: previousPractice?.isSuspended ?? false,
+      now: changedAt,
+    })
+    const summary = derivePracticeSummary({
+      practice,
+      card: replayedCard,
+      now: changedAt,
+      targetRetention: input.targetRetention,
+    })
+
+    return {
+      problemSlug: input.problemSlug,
+      cardId,
+      reviewAttemptId: updatedAttempt.id,
+      rating: input.rating,
+      status,
+      dueAt: replayedCard.dueAt,
+      reviewedAt: updatedAttempt.reviewedAt,
+      card: replayedCard,
+      summary,
+    }
   }
 
   async setPracticeSuspended(
