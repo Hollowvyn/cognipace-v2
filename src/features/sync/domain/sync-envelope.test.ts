@@ -38,6 +38,76 @@ const backup: BackupFile = {
   },
 }
 
+const legacyBackup = {
+  schemaVersion: 1,
+  app: 'cognipace',
+  exportedAt: '2026-05-26T12:00:00.000Z',
+  source: { appVersion: '0.0.0' },
+  data: {
+    problems: [
+      {
+        slug: 'two-sum',
+        title: 'Two Sum',
+        difficulty: 'easy',
+        isPremium: false,
+        createdAt: '2026-05-26T12:00:00.000Z',
+        updatedAt: '2026-05-26T12:00:00.000Z',
+      },
+    ],
+    topics: [],
+    companies: [],
+    problemTopics: [],
+    problemCompanies: [],
+    practice: {
+      problemPractice: [],
+      fsrsCards: [],
+      reviewAttempts: [],
+    },
+    tracks: {
+      tracks: [
+        {
+          id: 'leetcode-75',
+          slug: 'leetcode-75',
+          title: 'LeetCode 75',
+          description: null,
+          dueAt: null,
+          createdAt: '2026-05-26T12:00:00.000Z',
+          updatedAt: '2026-05-26T12:00:00.000Z',
+        },
+      ],
+      groups: [
+        {
+          id: 'leetcode-75:arrays',
+          trackId: 'leetcode-75',
+          title: 'Arrays',
+          position: 1,
+          createdAt: '2026-05-26T12:00:00.000Z',
+          updatedAt: '2026-05-26T12:00:00.000Z',
+        },
+      ],
+      memberships: [
+        {
+          trackGroupId: 'leetcode-75:arrays',
+          problemSlug: 'two-sum',
+          position: 1,
+        },
+      ],
+      progress: [
+        {
+          trackGroupId: 'leetcode-75:arrays',
+          problemSlug: 'two-sum',
+          completedAt: '2026-05-26T12:00:00.000Z',
+          completedRating: 'good',
+          createdAt: '2026-05-26T12:00:00.000Z',
+          updatedAt: '2026-05-26T12:00:00.000Z',
+        },
+      ],
+      session: [],
+    },
+    settings: [],
+  },
+}
+
 describe('sync envelope', () => {
   it('wraps a CogniPace backup with sync metadata', () => {
     expect(
@@ -92,5 +162,24 @@ describe('sync envelope', () => {
         },
       }),
     ).toThrow('Unsupported backup version')
+  })
+
+  it('normalizes a v1 backup payload inside a sync envelope', () => {
+    const envelope = parseSyncEnvelopeForCurrentApp({
+      syncEnvelopeVersion,
+      app: 'cognipace',
+      exportedAt: '2026-05-26T12:00:01.000Z',
+      dataUpdatedAt: '2026-05-26T12:00:00.000Z',
+      backup: legacyBackup,
+    })
+
+    expect(envelope.backup.schemaVersion).toBe(2)
+    expect(envelope.backup.data.tracks.progress).toEqual([
+      expect.objectContaining({
+        trackId: 'leetcode-75',
+        problemSlug: 'two-sum',
+        reviewAttemptId: null,
+      }),
+    ])
   })
 })

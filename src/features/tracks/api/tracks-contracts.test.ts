@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { createSerializedActiveTrack } from '@/testing/track-fixtures'
+import {
+  createSerializedActiveTrack,
+  createTrackProblemRow,
+} from '@/testing/track-fixtures'
 
 import {
   serializedActiveTrackSchema,
   trackCompletedRatingSchema,
+  trackProblemRowSchema,
   tracksClearActiveTrackRequestSchema,
   tracksCreateTrackRequestSchema,
   tracksDeleteTrackRequestSchema,
@@ -115,6 +119,49 @@ describe('tracks runtime contracts', () => {
     expect(trackCompletedRatingSchema.safeParse('good').success).toBe(true)
     expect(trackCompletedRatingSchema.safeParse('easy').success).toBe(true)
     expect(trackCompletedRatingSchema.safeParse('again').success).toBe(false)
+  })
+
+  it('accepts serialized track problem completion states', () => {
+    const incompleteRow = createTrackProblemRow({
+      membership: {
+        trackId: 'leetcode-75',
+        groupId: 'leetcode-75:arrays-hashing',
+        groupTitle: 'Arrays and Hashing',
+        groupPosition: 1,
+        problemPosition: 1,
+        completion: { status: 'incomplete', reviewAttemptId: null },
+      },
+    })
+    const completedRow = createTrackProblemRow({
+      membership: {
+        trackId: 'leetcode-75',
+        groupId: 'leetcode-75:arrays-hashing',
+        groupTitle: 'Arrays and Hashing',
+        groupPosition: 1,
+        problemPosition: 2,
+        completion: {
+          status: 'completed',
+          completedAt: '2026-01-01T00:00:00.000Z',
+          completedRating: 'good',
+          reviewAttemptId: 'review-two-sum-1',
+        },
+      },
+    })
+
+    expect(
+      trackProblemRowSchema.parse(incompleteRow).membership.completion,
+    ).toEqual({
+      status: 'incomplete',
+      reviewAttemptId: null,
+    })
+    expect(
+      trackProblemRowSchema.parse(completedRow).membership.completion,
+    ).toEqual({
+      status: 'completed',
+      completedAt: '2026-01-01T00:00:00.000Z',
+      completedRating: 'good',
+      reviewAttemptId: 'review-two-sum-1',
+    })
   })
 
   it('requires dashboard surface and a non-empty track id for active, delete, and reset requests', () => {
