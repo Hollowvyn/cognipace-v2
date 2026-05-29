@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createPracticeRepository } from '@/features/practice/data/practice-repository'
 import {
   overrideLastReviewResultWithTrackProgress,
+  resetPracticeSchedule,
   saveReviewResultWithTrackProgress,
 } from '@/features/practice/server/practice-service'
 import { getTodayQueue } from '@/features/queue/server/queue-service'
@@ -725,6 +726,40 @@ describe('practice core', () => {
     expect(readTrackProgress(catalogAfterEasy, 'grind-75').completedCount).toBe(
       0,
     )
+  })
+
+  it('reset schedule clears track-owned progress for the problem', async () => {
+    const handle = await createTestDb()
+    const tracksRepository = createTracksRepository(handle.db)
+
+    await tracksRepository.setActiveTrack('leetcode-75')
+    await saveReviewResultWithTrackProgress(
+      handle.db,
+      {
+        problemSlug: 'two-sum',
+        rating: 'good',
+        reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
+        reviewAttemptId: 'workflow-good-reset-1',
+      },
+      defaultUserSettings,
+    )
+
+    const catalogAfterReview = await tracksRepository.getTrackCatalog()
+    expect(
+      readTrackProgress(catalogAfterReview, 'leetcode-75').completedCount,
+    ).toBe(1)
+
+    await resetPracticeSchedule(handle.db, {
+      problemSlug: 'two-sum',
+    })
+
+    const catalogAfterReset = await tracksRepository.getTrackCatalog()
+    const progressRows = await handle.db.select().from(trackProblemProgress)
+
+    expect(
+      readTrackProgress(catalogAfterReset, 'leetcode-75').completedCount,
+    ).toBe(0)
+    expect(progressRows).toEqual([])
   })
 
   it('study plan review writes incomplete active-track progress for hard and again ratings', async () => {

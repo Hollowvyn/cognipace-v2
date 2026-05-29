@@ -2,12 +2,15 @@ import type { UserSettings } from '@/features/settings/domain'
 import {
   reconcileActiveTrackProblemReviewOverride,
   recordActiveTrackProblemReview,
+  resetTrackProblemProgressForProblem,
 } from '@/features/tracks/server/tracks-service'
 import type { Db } from '@/platform/db'
 
 import { createPracticeRepository } from '../data/practice-repository'
 import type {
   OverrideLastReviewResultInput,
+  PracticeDetails,
+  ResetPracticeScheduleInput,
   ReviewResult,
   SaveReviewResultInput,
 } from '../domain'
@@ -57,5 +60,21 @@ export async function overrideLastReviewResultWithTrackProgress(
     }
 
     return result
+  })
+}
+
+export async function resetPracticeScheduleWithTrackProgress(
+  db: Db,
+  input: ResetPracticeScheduleInput,
+): Promise<PracticeDetails> {
+  return db.transaction(async (transactionDb) => {
+    const tx = transactionDb as unknown as Db
+    const details = await createPracticeRepository(
+      tx,
+    ).resetPracticeScheduleInTransaction(input, tx)
+
+    await resetTrackProblemProgressForProblem(tx, input.problemSlug)
+
+    return details
   })
 }

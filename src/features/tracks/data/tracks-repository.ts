@@ -444,6 +444,16 @@ export class TracksRepository {
     })
   }
 
+  async resetProblemProgress(problemSlug: string): Promise<void> {
+    const normalizedProblemSlug = normalizeProblemInput(problemSlug)
+
+    await this.db.transaction(async (transactionDb) => {
+      await transactionDb
+        .delete(trackProblemProgress)
+        .where(eq(trackProblemProgress.problemSlug, normalizedProblemSlug))
+    })
+  }
+
   async recordActiveTrackProblemReview(
     input: TrackReviewProgressInput,
   ): Promise<boolean> {

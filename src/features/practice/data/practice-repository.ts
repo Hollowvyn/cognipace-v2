@@ -293,30 +293,40 @@ export class PracticeRepository {
   async resetPracticeSchedule(
     input: ResetPracticeScheduleInput,
   ): Promise<PracticeDetails> {
+    return this.db.transaction((transactionDb) =>
+      this.resetPracticeScheduleInTransaction(
+        input,
+        transactionDb as unknown as Db,
+      ),
+    )
+  }
+
+  async resetPracticeScheduleInTransaction(
+    input: ResetPracticeScheduleInput,
+    writeDb: Db,
+  ): Promise<PracticeDetails> {
     const now = new Date()
-    const existing = await this.getPracticeState(input.problemSlug)
+    const existing = await this.getPracticeState(input.problemSlug, writeDb)
     const preservedLog =
       input.keepLog === false ? normalizeReviewLogFields() : existing?.log
     const isSuspended =
       existing?.isSuspended === true || existing?.status === 'suspended'
 
-    await this.db.transaction(async (transactionDb) => {
-      await transactionDb
-        .delete(reviewAttempts)
-        .where(eq(reviewAttempts.problemSlug, input.problemSlug))
-      await transactionDb
-        .delete(fsrsCards)
-        .where(eq(fsrsCards.problemSlug, input.problemSlug))
-      await this.upsertEmptyPracticeState(transactionDb, {
-        problemSlug: input.problemSlug,
-        status: 'new',
-        log: preservedLog ?? normalizeReviewLogFields(),
-        isSuspended,
-        now,
-      })
+    await writeDb
+      .delete(reviewAttempts)
+      .where(eq(reviewAttempts.problemSlug, input.problemSlug))
+    await writeDb
+      .delete(fsrsCards)
+      .where(eq(fsrsCards.problemSlug, input.problemSlug))
+    await this.upsertEmptyPracticeState(writeDb, {
+      problemSlug: input.problemSlug,
+      status: 'new',
+      log: preservedLog ?? normalizeReviewLogFields(),
+      isSuspended,
+      now,
     })
 
-    return this.getPracticeDetails(input.problemSlug, { now })
+    return this.getPracticeDetails(input.problemSlug, { now }, writeDb)
   }
 
   async updateCurrentPracticeLog(
@@ -358,13 +368,14 @@ export class PracticeRepository {
   async getPracticeDetails(
     problemSlug: string,
     options: PracticeReadOptions = {},
+    db: PracticeReadDb = this.db,
   ): Promise<PracticeDetails> {
     const cardKind = options.cardKind ?? defaultFsrsCardKind
     const cardId = createFsrsCardId(problemSlug, cardKind)
     const [practice, card, attempts] = await Promise.all([
-      this.getPracticeState(problemSlug),
-      this.getCard(problemSlug, cardKind),
-      this.readReviewAttempts(this.db, { problemSlug, cardId }),
+      this.getPracticeState(problemSlug, db),
+      this.getCard(problemSlug, cardKind, db),
+      this.readReviewAttempts(db, { problemSlug, cardId }),
     ])
     const attemptSnapshots = attempts.map(toReviewAttemptSnapshot)
     const normalized = deriveNormalizedPracticeState({

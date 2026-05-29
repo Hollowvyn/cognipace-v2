@@ -1,6 +1,7 @@
 import type { Db } from '@/platform/db'
 
 import { createPracticeRepository } from '../data/practice-repository'
+import { resetPracticeScheduleWithTrackProgress } from './practice-review-workflow'
 import type {
   PracticeDetails,
   OverrideLastReviewResultInput,
@@ -46,7 +47,7 @@ export function resetPracticeSchedule(
   db: Db,
   input: ResetPracticeScheduleInput,
 ) {
-  return createPracticeRepository(db).resetPracticeSchedule(input)
+  return resetPracticeScheduleWithTrackProgress(db, input)
 }
 
 export function updateCurrentPracticeLog(
@@ -58,5 +59,6 @@ export function updateCurrentPracticeLog(
 
 export {
   overrideLastReviewResultWithTrackProgress,
+  resetPracticeScheduleWithTrackProgress,
   saveReviewResultWithTrackProgress,
 } from './practice-review-workflow'
