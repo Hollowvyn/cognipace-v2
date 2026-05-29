@@ -1543,7 +1543,16 @@ const validBackup = backupFileSchema.parse({
         updatedAt: backupTimestamp,
       },
     ],
-    topics: [{ id: 'array', label: 'Array' }],
+    topics: [
+      {
+        id: 'array',
+        label: 'Array',
+        createdAt: backupTimestamp,
+        updatedAt: backupTimestamp,
+      },
+    ],
+    topicAliases: [],
+    topicRelations: [],
     companies: [{ id: 'meta', label: 'Meta' }],
     problemTopics: [{ problemSlug: 'two-sum', topicId: 'array' }],
     problemCompanies: [{ problemSlug: 'two-sum', companyId: 'meta' }],

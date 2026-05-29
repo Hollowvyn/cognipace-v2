@@ -243,6 +243,29 @@ Focused tests:
 npm run test -- <path-to-test-file>
 ```
 
+Topic graph focused checks:
+
+```sh
+npm test -- src/testing/db-foundation.test.ts --run
+npm test -- src/features/problems/data/problems-repository.test.ts --run
+npm test -- src/features/backup/api/backup-contracts.test.ts src/features/backup/data/backup-repository.test.ts src/features/backup/server/backup-service.test.ts --run
+```
+
+Run the overlay capture check when validating captured LeetCode page topic
+merges:
+
+```sh
+npm test -- src/features/overlay-session/hooks/use-leetcode-overlay-session.test.tsx --run
+```
+
+Final topic graph validation:
+
+```sh
+npm test -- src/testing/db-foundation.test.ts src/features/problems/data/problems-repository.test.ts src/features/problems/api/problems-contracts.test.ts src/features/overlay-session/hooks/use-leetcode-overlay-session.test.tsx src/features/backup/api/backup-contracts.test.ts src/features/backup/data/backup-repository.test.ts src/features/backup/server/backup-service.test.ts --run
+npm run db:check
+npm run check
+```
+
 Full verification:
 
 ```sh

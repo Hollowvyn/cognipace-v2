@@ -141,6 +141,16 @@ Problems owns LeetCode problem identity, difficulty, premium status, topics,
 companies, catalog rows, and problem-level practice details. Library is the
 dashboard surface for inspecting and editing that problem data.
 
+Library topics remain editable as problem metadata. Saved topic labels are
+standardized through stored aliases, so variant labels such as LeetCode page
+labels or older local labels resolve to the same persisted topic where an alias
+exists. Captured LeetCode page topics merge into the problem without clearing
+unrelated local or manually edited topics.
+
+Parent topic rollups exist for internal read models and future analytics
+support, but they are not separate problem assignments. The current product does
+not include a topic graph management UI.
+
 ### Tracks
 
 Tracks owns curriculum progression. Track completion is separate from global
@@ -181,7 +191,8 @@ backup exports, sync envelopes, logs, or UI status payloads.
 
 LeetCode capture reads page metadata, page content, and submission result
 information from the content script and passes validated data through runtime
-messaging.
+messaging. Captured page topics are treated as additional problem metadata and
+merge with existing Library topics instead of replacing them.
 
 ## Non-Goals
 
