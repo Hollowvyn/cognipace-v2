@@ -44,7 +44,7 @@ export class BackupRepository {
       settingsRows,
     ] = await Promise.all([
       this.db.select().from(problems),
-      this.db.select().from(topics),
+      this.db.select({ id: topics.id, label: topics.label }).from(topics),
       this.db.select().from(companies),
       this.db.select().from(problemTopics),
       this.db.select().from(problemCompanies),
