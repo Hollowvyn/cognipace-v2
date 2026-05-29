@@ -11,6 +11,7 @@ import migration0003 from '@/platform/db/migrations/0003_problem_slugs_and_const
 import migration0004 from '@/platform/db/migrations/0004_tracks_phase_3.sql?raw'
 import { createDb, createSqliteWasmLocator } from '@/platform/db'
 import { execProxy, isMutationStatement } from '@/platform/db/proxy'
+import { seedInitialCatalog } from '@/platform/db/seed'
 import { fsrsCards, problemPractice, problems } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
 
@@ -55,6 +56,9 @@ describe('db foundation', () => {
         'problem_practice_status_idx',
         'problem_practice_suspended_idx',
         'problem_topics_topic_idx',
+        'topic_aliases_topic_idx',
+        'topic_relations_child_idx',
+        'topic_relations_parent_idx',
         'review_attempts_card_idx',
         'review_attempts_problem_slug_idx',
         'review_attempts_reviewed_at_idx',
@@ -65,6 +69,77 @@ describe('db foundation', () => {
         'tracks_slug_unique',
       ]),
     )
+  })
+
+  it('creates topic graph storage tables and columns', async () => {
+    const handle = await createTestDb({ seed: false })
+
+    expect(readSqliteColumnNames(handle.rawDb, 'topics')).toEqual(
+      expect.arrayContaining(['id', 'label', 'created_at', 'updated_at']),
+    )
+    expect(readSqliteColumnNames(handle.rawDb, 'topic_aliases')).toEqual(
+      expect.arrayContaining([
+        'alias_key',
+        'label',
+        'topic_id',
+        'created_at',
+        'updated_at',
+      ]),
+    )
+    expect(readSqliteColumnNames(handle.rawDb, 'topic_relations')).toEqual(
+      expect.arrayContaining([
+        'parent_topic_id',
+        'child_topic_id',
+        'created_at',
+        'updated_at',
+      ]),
+    )
+  })
+
+  it('standardizes seeded alias topics without losing problem topic joins', async () => {
+    const handle = await createTestDb({ seed: false })
+
+    handle.rawDb.exec(`
+      INSERT INTO problems (
+        slug,
+        title,
+        difficulty,
+        is_premium,
+        created_at,
+        updated_at
+      )
+      VALUES ('top-k-frequent-words', 'Top K Frequent Words', 'medium', false, 1000, 1000);
+
+      INSERT INTO topics (id, label) VALUES ('heaps', 'Heaps');
+      INSERT INTO topics (id, label)
+      VALUES ('heap-priority-queue', 'Heap (Priority Queue)');
+      INSERT INTO topics (id, label) VALUES ('custom-topic', 'Custom Topic');
+      INSERT INTO problem_topics (problem_slug, topic_id)
+      VALUES ('top-k-frequent-words', 'heaps');
+      INSERT INTO problem_topics (problem_slug, topic_id)
+      VALUES ('top-k-frequent-words', 'heap-priority-queue');
+    `)
+
+    await seedInitialCatalog(handle.db, new Date('2026-01-01T00:00:00.000Z'))
+
+    expect(
+      readSqliteRows(
+        handle.rawDb,
+        "SELECT topic_id FROM problem_topics WHERE problem_slug = 'top-k-frequent-words' ORDER BY topic_id",
+      ),
+    ).toEqual([['heap-priority-queue']])
+    expect(
+      readSqliteRows(
+        handle.rawDb,
+        "SELECT alias_key, label, topic_id FROM topic_aliases WHERE alias_key = 'heaps'",
+      ),
+    ).toEqual([['heaps', 'Heaps', 'heap-priority-queue']])
+    expect(
+      readSqliteRows(
+        handle.rawDb,
+        "SELECT id, label FROM topics WHERE id = 'custom-topic'",
+      ),
+    ).toEqual([['custom-topic', 'Custom Topic']])
   })
 
   it('migrates track progress ledger state without losing active session', async () => {
@@ -503,6 +578,15 @@ function readSqliteIndexNames(rawDb: Parameters<typeof execProxy>[0]) {
     rawDb,
     "SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_autoindex_%' ORDER BY name",
   ).map((row) => String(row[0]))
+}
+
+function readSqliteColumnNames(
+  rawDb: Parameters<typeof execProxy>[0],
+  tableName: string,
+) {
+  return readSqliteRows(rawDb, `PRAGMA table_info('${tableName}')`).map((row) =>
+    String(row[1]),
+  )
 }
 
 function readSqliteRows(rawDb: Parameters<typeof execProxy>[0], sql: string) {
