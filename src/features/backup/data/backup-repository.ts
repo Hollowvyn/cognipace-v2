@@ -9,6 +9,8 @@ import {
   problemTopics,
   reviewAttempts,
   settingsKv,
+  topicAliases,
+  topicRelations,
   topics,
   trackGroupProblems,
   trackGroups,
@@ -30,6 +32,8 @@ export class BackupRepository {
     const [
       problemRows,
       topicRows,
+      topicAliasRows,
+      topicRelationRows,
       companyRows,
       problemTopicRows,
       problemCompanyRows,
@@ -44,7 +48,9 @@ export class BackupRepository {
       settingsRows,
     ] = await Promise.all([
       this.db.select().from(problems),
-      this.db.select({ id: topics.id, label: topics.label }).from(topics),
+      this.db.select().from(topics),
+      this.db.select().from(topicAliases),
+      this.db.select().from(topicRelations),
       this.db.select().from(companies),
       this.db.select().from(problemTopics),
       this.db.select().from(problemCompanies),
@@ -65,7 +71,21 @@ export class BackupRepository {
         createdAt: toIso(row.createdAt),
         updatedAt: toIso(row.updatedAt),
       })),
-      topics: topicRows,
+      topics: topicRows.map((row) => ({
+        ...row,
+        createdAt: toIso(row.createdAt),
+        updatedAt: toIso(row.updatedAt),
+      })),
+      topicAliases: topicAliasRows.map((row) => ({
+        ...row,
+        createdAt: toIso(row.createdAt),
+        updatedAt: toIso(row.updatedAt),
+      })),
+      topicRelations: topicRelationRows.map((row) => ({
+        ...row,
+        createdAt: toIso(row.createdAt),
+        updatedAt: toIso(row.updatedAt),
+      })),
       companies: companyRows,
       problemTopics: problemTopicRows,
       problemCompanies: problemCompanyRows,
@@ -167,6 +187,8 @@ async function clearAllTables(db: Db) {
   await db.delete(trackGroups)
   await db.delete(tracks)
   await db.delete(problemTopics)
+  await db.delete(topicRelations)
+  await db.delete(topicAliases)
   await db.delete(problemCompanies)
   await db.delete(problems)
   await db.delete(topics)
@@ -176,7 +198,33 @@ async function clearAllTables(db: Db) {
 
 async function insertBackupData(db: Db, data: BackupData) {
   if (data.topics.length > 0) {
-    await db.insert(topics).values(data.topics)
+    await db.insert(topics).values(
+      data.topics.map((row) => ({
+        ...row,
+        createdAt: toMillis(row.createdAt),
+        updatedAt: toMillis(row.updatedAt),
+      })),
+    )
+  }
+
+  if (data.topicAliases.length > 0) {
+    await db.insert(topicAliases).values(
+      data.topicAliases.map((row) => ({
+        ...row,
+        createdAt: toMillis(row.createdAt),
+        updatedAt: toMillis(row.updatedAt),
+      })),
+    )
+  }
+
+  if (data.topicRelations.length > 0) {
+    await db.insert(topicRelations).values(
+      data.topicRelations.map((row) => ({
+        ...row,
+        createdAt: toMillis(row.createdAt),
+        updatedAt: toMillis(row.updatedAt),
+      })),
+    )
   }
 
   if (data.companies.length > 0) {

@@ -31,7 +31,37 @@ function createValidBackupFixture() {
           updatedAt: timestamp,
         },
       ],
-      topics: [{ id: 'array', label: 'Array' }],
+      topics: [
+        {
+          id: 'array',
+          label: 'Array',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+        {
+          id: 'hash-table',
+          label: 'Hash Table',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+      ],
+      topicAliases: [
+        {
+          aliasKey: 'hash-map',
+          label: 'Hash Map',
+          topicId: 'hash-table',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+      ],
+      topicRelations: [
+        {
+          parentTopicId: 'array',
+          childTopicId: 'hash-table',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+      ],
       companies: [{ id: 'meta', label: 'Meta' }],
       problemTopics: [{ problemSlug: 'two-sum', topicId: 'array' }],
       problemCompanies: [{ problemSlug: 'two-sum', companyId: 'meta' }],
@@ -160,7 +190,7 @@ function createValidBackupFixture() {
 }
 
 describe('backup contracts', () => {
-  it('parses a valid v2 CogniPace backup and creates summary counts', () => {
+  it('parses a valid v3 CogniPace backup and creates summary counts', () => {
     const backup = parseBackupFileForCurrentApp(createValidBackupFixture())
 
     expect(backup).toEqual(createValidBackupFixture())
@@ -170,7 +200,9 @@ describe('backup contracts', () => {
       source: { appVersion: '0.0.0' },
       counts: {
         problems: 1,
-        topics: 1,
+        topics: 2,
+        topicAliases: 1,
+        topicRelations: 1,
         companies: 1,
         problemTopics: 1,
         problemCompanies: 1,
@@ -187,14 +219,42 @@ describe('backup contracts', () => {
     })
   })
 
-  it('normalizes v1 track progress rows to v2 track-owned progress rows', () => {
+  it('normalizes v2 backups into v3 topic graph backups', () => {
+    const fixture = createValidBackupFixture()
+    const v2Backup = {
+      ...fixture,
+      schemaVersion: 2,
+      data: {
+        ...fixture.data,
+        topics: [{ id: 'array', label: 'Array' }],
+        topicAliases: undefined,
+        topicRelations: undefined,
+      },
+    }
+
+    const parsed = parseBackupFileForCurrentApp(v2Backup)
+
+    expect(parsed.schemaVersion).toBe(3)
+    expect(parsed.data.topics[0]).toMatchObject({
+      id: 'array',
+      label: 'Array',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+    expect(parsed.data.topicAliases).toEqual([])
+    expect(parsed.data.topicRelations).toEqual([])
+  })
+
+  it('normalizes v1 track progress rows to v3 track-owned topic graph backups', () => {
+    const fixture = createValidBackupFixture()
     const v1Backup = {
-      ...createValidBackupFixture(),
+      ...fixture,
       schemaVersion: 1,
       data: {
-        ...createValidBackupFixture().data,
+        ...createLegacyBackupData(fixture),
+        topics: [{ id: 'array', label: 'Array' }],
         tracks: {
-          ...createValidBackupFixture().data.tracks,
+          ...fixture.data.tracks,
           progress: [
             {
               trackGroupId: 'custom-track:arrays',
@@ -211,22 +271,30 @@ describe('backup contracts', () => {
 
     const parsed = parseBackupFileForCurrentApp(v1Backup)
 
-    expect(parsed.schemaVersion).toBe(2)
+    expect(parsed.schemaVersion).toBe(3)
     expect(parsed.data.tracks.progress[0]).toMatchObject({
       trackId: 'custom-track',
       problemSlug: 'two-sum',
       reviewAttemptId: null,
     })
+    expect(parsed.data.topics[0]).toMatchObject({
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+    expect(parsed.data.topicAliases).toEqual([])
+    expect(parsed.data.topicRelations).toEqual([])
   })
 
   it('rejects v1 progress rows that reference a missing track group', () => {
+    const fixture = createValidBackupFixture()
     const v1Backup = {
-      ...createValidBackupFixture(),
+      ...fixture,
       schemaVersion: 1,
       data: {
-        ...createValidBackupFixture().data,
+        ...createLegacyBackupData(fixture),
+        topics: [{ id: 'array', label: 'Array' }],
         tracks: {
-          ...createValidBackupFixture().data.tracks,
+          ...fixture.data.tracks,
           progress: [
             {
               trackGroupId: 'missing-group',
@@ -430,3 +498,18 @@ describe('backup contracts', () => {
     },
   )
 })
+
+function createLegacyBackupData(
+  backup: ReturnType<typeof createValidBackupFixture>,
+) {
+  return {
+    problems: backup.data.problems,
+    topics: backup.data.topics.map(({ id, label }) => ({ id, label })),
+    companies: backup.data.companies,
+    problemTopics: backup.data.problemTopics,
+    problemCompanies: backup.data.problemCompanies,
+    practice: backup.data.practice,
+    tracks: backup.data.tracks,
+    settings: backup.data.settings,
+  }
+}

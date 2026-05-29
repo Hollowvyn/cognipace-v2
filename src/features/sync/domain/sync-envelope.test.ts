@@ -19,6 +19,8 @@ const backup: BackupFile = {
   data: {
     problems: [],
     topics: [],
+    topicAliases: [],
+    topicRelations: [],
     companies: [],
     problemTopics: [],
     problemCompanies: [],
@@ -173,7 +175,7 @@ describe('sync envelope', () => {
       backup: legacyBackup,
     })
 
-    expect(envelope.backup.schemaVersion).toBe(2)
+    expect(envelope.backup.schemaVersion).toBe(3)
     expect(envelope.backup.data.tracks.progress).toEqual([
       expect.objectContaining({
         trackId: 'leetcode-75',

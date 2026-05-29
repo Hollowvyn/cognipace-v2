@@ -13,7 +13,7 @@ import {
 } from '@/features/tracks/api/tracks-contracts'
 import { fsrsCardStates, reviewRatings } from '@/lib/fsrs'
 
-export const backupSchemaVersion = 2
+export const backupSchemaVersion = 3
 
 export const minimumSupportedBackupSchemaVersion = 1
 
@@ -33,6 +33,28 @@ export const backupProblemRowSchema = z.strictObject({
 export const backupTopicRowSchema = z.strictObject({
   id: durableIdSchema,
   label: z.string(),
+  createdAt: isoDatetimeSchema,
+  updatedAt: isoDatetimeSchema,
+})
+
+const backupTopicV2RowSchema = z.strictObject({
+  id: durableIdSchema,
+  label: z.string(),
+})
+
+export const backupTopicAliasRowSchema = z.strictObject({
+  aliasKey: durableIdSchema,
+  label: z.string(),
+  topicId: durableIdSchema,
+  createdAt: isoDatetimeSchema,
+  updatedAt: isoDatetimeSchema,
+})
+
+export const backupTopicRelationRowSchema = z.strictObject({
+  parentTopicId: durableIdSchema,
+  childTopicId: durableIdSchema,
+  createdAt: isoDatetimeSchema,
+  updatedAt: isoDatetimeSchema,
 })
 
 export const backupCompanyRowSchema = z.strictObject({
@@ -212,6 +234,8 @@ const backupTracksDataV1Schema = backupTracksDataSchema.extend({
 export const backupDataSchema = z.strictObject({
   problems: z.array(backupProblemRowSchema),
   topics: z.array(backupTopicRowSchema),
+  topicAliases: z.array(backupTopicAliasRowSchema),
+  topicRelations: z.array(backupTopicRelationRowSchema),
   companies: z.array(backupCompanyRowSchema),
   problemTopics: z.array(backupProblemTopicRowSchema),
   problemCompanies: z.array(backupProblemCompanyRowSchema),
@@ -220,7 +244,20 @@ export const backupDataSchema = z.strictObject({
   settings: z.array(backupSettingsKvRowSchema),
 })
 
-const backupDataV1Schema = backupDataSchema.extend({
+const backupDataV2Schema = z.strictObject({
+  problems: z.array(backupProblemRowSchema),
+  topics: z.array(backupTopicV2RowSchema),
+  topicAliases: z.undefined().optional(),
+  topicRelations: z.undefined().optional(),
+  companies: z.array(backupCompanyRowSchema),
+  problemTopics: z.array(backupProblemTopicRowSchema),
+  problemCompanies: z.array(backupProblemCompanyRowSchema),
+  practice: backupPracticeDataSchema,
+  tracks: backupTracksDataSchema,
+  settings: z.array(backupSettingsKvRowSchema),
+})
+
+const backupDataV1Schema = backupDataV2Schema.extend({
   tracks: backupTracksDataV1Schema,
 })
 
@@ -240,6 +277,11 @@ const backupFileV1Schema = backupFileSchema.extend({
   data: backupDataV1Schema,
 })
 
+const backupFileV2Schema = backupFileSchema.extend({
+  schemaVersion: z.literal(2),
+  data: backupDataV2Schema,
+})
+
 export const backupRequestSchema = z.strictObject({
   surface: z.literal('dashboard'),
 })
@@ -257,6 +299,8 @@ const backupSourceSchema = z.strictObject({
 const backupSummaryCountsSchema = z.strictObject({
   problems: z.number().int().min(0),
   topics: z.number().int().min(0),
+  topicAliases: z.number().int().min(0),
+  topicRelations: z.number().int().min(0),
   companies: z.number().int().min(0),
   problemTopics: z.number().int().min(0),
   problemCompanies: z.number().int().min(0),
@@ -280,6 +324,7 @@ export const backupSummarySchema = z.strictObject({
 
 export type BackupFile = z.infer<typeof backupFileSchema>
 type BackupFileV1 = z.infer<typeof backupFileV1Schema>
+type BackupFileV2 = z.infer<typeof backupFileV2Schema>
 export type BackupData = z.infer<typeof backupDataSchema>
 export type BackupRequest = z.infer<typeof backupRequestSchema>
 export type BackupPayloadRequest = z.infer<typeof backupPayloadRequestSchema>
@@ -307,20 +352,24 @@ export function parseBackupFileForCurrentApp(input: unknown): BackupFile {
   }
 
   if (envelope.schemaVersion === 1) {
-    return normalizeBackupV1ToV2(backupFileV1Schema.parse(input))
+    return normalizeBackupV1ToV3(backupFileV1Schema.parse(input))
+  }
+
+  if (envelope.schemaVersion === 2) {
+    return normalizeBackupV2ToV3(backupFileV2Schema.parse(input))
   }
 
   return backupFileSchema.parse(input)
 }
 
-function normalizeBackupV1ToV2(backup: BackupFileV1): BackupFile {
+function normalizeBackupV1ToV3(backup: BackupFileV1): BackupFile {
   const groupsById = new Map(
     backup.data.tracks.groups.map((group) => [group.id, group]),
   )
 
-  return backupFileSchema.parse({
+  return normalizeBackupV2ToV3({
     ...backup,
-    schemaVersion: backupSchemaVersion,
+    schemaVersion: 2,
     data: {
       ...backup.data,
       tracks: {
@@ -349,6 +398,23 @@ function normalizeBackupV1ToV2(backup: BackupFileV1): BackupFile {
   })
 }
 
+function normalizeBackupV2ToV3(backup: BackupFileV2): BackupFile {
+  return backupFileSchema.parse({
+    ...backup,
+    schemaVersion: backupSchemaVersion,
+    data: {
+      ...backup.data,
+      topics: backup.data.topics.map((topic) => ({
+        ...topic,
+        createdAt: backup.exportedAt,
+        updatedAt: backup.exportedAt,
+      })),
+      topicAliases: [],
+      topicRelations: [],
+    },
+  })
+}
+
 export function createBackupSummary(backup: BackupFile): BackupSummary {
   return backupSummarySchema.parse({
     schemaVersion: backup.schemaVersion,
@@ -357,6 +423,8 @@ export function createBackupSummary(backup: BackupFile): BackupSummary {
     counts: {
       problems: backup.data.problems.length,
       topics: backup.data.topics.length,
+      topicAliases: backup.data.topicAliases.length,
+      topicRelations: backup.data.topicRelations.length,
       companies: backup.data.companies.length,
       problemTopics: backup.data.problemTopics.length,
       problemCompanies: backup.data.problemCompanies.length,
