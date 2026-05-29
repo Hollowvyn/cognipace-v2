@@ -234,6 +234,13 @@ export async function resetTrackProgress(
   await repository.resetTrackProgress(request.trackId)
 }
 
+export async function resetTrackProblemProgressForProblem(
+  db: Db,
+  problemSlug: string,
+): Promise<void> {
+  await createTracksRepository(db).resetProblemProgress(problemSlug)
+}
+
 export async function recordActiveTrackProblemReview(
   db: Db,
   input: TrackReviewProgressInput,
