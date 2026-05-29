@@ -32,6 +32,7 @@ export interface UpsertProblemFromPageInput extends Omit<
 > {
   slug?: string | null | undefined
   url: string
+  topicLabels?: readonly string[] | undefined
 }
 
 export async function upsertProblemFromPage(
@@ -53,6 +54,7 @@ export async function upsertProblemFromPage(
         title: input.title,
         difficulty: input.difficulty,
         isPremium: input.isPremium,
+        topicLabels: input.topicLabels,
       },
       now,
     ),

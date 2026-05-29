@@ -5,6 +5,7 @@ import {
   problemTopicSchema,
   problemsBulkUpdateProblemsRequestSchema,
   problemsCreateProblemRequestSchema,
+  problemsUpsertFromPageRequestSchema,
 } from './problems-contracts'
 
 describe('problems contracts', () => {
@@ -53,6 +54,22 @@ describe('problems contracts', () => {
         topicLabels: [],
         companyLabels: ['Meta'],
       },
+    })
+  })
+
+  it('parses LeetCode page topic labels for capture upserts', () => {
+    expect(
+      problemsUpsertFromPageRequestSchema.parse({
+        surface: 'content-script',
+        url: 'https://leetcode.com/problems/two-sum/',
+        slug: 'two-sum',
+        title: 'Two Sum',
+        difficulty: 'Easy',
+        isPremium: false,
+        topicLabels: ['Array', 'Hash Table'],
+      }),
+    ).toMatchObject({
+      topicLabels: ['Array', 'Hash Table'],
     })
   })
 

@@ -334,6 +334,73 @@ describe('ProblemsRepository library data', () => {
     })
   })
 
+  it('merges captured LeetCode topics without clearing manual topics', async () => {
+    const handle = await createTestDb()
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'two-sum',
+        title: 'Two Sum',
+        topicLabels: ['Custom Local Topic'],
+      }),
+    )
+    await upsertProblemFromPage(handle.db, {
+      url: 'https://leetcode.com/problems/two-sum/',
+      slug: 'two-sum',
+      title: 'Two Sum',
+      difficulty: 'Easy',
+      isPremium: false,
+      topicLabels: ['Array', 'Hash Map'],
+    })
+
+    const saved = await createProblemsRepository(handle.db).getForEdit(
+      'two-sum',
+    )
+
+    expect(saved?.topics).toEqual([
+      { id: 'array', label: 'Array', parentTopics: [] },
+      {
+        id: 'custom-local-topic',
+        label: 'Custom Local Topic',
+        parentTopics: [],
+      },
+      { id: 'hash-table', label: 'Hash Table', parentTopics: [] },
+    ])
+  })
+
+  it('leaves existing topic links unchanged when page topic labels are omitted', async () => {
+    const handle = await createTestDb()
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'two-sum',
+        title: 'Two Sum',
+        topicLabels: ['Custom Local Topic'],
+      }),
+    )
+    await upsertProblemFromPage(handle.db, {
+      url: 'https://leetcode.com/problems/two-sum/',
+      slug: 'two-sum',
+      title: 'Two Sum',
+      difficulty: 'Easy',
+      isPremium: false,
+    })
+
+    const saved = await createProblemsRepository(handle.db).getForEdit(
+      'two-sum',
+    )
+
+    expect(saved?.topics).toEqual([
+      {
+        id: 'custom-local-topic',
+        label: 'Custom Local Topic',
+        parentTopics: [],
+      },
+    ])
+  })
+
   it('returns Library rows only for requested slugs', async () => {
     const handle = await createTestDb()
     const repository = createProblemsRepository(handle.db)

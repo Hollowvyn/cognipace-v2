@@ -180,6 +180,7 @@ export const problemsUpsertFromPageRequestSchema = z.object({
   title: z.string().nullish(),
   difficulty: z.string().nullish(),
   isPremium: z.boolean().nullish(),
+  topicLabels: z.array(z.string().trim().min(1)).optional(),
 })
 
 export type ProblemsUpsertFromPageRequest = z.infer<

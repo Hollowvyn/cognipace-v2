@@ -46,7 +46,10 @@ import {
   type UpsertProblemInput,
 } from '../domain'
 import type { ProblemLibraryStatus } from '../api/problems-contracts'
-import { replaceProblemTopicLabels } from './topic-resolver'
+import {
+  mergeProblemTopicLabels,
+  replaceProblemTopicLabels,
+} from './topic-resolver'
 
 export function createProblemsRepository(db: Db) {
   return new ProblemsRepository(db)
@@ -55,7 +58,10 @@ export function createProblemsRepository(db: Db) {
 export class ProblemsRepository {
   constructor(private readonly db: Db) {}
 
-  async upsertFromLeetCode(input: UpsertProblemInput, now = new Date()) {
+  async upsertFromLeetCode(
+    input: UpsertProblemFromLeetCodeInput,
+    now = new Date(),
+  ) {
     const slug = normalizeLeetCodeSlug(input.slug)
 
     if (!slug) {
@@ -85,6 +91,15 @@ export class ProblemsRepository {
             updatedAt: timestamp,
           },
         })
+
+      if (input.topicLabels !== undefined) {
+        await mergeProblemTopicLabels(
+          transactionDb,
+          problem.slug,
+          input.topicLabels,
+          now,
+        )
+      }
     })
 
     const savedProblem = await this.getBySlug(slug)
@@ -937,4 +952,8 @@ export interface BulkUpdateProblemsInput {
     topicLabels?: string[] | undefined
     companyLabels?: string[] | undefined
   }
+}
+
+interface UpsertProblemFromLeetCodeInput extends UpsertProblemInput {
+  topicLabels?: readonly string[] | undefined
 }
