@@ -28,6 +28,8 @@ const backup: BackupFile = {
   data: {
     problems: [],
     topics: [],
+    topicAliases: [],
+    topicRelations: [],
     companies: [],
     problemTopics: [],
     problemCompanies: [],
@@ -124,6 +126,8 @@ const backupSummary: BackupSummary = {
   counts: {
     problems: 0,
     topics: 0,
+    topicAliases: 0,
+    topicRelations: 0,
     companies: 0,
     problemTopics: 0,
     problemCompanies: 0,

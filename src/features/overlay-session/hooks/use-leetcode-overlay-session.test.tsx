@@ -470,6 +470,20 @@ describe('useLeetCodeOverlaySession', () => {
     expect(getOverlayAppShellDataViaRuntime).toHaveBeenLastCalledWith('two-sum')
   })
 
+  it('sends captured topic labels when syncing the LeetCode page', async () => {
+    renderOverlaySession()
+
+    emitPageReady()
+
+    await waitFor(() =>
+      expect(upsertProblemFromPageViaRuntime).toHaveBeenCalledWith(
+        expect.objectContaining({
+          topicLabels: ['Array'],
+        }),
+      ),
+    )
+  })
+
   it('rehydrates a clean overlay draft from same-problem DB refreshes', async () => {
     const { queryClient, result } = await renderReadySession()
     vi.mocked(getOverlayAppShellDataViaRuntime).mockResolvedValueOnce(

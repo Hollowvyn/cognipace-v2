@@ -1,5 +1,7 @@
 import type { Db } from '@/platform/db'
 
+import { normalizeTopicLookupKey } from '@/features/problems/domain/topic-taxonomy'
+
 import {
   backupFileSchema,
   backupSchemaVersion,
@@ -86,6 +88,13 @@ function validateBackupReferences(data: BackupData) {
   )
   const topicIds = uniqueValues(data.topics, (row) => row.id, 'topic id')
   uniqueValues(data.topics, (row) => row.label, 'topic label')
+  const topicIdsByLookupKey = createTopicLookupMap(data.topics)
+  uniqueValues(data.topicAliases, (row) => row.aliasKey, 'topic alias key')
+  uniqueValues(
+    data.topicRelations,
+    (row) => `${row.parentTopicId}:${row.childTopicId}`,
+    'topic relation',
+  )
   const companyIds = uniqueValues(data.companies, (row) => row.id, 'company id')
   uniqueValues(data.companies, (row) => row.label, 'company label')
   const fsrsCardsById = new Map(
@@ -165,6 +174,36 @@ function validateBackupReferences(data: BackupData) {
     }),
   )
 
+  for (const row of data.topicAliases) {
+    requireReference(topicIds, row.topicId, 'topicAlias', 'topic')
+
+    const collidingTopicId = topicIdsByLookupKey.get(row.aliasKey)
+
+    if (collidingTopicId !== undefined && collidingTopicId !== row.topicId) {
+      throw new Error(
+        `Invalid backup: topic alias key ${row.aliasKey} collides with topic ${collidingTopicId}.`,
+      )
+    }
+  }
+
+  for (const row of data.topicRelations) {
+    requireReference(
+      topicIds,
+      row.parentTopicId,
+      'topicRelation',
+      'parent topic',
+    )
+    requireReference(topicIds, row.childTopicId, 'topicRelation', 'child topic')
+
+    if (row.parentTopicId === row.childTopicId) {
+      throw new Error(
+        `Invalid backup: topic ${row.parentTopicId} cannot be its own parent.`,
+      )
+    }
+  }
+
+  assertAcyclicTopicRelations(data.topicRelations)
+
   for (const row of data.problemTopics) {
     requireReference(problemSlugs, row.problemSlug, 'problemTopic', 'problem')
     requireReference(topicIds, row.topicId, 'problemTopic', 'topic')
@@ -239,7 +278,9 @@ function validateBackupReferences(data: BackupData) {
   }
 
   if (data.tracks.session.length > 1) {
-    throw new Error('Invalid backup: expected at most one active track session.')
+    throw new Error(
+      'Invalid backup: expected at most one active track session.',
+    )
   }
 
   for (const row of data.tracks.session) {
@@ -275,6 +316,63 @@ function validateBackupReferences(data: BackupData) {
         )
       }
     }
+  }
+}
+
+function createTopicLookupMap(
+  rows: readonly { id: string; label: string }[],
+): Map<string, string> {
+  const topicIdsByLookupKey = new Map<string, string>()
+
+  for (const row of rows) {
+    for (const key of [row.id, normalizeTopicLookupKey(row.label)]) {
+      if (!topicIdsByLookupKey.has(key)) {
+        topicIdsByLookupKey.set(key, row.id)
+      }
+    }
+  }
+
+  return topicIdsByLookupKey
+}
+
+function assertAcyclicTopicRelations(
+  relations: readonly { parentTopicId: string; childTopicId: string }[],
+) {
+  const parentsByChild = new Map<string, string[]>()
+
+  for (const relation of relations) {
+    const parents = parentsByChild.get(relation.childTopicId) ?? []
+
+    parents.push(relation.parentTopicId)
+    parentsByChild.set(relation.childTopicId, parents)
+  }
+
+  const visiting = new Set<string>()
+  const visited = new Set<string>()
+
+  function visit(topicId: string) {
+    if (visited.has(topicId)) {
+      return
+    }
+
+    if (visiting.has(topicId)) {
+      throw new Error(
+        `Invalid backup: cyclic topic relation involving ${topicId}.`,
+      )
+    }
+
+    visiting.add(topicId)
+
+    for (const parentId of parentsByChild.get(topicId) ?? []) {
+      visit(parentId)
+    }
+
+    visiting.delete(topicId)
+    visited.add(topicId)
+  }
+
+  for (const topicId of parentsByChild.keys()) {
+    visit(topicId)
   }
 }
 

@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  problemLibraryOptionsSchema,
+  problemTopicSchema,
   problemsBulkUpdateProblemsRequestSchema,
   problemsCreateProblemRequestSchema,
+  problemsUpsertFromPageRequestSchema,
 } from './problems-contracts'
 
 describe('problems contracts', () => {
@@ -51,6 +54,51 @@ describe('problems contracts', () => {
         topicLabels: [],
         companyLabels: ['Meta'],
       },
+    })
+  })
+
+  it('parses LeetCode page topic labels for capture upserts', () => {
+    expect(
+      problemsUpsertFromPageRequestSchema.parse({
+        surface: 'content-script',
+        url: 'https://leetcode.com/problems/two-sum/',
+        slug: 'two-sum',
+        title: 'Two Sum',
+        difficulty: 'Easy',
+        isPremium: false,
+        topicLabels: ['Array', 'Hash Table'],
+      }),
+    ).toMatchObject({
+      topicLabels: ['Array', 'Hash Table'],
+    })
+  })
+
+  it('defaults problem topic parent rollups and keeps options simple', () => {
+    expect(
+      problemTopicSchema.parse({
+        id: 'breadth-first-search',
+        label: 'Breadth-First Search',
+      }),
+    ).toEqual({
+      id: 'breadth-first-search',
+      label: 'Breadth-First Search',
+      parentTopics: [],
+    })
+
+    expect(
+      problemLibraryOptionsSchema.parse({
+        topics: [
+          {
+            id: 'breadth-first-search',
+            label: 'Breadth-First Search',
+            parentTopics: [{ id: 'graph-theory', label: 'Graph Theory' }],
+          },
+        ],
+        companies: [{ id: 'meta', label: 'Meta' }],
+      }),
+    ).toEqual({
+      topics: [{ id: 'breadth-first-search', label: 'Breadth-First Search' }],
+      companies: [{ id: 'meta', label: 'Meta' }],
     })
   })
 })

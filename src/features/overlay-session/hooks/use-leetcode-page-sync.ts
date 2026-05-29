@@ -130,6 +130,7 @@ export function useLeetCodePageSync({
           title: nextMetadata.title,
           difficulty: nextMetadata.difficulty,
           isPremium: nextMetadata.isPremium,
+          topicLabels: nextMetadata.topics.map((topic) => topic.name),
         })
         if (syncTokenRef.current !== syncToken) {
           return

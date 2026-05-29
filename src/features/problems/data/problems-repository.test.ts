@@ -128,6 +128,124 @@ describe('ProblemsRepository library data', () => {
     })
   })
 
+  it('resolves topic aliases and auto-creates unknown topics on manual writes', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-05-29T12:00:00.000Z'),
+    })
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'heap-drill',
+        title: 'Heap Drill',
+        topicLabels: ['Heaps', 'Priority Queue', 'Brand New Pattern'],
+      }),
+    )
+
+    const saved = await createProblemsRepository(handle.db).getForEdit(
+      'heap-drill',
+    )
+
+    expect(saved?.topics.map((topic) => topic.label)).toEqual([
+      'Brand New Pattern',
+      'Heap (Priority Queue)',
+    ])
+    expect(saved?.topics.map((topic) => topic.id)).toEqual([
+      'brand-new-pattern',
+      'heap-priority-queue',
+    ])
+  })
+
+  it('keeps manual topic replacement semantics after alias resolution', async () => {
+    const handle = await createTestDb()
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'replace-topic-drill',
+        title: 'Replace Topic Drill',
+        topicLabels: ['Array', 'Heaps'],
+      }),
+    )
+    await updateProblem(
+      handle.db,
+      updateProblemInput({
+        problemSlug: 'replace-topic-drill',
+        title: 'Replace Topic Drill',
+        topicLabels: ['DP'],
+      }),
+    )
+
+    const saved = await createProblemsRepository(handle.db).getForEdit(
+      'replace-topic-drill',
+    )
+
+    expect(saved?.topics.map((topic) => topic.label)).toEqual([
+      'Dynamic Programming',
+    ])
+  })
+
+  it('returns parent rollups for direct problem topics', async () => {
+    const handle = await createTestDb()
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'graph-rollup',
+        title: 'Graph Rollup',
+        topicLabels: ['BFS'],
+      }),
+    )
+
+    const saved = await createProblemsRepository(handle.db).getForEdit(
+      'graph-rollup',
+    )
+
+    expect(saved?.topics).toEqual([
+      {
+        id: 'breadth-first-search',
+        label: 'Breadth-First Search',
+        parentTopics: [
+          { id: 'binary-tree', label: 'Binary Tree' },
+          { id: 'graph-theory', label: 'Graph Theory' },
+          { id: 'tree', label: 'Tree' },
+        ],
+      },
+    ])
+  })
+
+  it('includes parent rollups for direct topics in Library rows', async () => {
+    const handle = await createTestDb()
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'library-rollup',
+        title: 'Library Rollup',
+        topicLabels: ['BFS'],
+        companyLabels: ['Meta'],
+      }),
+    )
+
+    const rows = await createProblemsRepository(handle.db).getLibraryRowsBySlug(
+      ['library-rollup'],
+      { now: new Date('2026-01-01T10:01:00.000Z') },
+    )
+
+    expect(rows[0]?.topics).toEqual([
+      {
+        id: 'breadth-first-search',
+        label: 'Breadth-First Search',
+        parentTopics: [
+          { id: 'binary-tree', label: 'Binary Tree' },
+          { id: 'graph-theory', label: 'Graph Theory' },
+          { id: 'tree', label: 'Tree' },
+        ],
+      },
+    ])
+    expect(rows[0]?.companies).toEqual([{ id: 'meta', label: 'Meta' }])
+  })
+
   it('bulk-updates fields and deletes existing problems', async () => {
     const handle = await createTestDb()
 
@@ -214,6 +332,73 @@ describe('ProblemsRepository library data', () => {
       difficulty: 'medium',
       isPremium: true,
     })
+  })
+
+  it('merges captured LeetCode topics without clearing manual topics', async () => {
+    const handle = await createTestDb()
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'two-sum',
+        title: 'Two Sum',
+        topicLabels: ['Custom Local Topic'],
+      }),
+    )
+    await upsertProblemFromPage(handle.db, {
+      url: 'https://leetcode.com/problems/two-sum/',
+      slug: 'two-sum',
+      title: 'Two Sum',
+      difficulty: 'Easy',
+      isPremium: false,
+      topicLabels: ['Array', 'Hash Map'],
+    })
+
+    const saved = await createProblemsRepository(handle.db).getForEdit(
+      'two-sum',
+    )
+
+    expect(saved?.topics).toEqual([
+      { id: 'array', label: 'Array', parentTopics: [] },
+      {
+        id: 'custom-local-topic',
+        label: 'Custom Local Topic',
+        parentTopics: [],
+      },
+      { id: 'hash-table', label: 'Hash Table', parentTopics: [] },
+    ])
+  })
+
+  it('leaves existing topic links unchanged when page topic labels are omitted', async () => {
+    const handle = await createTestDb()
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'two-sum',
+        title: 'Two Sum',
+        topicLabels: ['Custom Local Topic'],
+      }),
+    )
+    await upsertProblemFromPage(handle.db, {
+      url: 'https://leetcode.com/problems/two-sum/',
+      slug: 'two-sum',
+      title: 'Two Sum',
+      difficulty: 'Easy',
+      isPremium: false,
+    })
+
+    const saved = await createProblemsRepository(handle.db).getForEdit(
+      'two-sum',
+    )
+
+    expect(saved?.topics).toEqual([
+      {
+        id: 'custom-local-topic',
+        label: 'Custom Local Topic',
+        parentTopics: [],
+      },
+    ])
   })
 
   it('returns Library rows only for requested slugs', async () => {

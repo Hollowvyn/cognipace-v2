@@ -11,6 +11,8 @@ import {
   problemTopics,
   reviewAttempts,
   settingsKv,
+  topicAliases,
+  topicRelations,
   topics,
   trackGroupProblems,
   trackGroups,
@@ -234,7 +236,12 @@ describe('backup service', () => {
           ...backup.data,
           topics: [
             ...backup.data.topics,
-            { id: 'custom-topic-copy', label: 'Custom Topic' },
+            {
+              id: 'custom-topic-copy',
+              label: 'Custom Topic',
+              createdAt: now.toISOString(),
+              updatedAt: now.toISOString(),
+            },
           ],
         },
       } satisfies BackupFile),
@@ -385,7 +392,9 @@ describe('backup service', () => {
           },
         },
       } satisfies BackupFile),
-    ).toThrow(/active group custom-group does not belong to active track other-track/i)
+    ).toThrow(
+      /active group custom-group does not belong to active track other-track/i,
+    )
   })
 
   it('rejects progress rows outside track/problem membership', async () => {
@@ -450,6 +459,287 @@ describe('backup service', () => {
     ).toHaveLength(1)
   })
 
+  it('exports and restores topic aliases and relations', async () => {
+    const source = await createTestDb({ now })
+    await insertCustomState(source.db)
+    await source.db.insert(topicAliases).values({
+      aliasKey: 'custom-alias',
+      label: 'Custom Alias',
+      topicId: 'custom-topic',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+    await source.db.insert(topics).values({
+      id: 'custom-parent',
+      label: 'Custom Parent',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+    await source.db.insert(topicRelations).values({
+      parentTopicId: 'custom-parent',
+      childTopicId: 'custom-topic',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+
+    const backup = await exportFullBackup(source.db, { exportedAt: now })
+    const target = await createTestDb({ now })
+
+    await restoreFullBackup(target.db, backup)
+
+    expect(await target.db.select().from(topicAliases)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ aliasKey: 'custom-alias' }),
+      ]),
+    )
+    expect(await target.db.select().from(topicRelations)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          parentTopicId: 'custom-parent',
+          childTopicId: 'custom-topic',
+        }),
+      ]),
+    )
+  })
+
+  it.each([
+    {
+      label: 'dangling alias topic',
+      patch: (backup: BackupFile) => ({
+        topicAliases: [
+          ...backup.data.topicAliases,
+          {
+            aliasKey: 'missing-alias',
+            label: 'Missing Alias',
+            topicId: 'missing-topic',
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+          },
+        ],
+      }),
+      message: /topicAlias references missing topic missing-topic/i,
+    },
+    {
+      label: 'dangling relation parent',
+      patch: (backup: BackupFile) => ({
+        topicRelations: [
+          ...backup.data.topicRelations,
+          {
+            parentTopicId: 'missing-parent',
+            childTopicId: 'custom-topic',
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+          },
+        ],
+      }),
+      message: /topicRelation references missing parent topic missing-parent/i,
+    },
+    {
+      label: 'dangling relation child',
+      patch: (backup: BackupFile) => ({
+        topicRelations: [
+          ...backup.data.topicRelations,
+          {
+            parentTopicId: 'custom-topic',
+            childTopicId: 'missing-child',
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+          },
+        ],
+      }),
+      message: /topicRelation references missing child topic missing-child/i,
+    },
+    {
+      label: 'duplicate alias key',
+      patch: (backup: BackupFile) => ({
+        topicAliases: [
+          ...backup.data.topicAliases,
+          {
+            aliasKey: 'custom-alias',
+            label: 'Custom Alias',
+            topicId: 'custom-topic',
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+          },
+          {
+            aliasKey: 'custom-alias',
+            label: 'Custom Alias Duplicate',
+            topicId: 'custom-topic',
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+          },
+        ],
+      }),
+      message: /duplicate topic alias key custom-alias/i,
+    },
+    {
+      label: 'duplicate relation pair',
+      patch: (backup: BackupFile) => ({
+        topics: [
+          ...backup.data.topics,
+          {
+            id: 'custom-parent',
+            label: 'Custom Parent',
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+          },
+        ],
+        topicRelations: [
+          ...backup.data.topicRelations,
+          {
+            parentTopicId: 'custom-parent',
+            childTopicId: 'custom-topic',
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+          },
+          {
+            parentTopicId: 'custom-parent',
+            childTopicId: 'custom-topic',
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+          },
+        ],
+      }),
+      message: /duplicate topic relation custom-parent:custom-topic/i,
+    },
+    {
+      label: 'self-parent relation',
+      patch: (backup: BackupFile) => ({
+        topicRelations: [
+          ...backup.data.topicRelations,
+          {
+            parentTopicId: 'custom-topic',
+            childTopicId: 'custom-topic',
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+          },
+        ],
+      }),
+      message: /cannot be its own parent/i,
+    },
+    {
+      label: 'duplicate problem-topic join',
+      patch: (backup: BackupFile) => ({
+        problemTopics: [
+          ...backup.data.problemTopics,
+          {
+            problemSlug: 'custom-problem',
+            topicId: 'custom-topic',
+          },
+        ],
+      }),
+      message: /duplicate problem-topic identity custom-problem/i,
+    },
+  ])(
+    'rejects invalid topic graph backup rows: $label',
+    async ({ patch, message }) => {
+      const { db } = await createTestDb({ now })
+      await insertCustomState(db)
+      const backup = await exportFullBackup(db, { exportedAt: now })
+      const patchedData = patch(backup)
+
+      expect(() =>
+        validateFullBackup({
+          ...backup,
+          data: {
+            ...backup.data,
+            ...patchedData,
+          },
+        } satisfies BackupFile),
+      ).toThrow(message)
+    },
+  )
+
+  it('allows topic graph rows with multiple parents', async () => {
+    const { db } = await createTestDb({ now })
+    await insertCustomState(db)
+    const backup = await exportFullBackup(db, { exportedAt: now })
+
+    expect(() =>
+      validateFullBackup({
+        ...backup,
+        data: {
+          ...backup.data,
+          topics: [
+            ...backup.data.topics,
+            {
+              id: 'custom-parent-a',
+              label: 'Custom Parent A',
+              createdAt: now.toISOString(),
+              updatedAt: now.toISOString(),
+            },
+            {
+              id: 'custom-parent-b',
+              label: 'Custom Parent B',
+              createdAt: now.toISOString(),
+              updatedAt: now.toISOString(),
+            },
+          ],
+          topicRelations: [
+            ...backup.data.topicRelations,
+            {
+              parentTopicId: 'custom-parent-a',
+              childTopicId: 'custom-topic',
+              createdAt: now.toISOString(),
+              updatedAt: now.toISOString(),
+            },
+            {
+              parentTopicId: 'custom-parent-b',
+              childTopicId: 'custom-topic',
+              createdAt: now.toISOString(),
+              updatedAt: now.toISOString(),
+            },
+          ],
+        },
+      } satisfies BackupFile),
+    ).not.toThrow()
+  })
+
+  it('rejects cyclic topic relation graphs', async () => {
+    const { db } = await createTestDb({ now })
+    await insertCustomState(db)
+    const backup = await exportFullBackup(db, { exportedAt: now })
+
+    expect(() =>
+      validateFullBackup({
+        ...backup,
+        data: {
+          ...backup.data,
+          topics: [
+            ...backup.data.topics,
+            {
+              id: 'topic-a',
+              label: 'Topic A',
+              createdAt: now.toISOString(),
+              updatedAt: now.toISOString(),
+            },
+            {
+              id: 'topic-b',
+              label: 'Topic B',
+              createdAt: now.toISOString(),
+              updatedAt: now.toISOString(),
+            },
+          ],
+          topicRelations: [
+            ...backup.data.topicRelations,
+            {
+              parentTopicId: 'topic-a',
+              childTopicId: 'topic-b',
+              createdAt: now.toISOString(),
+              updatedAt: now.toISOString(),
+            },
+            {
+              parentTopicId: 'topic-b',
+              childTopicId: 'topic-a',
+              createdAt: now.toISOString(),
+              updatedAt: now.toISOString(),
+            },
+          ],
+        },
+      } satisfies BackupFile),
+    ).toThrow(/cyclic topic relation/i)
+  })
+
   it('resets local data to seeded defaults', async () => {
     const { db } = await createTestDb({ now })
     await insertCustomState(db)
@@ -474,7 +764,12 @@ async function rowsForProblem(db: TestDb, slug: string) {
 }
 
 async function insertCustomState(db: TestDb) {
-  await db.insert(topics).values({ id: 'custom-topic', label: 'Custom Topic' })
+  await db.insert(topics).values({
+    id: 'custom-topic',
+    label: 'Custom Topic',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  })
   await db.insert(companies).values({
     id: 'custom-company',
     label: 'Custom Company',

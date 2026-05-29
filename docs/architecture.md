@@ -97,7 +97,8 @@ Not every feature needs every folder. Add only the folder needed for the change.
 - `practice`: FSRS-backed practice state, review logs, scheduling details,
   suspension, resets, and current log updates.
 - `problems`: problem identity, catalog rows, Library behavior, edit data,
-  companies, topics, difficulty, premium status, and page upserts.
+  companies, standardized topics, topic alias resolution, topic parent rollups,
+  difficulty, premium status, and page upserts.
 - `queue`: review recommendation composition for today.
 - `tracks`: curriculum tracks, groups, ordered memberships, active track and
   group state, progress, and dashboard track management.
@@ -234,6 +235,29 @@ When a stored snapshot does not match the current migration SQL, the app clears
 the old snapshot and creates a fresh migrated database seeded from
 `src/platform/db/seed.ts`. Testers may lose local extension data after schema
 changes.
+
+### Problem Topic Graph
+
+The problems feature owns topic writes and read models:
+
+- `topics` is the durable topic registry. Rows include stable ids, display
+  labels, and timestamps.
+- `topic_aliases` resolves variant labels to topic rows by normalized alias key.
+- `topic_relations` stores parent rollups, including multiple parents for a
+  child topic.
+- `problem_topics` stores direct problem-topic assignments only. Parent rollups
+  are derived for read models instead of being written as assignments.
+
+Manual Library create, edit, and bulk metadata writes use replace semantics for
+direct problem topics: the saved topic list replaces the previous direct topic
+assignments after alias resolution. LeetCode capture writes use merge semantics:
+captured page topics are resolved and added to the existing direct topic set
+without clearing local or manual topics.
+
+Backup schema version 3 exports and restores `topics`, `topicAliases`, and
+`topicRelations`. Older supported backups are normalized into the version 3
+shape during parsing by adding topic timestamps and empty alias/relation arrays
+before restore validation.
 
 ## Query Invalidation
 

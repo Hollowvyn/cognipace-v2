@@ -11,6 +11,8 @@ import {
   problemTopics,
   reviewAttempts,
   settingsKv,
+  topicAliases,
+  topicRelations,
   topics,
   trackGroupProblems,
   trackGroups,
@@ -56,6 +58,21 @@ describe('backup repository', () => {
     expect(backupData.topics).toContainEqual({
       id: 'custom-topic',
       label: 'Custom Topic',
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    })
+    expect(backupData.topicAliases).toContainEqual({
+      aliasKey: 'custom-alias',
+      label: 'Custom Alias',
+      topicId: 'custom-topic',
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    })
+    expect(backupData.topicRelations).toContainEqual({
+      parentTopicId: 'custom-parent',
+      childTopicId: 'custom-topic',
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
     })
     expect(backupData.companies).toContainEqual({
       id: 'custom-company',
@@ -146,6 +163,8 @@ describe('backup repository', () => {
     await db.delete(trackGroups)
     await db.delete(tracks)
     await db.delete(problemTopics)
+    await db.delete(topicRelations)
+    await db.delete(topicAliases)
     await db.delete(problemCompanies)
     await db.delete(problems)
     await db.delete(topics)
@@ -156,6 +175,19 @@ describe('backup repository', () => {
 
     expect(await db.select().from(reviewAttempts)).toHaveLength(1)
     expect(await db.select().from(settingsKv)).toHaveLength(1)
+    expect(await db.select().from(topicAliases)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ aliasKey: 'custom-alias' }),
+      ]),
+    )
+    expect(await db.select().from(topicRelations)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          parentTopicId: 'custom-parent',
+          childTopicId: 'custom-topic',
+        }),
+      ]),
+    )
     expect(
       await db.select().from(problems).where(eq(problems.slug, 'two-sum')),
     ).toHaveLength(1)
@@ -227,7 +259,33 @@ describe('backup repository', () => {
 type TestDb = Awaited<ReturnType<typeof createTestDb>>['db']
 
 async function insertCustomState(db: TestDb) {
-  await db.insert(topics).values({ id: 'custom-topic', label: 'Custom Topic' })
+  await db.insert(topics).values([
+    {
+      id: 'custom-topic',
+      label: 'Custom Topic',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: 'custom-parent',
+      label: 'Custom Parent',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+  ])
+  await db.insert(topicAliases).values({
+    aliasKey: 'custom-alias',
+    label: 'Custom Alias',
+    topicId: 'custom-topic',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  })
+  await db.insert(topicRelations).values({
+    parentTopicId: 'custom-parent',
+    childTopicId: 'custom-topic',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  })
   await db.insert(companies).values({
     id: 'custom-company',
     label: 'Custom Company',

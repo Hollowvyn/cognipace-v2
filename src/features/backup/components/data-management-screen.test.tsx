@@ -296,6 +296,8 @@ const validSummary = {
   counts: {
     problems: 1,
     topics: 1,
+    topicAliases: 0,
+    topicRelations: 0,
     companies: 1,
     problemTopics: 1,
     problemCompanies: 1,
@@ -327,7 +329,16 @@ const validBackup = {
         updatedAt: '2026-05-25T12:00:00.000Z',
       },
     ],
-    topics: [{ id: 'array', label: 'Array' }],
+    topics: [
+      {
+        id: 'array',
+        label: 'Array',
+        createdAt: '2026-05-25T12:00:00.000Z',
+        updatedAt: '2026-05-25T12:00:00.000Z',
+      },
+    ],
+    topicAliases: [],
+    topicRelations: [],
     companies: [{ id: 'meta', label: 'Meta' }],
     problemTopics: [{ problemSlug: 'two-sum', topicId: 'array' }],
     problemCompanies: [{ problemSlug: 'two-sum', companyId: 'meta' }],

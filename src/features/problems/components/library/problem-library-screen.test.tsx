@@ -874,8 +874,12 @@ async function addDialogLabel(
   await user.type(input, `${value}{Enter}`)
 }
 
-const topicArray = { id: 'array', label: 'Array' }
-const topicSearch = { id: 'binary-search', label: 'Binary Search' }
+const topicArray = { id: 'array', label: 'Array', parentTopics: [] }
+const topicSearch = {
+  id: 'binary-search',
+  label: 'Binary Search',
+  parentTopics: [],
+}
 const companyMeta = { id: 'meta', label: 'Meta' }
 const companyNetflix = { id: 'netflix', label: 'Netflix' }
 const trackMembership = {

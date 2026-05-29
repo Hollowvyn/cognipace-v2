@@ -26,6 +26,7 @@ import {
   problemTopics,
   problems,
   reviewAttempts,
+  topicRelations,
   topics,
   trackGroupProblems,
   trackGroups,
@@ -45,6 +46,10 @@ import {
   type UpsertProblemInput,
 } from '../domain'
 import type { ProblemLibraryStatus } from '../api/problems-contracts'
+import {
+  mergeProblemTopicLabels,
+  replaceProblemTopicLabels,
+} from './topic-resolver'
 
 export function createProblemsRepository(db: Db) {
   return new ProblemsRepository(db)
@@ -53,7 +58,10 @@ export function createProblemsRepository(db: Db) {
 export class ProblemsRepository {
   constructor(private readonly db: Db) {}
 
-  async upsertFromLeetCode(input: UpsertProblemInput, now = new Date()) {
+  async upsertFromLeetCode(
+    input: UpsertProblemFromLeetCodeInput,
+    now = new Date(),
+  ) {
     const slug = normalizeLeetCodeSlug(input.slug)
 
     if (!slug) {
@@ -83,6 +91,15 @@ export class ProblemsRepository {
             updatedAt: timestamp,
           },
         })
+
+      if (input.topicLabels !== undefined) {
+        await mergeProblemTopicLabels(
+          transactionDb,
+          problem.slug,
+          input.topicLabels,
+          now,
+        )
+      }
     })
 
     const savedProblem = await this.getBySlug(slug)
@@ -162,7 +179,7 @@ export class ProblemsRepository {
           },
         })
 
-      await setProblemTaxonomyLabels(transactionDb, slug, input)
+      await setProblemTaxonomyLabels(transactionDb, slug, input, now)
     })
 
     return this.readRequiredProblemForEdit(slug)
@@ -189,7 +206,7 @@ export class ProblemsRepository {
         })
         .where(eq(problems.slug, slug))
 
-      await setProblemTaxonomyLabels(transactionDb, slug, input)
+      await setProblemTaxonomyLabels(transactionDb, slug, input, now)
 
       return true
     })
@@ -245,7 +262,7 @@ export class ProblemsRepository {
         input.set.companyLabels !== undefined
       ) {
         for (const slug of existingSlugs) {
-          await setProblemTaxonomyLabels(transactionDb, slug, input.set)
+          await setProblemTaxonomyLabels(transactionDb, slug, input.set, now)
         }
       }
     })
@@ -600,8 +617,26 @@ function groupLabelsByProblem(
 
   for (const row of rows) {
     const labels = grouped.get(row.problemSlug) ?? []
-    labels.push({ id: row.id, label: row.label })
+    labels.push({
+      id: row.id,
+      label: row.label,
+      ...(row.parentTopics ? { parentTopics: row.parentTopics } : {}),
+    })
     grouped.set(row.problemSlug, labels)
+  }
+
+  return grouped
+}
+
+function groupParentTopics(
+  rows: readonly (ProblemTopicParentLabel & { childTopicId: string })[],
+) {
+  const grouped = new Map<string, ProblemTopicParentLabel[]>()
+
+  for (const row of rows) {
+    const parentTopics = grouped.get(row.childTopicId) ?? []
+    parentTopics.push({ id: row.id, label: row.label })
+    grouped.set(row.childTopicId, parentTopics)
   }
 
   return grouped
@@ -617,18 +652,57 @@ async function readLabelsByProblem(
   }
 
   const source = taxonomySource(kind)
-  return groupLabelsByProblem(
-    await db
-      .select({
-        problemSlug: source.problemSlug,
-        id: source.id,
-        label: source.label,
-      })
-      .from(source.joinTable)
-      .innerJoin(source.labelTable, eq(source.id, source.labelId))
-      .where(inArray(source.problemSlug, [...problemSlugs]))
-      .orderBy(asc(source.label)),
+  const labelRows = await db
+    .select({
+      problemSlug: source.problemSlug,
+      id: source.id,
+      label: source.label,
+    })
+    .from(source.joinTable)
+    .innerJoin(source.labelTable, eq(source.id, source.labelId))
+    .where(inArray(source.problemSlug, [...problemSlugs]))
+    .orderBy(asc(source.label))
+
+  if (kind !== 'topic') {
+    return groupLabelsByProblem(labelRows)
+  }
+
+  const parentTopicsByChildTopicId = await readParentTopicsByChildTopicId(
+    db,
+    uniqueNormalizedStrings(
+      labelRows.map((row) => row.id),
+      (topicId) => topicId,
+    ),
   )
+
+  return groupLabelsByProblem(
+    labelRows.map((row) => ({
+      ...row,
+      parentTopics: parentTopicsByChildTopicId.get(row.id) ?? [],
+    })),
+  )
+}
+
+async function readParentTopicsByChildTopicId(
+  db: ProblemReadDb,
+  childTopicIds: readonly string[],
+) {
+  if (childTopicIds.length === 0) {
+    return new Map<string, ProblemTopicParentLabel[]>()
+  }
+
+  const rows = await db
+    .select({
+      childTopicId: topicRelations.childTopicId,
+      id: topics.id,
+      label: topics.label,
+    })
+    .from(topicRelations)
+    .innerJoin(topics, eq(topics.id, topicRelations.parentTopicId))
+    .where(inArray(topicRelations.childTopicId, [...childTopicIds]))
+    .orderBy(asc(topics.label))
+
+  return groupParentTopics(rows)
 }
 
 async function readLabelOptions(db: ProblemReadDb, kind: TaxonomyKind) {
@@ -649,26 +723,6 @@ async function setProblemLabels(
   labels: readonly string[],
 ) {
   const storedLabels = await ensureLabels(db, kind, normalizeLabelList(labels))
-
-  if (kind === 'topic') {
-    await db
-      .delete(problemTopics)
-      .where(eq(problemTopics.problemSlug, problemSlug))
-
-    if (storedLabels.length > 0) {
-      await db
-        .insert(problemTopics)
-        .values(
-          storedLabels.map((topic) => ({
-            problemSlug,
-            topicId: topic.id,
-          })),
-        )
-        .onConflictDoNothing()
-    }
-
-    return
-  }
 
   await db
     .delete(problemCompanies)
@@ -694,9 +748,10 @@ async function setProblemTaxonomyLabels(
     topicLabels?: readonly string[] | undefined
     companyLabels?: readonly string[] | undefined
   },
+  now: Date,
 ) {
   if (labels.topicLabels !== undefined) {
-    await setProblemLabels(db, 'topic', problemSlug, labels.topicLabels)
+    await replaceProblemTopicLabels(db, problemSlug, labels.topicLabels, now)
   }
 
   if (labels.companyLabels !== undefined) {
@@ -817,9 +872,13 @@ export interface ProblemLibraryReadOptions {
   targetRetention?: number | undefined
 }
 
-export interface ProblemTaxonomyLabel {
+export interface ProblemTopicParentLabel {
   id: string
   label: string
+}
+
+export interface ProblemTaxonomyLabel extends ProblemTopicParentLabel {
+  parentTopics?: ProblemTopicParentLabel[]
 }
 
 export interface ProblemTrackMembership {
@@ -833,8 +892,8 @@ export interface ProblemTrackMembership {
 }
 
 export interface ProblemLibraryOptions {
-  topics: ProblemTaxonomyLabel[]
-  companies: ProblemTaxonomyLabel[]
+  topics: ProblemTopicParentLabel[]
+  companies: ProblemTopicParentLabel[]
 }
 
 export interface ProblemLibraryRow {
@@ -893,4 +952,8 @@ export interface BulkUpdateProblemsInput {
     topicLabels?: string[] | undefined
     companyLabels?: string[] | undefined
   }
+}
+
+interface UpsertProblemFromLeetCodeInput extends UpsertProblemInput {
+  topicLabels?: readonly string[] | undefined
 }

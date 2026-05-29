@@ -25,9 +25,13 @@ export const serializedProblemSchema = z.object({
 
 export type SerializedProblem = z.infer<typeof serializedProblemSchema>
 
-export const problemTopicSchema = z.object({
+export const problemTopicSummarySchema = z.object({
   id: z.string(),
   label: z.string(),
+})
+
+export const problemTopicSchema = problemTopicSummarySchema.extend({
+  parentTopics: z.array(problemTopicSummarySchema).default(() => []),
 })
 
 export type SerializedProblemTopic = z.infer<typeof problemTopicSchema>
@@ -112,7 +116,7 @@ export const problemLibrarySummarySchema = z
 export type ProblemLibrarySummary = z.infer<typeof problemLibrarySummarySchema>
 
 export const problemLibraryOptionsSchema = z.object({
-  topics: z.array(problemTopicSchema),
+  topics: z.array(problemTopicSummarySchema),
   companies: z.array(problemCompanySchema),
 })
 
@@ -176,6 +180,7 @@ export const problemsUpsertFromPageRequestSchema = z.object({
   title: z.string().nullish(),
   difficulty: z.string().nullish(),
   isPremium: z.boolean().nullish(),
+  topicLabels: z.array(z.string().trim().min(1)).optional(),
 })
 
 export type ProblemsUpsertFromPageRequest = z.infer<
