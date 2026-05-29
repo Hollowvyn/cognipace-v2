@@ -4,12 +4,14 @@ import type {
   ProblemForEdit,
   ProblemLibrary,
   ProblemLibraryRow as DomainProblemLibraryRow,
+  ProblemTaxonomyLabel,
 } from '../data/problems-repository'
 import type { Problem } from '../domain'
 import {
   problemForEditResponseSchema,
   problemLibraryResponseSchema,
   problemLibraryRowSchema,
+  problemTopicSchema,
   serializedProblemSchema,
   type ProblemForEditResponse,
   type ProblemLibraryResponse,
@@ -38,6 +40,7 @@ export function serializeProblemLibraryRow(row: DomainProblemLibraryRow) {
   return problemLibraryRowSchema.parse({
     ...row,
     problem: serializeProblem(row.problem),
+    topics: serializeProblemTopics(row.topics),
     state: serializeNormalizedPracticeState(row.state),
     nextReviewAt: row.nextReviewAt?.toISOString() ?? null,
     lastReviewedAt: row.lastReviewedAt?.toISOString() ?? null,
@@ -51,5 +54,15 @@ export function serializeProblemForEdit(
   return problemForEditResponseSchema.parse({
     ...problemForEdit,
     problem: serializeProblem(problemForEdit.problem),
+    topics: serializeProblemTopics(problemForEdit.topics),
   })
+}
+
+function serializeProblemTopics(topics: readonly ProblemTaxonomyLabel[]) {
+  return topics.map((topic) =>
+    problemTopicSchema.parse({
+      ...topic,
+      parentTopics: topic.parentTopics ?? [],
+    }),
+  )
 }

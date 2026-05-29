@@ -97,7 +97,7 @@ describe('ProblemForm', () => {
               difficulty: 'easy',
               isPremium: false,
             }),
-            topics: [{ id: 'array', label: 'Array' }],
+            topics: [{ id: 'array', label: 'Array', parentTopics: [] }],
             companies: [{ id: 'meta', label: 'Meta' }],
           }),
         )
@@ -178,7 +178,7 @@ describe('ProblemForm', () => {
               slug: 'two-sum',
               title: 'Two Sum',
             }),
-            topics: [{ id: 'array', label: 'Array' }],
+            topics: [{ id: 'array', label: 'Array', parentTopics: [] }],
             companies: [{ id: 'meta', label: 'Meta' }],
           }),
         )

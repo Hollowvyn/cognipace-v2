@@ -185,6 +185,67 @@ describe('ProblemsRepository library data', () => {
     ])
   })
 
+  it('returns parent rollups for direct problem topics', async () => {
+    const handle = await createTestDb()
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'graph-rollup',
+        title: 'Graph Rollup',
+        topicLabels: ['BFS'],
+      }),
+    )
+
+    const saved = await createProblemsRepository(handle.db).getForEdit(
+      'graph-rollup',
+    )
+
+    expect(saved?.topics).toEqual([
+      {
+        id: 'breadth-first-search',
+        label: 'Breadth-First Search',
+        parentTopics: [
+          { id: 'binary-tree', label: 'Binary Tree' },
+          { id: 'graph-theory', label: 'Graph Theory' },
+          { id: 'tree', label: 'Tree' },
+        ],
+      },
+    ])
+  })
+
+  it('includes parent rollups for direct topics in Library rows', async () => {
+    const handle = await createTestDb()
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'library-rollup',
+        title: 'Library Rollup',
+        topicLabels: ['BFS'],
+        companyLabels: ['Meta'],
+      }),
+    )
+
+    const rows = await createProblemsRepository(handle.db).getLibraryRowsBySlug(
+      ['library-rollup'],
+      { now: new Date('2026-01-01T10:01:00.000Z') },
+    )
+
+    expect(rows[0]?.topics).toEqual([
+      {
+        id: 'breadth-first-search',
+        label: 'Breadth-First Search',
+        parentTopics: [
+          { id: 'binary-tree', label: 'Binary Tree' },
+          { id: 'graph-theory', label: 'Graph Theory' },
+          { id: 'tree', label: 'Tree' },
+        ],
+      },
+    ])
+    expect(rows[0]?.companies).toEqual([{ id: 'meta', label: 'Meta' }])
+  })
+
   it('bulk-updates fields and deletes existing problems', async () => {
     const handle = await createTestDb()
 

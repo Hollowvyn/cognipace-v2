@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  problemLibraryOptionsSchema,
+  problemTopicSchema,
   problemsBulkUpdateProblemsRequestSchema,
   problemsCreateProblemRequestSchema,
 } from './problems-contracts'
@@ -51,6 +53,35 @@ describe('problems contracts', () => {
         topicLabels: [],
         companyLabels: ['Meta'],
       },
+    })
+  })
+
+  it('defaults problem topic parent rollups and keeps options simple', () => {
+    expect(
+      problemTopicSchema.parse({
+        id: 'breadth-first-search',
+        label: 'Breadth-First Search',
+      }),
+    ).toEqual({
+      id: 'breadth-first-search',
+      label: 'Breadth-First Search',
+      parentTopics: [],
+    })
+
+    expect(
+      problemLibraryOptionsSchema.parse({
+        topics: [
+          {
+            id: 'breadth-first-search',
+            label: 'Breadth-First Search',
+            parentTopics: [{ id: 'graph-theory', label: 'Graph Theory' }],
+          },
+        ],
+        companies: [{ id: 'meta', label: 'Meta' }],
+      }),
+    ).toEqual({
+      topics: [{ id: 'breadth-first-search', label: 'Breadth-First Search' }],
+      companies: [{ id: 'meta', label: 'Meta' }],
     })
   })
 })

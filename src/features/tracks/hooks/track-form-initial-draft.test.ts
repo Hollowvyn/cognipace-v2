@@ -83,12 +83,12 @@ describe('createGroupsFromInitialDraftRows', () => {
         [
           row('two-sum', 'Two Sum', {
             topics: [
-              { id: 'arrays', label: 'Arrays' },
-              { id: 'hashing', label: 'Hashing' },
+              { id: 'arrays', label: 'Arrays', parentTopics: [] },
+              { id: 'hashing', label: 'Hashing', parentTopics: [] },
             ],
           }),
           row('binary-tree', 'Binary Tree', {
-            topics: [{ id: 'trees', label: 'Trees' }],
+            topics: [{ id: 'trees', label: 'Trees', parentTopics: [] }],
           }),
           row('untagged', 'Untagged'),
         ],

@@ -26,6 +26,7 @@ import {
   problemTopics,
   problems,
   reviewAttempts,
+  topicRelations,
   topics,
   trackGroupProblems,
   trackGroups,
@@ -601,8 +602,26 @@ function groupLabelsByProblem(
 
   for (const row of rows) {
     const labels = grouped.get(row.problemSlug) ?? []
-    labels.push({ id: row.id, label: row.label })
+    labels.push({
+      id: row.id,
+      label: row.label,
+      ...(row.parentTopics ? { parentTopics: row.parentTopics } : {}),
+    })
     grouped.set(row.problemSlug, labels)
+  }
+
+  return grouped
+}
+
+function groupParentTopics(
+  rows: readonly (ProblemTopicParentLabel & { childTopicId: string })[],
+) {
+  const grouped = new Map<string, ProblemTopicParentLabel[]>()
+
+  for (const row of rows) {
+    const parentTopics = grouped.get(row.childTopicId) ?? []
+    parentTopics.push({ id: row.id, label: row.label })
+    grouped.set(row.childTopicId, parentTopics)
   }
 
   return grouped
@@ -618,18 +637,57 @@ async function readLabelsByProblem(
   }
 
   const source = taxonomySource(kind)
-  return groupLabelsByProblem(
-    await db
-      .select({
-        problemSlug: source.problemSlug,
-        id: source.id,
-        label: source.label,
-      })
-      .from(source.joinTable)
-      .innerJoin(source.labelTable, eq(source.id, source.labelId))
-      .where(inArray(source.problemSlug, [...problemSlugs]))
-      .orderBy(asc(source.label)),
+  const labelRows = await db
+    .select({
+      problemSlug: source.problemSlug,
+      id: source.id,
+      label: source.label,
+    })
+    .from(source.joinTable)
+    .innerJoin(source.labelTable, eq(source.id, source.labelId))
+    .where(inArray(source.problemSlug, [...problemSlugs]))
+    .orderBy(asc(source.label))
+
+  if (kind !== 'topic') {
+    return groupLabelsByProblem(labelRows)
+  }
+
+  const parentTopicsByChildTopicId = await readParentTopicsByChildTopicId(
+    db,
+    uniqueNormalizedStrings(
+      labelRows.map((row) => row.id),
+      (topicId) => topicId,
+    ),
   )
+
+  return groupLabelsByProblem(
+    labelRows.map((row) => ({
+      ...row,
+      parentTopics: parentTopicsByChildTopicId.get(row.id) ?? [],
+    })),
+  )
+}
+
+async function readParentTopicsByChildTopicId(
+  db: ProblemReadDb,
+  childTopicIds: readonly string[],
+) {
+  if (childTopicIds.length === 0) {
+    return new Map<string, ProblemTopicParentLabel[]>()
+  }
+
+  const rows = await db
+    .select({
+      childTopicId: topicRelations.childTopicId,
+      id: topics.id,
+      label: topics.label,
+    })
+    .from(topicRelations)
+    .innerJoin(topics, eq(topics.id, topicRelations.parentTopicId))
+    .where(inArray(topicRelations.childTopicId, [...childTopicIds]))
+    .orderBy(asc(topics.label))
+
+  return groupParentTopics(rows)
 }
 
 async function readLabelOptions(db: ProblemReadDb, kind: TaxonomyKind) {
@@ -799,9 +857,13 @@ export interface ProblemLibraryReadOptions {
   targetRetention?: number | undefined
 }
 
-export interface ProblemTaxonomyLabel {
+export interface ProblemTopicParentLabel {
   id: string
   label: string
+}
+
+export interface ProblemTaxonomyLabel extends ProblemTopicParentLabel {
+  parentTopics?: ProblemTopicParentLabel[]
 }
 
 export interface ProblemTrackMembership {
@@ -815,8 +877,8 @@ export interface ProblemTrackMembership {
 }
 
 export interface ProblemLibraryOptions {
-  topics: ProblemTaxonomyLabel[]
-  companies: ProblemTaxonomyLabel[]
+  topics: ProblemTopicParentLabel[]
+  companies: ProblemTopicParentLabel[]
 }
 
 export interface ProblemLibraryRow {

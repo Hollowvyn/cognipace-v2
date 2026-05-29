@@ -837,12 +837,12 @@ function createTrackDefaultsWithSelectionRows() {
 function createSelectedProblemRows() {
   return [
     problemRowWithMetadata('two-sum', 'Two Sum', {
-      topics: [{ id: 'arrays', label: 'Arrays' }],
+      topics: [{ id: 'arrays', label: 'Arrays', parentTopics: [] }],
       companies: [{ id: 'meta', label: 'Meta' }],
     }),
     problemRowWithMetadata('group-anagrams', 'Group Anagrams', {
       difficulty: 'medium',
-      topics: [{ id: 'hash-maps', label: 'Hash Maps' }],
+      topics: [{ id: 'hash-maps', label: 'Hash Maps', parentTopics: [] }],
       companies: [{ id: 'meta', label: 'Meta' }],
     }),
     problemRowWithMetadata('01-matrix', '01 Matrix', {
