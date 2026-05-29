@@ -617,6 +617,19 @@ describe('backup service', () => {
       }),
       message: /cannot be its own parent/i,
     },
+    {
+      label: 'duplicate problem-topic join',
+      patch: (backup: BackupFile) => ({
+        problemTopics: [
+          ...backup.data.problemTopics,
+          {
+            problemSlug: 'custom-problem',
+            topicId: 'custom-topic',
+          },
+        ],
+      }),
+      message: /duplicate problem-topic identity custom-problem/i,
+    },
   ])(
     'rejects invalid topic graph backup rows: $label',
     async ({ patch, message }) => {
