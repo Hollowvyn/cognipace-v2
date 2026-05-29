@@ -30,17 +30,17 @@ UI.
 - Store aliases as first-class rows.
 - Treat parent topics as regular topics that can also be assigned directly to
   problems.
-- Auto-create unknown incoming labels as non-canonical topics.
+- Auto-create unknown incoming labels as topics.
 - Ignore the pasted LeetCode counts entirely; they are not stored and do not
   drive behavior.
 - Keep this pass internal-foundation only. Do not add topic graph management UI.
-- Merge existing alias-matched local topics into canonical topics during the
-  migration.
-- Seed the canonical LeetCode topic labels, aliases, and curated parent links.
+- Merge existing alias-matched local topics into their resolved target topics
+  during the migration.
+- Seed the LeetCode topic labels, aliases, and curated parent links.
 
 ## Goals
 
-- Give CogniPace a durable canonical topic registry.
+- Give CogniPace a durable standardized topic registry.
 - Resolve LeetCode labels, old track labels, and user-entered variants through
   one topic resolver.
 - Preserve existing Library topic editing behavior while standardizing stored
@@ -67,24 +67,22 @@ extended rather than replaced.
 
 - `id`: stable slug-style topic ID.
 - `label`: user-facing label.
-- `isCanonical`: true for seeded canonical topics, false for auto-created or
-  unmatched user topics.
-- `source`: where the topic originated, such as `seed`, `leetcode`, or `user`.
 - `createdAt` and `updatedAt`: timestamps for backup and troubleshooting.
+
+Seeded, captured, imported, and manually created topics share the same table
+shape. Runtime behavior should not branch on where a topic came from.
 
 `topic_aliases` stores first-class aliases:
 
 - `aliasKey`: normalized lookup key, unique across aliases.
 - `label`: display form of the alias.
-- `topicId`: canonical target topic.
-- `source`: `seed`, `leetcode`, `legacy`, or `user`.
+- `topicId`: resolved target topic.
 - timestamps.
 
 `topic_relations` stores graph edges:
 
 - `parentTopicId`.
 - `childTopicId`.
-- `source`.
 - timestamps.
 
 Both sides of `topic_relations` point to regular `topics` rows. Parent topics
@@ -102,9 +100,9 @@ All topic writes go through one resolver before writing `problem_topics`.
 Resolution order:
 
 1. Normalize the incoming label or LeetCode slug.
-2. Match an existing canonical topic by ID or label key.
+2. Match an existing topic by ID or label key.
 3. Match `topic_aliases.aliasKey`.
-4. Auto-create a non-canonical topic if no match exists.
+4. Auto-create a topic if no match exists.
 
 The resolver is used by:
 
@@ -121,29 +119,29 @@ topics and persists them without deleting unrelated existing direct topics.
 
 ## Migration Behavior
 
-The migration canonicalizes known aliases:
+The migration standardizes known aliases:
 
-- Seed canonical topics first.
+- Seed target topics first.
 - Seed aliases second.
-- Move `problem_topics` rows from alias-matched old topic IDs to canonical topic
-  IDs.
+- Move `problem_topics` rows from alias-matched old topic IDs to resolved target
+  topic IDs.
 - Collapse duplicate joins after merging.
-- Preserve old labels as aliases pointing to the canonical topic.
-- Preserve unmatched existing topics as non-canonical user topics.
+- Preserve old labels as aliases pointing to the resolved target topic.
+- Preserve unmatched existing topics as ordinary topics.
 
 Example: if local data contains `Heaps`, `Priority Queue`, and
-`Heap (Priority Queue)`, all problem links should end up on canonical
+`Heap (Priority Queue)`, all problem links should end up on
 `heap-priority-queue`, while the other labels become aliases.
 
 The migration must not discard problem-topic links. If a merge would create a
-duplicate `(problemSlug, topicId)` pair, keep one canonical row.
+duplicate `(problemSlug, topicId)` pair, keep one target row.
 
 ## Seed Taxonomy
 
-The implementation must seed canonical LeetCode topic labels. The seed list is
-based on the user-provided LeetCode topic copy paste, but counts are ignored.
+The implementation must seed LeetCode topic labels. The seed list is based on
+the user-provided LeetCode topic copy paste, but counts are ignored.
 
-Canonical topic labels to seed:
+Topic labels to seed:
 
 - Array
 - String
@@ -263,8 +261,8 @@ Seed parent links should be curated typed data. The notation below is
 - `Bitmask` -> `Bit Manipulation`
 - `Doubly-Linked List` -> `Linked List`
 
-Seed operations must be idempotent. They create missing canonical topics,
-aliases, and relations, but they do not clobber unrelated user-created topics.
+Seed operations must be idempotent. They create missing topics, aliases, and
+relations, but they do not clobber unrelated user-created topics.
 
 ## Read Models
 
@@ -342,28 +340,27 @@ topic metadata should invalidate `problems`; include dependent families such as
 ## Error Handling
 
 - Resolver conflicts should fail loudly when one alias key would point at two
-  different canonical topics.
+  different target topics.
 - Restore validation should return clear messages for dangling references and
   cycles.
-- Unknown labels should not fail normal capture/import. They become
-  non-canonical topics.
+- Unknown labels should not fail normal capture/import. They become topics.
 - Seed should be safe to run repeatedly.
 
 ## Testing
 
 Focused tests should cover:
 
-- resolver maps aliases to canonical topics
-- resolver auto-creates unknown labels as non-canonical topics
-- migration merges alias-matched topics into canonical IDs without losing
+- resolver maps aliases to target topics
+- resolver auto-creates unknown labels as topics
+- migration merges alias-matched topics into target IDs without losing
   problem links
-- duplicate joins collapse during canonicalization
+- duplicate joins collapse during standardization
 - LeetCode page sync persists captured topics
 - backup export/restore round-trips topics, aliases, relations, and joins
 - restore rejects dangling aliases
 - restore rejects dangling parent links
 - restore rejects cyclic parent graphs
-- Library filters still work with canonicalized topics
+- Library filters still work with standardized topics
 - Library create/edit and bulk metadata edits still work
 - seed is idempotent and does not clobber unrelated user-created topics
 
@@ -379,6 +376,6 @@ This is a database migration. During development, changing migrations changes th
 migration fingerprint, so local extension snapshots may reset and reseed. The
 implementation handoff should call that out clearly.
 
-The first shipped version should prioritize correctness of canonical IDs,
-aliases, parent links, backup/restore, and LeetCode capture persistence over
-management UI.
+The first shipped version should prioritize correctness of topic IDs, aliases,
+parent links, backup/restore, and LeetCode capture persistence over management
+UI.

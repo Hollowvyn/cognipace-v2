@@ -12,7 +12,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
-- [`specs/2026-05-29-topic-graph-standardization-design.md`](./specs/2026-05-29-topic-graph-standardization-design.md): approved design for standardizing problem topics into a canonical topic graph with stored aliases, multiple parent topics, LeetCode topic seeding, migration canonicalization, backup/sync support, and analytics-ready rollups.
+- [`specs/2026-05-29-topic-graph-standardization-design.md`](./specs/2026-05-29-topic-graph-standardization-design.md): approved design for standardizing problem topics into a topic graph with stored aliases, multiple parent topics, LeetCode topic seeding, migration cleanup, backup/sync support, and analytics-ready rollups.
 - [`specs/2026-05-26-directional-gist-sync-design.md`](./specs/2026-05-26-directional-gist-sync-design.md): approved design for replacing the vague GitHub Gist `Sync now` action with explicit manual pull and push actions, dashboard header shortcuts, and focused sync tests. Use as implementation history; verify current behavior against `docs/product.md` and source code.
 - [`specs/2026-05-26-github-gist-sync-design.md`](./specs/2026-05-26-github-gist-sync-design.md): approved design for GitHub Gist pseudo-sync, reusable local secrets, and shared external API transport. Use as implementation history; verify current behavior against `docs/product.md` and source code.
 - [`specs/2026-05-27-track-owned-progress-design.md`](./specs/2026-05-27-track-owned-progress-design.md): approved design for replacing group-owned track progress with track/problem-owned progress and correction-aware review reconciliation.
