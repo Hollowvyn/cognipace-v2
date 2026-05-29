@@ -45,6 +45,7 @@ import {
   type UpsertProblemInput,
 } from '../domain'
 import type { ProblemLibraryStatus } from '../api/problems-contracts'
+import { replaceProblemTopicLabels } from './topic-resolver'
 
 export function createProblemsRepository(db: Db) {
   return new ProblemsRepository(db)
@@ -162,7 +163,7 @@ export class ProblemsRepository {
           },
         })
 
-      await setProblemTaxonomyLabels(transactionDb, slug, input)
+      await setProblemTaxonomyLabels(transactionDb, slug, input, now)
     })
 
     return this.readRequiredProblemForEdit(slug)
@@ -189,7 +190,7 @@ export class ProblemsRepository {
         })
         .where(eq(problems.slug, slug))
 
-      await setProblemTaxonomyLabels(transactionDb, slug, input)
+      await setProblemTaxonomyLabels(transactionDb, slug, input, now)
 
       return true
     })
@@ -245,7 +246,7 @@ export class ProblemsRepository {
         input.set.companyLabels !== undefined
       ) {
         for (const slug of existingSlugs) {
-          await setProblemTaxonomyLabels(transactionDb, slug, input.set)
+          await setProblemTaxonomyLabels(transactionDb, slug, input.set, now)
         }
       }
     })
@@ -650,26 +651,6 @@ async function setProblemLabels(
 ) {
   const storedLabels = await ensureLabels(db, kind, normalizeLabelList(labels))
 
-  if (kind === 'topic') {
-    await db
-      .delete(problemTopics)
-      .where(eq(problemTopics.problemSlug, problemSlug))
-
-    if (storedLabels.length > 0) {
-      await db
-        .insert(problemTopics)
-        .values(
-          storedLabels.map((topic) => ({
-            problemSlug,
-            topicId: topic.id,
-          })),
-        )
-        .onConflictDoNothing()
-    }
-
-    return
-  }
-
   await db
     .delete(problemCompanies)
     .where(eq(problemCompanies.problemSlug, problemSlug))
@@ -694,9 +675,10 @@ async function setProblemTaxonomyLabels(
     topicLabels?: readonly string[] | undefined
     companyLabels?: readonly string[] | undefined
   },
+  now: Date,
 ) {
   if (labels.topicLabels !== undefined) {
-    await setProblemLabels(db, 'topic', problemSlug, labels.topicLabels)
+    await replaceProblemTopicLabels(db, problemSlug, labels.topicLabels, now)
   }
 
   if (labels.companyLabels !== undefined) {

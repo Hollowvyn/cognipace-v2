@@ -128,6 +128,63 @@ describe('ProblemsRepository library data', () => {
     })
   })
 
+  it('resolves topic aliases and auto-creates unknown topics on manual writes', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-05-29T12:00:00.000Z'),
+    })
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'heap-drill',
+        title: 'Heap Drill',
+        topicLabels: ['Heaps', 'Priority Queue', 'Brand New Pattern'],
+      }),
+    )
+
+    const saved = await createProblemsRepository(handle.db).getForEdit(
+      'heap-drill',
+    )
+
+    expect(saved?.topics.map((topic) => topic.label)).toEqual([
+      'Brand New Pattern',
+      'Heap (Priority Queue)',
+    ])
+    expect(saved?.topics.map((topic) => topic.id)).toEqual([
+      'brand-new-pattern',
+      'heap-priority-queue',
+    ])
+  })
+
+  it('keeps manual topic replacement semantics after alias resolution', async () => {
+    const handle = await createTestDb()
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'replace-topic-drill',
+        title: 'Replace Topic Drill',
+        topicLabels: ['Array', 'Heaps'],
+      }),
+    )
+    await updateProblem(
+      handle.db,
+      updateProblemInput({
+        problemSlug: 'replace-topic-drill',
+        title: 'Replace Topic Drill',
+        topicLabels: ['DP'],
+      }),
+    )
+
+    const saved = await createProblemsRepository(handle.db).getForEdit(
+      'replace-topic-drill',
+    )
+
+    expect(saved?.topics.map((topic) => topic.label)).toEqual([
+      'Dynamic Programming',
+    ])
+  })
+
   it('bulk-updates fields and deletes existing problems', async () => {
     const handle = await createTestDb()
 
