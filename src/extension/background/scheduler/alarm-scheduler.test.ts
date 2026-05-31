@@ -79,6 +79,16 @@ describe('alarm scheduler', () => {
     )
   })
 
+  it('throws when registering a duplicate alarm job name', () => {
+    const scheduler = createAlarmScheduler({ alarms: adapter })
+
+    scheduler.register({ name: 'sync:auto-push', run: vi.fn() })
+
+    expect(() =>
+      scheduler.register({ name: 'sync:auto-push', run: vi.fn() }),
+    ).toThrowError('Duplicate alarm job: sync:auto-push')
+  })
+
   it('ignores unknown alarms safely', async () => {
     createAlarmScheduler({ alarms: adapter })
 

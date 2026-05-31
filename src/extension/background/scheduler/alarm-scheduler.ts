@@ -48,6 +48,10 @@ export function createAlarmScheduler(
       unsubscribe()
     },
     register(job: AlarmJob) {
+      if (jobs.has(job.name)) {
+        throw new Error(`Duplicate alarm job: ${job.name}`)
+      }
+
       jobs.set(job.name, job)
     },
     async repairStartupAlarms() {
