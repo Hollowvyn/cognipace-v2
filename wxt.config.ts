@@ -10,7 +10,7 @@ export default defineConfig({
   manifest: {
     name: 'CogniPace',
     description: 'Local-first LeetCode review and study pacing.',
-    permissions: ['storage', 'alarms'],
+    permissions: ['storage', 'alarms', 'notifications'],
     host_permissions: [
       'https://leetcode.com/*',
       'https://www.leetcode.com/*',

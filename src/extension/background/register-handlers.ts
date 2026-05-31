@@ -140,6 +140,11 @@ import { broadcastCacheInvalidation } from './cache-invalidation-broadcaster'
 import { assertCanSenderCallExtensionMethod } from './runtime-policy'
 import { createAlarmScheduler } from './scheduler/alarm-scheduler'
 import { createSyncAutoSync } from './sync-auto-sync'
+import {
+  createDueNotification,
+  readDueNotificationState,
+  writeDueNotificationState,
+} from './due-notification'
 
 const alarmScheduler = createAlarmScheduler()
 const syncAutoSync = createSyncAutoSync({
@@ -164,9 +169,40 @@ const syncAutoSync = createSyncAutoSync({
   },
 })
 
+const dueNotification = createDueNotification({
+  now: () => new Date(),
+  readSettings: async () => {
+    const { db } = await getAppDb()
+    return getSettings(db)
+  },
+  readQueueSummary: async () => {
+    const { db } = await getAppDb()
+    const queue = await getTodayQueue(db, new Date())
+    return { dueCount: queue.dueCount }
+  },
+  readState: readDueNotificationState,
+  writeState: writeDueNotificationState,
+  notify: async (title, message) => {
+    await browser.notifications.create('due-review-reminder', {
+      type: 'basic',
+      iconUrl: '/icons.svg',
+      title,
+      message,
+    })
+  },
+  checkAlarmScheduled: async (name) => {
+    const alarm = await browser.alarms.get(name)
+    return alarm !== undefined
+  },
+  scheduler: alarmScheduler,
+})
+
 export function registerBackgroundHandlers() {
   syncAutoSync.registerJobs()
   void syncAutoSync.repairStartupAlarms()
+
+  dueNotification.registerJobs()
+  void dueNotification.handleStartup()
 
   onMessage('runtime.ping', ({ data, sender }) => {
     const request = pingRequestSchema.parse(data)
@@ -1106,12 +1142,26 @@ async function runSettingsMutation(
   source: 'popup' | 'dashboard',
   writeSettings: (db: Db) => Promise<UserSettings>,
 ) {
-  return runDbMutation(writeSettings, () =>
-    broadcastCacheInvalidation({
-      reason: 'settings-updated',
-      source,
-      tags: ['settings'],
-    }),
+  let prev: UserSettings | undefined
+  return runDbMutation(
+    async (db) => {
+      prev = await getSettings(db)
+      return writeSettings(db)
+    },
+    async (next) => {
+      await broadcastCacheInvalidation({
+        reason: 'settings-updated',
+        source,
+        tags: ['settings'],
+      })
+      if (prev !== undefined) {
+        try {
+          await dueNotification.onSettingsChanged(prev, next)
+        } catch {
+          // Notification rescheduling must not fail settings mutations.
+        }
+      }
+    },
   )
 }
 
