@@ -13,11 +13,10 @@ export function createSerializedAnalyticsSummary(
     retentionSampleSize: 50,
     lowSample: false,
     dueForecast14Days: Array.from({ length: 14 }, (_, i) => {
-      const date = new Date(new Date().getTime() + i * 24 * 60 * 60 * 1000)
-      const dateStr = date.toISOString().split('T')[0] || '2026-05-30'
+      const dateStr = `2026-01-${String(15 + i).padStart(2, '0')}`
       return {
         date: dateStr,
-        dueCount: Math.floor(Math.random() * 15) + (i === 0 ? 5 : 0),
+        dueCount: (i + 1) * 2,
       }
     }),
     weakProblems: [
