@@ -41,9 +41,12 @@ type DueNotificationDeps = {
   readState: () => Promise<{ lastNotifiedDate: string | null }>
   writeState: (date: string) => Promise<void>
   notify: (title: string, message: string) => Promise<void>
+  checkAlarmScheduled: (name: string) => Promise<boolean>
   scheduler: Pick<AlarmScheduler, 'clear' | 'register' | 'schedule'>
 }
 ```
+
+`checkAlarmScheduled` is wired to `browser.alarms.get(name).then(Boolean)` at the call site. `AlarmScheduler` has no `get` on its surface — this avoids expanding that type for a single-use need.
 
 Returned surface:
 
@@ -67,7 +70,8 @@ const dueNotification = createDueNotification({
   readState: readDueNotificationState,
   writeState: writeDueNotificationState,
   notify: (title, message) =>
-    browser.notifications.create({ type: 'basic', iconUrl: '...', title, message }),
+    browser.notifications.create({ type: 'basic', iconUrl: '/icon-48.png', title, message }),
+  checkAlarmScheduled: (name) => browser.alarms.get(name).then(Boolean),
   scheduler,
 })
 
@@ -105,7 +109,7 @@ The alarm's `run()` function. Called by the scheduler when `due:daily-check` fir
 Called once when the extension background starts.
 
 1. Read settings — if `reminders.daily.enabled` is false, return
-2. Check whether `due:daily-check` alarm already exists — if yes, return (don't disturb a running alarm)
+2. Call `checkAlarmScheduled('due:daily-check')` — if true, return (don't disturb a running alarm)
 3. If alarm is missing:
    - If `dailyTime` has **already passed** today → call `runDailyCheck()` immediately (handles dedup, notification, and reschedule)
    - If `dailyTime` is still upcoming → `scheduler.schedule('due:daily-check', { delayInMinutes: normalizeNotificationTime(time, now()) })`
@@ -123,7 +127,7 @@ Diffs only `reminders.daily` between old and new settings:
 
 ## Dedup State
 
-Stored in `chrome.storage.local` under a namespaced key (e.g., `cognipace:notification:lastNotifiedDate`). Value is an ISO date string (`"2026-05-30"`) or absent.
+Stored in `chrome.storage.local` under the key `cognipace:notification:lastNotifiedDate`. Value is an ISO date string (`"2026-05-30"`) or absent.
 
 Two private helpers in `due-notification.ts`:
 - `readDueNotificationState(): Promise<{ lastNotifiedDate: string | null }>`
