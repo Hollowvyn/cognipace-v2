@@ -62,12 +62,28 @@ export function buildRetentionProxy(
   return { value, label, sampleSize, lowSample: false }
 }
 
-// Placeholders — implemented in Tasks 2 and 3
 export function buildDueForecast(
-  _cards: Array<{ dueAt: Date }>,
-  _now: Date,
+  cards: Array<{ dueAt: Date }>,
+  now: Date,
 ): ForecastEntry[] {
-  return []
+  const entries: ForecastEntry[] = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(now)
+    d.setDate(d.getDate() + i)
+    return { date: toLocalDateKey(d), dueCount: 0 }
+  })
+
+  const todayKey = toLocalDateKey(now)
+  const dateToIndex = new Map(entries.map((e, i) => [e.date, i]))
+
+  for (const card of cards) {
+    const key = card.dueAt < now ? todayKey : toLocalDateKey(card.dueAt)
+    const index = dateToIndex.get(key)
+    if (index !== undefined) {
+      entries[index]!.dueCount++
+    }
+  }
+
+  return entries
 }
 
 export function buildWeakProblems(_candidates: WeakProblem[]): WeakProblem[] {
@@ -84,4 +100,11 @@ function subtractDays(date: Date, days: number): Date {
   const result = new Date(date)
   result.setDate(result.getDate() - days)
   return result
+}
+
+function toLocalDateKey(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildRetentionProxy } from './summary'
+import { buildRetentionProxy, buildDueForecast } from './summary'
 
-const now = new Date('2026-01-15T12:00:00.000Z')
-const recentDate = new Date('2026-01-14T12:00:00.000Z')
-const oldDate = new Date('2025-12-14T12:00:00.000Z') // > 30 days before now
+const now = new Date(2026, 0, 15, 12, 0, 0)
+const recentDate = new Date(2026, 0, 14, 12, 0, 0)
+const oldDate = new Date(2025, 11, 14, 12, 0, 0) // > 30 days before now
 
 describe('buildRetentionProxy', () => {
   it('returns lowSample when fewer than 10 ratings in the 30-day window', () => {
@@ -71,5 +71,54 @@ describe('buildRetentionProxy', () => {
     const result = buildRetentionProxy(attempts, now)
 
     expect(result.lowSample).toBe(false)
+  })
+})
+
+describe('buildDueForecast', () => {
+  it('returns exactly 14 entries starting from today', () => {
+    const result = buildDueForecast([], now)
+
+    expect(result).toHaveLength(14)
+    expect(result[0]?.date).toBe('2026-01-15')
+    expect(result[13]?.date).toBe('2026-01-28')
+  })
+
+  it('fills all entries with zero when no cards provided', () => {
+    const result = buildDueForecast([], now)
+
+    expect(result.every((e) => e.dueCount === 0)).toBe(true)
+  })
+
+  it('counts cards due on their local date', () => {
+    const result = buildDueForecast(
+      [
+        { dueAt: new Date(2026, 0, 16, 0, 0, 0) },
+        { dueAt: new Date(2026, 0, 16, 8, 0, 0) },
+        { dueAt: new Date(2026, 0, 20, 0, 0, 0) },
+      ],
+      now,
+    )
+
+    // Jan 16 = index 1, Jan 20 = index 5
+    expect(result[1]?.dueCount).toBe(2)
+    expect(result[5]?.dueCount).toBe(1)
+  })
+
+  it('clamps overdue cards (dueAt < now) to today (index 0)', () => {
+    const result = buildDueForecast(
+      [{ dueAt: new Date(2026, 0, 10, 0, 0, 0) }],
+      now,
+    )
+
+    expect(result[0]?.dueCount).toBe(1)
+  })
+
+  it('ignores cards outside the 14-day window', () => {
+    const result = buildDueForecast(
+      [{ dueAt: new Date(2026, 0, 29, 0, 0, 0) }], // day 14 — outside window
+      now,
+    )
+
+    expect(result.every((e) => e.dueCount === 0)).toBe(true)
   })
 })
