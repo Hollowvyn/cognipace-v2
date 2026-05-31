@@ -27,7 +27,7 @@ export async function getAnalyticsSummary(
   const thirtyDaysAgo = subtractDays(now, 30)
   const fourteenDaysLater = addDays(now, 14)
 
-  // Step 1: run all 5 queries in parallel
+  // Step 1: run all reads in parallel
   const [dayStats, recentRatings, upcomingCards, weakCandidates, settings] =
     await Promise.all([
       getReviewDayStats(db),
@@ -43,16 +43,21 @@ export async function getAnalyticsSummary(
   })
 
   // Step 3: enrich weak candidates with retrievability (needs `now`)
-  const enrichedCandidates = weakCandidates.map((candidate) => ({
-    slug: candidate.slug,
-    title: candidate.title,
-    lapseCount: candidate.lapseCount,
-    difficulty: candidate.difficulty,
-    retrievability: getRetrievability(
-      buildMinimalCard(candidate.stability, candidate.lapseCount, candidate.lastReviewAt),
-      now,
-    ),
-  }))
+  const enrichedCandidates = weakCandidates.flatMap((candidate) => {
+    if (candidate.lastReviewAt === null) return []
+    return [
+      {
+        slug: candidate.slug,
+        title: candidate.title,
+        lapseCount: candidate.lapseCount,
+        difficulty: candidate.difficulty,
+        retrievability: getRetrievability(
+          buildMinimalCard(candidate.stability, candidate.difficulty, candidate.lapseCount, candidate.lastReviewAt),
+          now,
+        ),
+      },
+    ]
+  })
 
   // Step 4: build domain objects
   const retention = buildRetentionProxy(recentRatings, now)
@@ -73,13 +78,14 @@ export async function getAnalyticsSummary(
 
 function buildMinimalCard(
   stability: number,
+  difficulty: number,
   lapses: number,
-  lastReviewAt: Date | null,
+  lastReviewAt: Date,
 ): FsrsCardSnapshot {
   return {
-    dueAt: lastReviewAt ?? new Date(0),
+    dueAt: lastReviewAt,
     stability,
-    difficulty: 5,
+    difficulty,
     elapsedDays: 0,
     scheduledDays: 0,
     learningSteps: 0,
