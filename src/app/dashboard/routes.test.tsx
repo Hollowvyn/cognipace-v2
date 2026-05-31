@@ -8,6 +8,7 @@ import { defaultUserSettings } from '@/features/settings/domain'
 import type { SyncActionResult } from '@/features/sync'
 import { createLibrarySelectionTrackDraft } from '@/features/tracks'
 import { createDashboardAppShellData } from '@/testing/app-shell-fixtures'
+import { createSerializedAnalyticsSummary } from '@/testing/analytics-fixtures'
 import {
   createProblemForEditResponse,
   createProblemLibraryResponse,
@@ -58,6 +59,10 @@ describe('dashboard routes', () => {
     vi.mocked(sendMessage).mockImplementation((method, request) => {
       if (method === 'app.getShellData') {
         return Promise.resolve(createDashboardAppShellData())
+      }
+
+      if (method === 'analytics.getSummary') {
+        return Promise.resolve(createSerializedAnalyticsSummary())
       }
 
       if (method === 'sync.getStatus') {
@@ -156,7 +161,7 @@ describe('dashboard routes', () => {
     ['/', 'Overview', 'What should I practice now'],
     ['/tracks', 'Tracks', 'Core interview practice'],
     ['/library', 'Library', 'Total'],
-    ['/analytics', 'Analytics', 'Queue, FSRS, and Analytics'],
+    ['/analytics', 'Analytics', 'Your local study health'],
     ['/settings', 'Settings', 'Daily goal'],
   ])('renders the %s route', async (path, heading, expectedCopy) => {
     renderDashboard(path)
