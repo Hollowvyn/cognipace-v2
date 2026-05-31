@@ -29,7 +29,9 @@ import {
 
 type MaybePromise<T> = T | Promise<T>
 
-type GitHubSyncActionResult = MaybePromise<SyncActionResult | null | void>
+export type GitHubSyncActionResult = MaybePromise<
+  SyncActionResult | null | void
+>
 
 export interface GitHubSyncPanelActions {
   onConnectGist: (gistId: string) => GitHubSyncActionResult
