@@ -279,6 +279,7 @@ export interface ProtocolMap {
   'sync.createGithubGist'(request: SyncRequest): SyncActionResult
   'sync.connectGithubGist'(request: SyncGithubGistRequest): SyncActionResult
   'sync.setEnabled'(request: SyncSetEnabledRequest): SyncActionResult
+  'sync.checkRemoteOnOpen'(request: SyncRequest): SyncActionResult
   'sync.pullLatest'(request: SyncPullLatestRequest): SyncActionResult
   'sync.pushLocal'(request: SyncPushLocalRequest): SyncActionResult
   'problems.upsertFromPage'(

@@ -48,6 +48,20 @@ const backgroundMocks = vi.hoisted(() => {
     (message: { data: unknown; sender: unknown }) => unknown
   >()
   const db = { kind: 'test-db' }
+  const alarmScheduler = {
+    clear: vi.fn(),
+    register: vi.fn(),
+    repairStartupAlarms: vi.fn(),
+    schedule: vi.fn(),
+  }
+  const syncAutoSync = {
+    clearPendingAutomaticSync: vi.fn(),
+    registerJobs: vi.fn(),
+    repairStartupAlarms: vi.fn(),
+    runAutoPush: vi.fn(),
+    runCleanPullCheck: vi.fn(),
+    scheduleAutoPushAfterMutation: vi.fn(),
+  }
 
   return {
     db,
@@ -98,9 +112,15 @@ const backgroundMocks = vi.hoisted(() => {
     ),
     updateSettings: vi.fn(),
     createBackgroundSyncService: vi.fn(),
+    createAlarmScheduler: vi.fn(() => alarmScheduler),
+    createSyncAutoSync: vi.fn(() => syncAutoSync),
     markSyncLocalDataChanged: vi.fn(),
     readSyncMetadata: vi.fn(),
+    writeSyncMetadata: vi.fn(),
+    alarmScheduler,
+    syncAutoSync,
     syncService: {
+      checkRemoteOnOpen: vi.fn(),
       connectGithubGist: vi.fn(),
       createGithubGist: vi.fn(),
       deleteGithubToken: vi.fn(),
@@ -215,6 +235,7 @@ vi.mock('@/features/sync/server/sync-service', () => ({
 
 vi.mock('@/features/sync/data/sync-metadata-store', () => ({
   readSyncMetadata: backgroundMocks.readSyncMetadata,
+  writeSyncMetadata: backgroundMocks.writeSyncMetadata,
 }))
 
 vi.mock('@/platform/db', () => ({
@@ -229,6 +250,14 @@ vi.mock('./cache-invalidation-broadcaster', () => ({
 vi.mock('./runtime-policy', () => ({
   assertCanSenderCallExtensionMethod:
     backgroundMocks.assertCanSenderCallExtensionMethod,
+}))
+
+vi.mock('./scheduler/alarm-scheduler', () => ({
+  createAlarmScheduler: backgroundMocks.createAlarmScheduler,
+}))
+
+vi.mock('./sync-auto-sync', () => ({
+  createSyncAutoSync: backgroundMocks.createSyncAutoSync,
 }))
 
 describe('background handler registration', () => {
@@ -275,12 +304,38 @@ describe('background handler registration', () => {
     backgroundMocks.createBackgroundSyncService.mockReturnValue(
       backgroundMocks.syncService,
     )
+    backgroundMocks.createAlarmScheduler.mockReturnValue(
+      backgroundMocks.alarmScheduler,
+    )
+    backgroundMocks.createSyncAutoSync.mockReturnValue(
+      backgroundMocks.syncAutoSync,
+    )
     backgroundMocks.markSyncLocalDataChanged.mockResolvedValue(
       cleanSyncMetadata,
     )
     backgroundMocks.readSyncMetadata.mockResolvedValue(cleanSyncMetadata)
+    backgroundMocks.writeSyncMetadata.mockResolvedValue(cleanSyncMetadata)
+    backgroundMocks.alarmScheduler.clear.mockResolvedValue(true)
+    backgroundMocks.alarmScheduler.repairStartupAlarms.mockResolvedValue(
+      undefined,
+    )
+    backgroundMocks.alarmScheduler.schedule.mockResolvedValue(undefined)
+    backgroundMocks.syncAutoSync.clearPendingAutomaticSync.mockResolvedValue(
+      undefined,
+    )
+    backgroundMocks.syncAutoSync.repairStartupAlarms.mockResolvedValue(
+      undefined,
+    )
+    backgroundMocks.syncAutoSync.runAutoPush.mockResolvedValue(undefined)
+    backgroundMocks.syncAutoSync.runCleanPullCheck.mockResolvedValue(undefined)
+    backgroundMocks.syncAutoSync.scheduleAutoPushAfterMutation.mockResolvedValue(
+      undefined,
+    )
     backgroundMocks.syncService.connectGithubGist.mockResolvedValue(
       syncActionResult,
+    )
+    backgroundMocks.syncService.checkRemoteOnOpen.mockResolvedValue(
+      syncOpenCheckResult,
     )
     backgroundMocks.syncService.createGithubGist.mockResolvedValue(
       syncActionResult,
@@ -303,6 +358,15 @@ describe('background handler registration', () => {
   afterEach(() => {
     vi.clearAllTimers()
     vi.useRealTimers()
+  })
+
+  it('registers and repairs sync auto-sync alarm jobs on startup', () => {
+    registerBackgroundHandlers()
+
+    expect(backgroundMocks.syncAutoSync.registerJobs).toHaveBeenCalledTimes(1)
+    expect(
+      backgroundMocks.syncAutoSync.repairStartupAlarms,
+    ).toHaveBeenCalledTimes(1)
   })
 
   it('registers app-shell payload handling with policy and schema parsing', async () => {
@@ -374,6 +438,51 @@ describe('background handler registration', () => {
     expectSyncFactoryForDb()
     expect(backgroundMocks.syncService.getStatus).toHaveBeenCalledTimes(1)
     expect(response).toEqual(syncStatusSchema.parse(syncStatus))
+  })
+
+  it('registers sync open checks with UI-surface policy and response parsing', async () => {
+    const contentScriptSender = {
+      tab: { id: 7 },
+      url: 'https://leetcode.com/problems/two-sum/',
+    }
+
+    const response = await sendRuntimeMessage(
+      'sync.checkRemoteOnOpen',
+      {
+        surface: 'content-script',
+      },
+      contentScriptSender,
+    )
+
+    expectRuntimePolicy(
+      'sync.checkRemoteOnOpen',
+      'content-script',
+      contentScriptSender,
+    )
+    expectSyncFactoryForDb()
+    expect(backgroundMocks.syncService.checkRemoteOnOpen).toHaveBeenCalledTimes(
+      1,
+    )
+    expect(response).toEqual(syncActionResultSchema.parse(syncOpenCheckResult))
+  })
+
+  it('rejects malformed sync open check requests before service access', () => {
+    expect(() =>
+      sendRuntimeMessage('sync.checkRemoteOnOpen', {
+        surface: 'popup',
+        confirmLocalOverwrite: true,
+      }),
+    ).toThrow()
+
+    expect(
+      backgroundMocks.assertCanSenderCallExtensionMethod,
+    ).not.toHaveBeenCalledWith(
+      'sync.checkRemoteOnOpen',
+      expect.anything(),
+      expect.anything(),
+    )
+    expect(backgroundMocks.getAppDb).not.toHaveBeenCalled()
+    expect(backgroundMocks.syncService.checkRemoteOnOpen).not.toHaveBeenCalled()
   })
 
   it('registers privileged directional sync dashboard actions with request and response parsing', async () => {
@@ -901,7 +1010,7 @@ describe('background handler registration', () => {
     expect(response).toEqual(problemForEditResponse)
   })
 
-  it('marks local mutations dirty without auto-pushing to Gist', async () => {
+  it('schedules auto-push after a local DB mutation flushes', async () => {
     vi.useFakeTimers()
 
     await sendRuntimeMessage(
@@ -911,6 +1020,10 @@ describe('background handler registration', () => {
     await vi.advanceTimersByTimeAsync(600)
 
     expect(backgroundMocks.markSyncLocalDataChanged).toHaveBeenCalledTimes(1)
+    expect(
+      backgroundMocks.syncAutoSync.scheduleAutoPushAfterMutation,
+    ).toHaveBeenCalledTimes(1)
+    expectAutoPushScheduledAfterFlushAndBroadcast()
     expect(backgroundMocks.syncService.pushLocal).not.toHaveBeenCalled()
     expect(backgroundMocks.syncService.pullLatest).not.toHaveBeenCalled()
   })
@@ -937,6 +1050,154 @@ describe('background handler registration', () => {
     expect(backgroundMocks.markSyncLocalDataChanged).toHaveBeenCalledTimes(1)
     expect(backgroundMocks.syncService.pushLocal).not.toHaveBeenCalled()
     expect(backgroundMocks.syncService.pullLatest).not.toHaveBeenCalled()
+  })
+
+  it('keeps local mutations successful when auto-push scheduling fails', async () => {
+    backgroundMocks.syncAutoSync.scheduleAutoPushAfterMutation.mockRejectedValueOnce(
+      new Error('alarms unavailable'),
+    )
+
+    await expect(
+      sendRuntimeMessage(
+        'settings.updateSettings',
+        {
+          surface: 'dashboard',
+          patch: {
+            practice: {
+              mode: 'freePractice',
+            },
+          },
+        },
+        { url: 'chrome-extension://extension-id/dashboard.html' },
+      ),
+    ).resolves.toEqual(defaultUserSettings)
+
+    expect(backgroundMocks.flushDbSnapshot).toHaveBeenCalledTimes(1)
+    expect(
+      backgroundMocks.syncAutoSync.scheduleAutoPushAfterMutation,
+    ).toHaveBeenCalledTimes(1)
+  })
+
+  it('clears pending automatic sync after a manual push succeeds', async () => {
+    backgroundMocks.syncService.pushLocal.mockResolvedValueOnce({
+      ...syncActionResult,
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'success',
+    })
+
+    const response = await sendRuntimeMessage('sync.pushLocal', {
+      surface: 'dashboard',
+      confirmRemoteOverwrite: false,
+    })
+
+    expect(response).toMatchObject({
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'success',
+    })
+    expect(
+      backgroundMocks.syncAutoSync.clearPendingAutomaticSync,
+    ).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps manual sync results successful when automatic alarm cleanup fails', async () => {
+    backgroundMocks.syncAutoSync.clearPendingAutomaticSync.mockRejectedValueOnce(
+      new Error('alarms unavailable'),
+    )
+    backgroundMocks.syncService.pushLocal.mockResolvedValueOnce({
+      ...syncActionResult,
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'success',
+    })
+
+    await expect(
+      sendRuntimeMessage('sync.pushLocal', {
+        surface: 'dashboard',
+        confirmRemoteOverwrite: false,
+      }),
+    ).resolves.toMatchObject({
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'success',
+    })
+
+    expect(
+      backgroundMocks.syncAutoSync.clearPendingAutomaticSync,
+    ).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not clear pending automatic sync after a manual push is blocked', async () => {
+    backgroundMocks.syncService.pushLocal.mockResolvedValueOnce({
+      ...syncActionResult,
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'confirmation-required',
+      reason: 'remote-changed',
+    })
+
+    await sendRuntimeMessage('sync.pushLocal', {
+      surface: 'dashboard',
+    })
+
+    expect(
+      backgroundMocks.syncAutoSync.clearPendingAutomaticSync,
+    ).not.toHaveBeenCalled()
+  })
+
+  it('clears pending automatic sync after successful manual sync setup and pull actions', async () => {
+    await sendRuntimeMessage('sync.createGithubGist', {
+      surface: 'dashboard',
+    })
+    await sendRuntimeMessage('sync.pullLatest', {
+      surface: 'dashboard',
+    })
+    await sendRuntimeMessage('sync.deleteGithubToken', {
+      surface: 'dashboard',
+    })
+
+    expect(
+      backgroundMocks.syncAutoSync.clearPendingAutomaticSync,
+    ).toHaveBeenCalledTimes(3)
+  })
+
+  it('clears pending automatic sync only after disabling sync succeeds', async () => {
+    await sendRuntimeMessage('sync.setEnabled', {
+      surface: 'dashboard',
+      enabled: true,
+    })
+    expect(
+      backgroundMocks.syncAutoSync.clearPendingAutomaticSync,
+    ).not.toHaveBeenCalled()
+
+    await sendRuntimeMessage('sync.setEnabled', {
+      surface: 'dashboard',
+      enabled: false,
+    })
+
+    expect(
+      backgroundMocks.syncAutoSync.clearPendingAutomaticSync,
+    ).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not clear pending automatic sync after manual sync errors', async () => {
+    backgroundMocks.syncService.pullLatest.mockResolvedValueOnce({
+      ...syncActionResult,
+      action: 'pull-latest',
+      direction: 'pull',
+      outcome: 'error',
+      reason: 'network',
+      retryable: true,
+    })
+
+    await sendRuntimeMessage('sync.pullLatest', {
+      surface: 'dashboard',
+    })
+
+    expect(
+      backgroundMocks.syncAutoSync.clearPendingAutomaticSync,
+    ).not.toHaveBeenCalled()
   })
 
   it('queues manual pull so later local mutations wait behind the sync work', async () => {
@@ -1366,6 +1627,19 @@ function expectFlushBeforeBroadcast() {
   expect(flushOrder).toBeLessThan(broadcastOrder)
 }
 
+function expectAutoPushScheduledAfterFlushAndBroadcast() {
+  const flushOrder =
+    backgroundMocks.flushDbSnapshot.mock.invocationCallOrder[0] ?? 0
+  const broadcastOrder =
+    backgroundMocks.broadcastCacheInvalidation.mock.invocationCallOrder[0] ?? 0
+  const autoPushScheduleOrder =
+    backgroundMocks.syncAutoSync.scheduleAutoPushAfterMutation.mock
+      .invocationCallOrder[0] ?? 0
+
+  expect(autoPushScheduleOrder).toBeGreaterThan(flushOrder)
+  expect(autoPushScheduleOrder).toBeGreaterThan(broadcastOrder)
+}
+
 function createPopupShellData(): PopupAppShellData {
   return {
     surface: 'popup',
@@ -1505,6 +1779,11 @@ const syncActionResult = syncActionResultSchema.parse({
   status: syncStatus,
   message: 'Sync complete.',
   occurredAt: syncTimestamp,
+})
+const syncOpenCheckResult = syncActionResultSchema.parse({
+  ...syncActionResult,
+  action: 'check-remote-on-open',
+  message: 'Remote check complete.',
 })
 const cleanSyncMetadata = {
   enabled: true,

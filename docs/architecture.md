@@ -172,6 +172,7 @@ user action
 -> sync metadata dirty mark for local mutations
 -> snapshot flush
 -> invalidation broadcast
+-> safe automatic push scheduling when Gist sync is configured
 -> query refetch
 -> render
 ```
@@ -181,14 +182,20 @@ Background mutations are serialized through the mutation queue in
 `src/platform/db/instance.ts`, which restores a matching stored snapshot or
 creates a fresh migrated and seeded database.
 
-The sync feature is manual-first in this pass. Manual `sync.pullLatest` and
-`sync.pushLocal` runtime methods are dashboard-only. Local mutations mark sync
-metadata dirty after the local mutation commits and before the database snapshot
-flush, but they do not auto-push after mutations, and dashboard/popup/overlay
-surfaces do not auto-pull on open. Pull requests default
-`confirmLocalOverwrite` to `false` and push requests default
-`confirmRemoteOverwrite` to `false`; the sync service enforces both defaults so
-force pull and force push only happen after a UI confirmation dialog.
+Automatic Gist sync is orchestrated in the background layer. After a local
+mutation commits, sync metadata is marked dirty, the database snapshot is
+flushed, normal invalidation is broadcast, and an alarm-backed auto-push is
+scheduled when Gist sync is configured. Alarm jobs run through the same mutation
+queue as manual sync work, so remote restores and local writes stay serialized.
+
+Opening popup, dashboard, or overlay surfaces calls the safe
+`sync.checkRemoteOnOpen` runtime path. That path clean-pulls changed remote Gist
+data only when local metadata is not dirty; dirty local data skips the remote
+fetch. Manual `sync.pullLatest` and `sync.pushLocal` runtime methods remain
+dashboard-only. Pull requests default `confirmLocalOverwrite` to `false` and
+push requests default `confirmRemoteOverwrite` to `false`; the sync service
+enforces both defaults so force pull and force push only happen after a UI
+confirmation dialog.
 
 ## External APIs And Secrets
 

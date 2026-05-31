@@ -287,6 +287,71 @@ export function createSyncService(deps: SyncServiceDependencies) {
     })
   }
 
+  async function checkRemoteOnOpen(): Promise<SyncActionResult> {
+    return runAction('check-remote-on-open', null, async () => {
+      const [metadata, tokenStatus] = await Promise.all([
+        deps.readMetadata(),
+        deps.getTokenStatus(),
+      ])
+
+      if (!metadata.enabled || !metadata.gistId || !tokenStatus.configured) {
+        return createActionResult({
+          action: 'check-remote-on-open',
+          direction: null,
+          outcome: 'no-change',
+          reason: 'not-configured',
+          message: 'Remote check skipped: GitHub Gist sync is not configured.',
+        })
+      }
+
+      if (metadata.dirtySinceLastSync) {
+        return createActionResult({
+          action: 'check-remote-on-open',
+          direction: null,
+          outcome: 'no-change',
+          reason: 'local-dirty',
+          message: 'Remote check skipped: local changes need to be pushed.',
+        })
+      }
+
+      const client = await readConfiguredClient()
+      const remote = await client.getGist(metadata.gistId)
+
+      if (!hasRemoteChanged(remote, metadata)) {
+        await deps.writeMetadata({
+          lastSyncAt: deps.now().toISOString(),
+          lastSyncDirection: 'no-change',
+          lastRemoteVersion: remote.remoteVersion,
+          lastRemoteUpdatedAt: remote.updatedAt,
+          lastBlockingReason: null,
+          conflict: null,
+          lastError: null,
+          lastAutoSyncAt: deps.now().toISOString(),
+        })
+
+        return createActionResult({
+          action: 'check-remote-on-open',
+          direction: null,
+          outcome: 'no-change',
+          reason: 'remote-unchanged',
+          message: 'Remote check found no changes.',
+        })
+      }
+
+      await pullRemote(remote)
+      await deps.writeMetadata({
+        autoSyncRetryAttempt: 0,
+        lastAutoSyncAt: deps.now().toISOString(),
+      })
+
+      return createActionResult({
+        action: 'check-remote-on-open',
+        direction: 'pull',
+        message: 'Latest Gist data pulled.',
+      })
+    })
+  }
+
   async function pullLatest(
     options: PullLatestOptions = {},
   ): Promise<SyncActionResult> {
@@ -580,6 +645,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
   }
 
   return {
+    checkRemoteOnOpen,
     connectGithubGist,
     createGithubGist,
     deleteGithubToken,

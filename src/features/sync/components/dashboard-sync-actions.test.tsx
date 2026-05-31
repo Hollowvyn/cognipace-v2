@@ -84,6 +84,54 @@ describe('DashboardSyncActionsView', () => {
     expect(screen.getByRole('button', { name: /Force push/i })).toBeVisible()
   })
 
+  it('does not open force dialogs from conflict status alone', () => {
+    render(
+      <DashboardSyncActionsView
+        isPending={false}
+        onPullLatest={vi.fn()}
+        onPushLocal={vi.fn()}
+        status={{
+          ...configuredStatus,
+          conflict: {
+            detectedAt: '2026-05-26T12:10:00.000Z',
+            localDataUpdatedAt: '2026-05-26T12:08:00.000Z',
+            remoteUpdatedAt: '2026-05-26T12:09:00.000Z',
+            remoteVersion: 'remote_2',
+          },
+        }}
+      />,
+    )
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Pull latest from Gist' }),
+    ).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: 'Push local to Gist' }),
+    ).toBeEnabled()
+  })
+
+  it('does not open force dialogs from retryable error status alone', () => {
+    render(
+      <DashboardSyncActionsView
+        isPending={false}
+        onPullLatest={vi.fn()}
+        onPushLocal={vi.fn()}
+        status={{
+          ...configuredStatus,
+          lastError: {
+            kind: 'network',
+            message: 'GitHub is temporarily unavailable.',
+            occurredAt: '2026-05-26T12:05:00.000Z',
+            retryable: true,
+          },
+        }}
+      />,
+    )
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('lets the header force push after overwrite confirmation', async () => {
     const user = userEvent.setup()
     const onPushLocal = vi

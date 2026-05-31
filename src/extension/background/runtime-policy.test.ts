@@ -175,6 +175,14 @@ describe('runtime-policy', () => {
     }
   })
 
+  it('allows safe sync open checks from every UI surface', () => {
+    for (const surface of ['popup', 'dashboard', 'content-script'] as const) {
+      expect(canCallExtensionMethod('sync.checkRemoteOnOpen', surface)).toBe(
+        true,
+      )
+    }
+  })
+
   it('keeps privileged sync writes dashboard-only', () => {
     for (const method of [
       'sync.validateGithubToken',

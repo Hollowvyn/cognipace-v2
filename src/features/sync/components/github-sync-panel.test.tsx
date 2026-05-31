@@ -80,8 +80,39 @@ describe('GitHubSyncPanel', () => {
     )
 
     expect(screen.getByRole('alert')).toHaveTextContent(/conflict/i)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Pull latest/i })).toBeEnabled()
     expect(screen.getByRole('button', { name: /Push local/i })).toBeEnabled()
+  })
+
+  it('shows retryable auto-sync errors as status without opening force dialogs', () => {
+    render(
+      <GitHubSyncPanel
+        actions={{
+          onConnectGist: vi.fn(),
+          onCreateGist: vi.fn(),
+          onDeleteToken: vi.fn(),
+          onPullLatest: vi.fn(),
+          onPushLocal: vi.fn(),
+          onSaveToken: vi.fn(),
+          onValidateToken: vi.fn(),
+        }}
+        status={{
+          ...configuredStatus,
+          lastError: {
+            kind: 'network',
+            message: 'GitHub is temporarily unavailable.',
+            occurredAt: '2026-05-26T12:05:00.000Z',
+            retryable: true,
+          },
+        }}
+      />,
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /GitHub is temporarily unavailable/i,
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('opens a force pull confirmation dialog when local changes block pulling', async () => {

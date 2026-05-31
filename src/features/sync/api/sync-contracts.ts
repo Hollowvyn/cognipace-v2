@@ -46,6 +46,7 @@ export const syncActionSchema = z.enum([
   'set-enabled',
   'pull-latest',
   'push-local',
+  'check-remote-on-open',
 ])
 
 export const syncActionDirectionSchema = z.enum(['pull', 'push']).nullable()

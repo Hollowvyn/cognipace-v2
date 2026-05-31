@@ -105,23 +105,29 @@ dialog button changes to a success state labeled Backup exported.
    local to Gist shortcuts after sync is configured.
 10. Change local data in one install and confirm sync status shows it needs
     push.
-11. Use Push local from Settings or the dashboard header.
-12. Use Pull latest in the other install and confirm the pushed update appears
-    there.
-13. Create a conflict by changing both installs before syncing.
-14. Confirm Pull latest opens a force-pull dialog when local data has unpushed
+11. Wait for the auto-push alarm or trigger it in development, then open or
+    reload the second clean install.
+12. Confirm the second clean install pulls the latest Gist data without a manual
+    pull.
+13. Use Push local from Settings or the dashboard header when an explicit manual
+    upload is needed.
+14. Use Pull latest in the other install when an explicit manual download is
+    needed.
+15. Create a conflict by changing both installs before syncing.
+16. Confirm Pull latest opens a force-pull dialog when local data has unpushed
     changes, then cancel once before intentionally confirming.
-15. Confirm force pull replaces the local data with the connected Gist data only
+17. Confirm force pull replaces the local data with the connected Gist data only
     after confirmation.
-16. Confirm Push local opens a force-push dialog when remote data changed, then
+18. Confirm Push local opens a force-push dialog when remote data changed, then
     cancel once before intentionally confirming.
-17. Confirm force push replaces the Gist with local data only after
+19. Confirm force push replaces the Gist with local data only after
     confirmation.
 
-Expected: sync is pseudo-real-time, with manual directional pull and push actions
-that make data movement clear. Local writes are not blocked by GitHub failures,
-destructive local and remote overwrites require confirmation dialogs, and tokens
-stay in trusted local extension storage rather than backups or sync files.
+Expected: sync is pseudo-real-time, with automatic safe push and clean open-check
+pulls plus manual directional pull and push actions for explicit recovery. Local
+writes are not blocked by GitHub failures, destructive local and remote
+overwrites require confirmation dialogs, and tokens stay in trusted local
+extension storage rather than backups or sync files.
 
 ### Library
 
