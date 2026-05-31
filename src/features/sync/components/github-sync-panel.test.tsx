@@ -2,7 +2,25 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-import { GitHubSyncPanel } from './github-sync-panel'
+import {
+  GitHubSyncPanel,
+  type GitHubSyncPanelActions,
+} from './github-sync-panel'
+
+const createActions = (
+  overrides: Partial<GitHubSyncPanelActions> = {},
+): GitHubSyncPanelActions => ({
+  onConnectGist: vi.fn(),
+  onCreateGist: vi.fn(),
+  onDeleteToken: vi.fn(),
+  onPullLatest: vi.fn(),
+  onPushLocal: vi.fn(),
+  onSaveToken: vi.fn(),
+  onSetAutoSyncEnabled: vi.fn(),
+  onValidateStoredToken: vi.fn(),
+  onValidateToken: vi.fn(),
+  ...overrides,
+})
 
 describe('GitHubSyncPanel', () => {
   it('saves a token and creates a Gist from the not configured state', async () => {
@@ -12,15 +30,10 @@ describe('GitHubSyncPanel', () => {
 
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
+        actions={createActions({
           onCreateGist,
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
           onSaveToken,
-          onValidateToken: vi.fn(),
-        }}
+        })}
         status={notConfiguredStatus}
       />,
     )
@@ -38,15 +51,7 @@ describe('GitHubSyncPanel', () => {
   it('renders directional sync actions instead of the generic sync action', () => {
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={configuredStatus}
       />,
     )
@@ -58,15 +63,7 @@ describe('GitHubSyncPanel', () => {
   it('keeps directional actions visible while a conflict is present', () => {
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={{
           ...configuredStatus,
           conflict: {
@@ -88,15 +85,7 @@ describe('GitHubSyncPanel', () => {
   it('shows retryable auto-sync errors as status without opening force dialogs', () => {
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={{
           ...configuredStatus,
           lastError: {
@@ -137,15 +126,9 @@ describe('GitHubSyncPanel', () => {
 
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
+        actions={createActions({
           onPullLatest,
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        })}
         status={configuredStatus}
       />,
     )
@@ -181,15 +164,9 @@ describe('GitHubSyncPanel', () => {
 
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
+        actions={createActions({
           onSaveToken,
-          onValidateToken: vi.fn(),
-        }}
+        })}
         status={notConfiguredStatus}
       />,
     )
@@ -230,15 +207,9 @@ describe('GitHubSyncPanel', () => {
 
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
+        actions={createActions({
           onPushLocal,
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        })}
         status={configuredStatus}
       />,
     )
@@ -276,15 +247,9 @@ describe('GitHubSyncPanel', () => {
 
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
+        actions={createActions({
           onPushLocal,
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        })}
         status={configuredStatus}
       />,
     )
@@ -309,15 +274,9 @@ describe('GitHubSyncPanel', () => {
 
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
+        actions={createActions({
           onPushLocal,
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        })}
         status={configuredStatus}
       />,
     )
@@ -332,15 +291,7 @@ describe('GitHubSyncPanel', () => {
   it('shows local-dirty blocking status and push-needed status before timestamps', () => {
     const { rerender } = render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={{
           ...configuredStatus,
           lastBlockingReason: 'local-dirty',
@@ -354,15 +305,7 @@ describe('GitHubSyncPanel', () => {
 
     rerender(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={{
           ...configuredStatus,
           lastBlockingReason: null,
@@ -379,15 +322,7 @@ describe('GitHubSyncPanel', () => {
   it('shows the latest push or pull timestamp before legacy sync timestamps', () => {
     const { rerender } = render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={{
           ...configuredStatus,
           lastPushAt: '2026-05-26T13:00:00.000Z',
@@ -401,15 +336,7 @@ describe('GitHubSyncPanel', () => {
 
     rerender(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={{
           ...configuredStatus,
           lastPushAt: '2026-05-26T12:30:00.000Z',
@@ -423,15 +350,7 @@ describe('GitHubSyncPanel', () => {
 
     rerender(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={{
           ...configuredStatus,
           lastPushAt: null,
@@ -459,15 +378,9 @@ describe('GitHubSyncPanel', () => {
 
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
+        actions={createActions({
           onPullLatest,
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        })}
         status={configuredStatus}
       />,
     )

@@ -19,6 +19,8 @@ describe('GitHubSyncSettingsSection', () => {
         onPullLatest: vi.fn(),
         onPushLocal: vi.fn(),
         onSaveToken: vi.fn(),
+        onSetAutoSyncEnabled: vi.fn(),
+        onValidateStoredToken: vi.fn(),
         onValidateToken: vi.fn(),
       },
       isLoading: false,
