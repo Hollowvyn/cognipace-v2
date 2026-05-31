@@ -1,0 +1,76 @@
+// src/features/analytics/components/analytics-metric-row.tsx
+import { InlineStatus } from '@/components/ui/inline-status'
+import { Surface } from '@/components/ui/surface'
+import type { AnalyticsSummary } from '@/features/analytics'
+import { cn } from '@/utils/cn'
+
+export function AnalyticsMetricRow({
+  summary,
+}: {
+  summary: AnalyticsSummary
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-[var(--cp-surface-gap)]">
+      {summary.lowSample ? (
+        <InlineStatus role="status" tone="warning">
+          Retention needs more data — check back after at least 10 reviews in
+          the last 30 days.
+        </InlineStatus>
+      ) : null}
+
+      <div className="grid min-w-0 gap-3 sm:grid-cols-3">
+        <Surface
+          aria-label="Review Days metric"
+          className="grid min-h-[6rem] gap-2 !p-4"
+        >
+          <div className="text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
+            Review Days
+          </div>
+          <div className="text-3xl font-bold leading-none text-foreground tabular-nums">
+            {summary.reviewDays}
+          </div>
+          <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
+            Days with at least one review
+          </p>
+        </Surface>
+
+        <Surface
+          aria-label="Total Reviews metric"
+          className="grid min-h-[6rem] gap-2 !p-4"
+        >
+          <div className="text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
+            Total Reviews
+          </div>
+          <div className="text-3xl font-bold leading-none text-foreground tabular-nums">
+            {summary.totalReviews}
+          </div>
+          <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
+            All-time review attempts
+          </p>
+        </Surface>
+
+        <Surface
+          aria-label="Retention metric"
+          className="grid min-h-[6rem] gap-2 !p-4"
+        >
+          <div className="text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
+            Retention
+          </div>
+          <div
+            className={cn(
+              'text-3xl font-bold leading-none tabular-nums',
+              summary.lowSample ? 'text-muted-foreground' : 'text-foreground',
+            )}
+          >
+            {summary.retentionProxyLabel}
+          </div>
+          <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
+            {summary.lowSample
+              ? 'Fewer than 10 reviews in the last 30 days'
+              : `${summary.retentionSampleSize} reviews in the last 30 days`}
+          </p>
+        </Surface>
+      </div>
+    </div>
+  )
+}
