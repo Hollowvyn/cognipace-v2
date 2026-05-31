@@ -195,7 +195,9 @@ fetch. Manual `sync.pullLatest` and `sync.pushLocal` runtime methods remain
 dashboard-only. Pull requests default `confirmLocalOverwrite` to `false` and
 push requests default `confirmRemoteOverwrite` to `false`; the sync service
 enforces both defaults so force pull and force push only happen after a UI
-confirmation dialog.
+confirmation dialog. The `enabled` flag controls automatic sync only; manual
+directional actions remain available whenever token and Gist configuration are
+present.
 
 ## External APIs And Secrets
 
@@ -214,7 +216,9 @@ BYOK secrets use `src/platform/secrets`, backed by `chrome.storage.local` with
 trusted-context access. UI surfaces may save or delete secrets through runtime
 messages, but secret reads stay in the background service worker. Secret values
 must not be exported in backups, serialized in sync envelopes, logged, or stored
-in TanStack Query cache payloads.
+in TanStack Query cache payloads. Stored-token validation also runs through a
+dashboard-authorized runtime method so the UI can test the saved token without
+receiving or echoing the secret value.
 
 ## Database And Persistence
 

@@ -95,39 +95,49 @@ dialog button changes to a success state labeled Backup exported.
 1. Create a GitHub fine-grained or classic token with Gist access for a test
    account.
 2. Open Settings > Data Management.
-3. Save the token under GitHub Sync.
-4. Create a private Gist, then use Push local from Settings.
-5. Export a backup and confirm the token value is absent from the JSON.
-6. Load CogniPace in a second Chrome profile or browser install.
-7. Save the same token, connect the Gist ID, and use Pull latest.
-8. Confirm the latest remote data is restored locally in the second install.
-9. Confirm the dashboard header shows compact Pull latest from Gist and Push
-   local to Gist shortcuts after sync is configured.
-10. Change local data in one install and confirm sync status shows it needs
+3. In GitHub Sync, open Connect GitHub Sync.
+4. Enter the token, confirm it is masked, use Test token, then Save token.
+5. Create a private Gist or connect an existing Gist ID from the same dialog.
+6. Close the dialog and confirm Settings shows Connected and Auto-sync on.
+7. Use Push local from Settings.
+8. Export a backup and confirm the token value is absent from the JSON.
+9. Load CogniPace in a second Chrome profile or browser install.
+10. Save the same token, connect the Gist ID, and use Pull latest.
+11. Confirm the latest remote data is restored locally in the second install.
+12. Confirm the dashboard header shows compact Pull latest from Gist and Push
+    local to Gist shortcuts after sync is configured.
+13. Pause auto-sync from Settings and confirm the connection remains connected
+    while Settings and the dashboard header still allow manual Pull latest and
+    Push local.
+14. Resume auto-sync.
+15. Open Manage connection, confirm the saved token appears masked, and use Test
+    token without retyping the token.
+16. Change local data in one install and confirm sync status shows it needs
     push.
-11. Wait for the auto-push alarm or trigger it in development, then open or
+17. Wait for the auto-push alarm or trigger it in development, then open or
     reload the second clean install.
-12. Confirm the second clean install pulls the latest Gist data without a manual
+18. Confirm the second clean install pulls the latest Gist data without a manual
     pull.
-13. Use Push local from Settings or the dashboard header when an explicit manual
+19. Use Push local from Settings or the dashboard header when an explicit manual
     upload is needed.
-14. Use Pull latest in the other install when an explicit manual download is
+20. Use Pull latest in the other install when an explicit manual download is
     needed.
-15. Create a conflict by changing both installs before syncing.
-16. Confirm Pull latest opens a force-pull dialog when local data has unpushed
+21. Create a conflict by changing both installs before syncing.
+22. Confirm Pull latest opens a force-pull dialog when local data has unpushed
     changes, then cancel once before intentionally confirming.
-17. Confirm force pull replaces the local data with the connected Gist data only
+23. Confirm force pull replaces the local data with the connected Gist data only
     after confirmation.
-18. Confirm Push local opens a force-push dialog when remote data changed, then
+24. Confirm Push local opens a force-push dialog when remote data changed, then
     cancel once before intentionally confirming.
-19. Confirm force push replaces the Gist with local data only after
+25. Confirm force push replaces the Gist with local data only after
     confirmation.
 
 Expected: sync is pseudo-real-time, with automatic safe push and clean open-check
 pulls plus manual directional pull and push actions for explicit recovery. Local
 writes are not blocked by GitHub failures, destructive local and remote
 overwrites require confirmation dialogs, and tokens stay in trusted local
-extension storage rather than backups or sync files.
+extension storage rather than backups, sync files, status payloads, or unmasked
+UI text.
 
 ### Library
 
@@ -247,6 +257,12 @@ Focused tests:
 
 ```sh
 npm run test -- <path-to-test-file>
+```
+
+GitHub Gist sync focused checks:
+
+```sh
+npm test -- src/features/sync/server/sync-service.test.ts src/features/sync/api/sync-api.test.tsx src/extension/background/register-handlers.test.ts src/extension/background/runtime-policy.test.ts src/features/sync/hooks/use-github-sync-controller.test.tsx src/features/sync/components/github-sync-panel.test.tsx src/features/sync/components/github-sync-connection-dialog.test.tsx src/features/sync/components/dashboard-sync-actions.test.tsx --run
 ```
 
 Topic graph focused checks:
