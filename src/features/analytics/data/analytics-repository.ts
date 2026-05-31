@@ -1,4 +1,4 @@
-import { and, eq, gt, gte, lte, ne } from 'drizzle-orm'
+import { and, count, desc, eq, gt, gte, lte, ne, sql } from 'drizzle-orm'
 
 import { defaultFsrsCardKind } from '@/lib/fsrs'
 
@@ -35,17 +35,16 @@ export interface WeakProblemCandidate {
 }
 
 export async function getReviewDayStats(db: Db): Promise<ReviewDayStats> {
-  const rows = await db
-    .select({ reviewedAt: reviewAttempts.reviewedAt })
+  const [totals] = await db
+    .select({
+      totalReviews: count(),
+      reviewDays: sql<number>`COUNT(DISTINCT strftime('%Y-%m-%d', datetime(${reviewAttempts.reviewedAt} / 1000, 'unixepoch', 'localtime')))`,
+    })
     .from(reviewAttempts)
 
-  const dateKeys = new Set(
-    rows.map((r) => toLocalDateKey(new Date(r.reviewedAt))),
-  )
-
   return {
-    totalReviews: rows.length,
-    reviewDays: dateKeys.size,
+    totalReviews: totals?.totalReviews ?? 0,
+    reviewDays: totals?.reviewDays ?? 0,
   }
 }
 
@@ -120,6 +119,8 @@ export async function getWeakProblemCandidates(
         gt(fsrsCards.lapses, 0),
       ),
     )
+    .orderBy(desc(fsrsCards.lapses), desc(fsrsCards.difficulty))
+    .limit(100)
 
   return rows.map((row) => ({
     slug: row.slug,
@@ -130,11 +131,4 @@ export async function getWeakProblemCandidates(
     lastReviewAt:
       row.lastReviewAt === null ? null : new Date(row.lastReviewAt),
   }))
-}
-
-function toLocalDateKey(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
 }
