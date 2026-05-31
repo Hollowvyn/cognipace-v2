@@ -62,22 +62,15 @@ describe('practice API hooks', () => {
     expect(invalidateQueries).not.toHaveBeenCalled()
   })
 
-  it('invalidates practice-backed queries after suspend and reset writes', async () => {
-    await expectPracticeMutation({
+  it('sends suspend and reset mutations through the runtime boundary without client-side invalidation', async () => {
+    await expectNoClientInvalidation({
       method: 'practice.setSuspended',
-      request: {
-        surface: 'dashboard',
-        problemSlug: 'two-sum',
-        suspended: true,
-      },
+      request: { surface: 'dashboard', problemSlug: 'two-sum', suspended: true },
       useHook: useSetPracticeSuspended,
     })
-    await expectPracticeMutation({
+    await expectNoClientInvalidation({
       method: 'practice.resetSchedule',
-      request: {
-        surface: 'dashboard',
-        problemSlug: 'two-sum',
-      },
+      request: { surface: 'dashboard', problemSlug: 'two-sum' },
       useHook: useResetPracticeSchedule,
     })
   })
@@ -87,13 +80,12 @@ const practiceDetails = createSerializedPracticeDetails({
   cardId: 'fsrs:two-sum',
 })
 
-async function expectPracticeMutation<TRequest>(input: {
+async function expectNoClientInvalidation<TRequest>(input: {
   method: string
   request: TRequest
-  useHook: () => {
-    mutateAsync: (request: TRequest) => Promise<unknown>
-  }
+  useHook: () => { mutateAsync: (request: TRequest) => Promise<unknown> }
 }) {
+  vi.clearAllMocks()
   const { queryClient, wrapper } = createQueryTestHarness()
   const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
   vi.mocked(sendMessage).mockResolvedValue(practiceDetails)
@@ -104,17 +96,6 @@ async function expectPracticeMutation<TRequest>(input: {
   })
 
   expect(sendMessage).toHaveBeenCalledWith(input.method, input.request)
-  expect(queryMocks.invalidateTaggedQueries).toHaveBeenCalledWith(queryClient, [
-    'practice',
-    'problems',
-    'tracks',
-  ])
-  expect(invalidateQueries.mock.calls.map(([call]) => call)).toEqual([
-    { queryKey: ['practice-details'] },
-    { queryKey: ['analytics'] },
-    { queryKey: ['problems'] },
-    { queryKey: ['app-shell-data'] },
-    { queryKey: ['today-queue'] },
-    { queryKey: ['tracks'] },
-  ])
+  expect(queryMocks.invalidateTaggedQueries).not.toHaveBeenCalled()
+  expect(invalidateQueries).not.toHaveBeenCalled()
 }
