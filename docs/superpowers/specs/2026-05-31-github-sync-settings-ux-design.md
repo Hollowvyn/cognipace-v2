@@ -174,6 +174,9 @@ Saved token state:
 - The existing save path validates before storing, so any configured token from
   this app is eligible for the verified wording. `Test token` remains available
   for explicit re-checks.
+- In saved token state, `Test token` validates the stored token through a
+  background-only runtime method. The UI must not read or send the masked token
+  value.
 
 ### Gist Row
 

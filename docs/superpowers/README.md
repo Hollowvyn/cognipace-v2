@@ -24,6 +24,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Plans
 
+- [`plans/2026-05-31-github-sync-settings-ux.md`](./plans/2026-05-31-github-sync-settings-ux.md): implementation plan for simplifying GitHub Sync Settings into a connection summary plus connect/manage dialog, with connected versus auto-sync paused semantics.
 - [`plans/2026-05-31-auto-gist-sync.md`](./plans/2026-05-31-auto-gist-sync.md): implementation plan for alarm-backed automatic safe Gist sync, clean open checks, retry policy, scheduler foundations, and manual force pull/push guardrails.
 - [`plans/2026-05-29-topic-graph-standardization.md`](./plans/2026-05-29-topic-graph-standardization.md): implementation plan for the approved topic graph foundation, including stored aliases, multiple parent topics, LeetCode taxonomy seeding, capture persistence, migration cleanup, and backup/sync compatibility.
 - [`plans/2026-05-27-track-owned-progress.md`](./plans/2026-05-27-track-owned-progress.md): implementation plan for replacing group-owned track progress with track/problem-owned progress, correction-aware review reconciliation, and backup compatibility.
