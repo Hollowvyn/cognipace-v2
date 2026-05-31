@@ -16,3 +16,12 @@ export {
   type OverlaySessionState,
   type OverlaySubmittedSession,
 } from './overlay-session-state'
+export {
+  deriveOverlayAssessmentSessionContext,
+  toAssessmentPracticeContext,
+  type DeriveOverlayAssessmentSessionContextInput,
+  type OverlayAssessmentContext,
+  type OverlayAssessmentLatestAttempt,
+  type OverlayAssessmentSessionContext,
+  type OverlaySubmissionSource,
+} from './session-context'
