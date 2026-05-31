@@ -27,10 +27,36 @@ export function normalizeNotificationTime(time: string, now: Date): number {
   return Math.ceil((target.getTime() - now.getTime()) / 60_000)
 }
 
+function toDateString(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
+
 export function createDueNotification(deps: DueNotificationDeps) {
   let jobsRegistered = false
 
-  async function runDailyCheck(): Promise<void> {}
+  async function runDailyCheck(): Promise<void> {
+    const settings = await deps.readSettings()
+    if (!settings.reminders.daily.enabled) {
+      return
+    }
+
+    const now = deps.now()
+    const today = toDateString(now)
+    const state = await deps.readState()
+    const { dueCount } = await deps.readQueueSummary()
+
+    if (state.lastNotifiedDate !== today && dueCount > 0) {
+      await deps.notify(
+        'Reviews due',
+        `You have ${dueCount} review${dueCount === 1 ? '' : 's'} due today.`,
+      )
+      await deps.writeState(today)
+    }
+
+    await deps.scheduler.schedule(dueCheckAlarmName, {
+      delayInMinutes: normalizeNotificationTime(settings.reminders.daily.time, now),
+    })
+  }
 
   async function handleStartup(): Promise<void> {}
 
