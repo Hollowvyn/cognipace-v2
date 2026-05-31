@@ -83,7 +83,6 @@ const popupData = {
     nextProblem: twoSum,
   },
   queue: {
-    dailyGoal: 4,
     dueCount: 0,
     newCount: 2,
     reinforcementCount: 0,

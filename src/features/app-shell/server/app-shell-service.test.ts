@@ -35,9 +35,8 @@ describe('app-shell service', () => {
         { label: 'Streak', value: '0 days' },
       ],
       queue: {
-        dailyGoal: 4,
         dueCount: 0,
-        newCount: 0,
+        newCount: 101,
         reinforcementCount: 0,
       },
       activeTrack: {
@@ -70,13 +69,13 @@ describe('app-shell service', () => {
       },
     })
     expect(payload.recommendation).toMatchObject({
-      category: null,
-      problem: null,
+      category: 'new',
+      problem: { problemSlug: '3sum' },
     })
     expect(payload.settings.appearance).toEqual({
       themeMode: 'system',
     })
-    expect(payload.popup.queuePreview).toHaveLength(0)
+    expect(payload.popup.queuePreview).toHaveLength(3)
   })
 
   it('composes popup metrics from shared practice progress', async () => {
@@ -194,7 +193,10 @@ describe('app-shell service', () => {
 
     const payload = await getPopupPayload(handle)
 
-    expect(payload.recommendation.problem).toBeNull()
+    expect(payload.recommendation).toMatchObject({
+      category: 'new',
+      problem: { problemSlug: '3sum' },
+    })
     expect(payload.activeTrack).toMatchObject({
       state: 'disabled-free-practice',
       trackId: null,
@@ -215,7 +217,12 @@ describe('app-shell service', () => {
     )
     expect(
       payload.dashboard.queuePreview.map((item) => item.problem.problemSlug),
-    ).toEqual([])
+    ).toEqual([
+      '3sum',
+      'accounts-merge',
+      'balanced-binary-tree',
+      'binary-tree-maximum-path-sum',
+    ])
   })
 
   it('composes dashboard overview progress from unique practiced problems', async () => {
@@ -362,8 +369,8 @@ describe('app-shell service', () => {
     const payload = await getOverlayPayload(handle, 'valid-parentheses')
 
     expect(payload.overlay.nextStep).toMatchObject({
-      kind: 'empty',
-      problem: null,
+      kind: 'recommendation',
+      problem: { problemSlug: '3sum' },
     })
   })
 
@@ -429,7 +436,7 @@ describe('app-shell service', () => {
 
     expect(popupPayload.queue).toMatchObject({
       dueCount: 0,
-      newCount: 0,
+      newCount: 100,
       reinforcementCount: 1,
     })
     expect(popupPayload.recommendation.category).toBe('reinforcement')

@@ -93,10 +93,13 @@ async function getMainAppShellData(db: Db, now: Date) {
       practiceProgress,
     }),
     practiceProgress,
-    recommendation: buildAppShellRecommendation(queueItems[0] ?? null),
+    recommendation: buildAppShellRecommendation(
+      queue.topRecommendation
+        ? serializeQueueItem(queue.topRecommendation)
+        : null,
+    ),
     activeTrack: serializeActiveTrack(activeTrack, settings.practice.mode),
     queue: {
-      dailyGoal: queue.dailyGoal,
       dueCount: queue.dueCount,
       newCount: queue.newCount,
       reinforcementCount: queue.reinforcementCount,

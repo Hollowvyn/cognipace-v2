@@ -49,7 +49,6 @@ describe('createDashboardOverviewView', () => {
           dueAt: null,
         },
         queue: {
-          dailyGoal: 4,
           dueCount: 0,
           newCount: 0,
           reinforcementCount: 0,

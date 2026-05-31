@@ -89,7 +89,6 @@ const fallbackData = {
     nextProblem: null,
   },
   queue: {
-    dailyGoal: 0,
     dueCount: 0,
     newCount: 0,
     reinforcementCount: 0,

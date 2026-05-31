@@ -53,7 +53,6 @@ export function createDashboardAppShellData(
       },
     },
     queue: {
-      dailyGoal: 4,
       dueCount: 1,
       newCount: 0,
       reinforcementCount: 0,

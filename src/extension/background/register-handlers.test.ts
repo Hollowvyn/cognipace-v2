@@ -1418,7 +1418,6 @@ function createPopupShellData(): PopupAppShellData {
       },
     },
     queue: {
-      dailyGoal: 4,
       dueCount: 0,
       newCount: 1,
       reinforcementCount: 0,

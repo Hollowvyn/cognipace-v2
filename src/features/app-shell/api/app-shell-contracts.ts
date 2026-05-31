@@ -135,7 +135,6 @@ const appShellBaseDataSchema = z.object({
   recommendation: appShellRecommendationSchema,
   activeTrack: appShellActiveTrackSchema,
   queue: z.object({
-    dailyGoal: z.number().int().min(0),
     dueCount: z.number().int().min(0),
     newCount: z.number().int().min(0),
     reinforcementCount: z.number().int().min(0),

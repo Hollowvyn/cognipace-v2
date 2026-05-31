@@ -68,7 +68,6 @@ const shellData = {
     nextProblem: twoSum,
   },
   queue: {
-    dailyGoal: 4,
     dueCount: 1,
     newCount: 1,
     reinforcementCount: 0,
