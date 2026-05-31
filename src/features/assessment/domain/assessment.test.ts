@@ -12,6 +12,10 @@ type AcceptedAssessment = Extract<
   { status: 'accepted' }
 >
 
+type ExpectedAccepted = Omit<Partial<AcceptedAssessment>, 'reason'> & {
+  reason?: { code: AcceptedAssessment['reason']['code'] }
+}
+
 const secondsPerMinute = 60
 const timing = {
   requireSolveTime: false,
@@ -42,7 +46,7 @@ describe('assessment policy', () => {
       expected: acceptedDecision({
         rating: 'good',
         elapsedSeconds: null,
-        reason: 'quick-good',
+        reason: { code: 'quick-good' },
       }),
     },
     {
@@ -51,7 +55,7 @@ describe('assessment policy', () => {
       expected: acceptedDecision({
         rating: 'good',
         elapsedSeconds: 30 * secondsPerMinute,
-        reason: 'quick-good',
+        reason: { code: 'quick-good' },
       }),
     },
     {
@@ -61,7 +65,7 @@ describe('assessment policy', () => {
         rating: 'hard',
         elapsedSeconds: 36 * secondsPerMinute,
         isOverTarget: true,
-        reason: 'quick-hard-overtime',
+        reason: { code: 'quick-hard-overtime' },
       }),
     },
     {
@@ -75,7 +79,7 @@ describe('assessment policy', () => {
       expected: acceptedDecision({
         rating: 'good',
         elapsedSeconds: 30 * secondsPerMinute,
-        reason: 'leetcode-good',
+        reason: { code: 'leetcode-good' },
       }),
     },
     {
@@ -85,7 +89,7 @@ describe('assessment policy', () => {
         rating: 'hard',
         elapsedSeconds: 36 * secondsPerMinute,
         isOverTarget: true,
-        reason: 'leetcode-hard-overtime',
+        reason: { code: 'leetcode-hard-overtime' },
       }),
     },
     {
@@ -105,7 +109,7 @@ describe('assessment policy', () => {
       expected: acceptedDecision({
         rating: 'easy',
         elapsedSeconds: 45 * secondsPerMinute,
-        reason: 'selected-rating',
+        reason: { code: 'selected-rating' },
       }),
     },
     {
@@ -133,7 +137,7 @@ describe('assessment policy', () => {
         isCorrect: false,
         isOverTarget: false,
         lockReason: 'failed',
-        reason: 'failed',
+        reason: { code: 'failed' },
       },
     },
     {
@@ -142,13 +146,13 @@ describe('assessment policy', () => {
       expected: acceptedDecision({
         rating: 'good',
         elapsedSeconds: null,
-        reason: 'quick-good',
+        reason: { code: 'quick-good' },
       }),
     },
   ] satisfies Array<{
     name: string
     input: LeetCodeAssessmentInput
-    expected: Partial<AcceptedAssessment>
+    expected: ExpectedAccepted
   }>)('$name', ({ input, expected }) => {
     expect(evaluateLeetCodeAssessment(input)).toMatchObject({
       status: 'accepted',
@@ -184,6 +188,84 @@ describe('assessment policy', () => {
       elapsedSeconds: 90,
     })
   })
+
+  it('returns easy with leetcode-easy-fast on fast recall solve beating prior best', () => {
+    const decision = evaluateLeetCodeAssessment({
+      intent: 'leetcode-accepted',
+      difficulty: 'medium',
+      elapsedSeconds: 14 * 60,
+      timing,
+      practiceContext: {
+        isFirstSolve: false,
+        previousRating: 'good',
+        previousBestSeconds: 30 * 60,
+        latestAttempt: null,
+      },
+    })
+    expect(decision).toMatchObject({
+      status: 'accepted',
+      rating: 'easy',
+      reason: { code: 'leetcode-easy-fast' },
+      confidence: 1,
+    })
+    expect(
+      decision.status === 'accepted' ? decision.warnings.map((w) => w.code) : [],
+    ).toEqual([])
+  })
+
+  it('keeps fast first-solve at good and emits first-solve warning', () => {
+    const decision = evaluateLeetCodeAssessment({
+      intent: 'leetcode-accepted',
+      difficulty: 'medium',
+      elapsedSeconds: 14 * 60,
+      timing,
+      practiceContext: {
+        isFirstSolve: true,
+        previousRating: null,
+        previousBestSeconds: null,
+        latestAttempt: null,
+      },
+    })
+    expect(decision).toMatchObject({
+      status: 'accepted',
+      rating: 'good',
+      reason: { code: 'leetcode-good' },
+    })
+    expect(
+      decision.status === 'accepted' ? decision.warnings.map((w) => w.code) : [],
+    ).toEqual(expect.arrayContaining(['first-solve', 'no-previous-best']))
+  })
+
+  it('reports confidence 0.48 for untimed quick-submit with no practice context', () => {
+    expect(
+      evaluateLeetCodeAssessment({
+        intent: 'quick-submit',
+        difficulty: 'medium',
+        elapsedSeconds: null,
+        timing,
+      }),
+    ).toMatchObject({
+      status: 'accepted',
+      rating: 'good',
+      confidence: 0.48,
+    })
+  })
+
+  it('sets confidence to 1 for locked fail decisions', () => {
+    expect(
+      evaluateLeetCodeAssessment({
+        intent: 'fail',
+        difficulty: 'medium',
+        elapsedSeconds: null,
+        timing,
+      }),
+    ).toMatchObject({
+      status: 'accepted',
+      rating: 'again',
+      lockReason: 'failed',
+      confidence: 1,
+    })
+  })
 })
 
 function quickSubmit(
@@ -217,20 +299,18 @@ function quickSubmitDecision(elapsedSeconds: number | null | undefined) {
   })
 }
 
-function strictTimingOvertime(elapsedSeconds: number) {
+function strictTimingOvertime(elapsedSeconds: number): ExpectedAccepted {
   return {
     rating: 'again',
     elapsedSeconds,
     isCorrect: false,
     isOverTarget: true,
     lockReason: 'hard-mode-overtime',
-    reason: 'hard-mode-overtime',
-  } satisfies Partial<AcceptedAssessment>
+    reason: { code: 'hard-mode-overtime' },
+  } satisfies ExpectedAccepted
 }
 
-function acceptedDecision(
-  overrides: Partial<AcceptedAssessment>,
-): Partial<AcceptedAssessment> {
+function acceptedDecision(overrides: ExpectedAccepted): ExpectedAccepted {
   return {
     isCorrect: true,
     isOverTarget: false,

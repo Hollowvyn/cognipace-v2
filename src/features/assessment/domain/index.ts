@@ -1,8 +1,6 @@
 export {
   evaluateLeetCodeAssessment,
   getLeetCodeSolveTimeTargetSeconds,
-  type LeetCodeAssessmentDecision,
-  type LeetCodeAssessmentInput,
 } from './assessment'
 
 export {
@@ -26,4 +24,6 @@ export {
   type AssessmentTimingSettings,
   type AssessmentWarning,
   type AssessmentWarningCode,
+  type LeetCodeAssessmentDecision,
+  type LeetCodeAssessmentInput,
 } from './assessment-types'

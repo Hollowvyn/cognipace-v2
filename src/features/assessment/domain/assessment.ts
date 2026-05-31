@@ -1,209 +1,141 @@
-import type { ProblemDifficulty } from '@/features/problems'
-import type { UserSettings } from '@/features/settings'
 import type { ReviewRating } from '@/lib/fsrs'
 
-export const assessmentSubmissionIntents = [
-  'quick-submit',
-  'leetcode-accepted',
-  'selected-rating',
-  'fail',
-] as const
+import type {
+  AssessmentLockReason,
+  AssessmentReason,
+  AssessmentReasonCode,
+  AssessmentTimingSettings,
+  AssessmentWarning,
+  LeetCodeAssessmentDecision,
+  LeetCodeAssessmentInput,
+} from './assessment-types'
 
-export const assessmentDecisionStatuses = ['accepted', 'blocked'] as const
-export const assessmentBlockReasons = ['solve-time-required'] as const
-export const assessmentLockReasons = ['failed', 'hard-mode-overtime'] as const
+export type { AssessmentTimingSettings, LeetCodeAssessmentInput }
+import {
+  deriveAssessmentSignals,
+  getLeetCodeSolveTimeTargetSeconds,
+  type AssessmentDerivedSignals,
+} from './derived'
+import { applyHardLocks } from './rules/hard-locks'
+import { proposeBaseRating } from './rules/base-rating'
+import { applyEasyGate } from './rules/easy-gate'
+import { collectWarnings, isDowngrade } from './rules/warnings'
+import { scoreConfidence } from './rules/confidence'
 
-export const assessmentAcceptedReasons = [
-  'quick-good',
-  'quick-hard-overtime',
-  'leetcode-good',
-  'leetcode-hard-overtime',
-  'selected-rating',
-  'failed',
-  'hard-mode-overtime',
-] as const
-
-export type AssessmentSubmissionIntent =
-  (typeof assessmentSubmissionIntents)[number]
-export type AssessmentDecisionStatus =
-  (typeof assessmentDecisionStatuses)[number]
-export type AssessmentBlockReason = (typeof assessmentBlockReasons)[number]
-export type AssessmentLockReason = (typeof assessmentLockReasons)[number]
-export type AssessmentAcceptedReason =
-  (typeof assessmentAcceptedReasons)[number]
-
-export type AssessmentTimingSettings = UserSettings['assessment']
-
-export type LeetCodeAssessmentInput =
-  | {
-      intent: 'quick-submit'
-      difficulty: ProblemDifficulty
-      timing: AssessmentTimingSettings
-      elapsedSeconds?: number | null | undefined
-    }
-  | {
-      intent: 'leetcode-accepted'
-      difficulty: ProblemDifficulty
-      timing: AssessmentTimingSettings
-      elapsedSeconds?: number | null | undefined
-    }
-  | {
-      intent: 'selected-rating'
-      difficulty: ProblemDifficulty
-      timing: AssessmentTimingSettings
-      selectedRating: ReviewRating
-      elapsedSeconds?: number | null | undefined
-    }
-  | {
-      intent: 'fail'
-      difficulty: ProblemDifficulty
-      timing: AssessmentTimingSettings
-      elapsedSeconds?: number | null | undefined
-    }
-
-export type LeetCodeAssessmentDecision =
-  | {
-      status: 'accepted'
-      rating: ReviewRating
-      elapsedSeconds: number | null
-      isCorrect: boolean
-      targetSeconds: number
-      isOverTarget: boolean
-      lockReason: AssessmentLockReason | null
-      reason: AssessmentAcceptedReason
-    }
-  | {
-      status: 'blocked'
-      reason: AssessmentBlockReason
-      targetSeconds: number
-      elapsedSeconds: null
-    }
-
-type TimingGoalKey = 'easy' | 'medium' | 'hard'
-
-const timingGoalKeyByDifficulty = {
-  easy: 'easy',
-  medium: 'medium',
-  hard: 'hard',
-  unknown: 'hard',
-} as const satisfies Record<ProblemDifficulty, TimingGoalKey>
-
-export function getLeetCodeSolveTimeTargetSeconds(
-  difficulty: ProblemDifficulty,
-  timing: AssessmentTimingSettings,
-): number {
-  const minutes =
-    timing.timeTargetsMinutes[timingGoalKeyByDifficulty[difficulty]]
-
-  return normalizePositiveInteger(minutes) * secondsPerMinute
-}
+export { getLeetCodeSolveTimeTargetSeconds }
 
 export function evaluateLeetCodeAssessment(
   input: LeetCodeAssessmentInput,
 ): LeetCodeAssessmentDecision {
-  const targetSeconds = getLeetCodeSolveTimeTargetSeconds(
-    input.difficulty,
-    input.timing,
-  )
-  const elapsedSeconds = normalizeElapsedSeconds(input.elapsedSeconds)
-  const isOverTarget = elapsedSeconds !== null && elapsedSeconds > targetSeconds
+  const derived = deriveAssessmentSignals(input)
+  const previousBestSeconds =
+    input.practiceContext?.previousBestSeconds ?? null
+  const locked = applyHardLocks(input, derived)
 
-  if (input.intent === 'fail') {
-    return acceptAssessment({
+  if (locked) {
+    const warnings = collectWarnings(input, derived, {
+      proposedRating: 'again',
+      easyUpgraded: false,
+      lockReason: locked.lockReason,
+      selectedRatingConflicts: false,
+    })
+    return assembleAccepted({
+      derived,
       rating: 'again',
-      elapsedSeconds,
-      targetSeconds,
-      isOverTarget,
-      lockReason: 'failed',
-      reason: 'failed',
+      reasonCode: locked.reasonCode,
+      lockReason: locked.lockReason,
+      warnings,
+      confidence: 1,
+      previousBestSeconds,
     })
   }
 
-  if (isOverTarget && input.timing.strictTiming) {
-    return acceptAssessment({
-      rating: 'again',
-      elapsedSeconds,
-      targetSeconds,
-      isOverTarget,
-      lockReason: 'hard-mode-overtime',
-      reason: 'hard-mode-overtime',
-    })
-  }
+  const base = proposeBaseRating(input, derived)
+  const finalOutcome = applyEasyGate(input, derived, base)
+  const policyBaseRating = computePolicyBaseRating(input, derived)
+  const selectedRatingConflicts =
+    input.intent === 'selected-rating' &&
+    input.selectedRating !== policyBaseRating
+  const downgradedFromPrevious =
+    input.practiceContext?.previousRating != null &&
+    isDowngrade(finalOutcome.rating, input.practiceContext.previousRating)
 
-  switch (input.intent) {
-    case 'quick-submit':
-      return acceptAssessment({
-        rating: isOverTarget ? 'hard' : 'good',
-        elapsedSeconds,
-        targetSeconds,
-        isOverTarget,
-        lockReason: null,
-        reason: isOverTarget ? 'quick-hard-overtime' : 'quick-good',
-      })
-    case 'leetcode-accepted':
-      return acceptAssessment({
-        rating: isOverTarget ? 'hard' : 'good',
-        elapsedSeconds,
-        targetSeconds,
-        isOverTarget,
-        lockReason: null,
-        reason: isOverTarget ? 'leetcode-hard-overtime' : 'leetcode-good',
-      })
-    case 'selected-rating':
-      return acceptAssessment({
-        rating: input.selectedRating,
-        elapsedSeconds,
-        targetSeconds,
-        isOverTarget,
-        lockReason: null,
-        reason: 'selected-rating',
-      })
-    default:
-      return assertNever(input)
-  }
+  const warnings = collectWarnings(input, derived, {
+    proposedRating: finalOutcome.rating,
+    easyUpgraded: finalOutcome !== base,
+    lockReason: null,
+    selectedRatingConflicts,
+    policyBaseRating,
+  })
+
+  const confidence = scoreConfidence(input, derived, {
+    lockReason: null,
+    downgradedFromPrevious,
+    selectedRatingConflicts,
+  })
+
+  return assembleAccepted({
+    derived,
+    rating: finalOutcome.rating,
+    reasonCode: finalOutcome.reasonCode,
+    lockReason: null,
+    warnings,
+    confidence,
+    previousBestSeconds,
+  })
 }
 
-function acceptAssessment(input: {
+function computePolicyBaseRating(
+  input: LeetCodeAssessmentInput,
+  derived: AssessmentDerivedSignals,
+): ReviewRating {
+  if (input.intent === 'selected-rating') {
+    return derived.isOverTarget ? 'hard' : 'good'
+  }
+  return proposeBaseRating(input, derived).rating
+}
+
+function assembleAccepted(args: {
+  derived: AssessmentDerivedSignals
   rating: ReviewRating
-  elapsedSeconds: number | null
-  targetSeconds: number
-  isOverTarget: boolean
+  reasonCode: AssessmentReasonCode
   lockReason: AssessmentLockReason | null
-  reason: AssessmentAcceptedReason
+  warnings: AssessmentWarning[]
+  confidence: number
+  previousBestSeconds: number | null
 }): LeetCodeAssessmentDecision {
+  const {
+    derived,
+    rating,
+    reasonCode,
+    lockReason,
+    warnings,
+    confidence,
+    previousBestSeconds,
+  } = args
+
+  const reason: AssessmentReason = {
+    code: reasonCode,
+    signals: {
+      elapsedSeconds: derived.elapsedSeconds,
+      targetSeconds: derived.targetSeconds,
+      ratioOfTarget: derived.ratioOfTarget,
+      previousBestSeconds,
+      beatsPreviousBest: derived.beatsPreviousBest,
+      isRecallReview: derived.isRecallReview,
+    },
+  }
+
   return {
     status: 'accepted',
-    rating: input.rating,
-    elapsedSeconds: input.elapsedSeconds,
-    isCorrect: input.rating !== 'again',
-    targetSeconds: input.targetSeconds,
-    isOverTarget: input.isOverTarget,
-    lockReason: input.lockReason,
-    reason: input.reason,
+    rating,
+    isCorrect: rating !== 'again',
+    elapsedSeconds: derived.elapsedSeconds,
+    targetSeconds: derived.targetSeconds,
+    isOverTarget: derived.isOverTarget,
+    lockReason,
+    reason,
+    warnings,
+    confidence,
   }
 }
-
-function normalizeElapsedSeconds(value: number | null | undefined) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return null
-  }
-
-  const elapsedSeconds = Math.floor(value)
-
-  return elapsedSeconds > 0 ? elapsedSeconds : null
-}
-
-function normalizePositiveInteger(value: number) {
-  if (!Number.isFinite(value) || value < 1) {
-    return 1
-  }
-
-  return Math.floor(value)
-}
-
-function assertNever(value: never): never {
-  void value
-  throw new Error('Unhandled assessment input')
-}
-
-const secondsPerMinute = 60
