@@ -80,7 +80,8 @@ describe('AnalyticsScreen', () => {
     await waitFor(() => {
       expect(sendMessage).toHaveBeenCalledTimes(2)
     })
-    expect(await screen.findByText('42')).toBeVisible()
+    const reviewDaysTile = await screen.findByLabelText('Review Days metric')
+    expect(within(reviewDaysTile).getByText('42')).toBeVisible()
   })
 
   it('renders metric tiles with correct values', async () => {
@@ -103,9 +104,9 @@ describe('AnalyticsScreen', () => {
 
     renderAnalyticsScreen()
 
-    await screen.findByRole('region', { name: '14-day due forecast' })
+    const forecastRegion = await screen.findByRole('region', { name: '14-day due forecast' })
     expect(screen.getAllByTestId('forecast-bar')).toHaveLength(14)
-    expect(screen.getByText('Today')).toBeVisible()
+    expect(within(forecastRegion).getAllByText('Today').length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders weak problem rows with lapse count and retention', async () => {
