@@ -10,6 +10,7 @@ export type OverlayTimerController = {
   reset: () => void
   lockAt: (elapsedSeconds: number | null) => number
   readElapsedSeconds: () => number
+  hasStarted: () => boolean
 }
 
 export function useOverlayTimer(): OverlayTimerController {
@@ -99,6 +100,10 @@ export function useOverlayTimer(): OverlayTimerController {
     return readCurrentElapsedSeconds()
   }
 
+  function hasStarted() {
+    return statusRef.current !== 'idle'
+  }
+
   return {
     elapsedSeconds,
     status,
@@ -107,5 +112,6 @@ export function useOverlayTimer(): OverlayTimerController {
     reset,
     lockAt,
     readElapsedSeconds,
+    hasStarted,
   }
 }

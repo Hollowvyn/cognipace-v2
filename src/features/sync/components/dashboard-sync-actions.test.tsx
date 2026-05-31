@@ -111,6 +111,27 @@ describe('DashboardSyncActionsView', () => {
     ).toBeEnabled()
   })
 
+  it('keeps header sync actions available while auto-sync is paused', () => {
+    render(
+      <DashboardSyncActionsView
+        isPending={false}
+        onPullLatest={vi.fn()}
+        onPushLocal={vi.fn()}
+        status={{
+          ...configuredStatus,
+          enabled: false,
+        }}
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Pull latest from Gist' }),
+    ).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: 'Push local to Gist' }),
+    ).toBeEnabled()
+  })
+
   it('does not open force dialogs from retryable error status alone', () => {
     render(
       <DashboardSyncActionsView
