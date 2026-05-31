@@ -98,7 +98,9 @@ export function createChromeAlarmAdapter(): AlarmAdapter {
       return alarm ? { name: alarm.name } : undefined
     },
     onAlarm(listener) {
-      const onAlarm = (alarm: { name: string }) => listener(alarm)
+      const onAlarm = (alarm: { name: string }) => {
+        void listener(alarm)
+      }
 
       browser.alarms.onAlarm.addListener(onAlarm)
 

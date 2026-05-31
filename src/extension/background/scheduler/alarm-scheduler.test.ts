@@ -128,17 +128,18 @@ function createFakeAlarmAdapter(): FakeAlarmAdapter {
     cleared: [],
     created: [],
     existing,
-    async clear(name) {
+    clear(name) {
       this.cleared.push(name)
       existing.delete(name)
-      return true
+      return Promise.resolve(true)
     },
-    async create(name, info) {
+    create(name, info) {
       this.created.push([name, info])
       existing.add(name)
+      return Promise.resolve()
     },
-    async get(name) {
-      return existing.has(name) ? { name } : undefined
+    get(name) {
+      return Promise.resolve(existing.has(name) ? { name } : undefined)
     },
     onAlarm(listenerInput) {
       listener = listenerInput
