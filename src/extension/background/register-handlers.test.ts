@@ -62,6 +62,12 @@ const backgroundMocks = vi.hoisted(() => {
     runCleanPullCheck: vi.fn(),
     scheduleAutoPushAfterMutation: vi.fn(),
   }
+  const dueNotification = {
+    handleStartup: vi.fn(),
+    onSettingsChanged: vi.fn(),
+    registerJobs: vi.fn(),
+    runDailyCheck: vi.fn(),
+  }
 
   return {
     db,
@@ -114,6 +120,10 @@ const backgroundMocks = vi.hoisted(() => {
     createBackgroundSyncService: vi.fn(),
     createAlarmScheduler: vi.fn(() => alarmScheduler),
     createSyncAutoSync: vi.fn(() => syncAutoSync),
+    createDueNotification: vi.fn(() => dueNotification),
+    readDueNotificationState: vi.fn(),
+    writeDueNotificationState: vi.fn(),
+    dueNotification,
     markSyncLocalDataChanged: vi.fn(),
     readSyncMetadata: vi.fn(),
     writeSyncMetadata: vi.fn(),
@@ -260,6 +270,12 @@ vi.mock('./sync-auto-sync', () => ({
   createSyncAutoSync: backgroundMocks.createSyncAutoSync,
 }))
 
+vi.mock('./due-notification', () => ({
+  createDueNotification: backgroundMocks.createDueNotification,
+  readDueNotificationState: backgroundMocks.readDueNotificationState,
+  writeDueNotificationState: backgroundMocks.writeDueNotificationState,
+}))
+
 describe('background handler registration', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -353,6 +369,17 @@ describe('background handler registration', () => {
     backgroundMocks.syncService.validateGithubToken.mockResolvedValue(
       syncActionResult,
     )
+    backgroundMocks.dueNotification.handleStartup.mockResolvedValue(undefined)
+    backgroundMocks.dueNotification.onSettingsChanged.mockResolvedValue(undefined)
+    backgroundMocks.dueNotification.registerJobs.mockReturnValue(undefined)
+    backgroundMocks.dueNotification.runDailyCheck.mockResolvedValue(undefined)
+    backgroundMocks.createDueNotification.mockReturnValue(
+      backgroundMocks.dueNotification,
+    )
+    backgroundMocks.readDueNotificationState.mockResolvedValue({
+      lastNotifiedDate: null,
+    })
+    backgroundMocks.writeDueNotificationState.mockResolvedValue(undefined)
   })
 
   afterEach(() => {

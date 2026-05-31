@@ -1,4 +1,5 @@
 import type { UserSettings } from '@/features/settings/domain'
+import { browser } from 'wxt/browser'
 import type { AlarmScheduler } from './scheduler/alarm-scheduler'
 
 export const dueCheckAlarmName = 'due:daily-check'
@@ -38,6 +39,20 @@ function hasTimePassed(time: string, now: Date): boolean {
   const target = new Date(now)
   target.setHours(hours, minutes, 0, 0)
   return target <= now
+}
+
+const notificationStateKey = 'cognipace:notification:lastNotifiedDate'
+
+export async function readDueNotificationState(): Promise<{
+  lastNotifiedDate: string | null
+}> {
+  const result = await browser.storage.local.get(notificationStateKey)
+  const value = result[notificationStateKey]
+  return { lastNotifiedDate: typeof value === 'string' ? value : null }
+}
+
+export async function writeDueNotificationState(date: string): Promise<void> {
+  await browser.storage.local.set({ [notificationStateKey]: date })
 }
 
 export function createDueNotification(deps: DueNotificationDeps) {
