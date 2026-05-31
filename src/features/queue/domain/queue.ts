@@ -8,6 +8,12 @@ import type { UserSettings } from '@/features/settings'
 
 export type QueueItemCategory = 'due' | 'new' | 'reinforcement'
 
+export type RecommendationReason =
+  | 'overdue'
+  | 'due-now'
+  | 'reinforcement'
+  | 'new-problem'
+
 export interface QueueCandidate {
   problem: Problem
   state: NormalizedPracticeState
@@ -20,15 +26,17 @@ export interface QueueItem {
   difficulty: ProblemDifficulty
   isPremium: boolean
   state: NormalizedPracticeState
+  reason: RecommendationReason
 }
 
 export interface TodayQueue {
   generatedAt: Date
-  dailyGoal: number
   dueCount: number
   newCount: number
   reinforcementCount: number
+  excludedCount: number
   items: QueueItem[]
+  topRecommendation: QueueItem | null
 }
 
 export function buildTodayQueue(
@@ -37,26 +45,35 @@ export function buildTodayQueue(
   generatedAt = new Date(),
 ): TodayQueue {
   const dailyGoal = Math.max(0, Math.round(settings.practice.dailyGoal))
-  const partitioned = partitionQueueCandidates(candidates, settings)
-  const dueItems = orderQueueItems(partitioned.due, settings.review.order)
-  const newItems = orderQueueItems(partitioned.new, settings.review.order)
+  const { partitions, excludedCount } = partitionQueueCandidates(
+    candidates,
+    settings,
+  )
+  const dueItems = orderQueueItems(partitions.due, settings.review.order)
+  const newItems = orderQueueItems(partitions.new, settings.review.order)
   const reinforcementItems = orderQueueItems(
-    partitioned.reinforcement,
+    partitions.reinforcement,
     settings.review.order,
   )
+
   const dueForQueue = dueItems.slice(0, dailyGoal)
   const slotsAfterDue = Math.max(0, dailyGoal - dueForQueue.length)
-  const newForQueue = newItems.slice(0, slotsAfterDue)
-  const reinforcementSlots = Math.max(0, slotsAfterDue - newForQueue.length)
-  const reinforcementForQueue = reinforcementItems.slice(0, reinforcementSlots)
+  const reinforcementForQueue = reinforcementItems.slice(0, slotsAfterDue)
+  const newForQueue =
+    dueForQueue.length + reinforcementForQueue.length === 0
+      ? newItems.slice(0, dailyGoal)
+      : []
+
+  const items = [...dueForQueue, ...reinforcementForQueue, ...newForQueue]
 
   return {
     generatedAt,
-    dailyGoal,
     dueCount: dueItems.length,
     newCount: newItems.length,
     reinforcementCount: reinforcementItems.length,
-    items: [...dueForQueue, ...newForQueue, ...reinforcementForQueue],
+    excludedCount,
+    items,
+    topRecommendation: items[0] ?? null,
   }
 }
 
@@ -69,9 +86,11 @@ function partitionQueueCandidates(
     new: [],
     reinforcement: [],
   }
+  let excludedCount = 0
 
   for (const candidate of candidates) {
     if (isEffectivelySuspended(candidate, settings)) {
+      excludedCount++
       continue
     }
 
@@ -81,13 +100,14 @@ function partitionQueueCandidates(
     }
 
     if (!candidate.state.isStarted) {
+      partitions.new.push(mapQueueItem(candidate, 'new'))
       continue
     }
 
     partitions.reinforcement.push(mapQueueItem(candidate, 'reinforcement'))
   }
 
-  return partitions
+  return { partitions, excludedCount }
 }
 
 function isEffectivelySuspended(
@@ -103,6 +123,15 @@ function isEffectivelySuspended(
   )
 }
 
+function deriveRecommendationReason(
+  category: QueueItemCategory,
+  isOverdue: boolean,
+): RecommendationReason {
+  if (category === 'due') return isOverdue ? 'overdue' : 'due-now'
+  if (category === 'reinforcement') return 'reinforcement'
+  return 'new-problem'
+}
+
 function mapQueueItem(
   candidate: QueueCandidate,
   category: QueueItemCategory,
@@ -114,6 +143,7 @@ function mapQueueItem(
     difficulty: candidate.problem.difficulty,
     isPremium: candidate.problem.isPremium,
     state: candidate.state,
+    reason: deriveRecommendationReason(category, candidate.state.isOverdue),
   }
 }
 
