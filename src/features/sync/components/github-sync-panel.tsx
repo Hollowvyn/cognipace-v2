@@ -42,6 +42,8 @@ export interface GitHubSyncPanelActions {
     confirmRemoteOverwrite?: boolean
   }) => GitHubSyncActionResult
   onSaveToken: (token: string) => GitHubSyncActionResult
+  onSetAutoSyncEnabled: (enabled: boolean) => GitHubSyncActionResult
+  onValidateStoredToken: () => GitHubSyncActionResult
   onValidateToken: (token: string) => GitHubSyncActionResult
 }
 

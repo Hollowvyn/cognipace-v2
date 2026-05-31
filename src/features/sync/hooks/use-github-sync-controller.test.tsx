@@ -216,6 +216,74 @@ describe('useGithubSyncController', () => {
       confirmLocalOverwrite: true,
     })
   })
+
+  it('sets auto-sync enabled state through the dashboard runtime action', async () => {
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'sync.getStatus') {
+        return Promise.resolve(configuredStatus)
+      }
+
+      if (method === 'sync.setEnabled') {
+        return Promise.resolve({
+          ...syncActionResult,
+          action: 'set-enabled',
+        })
+      }
+
+      return Promise.reject(new Error(`Unexpected method ${method}`))
+    })
+    const { wrapper } = createQueryTestHarness()
+    const { result } = renderHook(() => useGithubSyncController(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.status).toEqual(configuredStatus)
+    })
+
+    await act(async () => {
+      await result.current.actions.onSetAutoSyncEnabled(false)
+      await result.current.actions.onSetAutoSyncEnabled(true)
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('sync.setEnabled', {
+      surface: 'dashboard',
+      enabled: false,
+    })
+    expect(sendMessage).toHaveBeenCalledWith('sync.setEnabled', {
+      surface: 'dashboard',
+      enabled: true,
+    })
+  })
+
+  it('validates the stored GitHub token through the dashboard runtime action', async () => {
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'sync.getStatus') {
+        return Promise.resolve(configuredStatus)
+      }
+
+      if (method === 'sync.validateStoredGithubToken') {
+        return Promise.resolve({
+          ...syncActionResult,
+          action: 'validate-token',
+        })
+      }
+
+      return Promise.reject(new Error(`Unexpected method ${method}`))
+    })
+    const { wrapper } = createQueryTestHarness()
+    const { result } = renderHook(() => useGithubSyncController(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.status).toEqual(configuredStatus)
+    })
+
+    await act(async () => {
+      await result.current.actions.onValidateStoredToken()
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('sync.validateStoredGithubToken', {
+      surface: 'dashboard',
+    })
+  })
 })
 
 const configuredStatus = {

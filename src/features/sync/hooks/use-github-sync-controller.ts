@@ -3,11 +3,13 @@ import {
   createGithubGistViaRuntime,
   deleteGithubTokenViaRuntime,
   saveGithubTokenViaRuntime,
+  setSyncEnabledViaRuntime,
   usePullLatest,
   usePushLocal,
   useSyncAction,
   useSyncStatus,
   validateGithubTokenViaRuntime,
+  validateStoredGithubTokenViaRuntime,
 } from '../api/sync-api'
 import type { SyncActionResult } from '../api/sync-contracts'
 import type { GitHubSyncPanelActions } from '../components/github-sync-panel'
@@ -32,6 +34,12 @@ export function useGithubSyncController() {
     },
   )
   const deleteToken = useSyncAction(() => deleteGithubTokenViaRuntime())
+  const setAutoSyncEnabled = useSyncAction((enabled: boolean) =>
+    setSyncEnabledViaRuntime(enabled),
+  )
+  const validateStoredToken = useSyncAction(() =>
+    validateStoredGithubTokenViaRuntime(),
+  )
   const pullLatest = usePullLatest()
   const pushLocal = usePushLocal()
 
@@ -42,6 +50,8 @@ export function useGithubSyncController() {
     onPullLatest: (input = {}) => pullLatest.mutateAsync(input),
     onPushLocal: (input) => pushLocal.mutateAsync(input),
     onSaveToken: (token) => saveToken.mutateAsync(token),
+    onSetAutoSyncEnabled: (enabled) => setAutoSyncEnabled.mutateAsync(enabled),
+    onValidateStoredToken: () => validateStoredToken.mutateAsync(),
     onValidateToken: (token) => validateToken.mutateAsync(token),
   } satisfies GitHubSyncPanelActions
 
@@ -54,6 +64,8 @@ export function useGithubSyncController() {
       createGist.isPending ||
       connectGist.isPending ||
       deleteToken.isPending ||
+      setAutoSyncEnabled.isPending ||
+      validateStoredToken.isPending ||
       pullLatest.isPending ||
       pushLocal.isPending,
     status: status.data ?? null,
