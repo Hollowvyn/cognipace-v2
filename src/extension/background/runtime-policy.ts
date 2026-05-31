@@ -10,6 +10,7 @@ const methodSurfaceAccess = {
   'backup.resetLocalData': ['dashboard'],
   'sync.getStatus': ['popup', 'dashboard', 'content-script'],
   'sync.validateGithubToken': ['dashboard'],
+  'sync.validateStoredGithubToken': ['dashboard'],
   'sync.saveGithubToken': ['dashboard'],
   'sync.deleteGithubToken': ['dashboard'],
   'sync.createGithubGist': ['dashboard'],

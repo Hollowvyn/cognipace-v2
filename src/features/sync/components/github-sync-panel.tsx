@@ -2,11 +2,10 @@ import {
   CheckCircle2,
   CloudDownload,
   CloudUpload,
-  GitBranch,
-  KeyRound,
-  Loader2,
-  Trash2,
-  UploadCloud,
+  Link2,
+  PauseCircle,
+  PlayCircle,
+  Settings2,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -26,10 +25,12 @@ import {
   SyncActionDialogForState,
   type SyncDialogState,
 } from './sync-action-dialog'
+import { GitHubSyncConnectionDialog } from './github-sync-connection-dialog'
 
 type MaybePromise<T> = T | Promise<T>
 
-type GitHubSyncActionResult = MaybePromise<SyncActionResult | null | void>
+export type GitHubSyncActionResult =
+  MaybePromise<SyncActionResult | null | void>
 
 export interface GitHubSyncPanelActions {
   onConnectGist: (gistId: string) => GitHubSyncActionResult
@@ -42,6 +43,8 @@ export interface GitHubSyncPanelActions {
     confirmRemoteOverwrite?: boolean
   }) => GitHubSyncActionResult
   onSaveToken: (token: string) => GitHubSyncActionResult
+  onSetAutoSyncEnabled: (enabled: boolean) => GitHubSyncActionResult
+  onValidateStoredToken: () => GitHubSyncActionResult
   onValidateToken: (token: string) => GitHubSyncActionResult
 }
 
@@ -54,19 +57,8 @@ export function GitHubSyncPanel({
   isPending?: boolean | undefined
   status: SerializedSyncStatus
 }) {
-  const [token, setToken] = useState('')
-  const [gistDraft, setGistDraft] = useState({
-    sourceGistId: status.gistId,
-    value: status.gistId ?? '',
-  })
+  const [connectionDialogOpen, setConnectionDialogOpen] = useState(false)
   const [dialog, setDialog] = useState<SyncDialogState | null>(null)
-  const [tokenSavedInSession, setTokenSavedInSession] = useState(false)
-
-  const hasTokenForActions = status.tokenConfigured || tokenSavedInSession
-  const gistId =
-    gistDraft.sourceGistId === status.gistId
-      ? gistDraft.value
-      : (status.gistId ?? '')
 
   async function runPanelAction(
     action: () => GitHubSyncActionResult,
@@ -120,6 +112,14 @@ export function GitHubSyncPanel({
     }
   }
 
+  function handleConnectionActionResult(
+    result: SyncActionResult | null | undefined | void,
+    fallbackMessage: string,
+  ) {
+    setConnectionDialogOpen(false)
+    setDialog(createSyncActionDialogState(result, fallbackMessage))
+  }
+
   return (
     <Surface aria-labelledby="github-sync-title" className="grid gap-4">
       <header className="flex min-w-0 flex-wrap items-start justify-between gap-3">
@@ -134,176 +134,132 @@ export function GitHubSyncPanel({
             Sync local CogniPace data through a private GitHub Gist.
           </p>
         </div>
-        <Badge tone={readStatusTone(status)} variant="outline">
-          {readStatusLabel(status)}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone={readConnectionTone(status)} variant="outline">
+            {readConnectionLabel(status)}
+          </Badge>
+          {status.configured ? (
+            <Badge
+              tone={status.enabled ? 'success' : 'warning'}
+              variant="outline"
+            >
+              {status.enabled ? 'Auto-sync on' : 'Auto-sync paused'}
+            </Badge>
+          ) : null}
+        </div>
       </header>
 
       <SyncStatusBlock status={status} />
 
-      <div className="grid gap-2">
-        <label
-          className="text-[length:var(--cp-copy-font-size)] font-semibold"
-          htmlFor="github-sync-token"
-        >
-          GitHub token
-        </label>
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <input
-            autoComplete="off"
-            className="min-w-[16rem] flex-1 rounded-[var(--cp-control-radius)] border border-border bg-background px-3 py-2 text-[length:var(--cp-copy-font-size)]"
-            id="github-sync-token"
-            onChange={(event) => {
-              setToken(event.currentTarget.value)
-            }}
-            placeholder="ghp_..."
-            spellCheck={false}
-            type="password"
-            value={token}
-          />
+      {status.configured ? (
+        <div className="grid gap-3 rounded-[var(--cp-radius-md)] border border-border bg-background/60 p-3">
+          <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+            <div className="grid gap-1">
+              <h3 className="m-0 text-[length:var(--cp-copy-font-size)] font-semibold">
+                Connected to private Gist
+              </h3>
+              <p className="m-0 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+                Token saved and verified in trusted extension storage. Gist{' '}
+                <span className="font-mono text-foreground">
+                  {status.gistId}
+                </span>
+                .
+              </p>
+              {!status.enabled ? (
+                <p className="m-0 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+                  Manual pull and push still work while automatic sync is
+                  paused.
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              disabled={isPending}
+              onClick={() => {
+                setConnectionDialogOpen(true)
+              }}
+              size="sm"
+              variant="outline"
+            >
+              <Settings2 aria-hidden="true" />
+              Manage connection
+            </Button>
+            <Button
+              disabled={isPending}
+              onClick={() => {
+                void runPanelAction(
+                  () => actions.onSetAutoSyncEnabled(!status.enabled),
+                  status.enabled ? 'Auto-sync paused.' : 'Auto-sync resumed.',
+                )
+              }}
+              size="sm"
+              variant="outline"
+            >
+              {status.enabled ? (
+                <PauseCircle aria-hidden="true" />
+              ) : (
+                <PlayCircle aria-hidden="true" />
+              )}
+              {status.enabled ? 'Pause auto-sync' : 'Resume auto-sync'}
+            </Button>
+            <Button
+              disabled={isPending}
+              onClick={() => {
+                void runPullLatestAction(false)
+              }}
+              size="sm"
+              variant="outline"
+            >
+              <CloudDownload aria-hidden="true" />
+              Pull latest
+            </Button>
+            <Button
+              disabled={isPending}
+              onClick={() => {
+                void runPushLocalAction(false)
+              }}
+              size="sm"
+              variant="outline"
+            >
+              <CloudUpload aria-hidden="true" />
+              Push local
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-[var(--cp-radius-md)] border border-border bg-background/60 p-3">
+          <div className="grid gap-1">
+            <h3 className="m-0 text-[length:var(--cp-copy-font-size)] font-semibold">
+              No GitHub connection
+            </h3>
+            <p className="m-0 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+              Add a token and connect a private Gist to start syncing.
+            </p>
+          </div>
           <Button
-            disabled={isPending || !token.trim()}
+            disabled={isPending}
             onClick={() => {
-              void runPanelAction(
-                () => actions.onSaveToken(token.trim()),
-                'GitHub token saved.',
-                {
-                  afterSuccess: () => {
-                    setToken('')
-                    setTokenSavedInSession(true)
-                  },
-                },
-              )
+              setConnectionDialogOpen(true)
             }}
             size="sm"
           >
-            {isPending ? (
-              <Loader2
-                aria-hidden="true"
-                className="animate-spin motion-reduce:animate-none"
-              />
-            ) : (
-              <KeyRound aria-hidden="true" />
-            )}
-            Save token
-          </Button>
-          <Button
-            disabled={isPending || !token.trim()}
-            onClick={() => {
-              void runPanelAction(
-                () => actions.onValidateToken(token.trim()),
-                'GitHub token validated.',
-              )
-            }}
-            size="sm"
-            variant="outline"
-          >
-            Test token
+            <Link2 aria-hidden="true" />
+            Connect GitHub Sync
           </Button>
         </div>
-        {status.tokenStatus.configured ? (
-          <p className="m-0 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
-            Stored locally in trusted extension storage. It is not included in
-            backups or exports.
-          </p>
-        ) : null}
-      </div>
-
-      <div className="grid gap-2">
-        <label
-          className="text-[length:var(--cp-copy-font-size)] font-semibold"
-          htmlFor="github-sync-gist"
-        >
-          Gist ID
-        </label>
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <input
-            className="min-w-[16rem] flex-1 rounded-[var(--cp-control-radius)] border border-border bg-background px-3 py-2 text-[length:var(--cp-copy-font-size)]"
-            id="github-sync-gist"
-            onChange={(event) => {
-              setGistDraft({
-                sourceGistId: status.gistId,
-                value: event.currentTarget.value,
-              })
-            }}
-            placeholder="Existing Gist ID"
-            spellCheck={false}
-            value={gistId}
-          />
-          <Button
-            disabled={isPending || !gistId.trim() || !hasTokenForActions}
-            onClick={() => {
-              void runPanelAction(
-                () => actions.onConnectGist(gistId.trim()),
-                'GitHub Gist connected.',
-              )
-            }}
-            size="sm"
-            variant="outline"
-          >
-            <GitBranch aria-hidden="true" />
-            Connect Gist
-          </Button>
-          <Button
-            disabled={isPending || !hasTokenForActions}
-            onClick={() => {
-              void runPanelAction(
-                () => actions.onCreateGist(),
-                'Private GitHub Gist created.',
-              )
-            }}
-            size="sm"
-            variant="outline"
-          >
-            <UploadCloud aria-hidden="true" />
-            Create private Gist
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          disabled={isPending || !status.configured}
-          onClick={() => {
-            void runPullLatestAction(false)
+      )}
+      {connectionDialogOpen ? (
+        <GitHubSyncConnectionDialog
+          actions={actions}
+          isPending={isPending}
+          onActionResult={handleConnectionActionResult}
+          onClose={() => {
+            setConnectionDialogOpen(false)
           }}
-          size="sm"
-          variant="outline"
-        >
-          <CloudDownload aria-hidden="true" />
-          Pull latest
-        </Button>
-        <Button
-          disabled={isPending || !status.configured}
-          onClick={() => {
-            void runPushLocalAction(false)
-          }}
-          size="sm"
-          variant="outline"
-        >
-          <CloudUpload aria-hidden="true" />
-          Push local
-        </Button>
-        <Button
-          disabled={isPending || !status.tokenConfigured}
-          onClick={() => {
-            void runPanelAction(
-              () => actions.onDeleteToken(),
-              'GitHub token deleted.',
-              {
-                afterSuccess: () => {
-                  setTokenSavedInSession(false)
-                },
-              },
-            )
-          }}
-          size="sm"
-          variant="ghost"
-        >
-          <Trash2 aria-hidden="true" />
-          Delete token
-        </Button>
-      </div>
+          status={status}
+        />
+      ) : null}
       {dialog ? (
         <SyncActionDialogForState
           dialog={dialog}
@@ -377,7 +333,7 @@ function SyncStatusBlock({ status }: { status: SerializedSyncStatus }) {
   )
 }
 
-function readStatusLabel(status: SerializedSyncStatus) {
+function readConnectionLabel(status: SerializedSyncStatus) {
   if (status.conflict) {
     return 'Conflict'
   }
@@ -387,13 +343,13 @@ function readStatusLabel(status: SerializedSyncStatus) {
   }
 
   if (status.configured) {
-    return status.enabled ? 'Enabled' : 'Paused'
+    return 'Connected'
   }
 
-  return 'Not configured'
+  return 'Not connected'
 }
 
-function readStatusTone(status: SerializedSyncStatus) {
+function readConnectionTone(status: SerializedSyncStatus) {
   if (status.conflict || status.lastError?.retryable) {
     return 'warning'
   }

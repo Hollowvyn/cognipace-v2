@@ -171,6 +171,80 @@ describe('sync service', () => {
     expect(syncActionResultSchema.parse(actionResult)).toEqual(actionResult)
   })
 
+  it('validates the configured token without exposing the token to UI payloads', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      lastError: {
+        kind: 'auth',
+        message: 'Previous token failure.',
+        occurredAt: '2026-05-26T12:00:00.000Z',
+        retryable: false,
+      },
+    })
+
+    const result = await harness.service.validateStoredGithubToken()
+
+    expect(harness.readToken).toHaveBeenCalledTimes(1)
+    expect(harness.createGitHubClient).toHaveBeenCalledWith('ghp_secret')
+    expect(harness.githubClient.validateToken).toHaveBeenCalledTimes(1)
+    expect(result).toMatchObject({
+      action: 'validate-token',
+      direction: null,
+      outcome: 'success',
+      message: 'GitHub token validated.',
+      status: {
+        lastError: null,
+      },
+    })
+    expect(JSON.stringify(result)).not.toContain('ghp_secret')
+  })
+
+  it('does not persist lastError when explicit token validation fails', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      lastError: null,
+    })
+    harness.githubClient.validateToken.mockRejectedValue(
+      new Error('Bad credentials for ghp_secret'),
+    )
+
+    await expect(
+      harness.service.validateGithubToken('ghp_secret'),
+    ).rejects.toThrow(/Bad credentials/)
+
+    expect(harness.getMetadata().lastError).toBeNull()
+    expect(didWritePersistedLastError(harness)).toBe(false)
+  })
+
+  it('does not persist lastError when stored token validation fails', async () => {
+    const harness = createHarness()
+    harness.githubClient.validateToken.mockRejectedValue(
+      new Error('Bad credentials for ghp_secret'),
+    )
+
+    await expect(harness.service.validateStoredGithubToken()).rejects.toThrow(
+      /Bad credentials/,
+    )
+
+    expect(harness.getMetadata().lastError).toBeNull()
+    expect(didWritePersistedLastError(harness)).toBe(false)
+  })
+
+  it('does not persist lastError when save token validation fails', async () => {
+    const harness = createHarness()
+    harness.githubClient.validateToken.mockRejectedValue(
+      new Error('Bad credentials for ghp_secret'),
+    )
+
+    await expect(harness.service.saveGithubToken('ghp_secret')).rejects.toThrow(
+      /Bad credentials/,
+    )
+
+    expect(harness.saveToken).not.toHaveBeenCalled()
+    expect(harness.getMetadata().lastError).toBeNull()
+    expect(didWritePersistedLastError(harness)).toBe(false)
+  })
+
   it('returns confirmation-required when connecting a remote Gist over dirty local data', async () => {
     const harness = createHarness()
     harness.setMetadata({
@@ -286,6 +360,48 @@ describe('sync service', () => {
     expect(harness.flushDbSnapshot).toHaveBeenCalled()
     expect(harness.broadcastInvalidation).toHaveBeenCalled()
     expect(harness.getMetadata()).toMatchObject({
+      dirtySinceLastSync: false,
+      lastPullAt: currentTime,
+      lastRemoteVersion: 'remote_2',
+      lastSyncDirection: 'pull',
+    })
+  })
+
+  it('pullLatest works while auto-sync is paused and keeps auto-sync paused', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: false,
+      gistId: 'gist_1',
+      dirtySinceLastSync: false,
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:10:00.000Z',
+        remoteVersion: 'remote_2',
+        content: JSON.stringify(
+          buildSyncEnvelope({
+            backup,
+            dataUpdatedAt: '2026-05-26T12:10:00.000Z',
+          }),
+        ),
+      }),
+    )
+
+    await expect(harness.service.pullLatest()).resolves.toMatchObject({
+      action: 'pull-latest',
+      direction: 'pull',
+      outcome: 'success',
+      message: 'Latest Gist data pulled.',
+      status: {
+        enabled: false,
+        configured: true,
+      },
+    })
+    expect(harness.restoreBackup).toHaveBeenCalledWith(backup)
+    expect(harness.getMetadata()).toMatchObject({
+      enabled: false,
       dirtySinceLastSync: false,
       lastPullAt: currentTime,
       lastRemoteVersion: 'remote_2',
@@ -617,6 +733,50 @@ describe('sync service', () => {
     })
     expect(harness.githubClient.updateSyncGist).toHaveBeenCalledTimes(1)
     expect(harness.getMetadata()).toMatchObject({
+      dirtySinceLastSync: false,
+      lastPushAt: currentTime,
+      lastRemoteVersion: 'remote_2',
+      lastSyncDirection: 'push',
+    })
+  })
+
+  it('pushLocal works while auto-sync is paused and keeps auto-sync paused', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: false,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:05:00.000Z',
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:00:00.000Z',
+        remoteVersion: 'remote_1',
+      }),
+    )
+    harness.githubClient.updateSyncGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: currentTime,
+        remoteVersion: 'remote_2',
+      }),
+    )
+
+    await expect(harness.service.pushLocal()).resolves.toMatchObject({
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'success',
+      message: 'Local data pushed to Gist.',
+      status: {
+        enabled: false,
+        configured: true,
+      },
+    })
+    expect(harness.githubClient.updateSyncGist).toHaveBeenCalledTimes(1)
+    expect(harness.getMetadata()).toMatchObject({
+      enabled: false,
       dirtySinceLastSync: false,
       lastPushAt: currentTime,
       lastRemoteVersion: 'remote_2',
@@ -1000,6 +1160,29 @@ describe('sync service', () => {
     expect(harness.getMetadata().enabled).toBe(false)
   })
 
+  it('setEnabled returns auto-sync pause and resume messages', async () => {
+    const harness = createHarness()
+
+    await expect(harness.service.setEnabled(false)).resolves.toMatchObject({
+      action: 'set-enabled',
+      direction: null,
+      outcome: 'success',
+      message: 'Auto-sync paused.',
+      status: {
+        enabled: false,
+      },
+    })
+    await expect(harness.service.setEnabled(true)).resolves.toMatchObject({
+      action: 'set-enabled',
+      direction: null,
+      outcome: 'success',
+      message: 'Auto-sync resumed.',
+      status: {
+        enabled: true,
+      },
+    })
+  })
+
   it('keeps data dirty when local data changes during an in-flight push', async () => {
     const harness = createHarness()
     const push = createDeferred<GitHubGistSummary>()
@@ -1121,17 +1304,22 @@ function createHarness(
       vi.fn<(gistId: string, content: string) => Promise<GitHubGistSummary>>(),
   }
 
+  const readToken = vi.fn().mockResolvedValue('ghp_secret')
+  const saveToken = vi.fn().mockResolvedValue(undefined)
+  const writeMetadata = vi.fn((patch: Partial<SyncMetadata>) => {
+    metadata = { ...metadata, ...patch }
+    return Promise.resolve(metadata)
+  })
+  const createGitHubClient = vi.fn(() => githubClient)
+
   const service = createSyncService({
-    readToken: vi.fn().mockResolvedValue('ghp_secret'),
-    saveToken: vi.fn().mockResolvedValue(undefined),
+    readToken,
+    saveToken,
     deleteToken: vi.fn().mockResolvedValue(undefined),
     getTokenStatus: vi.fn().mockResolvedValue(tokenStatus),
-    createGitHubClient: () => githubClient,
+    createGitHubClient,
     readMetadata: vi.fn(() => Promise.resolve(metadata)),
-    writeMetadata: vi.fn((patch: Partial<SyncMetadata>) => {
-      metadata = { ...metadata, ...patch }
-      return Promise.resolve(metadata)
-    }),
+    writeMetadata,
     exportFullBackup,
     restoreBackup,
     flushDbSnapshot,
@@ -1155,7 +1343,17 @@ function createHarness(
     exportFullBackup,
     flushDbSnapshot,
     broadcastInvalidation,
+    readToken,
+    saveToken,
+    writeMetadata,
+    createGitHubClient,
   }
+}
+
+function didWritePersistedLastError(harness: ReturnType<typeof createHarness>) {
+  return harness.writeMetadata.mock.calls.some(
+    ([patch]) => patch.lastError !== undefined && patch.lastError !== null,
+  )
 }
 
 function createDeferred<T>() {

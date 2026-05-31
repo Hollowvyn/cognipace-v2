@@ -130,6 +130,7 @@ const backgroundMocks = vi.hoisted(() => {
       saveGithubToken: vi.fn(),
       setEnabled: vi.fn(),
       validateGithubToken: vi.fn(),
+      validateStoredGithubToken: vi.fn(),
     },
   }
 })
@@ -353,6 +354,9 @@ describe('background handler registration', () => {
     backgroundMocks.syncService.validateGithubToken.mockResolvedValue(
       syncActionResult,
     )
+    backgroundMocks.syncService.validateStoredGithubToken.mockResolvedValue(
+      syncActionResult,
+    )
   })
 
   afterEach(() => {
@@ -535,6 +539,31 @@ describe('background handler registration', () => {
     ]) {
       expect(response).toEqual(syncActionResultSchema.parse(syncActionResult))
     }
+  })
+
+  it('delegates stored token validation through dashboard policy without accepting token payloads', async () => {
+    const response = await sendRuntimeMessage('sync.validateStoredGithubToken', {
+      surface: 'dashboard',
+    })
+
+    expectRuntimePolicy('sync.validateStoredGithubToken', 'dashboard')
+    expectSyncFactoryForDb()
+    expect(
+      backgroundMocks.syncService.validateStoredGithubToken,
+    ).toHaveBeenCalledTimes(1)
+    expect(response).toEqual(syncActionResultSchema.parse(syncActionResult))
+
+    vi.clearAllMocks()
+    expect(() =>
+      sendRuntimeMessage('sync.validateStoredGithubToken', {
+        surface: 'dashboard',
+        token: 'ghp_secret',
+      }),
+    ).toThrow()
+    expect(
+      backgroundMocks.syncService.validateStoredGithubToken,
+    ).not.toHaveBeenCalled()
+    expect(backgroundMocks.getAppDb).not.toHaveBeenCalled()
   })
 
   it('defaults sync.pushLocal overwrite confirmation to false', async () => {

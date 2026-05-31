@@ -274,6 +274,7 @@ export interface ProtocolMap {
   'backup.resetLocalData'(request: BackupRequest): null
   'sync.getStatus'(request: SyncRequest): SerializedSyncStatus
   'sync.validateGithubToken'(request: SyncGithubTokenRequest): SyncActionResult
+  'sync.validateStoredGithubToken'(request: SyncRequest): SyncActionResult
   'sync.saveGithubToken'(request: SyncGithubTokenRequest): SyncActionResult
   'sync.deleteGithubToken'(request: SyncRequest): SyncActionResult
   'sync.createGithubGist'(request: SyncRequest): SyncActionResult

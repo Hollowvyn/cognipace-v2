@@ -259,6 +259,23 @@ export function registerBackgroundHandlers() {
     )
   })
 
+  onMessage('sync.validateStoredGithubToken', ({ data, sender }) => {
+    const request = syncRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'sync.validateStoredGithubToken',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) =>
+          service.validateStoredGithubToken(),
+        ),
+      ),
+    )
+  })
+
   onMessage('sync.saveGithubToken', ({ data, sender }) => {
     const request = syncGithubTokenRequestSchema.parse(data)
 

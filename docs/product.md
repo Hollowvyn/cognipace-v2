@@ -171,6 +171,13 @@ a private CogniPace Gist, and can use explicit manual directional actions to
 move data. Pull latest updates this browser from the connected Gist. Push local
 updates the connected Gist from this browser.
 
+Settings presents sync as a connection summary instead of an always-open token
+form. Not-connected users open a Connect GitHub Sync dialog to add a masked
+GitHub token and connect or create a private Gist. Connected users stay
+connected when auto-sync is paused; the Manage connection dialog supports stored
+token validation, token replacement, token deletion, and Gist connection
+changes.
+
 Local writes always save locally first, mark data as needing push, and schedule a
 safe background push through Chrome alarms. Opening popup, dashboard, or overlay
 surfaces performs a safe remote check and clean-pulls changed Gist data only
@@ -184,7 +191,9 @@ stay clear. Retryable sync failures do not roll back local saves.
 
 Settings is the setup and recovery surface; once sync is configured, the
 dashboard header also provides compact shortcuts for quick pull and push actions
-with the same force-pull and force-push confirmation rules.
+with the same force-pull and force-push confirmation rules. Pausing auto-sync
+only stops automatic open-check and mutation-triggered sync behavior; manual
+pull and push actions continue to work from Settings and the dashboard header.
 
 GitHub tokens are stored in trusted `chrome.storage.local` extension storage and
 are only read by the background service worker. Tokens are not included in

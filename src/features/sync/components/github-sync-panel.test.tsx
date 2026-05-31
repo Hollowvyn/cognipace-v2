@@ -2,7 +2,25 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-import { GitHubSyncPanel } from './github-sync-panel'
+import {
+  GitHubSyncPanel,
+  type GitHubSyncPanelActions,
+} from './github-sync-panel'
+
+const createActions = (
+  overrides: Partial<GitHubSyncPanelActions> = {},
+): GitHubSyncPanelActions => ({
+  onConnectGist: vi.fn(),
+  onCreateGist: vi.fn(),
+  onDeleteToken: vi.fn(),
+  onPullLatest: vi.fn(),
+  onPushLocal: vi.fn(),
+  onSaveToken: vi.fn(),
+  onSetAutoSyncEnabled: vi.fn(),
+  onValidateStoredToken: vi.fn(),
+  onValidateToken: vi.fn(),
+  ...overrides,
+})
 
 describe('GitHubSyncPanel', () => {
   it('saves a token and creates a Gist from the not configured state', async () => {
@@ -12,20 +30,18 @@ describe('GitHubSyncPanel', () => {
 
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
+        actions={createActions({
           onCreateGist,
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
           onSaveToken,
-          onValidateToken: vi.fn(),
-        }}
+        })}
         status={notConfiguredStatus}
       />,
     )
 
-    await user.type(screen.getByLabelText(/GitHub token/i), 'ghp_secret')
+    await user.click(
+      screen.getByRole('button', { name: /Connect GitHub Sync/i }),
+    )
+    await user.type(screen.getByLabelText(/Access token/i), 'ghp_secret')
     await user.click(screen.getByRole('button', { name: /Save token/i }))
     await user.click(
       screen.getByRole('button', { name: /Create private Gist/i }),
@@ -35,20 +51,85 @@ describe('GitHubSyncPanel', () => {
     expect(onCreateGist).toHaveBeenCalled()
   })
 
-  it('renders directional sync actions instead of the generic sync action', () => {
+  it('shows only a connection CTA before GitHub Sync is configured', () => {
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
-        status={configuredStatus}
+        actions={createActions()}
+        status={notConfiguredStatus}
       />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: /Connect GitHub Sync/i }),
+    ).toBeEnabled()
+    expect(
+      screen.queryByRole('button', { name: /Pull latest/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Push local/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Save token/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows connected and auto-sync badges with management controls', () => {
+    render(
+      <GitHubSyncPanel actions={createActions()} status={configuredStatus} />,
+    )
+
+    expect(screen.getByText('Connected')).toBeInTheDocument()
+    expect(screen.getByText('Auto-sync on')).toBeInTheDocument()
+    expect(screen.getByText(/Connected to private Gist/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Manage connection/i }),
+    ).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: /Pause auto-sync/i }),
+    ).toBeEnabled()
+  })
+
+  it('keeps manual pull and push enabled while auto-sync is paused', () => {
+    render(
+      <GitHubSyncPanel
+        actions={createActions()}
+        status={{
+          ...configuredStatus,
+          enabled: false,
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Auto-sync paused')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Manual pull and push still work/i),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Pull latest/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /Push local/i })).toBeEnabled()
+  })
+
+  it('resumes auto-sync without disconnecting the saved connection', async () => {
+    const user = userEvent.setup()
+    const onSetAutoSyncEnabled = vi.fn().mockResolvedValue(syncActionResult)
+
+    render(
+      <GitHubSyncPanel
+        actions={createActions({ onSetAutoSyncEnabled })}
+        status={{
+          ...configuredStatus,
+          enabled: false,
+        }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Resume auto-sync/i }))
+
+    expect(onSetAutoSyncEnabled).toHaveBeenCalledWith(true)
+  })
+
+  it('renders directional sync actions instead of the generic sync action', () => {
+    render(
+      <GitHubSyncPanel actions={createActions()} status={configuredStatus} />,
     )
 
     expect(screen.getByRole('button', { name: /Pull latest/i })).toBeEnabled()
@@ -58,15 +139,7 @@ describe('GitHubSyncPanel', () => {
   it('keeps directional actions visible while a conflict is present', () => {
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={{
           ...configuredStatus,
           conflict: {
@@ -88,15 +161,7 @@ describe('GitHubSyncPanel', () => {
   it('shows retryable auto-sync errors as status without opening force dialogs', () => {
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={{
           ...configuredStatus,
           lastError: {
@@ -137,15 +202,9 @@ describe('GitHubSyncPanel', () => {
 
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
+        actions={createActions({
           onPullLatest,
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        })}
         status={configuredStatus}
       />,
     )
@@ -181,20 +240,17 @@ describe('GitHubSyncPanel', () => {
 
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
+        actions={createActions({
           onSaveToken,
-          onValidateToken: vi.fn(),
-        }}
+        })}
         status={notConfiguredStatus}
       />,
     )
 
-    await user.type(screen.getByLabelText(/GitHub token/i), 'ghp_secret')
+    await user.click(
+      screen.getByRole('button', { name: /Connect GitHub Sync/i }),
+    )
+    await user.type(screen.getByLabelText(/Access token/i), 'ghp_secret')
     await user.click(screen.getByRole('button', { name: /Save token/i }))
 
     const feedback = await screen.findByText('GitHub token was not saved.')
@@ -202,7 +258,7 @@ describe('GitHubSyncPanel', () => {
       'data-cp-tone',
       'warning',
     )
-    expect(screen.getByLabelText(/GitHub token/i)).toHaveValue('ghp_secret')
+    expect(screen.getByLabelText(/Access token/i)).toHaveValue('ghp_secret')
     expect(
       screen.getByRole('button', { name: /Create private Gist/i }),
     ).toBeDisabled()
@@ -230,15 +286,9 @@ describe('GitHubSyncPanel', () => {
 
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
+        actions={createActions({
           onPushLocal,
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        })}
         status={configuredStatus}
       />,
     )
@@ -276,15 +326,9 @@ describe('GitHubSyncPanel', () => {
 
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
+        actions={createActions({
           onPushLocal,
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        })}
         status={configuredStatus}
       />,
     )
@@ -309,15 +353,9 @@ describe('GitHubSyncPanel', () => {
 
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
+        actions={createActions({
           onPushLocal,
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        })}
         status={configuredStatus}
       />,
     )
@@ -332,15 +370,7 @@ describe('GitHubSyncPanel', () => {
   it('shows local-dirty blocking status and push-needed status before timestamps', () => {
     const { rerender } = render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={{
           ...configuredStatus,
           lastBlockingReason: 'local-dirty',
@@ -354,15 +384,7 @@ describe('GitHubSyncPanel', () => {
 
     rerender(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={{
           ...configuredStatus,
           lastBlockingReason: null,
@@ -379,15 +401,7 @@ describe('GitHubSyncPanel', () => {
   it('shows the latest push or pull timestamp before legacy sync timestamps', () => {
     const { rerender } = render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={{
           ...configuredStatus,
           lastPushAt: '2026-05-26T13:00:00.000Z',
@@ -401,15 +415,7 @@ describe('GitHubSyncPanel', () => {
 
     rerender(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={{
           ...configuredStatus,
           lastPushAt: '2026-05-26T12:30:00.000Z',
@@ -423,15 +429,7 @@ describe('GitHubSyncPanel', () => {
 
     rerender(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
-          onPullLatest: vi.fn(),
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        actions={createActions()}
         status={{
           ...configuredStatus,
           lastPushAt: null,
@@ -459,15 +457,9 @@ describe('GitHubSyncPanel', () => {
 
     render(
       <GitHubSyncPanel
-        actions={{
-          onConnectGist: vi.fn(),
-          onCreateGist: vi.fn(),
-          onDeleteToken: vi.fn(),
+        actions={createActions({
           onPullLatest,
-          onPushLocal: vi.fn(),
-          onSaveToken: vi.fn(),
-          onValidateToken: vi.fn(),
-        }}
+        })}
         status={configuredStatus}
       />,
     )
