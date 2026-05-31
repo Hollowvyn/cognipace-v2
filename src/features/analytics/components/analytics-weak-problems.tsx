@@ -37,40 +37,43 @@ export function AnalyticsWeakProblems({
               </tr>
             </thead>
             <tbody>
-              {problems.map((problem) => (
-                <tr key={problem.slug}>
-                  <td className="border-b border-border py-2">
-                    <div className="font-medium text-foreground">
-                      {problem.title}
-                    </div>
-                    <div className="text-[length:var(--cp-badge-font-size)] text-muted-foreground">
-                      {problem.slug}
-                    </div>
-                  </td>
-                  <td className="border-b border-border py-2">
-                    <Badge tone="neutral">
-                      {problem.lapseCount}{' '}
-                      {problem.lapseCount === 1 ? 'lapse' : 'lapses'}
-                    </Badge>
-                  </td>
-                  <td className="border-b border-border py-2 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-                        <div
-                          aria-hidden="true"
-                          className="h-full rounded-full bg-primary"
-                          style={{
-                            width: `${Math.round(problem.retrievability * 100)}%`,
-                          }}
-                        />
+              {problems.map((problem) => {
+                const pct = Math.round(problem.retrievability * 100)
+                return (
+                  <tr key={problem.slug}>
+                    <td className="border-b border-border py-2">
+                      <div className="font-medium text-foreground">
+                        {problem.title}
                       </div>
-                      <span className="tabular-nums text-foreground">
-                        {Math.round(problem.retrievability * 100)}%
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                      <div className="text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+                        {problem.slug}
+                      </div>
+                    </td>
+                    <td className="border-b border-border py-2">
+                      <Badge tone="neutral">
+                        {problem.lapseCount}{' '}
+                        {problem.lapseCount === 1 ? 'lapse' : 'lapses'}
+                      </Badge>
+                    </td>
+                    <td className="border-b border-border py-2 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                          <div
+                            aria-hidden="true"
+                            className="h-full rounded-full bg-primary"
+                            style={{
+                              width: `${pct}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="tabular-nums text-foreground">
+                          {pct}%
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
           <p className="m-0 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
