@@ -99,7 +99,7 @@ import {
   updateProblem,
   upsertProblemFromPage,
 } from '@/features/problems/server/problems-service'
-import type { TodayQueue } from '@/features/queue/domain'
+import type { QueueItem, TodayQueue } from '@/features/queue/domain'
 import { getTodayQueue } from '@/features/queue/server/queue-service'
 import type { UserSettings } from '@/features/settings/domain'
 import {
@@ -1216,20 +1216,26 @@ function broadcastDataManagementInvalidation(source: 'dashboard') {
 }
 
 function serializeTodayQueue(queue: TodayQueue): SerializedTodayQueue {
+  const serializeItem = (item: QueueItem) => ({
+    category: item.category,
+    problemSlug: item.problemSlug,
+    title: item.title,
+    difficulty: item.difficulty,
+    isPremium: item.isPremium,
+    state: serializeNormalizedPracticeState(item.state),
+    reason: item.reason,
+  })
+
   return todayQueueSchema.parse({
     generatedAt: queue.generatedAt.toISOString(),
-    dailyGoal: queue.dailyGoal,
     dueCount: queue.dueCount,
     newCount: queue.newCount,
     reinforcementCount: queue.reinforcementCount,
-    items: queue.items.map((item) => ({
-      category: item.category,
-      problemSlug: item.problemSlug,
-      title: item.title,
-      difficulty: item.difficulty,
-      isPremium: item.isPremium,
-      state: serializeNormalizedPracticeState(item.state),
-    })),
+    excludedCount: queue.excludedCount,
+    items: queue.items.map(serializeItem),
+    topRecommendation: queue.topRecommendation
+      ? serializeItem(queue.topRecommendation)
+      : null,
   })
 }
 
