@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildRetentionProxy, buildDueForecast } from './summary'
+import type { RetentionProxyResult, ForecastEntry } from './summary'
+import {
+  buildRetentionProxy,
+  buildDueForecast,
+  buildWeakProblems,
+  buildAnalyticsSummary,
+} from './summary'
 
 const now = new Date(2026, 0, 15, 12, 0, 0)
 const recentDate = new Date(2026, 0, 14, 12, 0, 0)
@@ -120,5 +126,78 @@ describe('buildDueForecast', () => {
     )
 
     expect(result.every((e) => e.dueCount === 0)).toBe(true)
+  })
+})
+
+describe('buildWeakProblems', () => {
+  it('sorts by lapses DESC, then difficulty DESC, then retrievability ASC', () => {
+    const result = buildWeakProblems([
+      { slug: 'a', title: 'A', lapseCount: 2, difficulty: 5, retrievability: 0.8 },
+      { slug: 'b', title: 'B', lapseCount: 3, difficulty: 4, retrievability: 0.9 },
+      { slug: 'c', title: 'C', lapseCount: 2, difficulty: 7, retrievability: 0.5 },
+      { slug: 'd', title: 'D', lapseCount: 2, difficulty: 5, retrievability: 0.3 },
+    ])
+
+    expect(result.map((p) => p.slug)).toEqual(['b', 'c', 'd', 'a'])
+  })
+
+  it('returns at most 10 problems', () => {
+    const candidates = Array.from({ length: 15 }, (_, i) => ({
+      slug: `problem-${i}`,
+      title: `Problem ${i}`,
+      lapseCount: i + 1,
+      difficulty: 5,
+      retrievability: 0.5,
+    }))
+
+    expect(buildWeakProblems(candidates)).toHaveLength(10)
+  })
+
+  it('does not mutate the input array', () => {
+    const candidates = [
+      { slug: 'a', title: 'A', lapseCount: 1, difficulty: 5, retrievability: 0.8 },
+      { slug: 'b', title: 'B', lapseCount: 3, difficulty: 5, retrievability: 0.5 },
+    ]
+    const copy = [...candidates]
+    buildWeakProblems(candidates)
+
+    expect(candidates).toEqual(copy)
+  })
+})
+
+describe('buildAnalyticsSummary', () => {
+  it('assembles all fields into the summary shape', () => {
+    const generatedAt = new Date(2026, 0, 15, 12, 0, 0)
+    const retention: RetentionProxyResult = {
+      value: 0.75,
+      label: '75%',
+      sampleSize: 20,
+      lowSample: false,
+    }
+    const forecast: ForecastEntry[] = Array.from({ length: 14 }, (_, i) => ({
+      date: `2026-01-${String(15 + i).padStart(2, '0')}`,
+      dueCount: i,
+    }))
+
+    const result = buildAnalyticsSummary({
+      generatedAt,
+      reviewDays: 10,
+      totalReviews: 42,
+      currentStreak: 3,
+      retention,
+      forecast,
+      weakProblems: [],
+    })
+
+    expect(result.generatedAt).toBe(generatedAt.toISOString())
+    expect(result.reviewDays).toBe(10)
+    expect(result.totalReviews).toBe(42)
+    expect(result.currentStreak).toBe(3)
+    expect(result.retentionProxy).toBe(0.75)
+    expect(result.retentionProxyLabel).toBe('75%')
+    expect(result.retentionSampleSize).toBe(20)
+    expect(result.lowSample).toBe(false)
+    expect(result.dueForecast14Days).toBe(forecast)
+    expect(result.weakProblems).toEqual([])
   })
 })

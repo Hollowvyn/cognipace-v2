@@ -86,14 +86,29 @@ export function buildDueForecast(
   return entries
 }
 
-export function buildWeakProblems(_candidates: WeakProblem[]): WeakProblem[] {
-  return []
+export function buildWeakProblems(candidates: WeakProblem[]): WeakProblem[] {
+  return [...candidates]
+    .sort((a, b) => {
+      if (b.lapseCount !== a.lapseCount) return b.lapseCount - a.lapseCount
+      if (b.difficulty !== a.difficulty) return b.difficulty - a.difficulty
+      return a.retrievability - b.retrievability
+    })
+    .slice(0, 10)
 }
 
-export function buildAnalyticsSummary(
-  _input: AnalyticsSummaryInput,
-): AnalyticsSummary {
-  throw new Error('Not implemented')
+export function buildAnalyticsSummary(input: AnalyticsSummaryInput): AnalyticsSummary {
+  return {
+    generatedAt: input.generatedAt.toISOString(),
+    reviewDays: input.reviewDays,
+    totalReviews: input.totalReviews,
+    currentStreak: input.currentStreak,
+    retentionProxy: input.retention.value,
+    retentionProxyLabel: input.retention.label,
+    retentionSampleSize: input.retention.sampleSize,
+    lowSample: input.retention.lowSample,
+    dueForecast14Days: input.forecast,
+    weakProblems: input.weakProblems,
+  }
 }
 
 function subtractDays(date: Date, days: number): Date {
