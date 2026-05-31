@@ -7,10 +7,6 @@ describe('cache invalidation query-key mapping', () => {
     expect(readQueryKeysForInvalidation(['app-shell'])).toEqual([
       ['app-shell-data'],
     ])
-    expect(readQueryKeysForInvalidation(['practice'])).toEqual([
-      ['practice-details'],
-      ['analytics'],
-    ])
     expect(readQueryKeysForInvalidation(['queue'])).toEqual([['today-queue']])
     expect(readQueryKeysForInvalidation(['settings'])).toEqual([
       ['settings'],
@@ -19,6 +15,7 @@ describe('cache invalidation query-key mapping', () => {
       ['practice-details'],
       ['today-queue'],
       ['tracks'],
+      ['problems'],
     ])
     expect(readQueryKeysForInvalidation(['tracks'])).toEqual([
       ['tracks'],
@@ -43,6 +40,7 @@ describe('cache invalidation query-key mapping', () => {
       ['practice-details'],
       ['today-queue'],
       ['tracks'],
+      ['problems'],
     ])
   })
 
@@ -53,6 +51,17 @@ describe('cache invalidation query-key mapping', () => {
     ])
     expect(readQueryKeysForInvalidation(['problems'])).toContainEqual([
       'tracks',
+    ])
+  })
+
+  it('practice tag alone covers every practice-derived read model', () => {
+    expect(readQueryKeysForInvalidation(['practice'])).toEqual([
+      ['practice-details'],
+      ['analytics'],
+      ['today-queue'],
+      ['tracks'],
+      ['problems'],
+      ['app-shell-data'],
     ])
   })
 })

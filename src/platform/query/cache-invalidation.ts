@@ -21,6 +21,10 @@ const queryKeysByInvalidationTag = {
   practice: [
     queryKeys.practice.all,
     queryKeys.analytics.all,
+    queryKeys.queue.all,
+    queryKeys.tracks.all,
+    queryKeys.problems.all,
+    queryKeys.appShell.all,
   ],
   problems: [
     queryKeys.problems.all,
@@ -37,6 +41,7 @@ const queryKeysByInvalidationTag = {
     queryKeys.practice.all,
     queryKeys.queue.all,
     queryKeys.tracks.all,
+    queryKeys.problems.all,
   ],
   sync: [queryKeys.sync.all],
   tracks: [queryKeys.tracks.all, queryKeys.appShell.all],
