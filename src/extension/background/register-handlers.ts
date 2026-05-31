@@ -141,14 +141,6 @@ import { assertCanSenderCallExtensionMethod } from './runtime-policy'
 import { createAlarmScheduler } from './scheduler/alarm-scheduler'
 import { createSyncAutoSync } from './sync-auto-sync'
 
-const practiceTrackInvalidationTags = [
-  'practice',
-  'problems',
-  'queue',
-  'app-shell',
-  'tracks',
-] as const
-
 const alarmScheduler = createAlarmScheduler()
 const syncAutoSync = createSyncAutoSync({
   scheduler: alarmScheduler,
@@ -668,7 +660,6 @@ export function registerBackgroundHandlers() {
         broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
           source: request.surface,
-          tags: practiceTrackInvalidationTags,
         }),
     )
   })
@@ -706,7 +697,6 @@ export function registerBackgroundHandlers() {
         broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
           source: request.surface,
-          tags: practiceTrackInvalidationTags,
         }),
     )
   })
@@ -732,7 +722,6 @@ export function registerBackgroundHandlers() {
         broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
           source: request.surface,
-          tags: practiceTrackInvalidationTags,
         }),
     )
   })
@@ -758,7 +747,6 @@ export function registerBackgroundHandlers() {
         broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
           source: request.surface,
-          tags: practiceTrackInvalidationTags,
         }),
     )
   })
@@ -787,7 +775,6 @@ export function registerBackgroundHandlers() {
         broadcastPracticeInvalidation({
           problemSlug: request.problemSlug,
           source: request.surface,
-          tags: ['practice', 'problems', 'app-shell'],
         }),
     )
   })
@@ -1301,13 +1288,12 @@ function broadcastProblemCatalogInvalidation(input: {
 function broadcastPracticeInvalidation(input: {
   problemSlug: string
   source: UiSurface
-  tags?: Parameters<typeof broadcastCacheInvalidation>[0]['tags']
 }) {
   return broadcastCacheInvalidation({
     problemSlug: input.problemSlug,
     reason: 'practice-updated',
     source: input.source,
-    tags: input.tags ?? ['practice', 'problems', 'queue', 'app-shell'],
+    tags: ['practice'],
   })
 }
 

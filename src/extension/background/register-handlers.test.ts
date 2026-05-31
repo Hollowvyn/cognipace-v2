@@ -1260,7 +1260,7 @@ describe('background handler registration', () => {
       problemSlug: 'two-sum',
       reason: 'practice-updated',
       source: 'dashboard',
-      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
+      tags: ['practice'],
     })
     expectFlushBeforeBroadcast()
     expect(response).toMatchObject({
@@ -1302,7 +1302,7 @@ describe('background handler registration', () => {
       problemSlug: 'two-sum',
       reason: 'practice-updated',
       source: 'dashboard',
-      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
+      tags: ['practice'],
     })
   })
 
@@ -1366,7 +1366,7 @@ describe('background handler registration', () => {
       problemSlug: 'two-sum',
       reason: 'practice-updated',
       source: 'dashboard',
-      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
+      tags: ['practice'],
     })
   })
 
@@ -1397,7 +1397,7 @@ describe('background handler registration', () => {
       problemSlug: 'two-sum',
       reason: 'practice-updated',
       source: 'dashboard',
-      tags: ['practice', 'problems', 'queue', 'app-shell', 'tracks'],
+      tags: ['practice'],
     })
   })
 })
