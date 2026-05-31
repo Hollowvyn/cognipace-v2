@@ -167,17 +167,20 @@ invalidate affected query families.
 
 GitHub Gist sync is optional, BYOK, and pseudo-real-time rather than live
 collaborative editing. A user stores a GitHub token locally, creates or connects
-a private CogniPace Gist, and uses explicit manual directional actions to move
-data. Pull latest updates this browser from the connected Gist. Push local
+a private CogniPace Gist, and can use explicit manual directional actions to
+move data. Pull latest updates this browser from the connected Gist. Push local
 updates the connected Gist from this browser.
 
-Local writes always save locally first and mark data as needing push. Pulling is
-blocked by default when local changes have not been pushed, but the user can
-force pull after a confirmation dialog that makes the local overwrite explicit.
-Pushing over changed remote data also requires explicit force-push confirmation
-before replacing the Gist. Manual action feedback is shown in dialogs so the
-direction and result of the operation stay clear. Retryable sync failures are
-shown after explicit manual sync actions fail and do not roll back local saves.
+Local writes always save locally first, mark data as needing push, and schedule a
+safe background push through Chrome alarms. Opening popup, dashboard, or overlay
+surfaces performs a safe remote check and clean-pulls changed Gist data only
+when local data has no unpushed changes.
+
+Automatic sync never force-overwrites local data or the Gist. Dirty local data
+blocks automatic pull, changed remote data blocks automatic push, and manual
+force pull or force push remains the recovery path after confirmation. Manual
+action feedback is shown in dialogs so the direction and result of the operation
+stay clear. Retryable sync failures do not roll back local saves.
 
 Settings is the setup and recovery surface; once sync is configured, the
 dashboard header also provides compact shortcuts for quick pull and push actions
