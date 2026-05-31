@@ -1,0 +1,170 @@
+import type { SyncActionResult } from '@/features/sync/api/sync-contracts'
+import type { SyncMetadata } from '@/features/sync/data/sync-metadata-store'
+import { readAutoSyncRetryDelayMinutes } from '@/features/sync/domain/sync-auto-retry'
+
+import type { AlarmScheduler } from './scheduler/alarm-scheduler'
+
+export const syncAutoPushAlarmName = 'sync:auto-push'
+export const syncRetryAlarmName = 'sync:retry'
+export const syncPollAlarmName = 'sync:poll'
+export const syncAutoPushDelayMinutes = 0.5
+export const syncPollPeriodMinutes = 10
+
+export type SyncAutoSyncDependencies = {
+  hasPendingDirtyMarkRetry?: (() => boolean) | undefined
+  now: () => Date
+  readMetadata: () => Promise<SyncMetadata>
+  writeMetadata: (patch: Partial<SyncMetadata>) => Promise<SyncMetadata>
+  runCleanPullCheck: () => Promise<SyncActionResult>
+  runSafePush: (input: {
+    confirmRemoteOverwrite: false
+  }) => Promise<SyncActionResult>
+  scheduler: Pick<
+    AlarmScheduler,
+    'clear' | 'register' | 'repairStartupAlarms' | 'schedule'
+  >
+}
+
+export function createSyncAutoSync(deps: SyncAutoSyncDependencies) {
+  let jobsRegistered = false
+
+  async function scheduleAutoPushAfterMutation() {
+    const metadata = await deps.readMetadata()
+
+    if (!metadata.enabled || !metadata.gistId) {
+      return
+    }
+
+    await deps.scheduler.schedule(syncAutoPushAlarmName, {
+      delayInMinutes: syncAutoPushDelayMinutes,
+    })
+  }
+
+  async function runAutoPush() {
+    const metadata = await deps.readMetadata()
+    const hasPendingDirtyMarkRetry = deps.hasPendingDirtyMarkRetry?.() ?? false
+
+    if (
+      !metadata.enabled ||
+      !metadata.gistId ||
+      (!metadata.dirtySinceLastSync && !hasPendingDirtyMarkRetry)
+    ) {
+      return
+    }
+
+    let result: SyncActionResult
+    try {
+      result = await deps.runSafePush({ confirmRemoteOverwrite: false })
+    } catch {
+      await scheduleRetry(metadata)
+      return
+    }
+
+    if (result.outcome === 'success' || result.outcome === 'no-change') {
+      await deps.writeMetadata({
+        autoSyncRetryAttempt: 0,
+        lastAutoSyncAt: deps.now().toISOString(),
+      })
+      await deps.scheduler.clear(syncRetryAlarmName)
+      return
+    }
+
+    if (
+      result.outcome === 'confirmation-required' ||
+      result.reason === 'remote-changed'
+    ) {
+      await deps.scheduler.clear(syncAutoPushAlarmName)
+      await deps.scheduler.clear(syncRetryAlarmName)
+      return
+    }
+
+    if (result.outcome === 'error' && result.retryable) {
+      await scheduleRetry(metadata)
+      return
+    }
+
+    await deps.scheduler.clear(syncRetryAlarmName)
+  }
+
+  async function runCleanPullCheck() {
+    const metadata = await deps.readMetadata()
+
+    if (!metadata.enabled || !metadata.gistId || metadata.dirtySinceLastSync) {
+      return
+    }
+
+    const result = await deps.runCleanPullCheck()
+
+    if (result.direction !== 'pull' || result.outcome !== 'success') {
+      return
+    }
+
+    await deps.writeMetadata({
+      autoSyncRetryAttempt: 0,
+      lastAutoSyncAt: deps.now().toISOString(),
+    })
+    await deps.scheduler.clear(syncRetryAlarmName)
+  }
+
+  async function clearPendingAutomaticSync() {
+    try {
+      await deps.writeMetadata({
+        autoSyncRetryAttempt: 0,
+        lastAutoSyncAt: deps.now().toISOString(),
+      })
+    } finally {
+      await deps.scheduler.clear(syncAutoPushAlarmName)
+      await deps.scheduler.clear(syncRetryAlarmName)
+    }
+  }
+
+  async function scheduleRetry(metadata: SyncMetadata) {
+    const previousAttempt = metadata.autoSyncRetryAttempt
+
+    try {
+      await deps.writeMetadata({
+        autoSyncRetryAttempt: previousAttempt + 1,
+        lastAutoSyncAt: deps.now().toISOString(),
+      })
+    } catch {
+      // Keep retry alarms moving even when metadata writes are temporarily down.
+    }
+
+    await deps.scheduler.schedule(syncRetryAlarmName, {
+      delayInMinutes: readAutoSyncRetryDelayMinutes(previousAttempt),
+    })
+  }
+
+  function registerJobs() {
+    if (jobsRegistered) {
+      return
+    }
+
+    deps.scheduler.register({
+      name: syncAutoPushAlarmName,
+      run: runAutoPush,
+    })
+    deps.scheduler.register({
+      name: syncRetryAlarmName,
+      run: runAutoPush,
+    })
+    deps.scheduler.register({
+      name: syncPollAlarmName,
+      run: runCleanPullCheck,
+      startup: {
+        delayInMinutes: syncPollPeriodMinutes,
+        periodInMinutes: syncPollPeriodMinutes,
+      },
+    })
+    jobsRegistered = true
+  }
+
+  return {
+    clearPendingAutomaticSync,
+    registerJobs,
+    repairStartupAlarms: deps.scheduler.repairStartupAlarms,
+    runAutoPush,
+    runCleanPullCheck,
+    scheduleAutoPushAfterMutation,
+  }
+}

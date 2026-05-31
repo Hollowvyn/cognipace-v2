@@ -108,7 +108,10 @@ import {
   toggleStudyMode,
   updateSettings,
 } from '@/features/settings/server/settings-service'
-import { readSyncMetadata } from '@/features/sync/data/sync-metadata-store'
+import {
+  readSyncMetadata,
+  writeSyncMetadata,
+} from '@/features/sync/data/sync-metadata-store'
 import {
   createBackgroundSyncService,
   markSyncLocalDataChanged,
@@ -132,6 +135,8 @@ import { flushDbSnapshot, getAppDb, type Db } from '@/platform/db'
 
 import { broadcastCacheInvalidation } from './cache-invalidation-broadcaster'
 import { assertCanSenderCallExtensionMethod } from './runtime-policy'
+import { createAlarmScheduler } from './scheduler/alarm-scheduler'
+import { createSyncAutoSync } from './sync-auto-sync'
 
 const practiceTrackInvalidationTags = [
   'practice',
@@ -141,7 +146,33 @@ const practiceTrackInvalidationTags = [
   'tracks',
 ] as const
 
+const alarmScheduler = createAlarmScheduler()
+const syncAutoSync = createSyncAutoSync({
+  scheduler: alarmScheduler,
+  hasPendingDirtyMarkRetry: () => hasPendingDirtyMarkRetry,
+  now: () => new Date(),
+  readMetadata: readSyncMetadata,
+  writeMetadata: writeSyncMetadata,
+  runSafePush: async (input) => {
+    const { db } = await getAppDb()
+
+    return parseSyncActionResult(
+      await runQueuedSyncAction(db, (service) => service.pushLocal(input)),
+    )
+  },
+  runCleanPullCheck: async () => {
+    const { db } = await getAppDb()
+
+    return parseSyncActionResult(
+      await runQueuedSyncAction(db, (service) => service.checkRemoteOnOpen()),
+    )
+  },
+})
+
 export function registerBackgroundHandlers() {
+  syncAutoSync.registerJobs()
+  void syncAutoSync.repairStartupAlarms()
+
   onMessage('runtime.ping', ({ data, sender }) => {
     const request = pingRequestSchema.parse(data)
 
@@ -258,11 +289,17 @@ export function registerBackgroundHandlers() {
       request.surface,
       sender,
     )
-    return getAppDb().then(async ({ db }) =>
-      parseSyncActionResult(
+    return getAppDb().then(async ({ db }) => {
+      const result = parseSyncActionResult(
         await runQueuedSyncAction(db, (service) => service.deleteGithubToken()),
-      ),
-    )
+      )
+
+      if (result.outcome === 'success') {
+        await clearPendingAutomaticSyncBestEffort()
+      }
+
+      return result
+    })
   })
 
   onMessage('sync.createGithubGist', ({ data, sender }) => {
@@ -273,11 +310,17 @@ export function registerBackgroundHandlers() {
       request.surface,
       sender,
     )
-    return getAppDb().then(async ({ db }) =>
-      parseSyncActionResult(
+    return getAppDb().then(async ({ db }) => {
+      const result = parseSyncActionResult(
         await runQueuedSyncAction(db, (service) => service.createGithubGist()),
-      ),
-    )
+      )
+
+      if (result.outcome === 'success') {
+        await clearPendingAutomaticSyncBestEffort()
+      }
+
+      return result
+    })
   })
 
   onMessage('sync.connectGithubGist', ({ data, sender }) => {
@@ -305,13 +348,19 @@ export function registerBackgroundHandlers() {
       request.surface,
       sender,
     )
-    return getAppDb().then(async ({ db }) =>
-      parseSyncActionResult(
+    return getAppDb().then(async ({ db }) => {
+      const result = parseSyncActionResult(
         await runQueuedSyncAction(db, (service) =>
           service.setEnabled(request.enabled),
         ),
-      ),
-    )
+      )
+
+      if (!request.enabled && result.outcome === 'success') {
+        await clearPendingAutomaticSyncBestEffort()
+      }
+
+      return result
+    })
   })
 
   onMessage('sync.checkRemoteOnOpen', ({ data, sender }) => {
@@ -337,15 +386,21 @@ export function registerBackgroundHandlers() {
       request.surface,
       sender,
     )
-    return getAppDb().then(async ({ db }) =>
-      parseSyncActionResult(
+    return getAppDb().then(async ({ db }) => {
+      const result = parseSyncActionResult(
         await runQueuedSyncAction(db, (service) =>
           service.pullLatest({
             confirmLocalOverwrite: request.confirmLocalOverwrite,
           }),
         ),
-      ),
-    )
+      )
+
+      if (result.outcome === 'success') {
+        await clearPendingAutomaticSyncBestEffort()
+      }
+
+      return result
+    })
   })
 
   onMessage('sync.pushLocal', ({ data, sender }) => {
@@ -356,15 +411,21 @@ export function registerBackgroundHandlers() {
       request.surface,
       sender,
     )
-    return getAppDb().then(async ({ db }) =>
-      parseSyncActionResult(
+    return getAppDb().then(async ({ db }) => {
+      const result = parseSyncActionResult(
         await runQueuedSyncAction(db, (service) =>
           service.pushLocal({
             confirmRemoteOverwrite: request.confirmRemoteOverwrite,
           }),
         ),
-      ),
-    )
+      )
+
+      if (result.outcome === 'success') {
+        await clearPendingAutomaticSyncBestEffort()
+      }
+
+      return result
+    })
   })
 
   onMessage('backup.restoreFullBackup', ({ data, sender }) => {
@@ -1094,6 +1155,10 @@ function runDbMutation<T>(
     await flushDbSnapshot()
     await afterFlush?.(result)
 
+    if (syncMode === 'mark-dirty') {
+      await scheduleAutoPushAfterMutationBestEffort()
+    }
+
     return result
   })
 }
@@ -1114,6 +1179,22 @@ function runInMutationQueue<T>(work: () => Promise<T>) {
   )
 
   return queued
+}
+
+async function scheduleAutoPushAfterMutationBestEffort() {
+  try {
+    await syncAutoSync.scheduleAutoPushAfterMutation()
+  } catch {
+    // Local saves already succeeded; automatic sync scheduling must not fail them.
+  }
+}
+
+async function clearPendingAutomaticSyncBestEffort() {
+  try {
+    await syncAutoSync.clearPendingAutomaticSync()
+  } catch {
+    // Manual sync already succeeded; alarm cleanup should not change its result.
+  }
 }
 
 async function markSyncLocalDataChangedBestEffort() {
