@@ -183,8 +183,11 @@ export type LeetCodeAssessmentDecision =
     }
 
 /**
- * @deprecated kept for one transition window so older `assessment.ts` exports keep
- * compiling. Remove after the orchestrator refactor in Task 8.
+ * @deprecated re-exported here so the domain barrel can satisfy the feature
+ * barrel's existing contract without touching `assessment.ts`. The same `const`
+ * and type live in `assessment.ts`; the domain barrel sources them from this
+ * file. Remove after Task 8 replaces `assessment.ts` and the feature barrel is
+ * updated.
  */
 export const assessmentAcceptedReasons = [
   'quick-good',
@@ -196,7 +199,7 @@ export const assessmentAcceptedReasons = [
   'hard-mode-overtime',
 ] as const
 
-/** @deprecated see {@link assessmentAcceptedReasons}. */
+/** @deprecated Use {@link AssessmentReasonCode} instead. Remove after Task 8. */
 export type AssessmentAcceptedReason =
   (typeof assessmentAcceptedReasons)[number]
 ```
@@ -239,15 +242,36 @@ export {
 
 - [ ] **Step 3: Update feature `index.ts` to re-export the new types**
 
-Open `src/features/assessment/index.ts` and confirm it currently re-exports from `./domain`. If it does, no edit needed in this step — the new types flow through automatically. If it directly re-exports from `./domain/assessment`, change every `from './domain/assessment'` to `from './domain'`. Then re-read the file to confirm.
+`src/features/assessment/index.ts` is an explicit allowlist (not `export *`), so the new types added to the domain barrel do NOT flow through automatically. Replace its contents with:
 
-Run:
-
-```sh
-cat src/features/assessment/index.ts
+```ts
+export {
+  assessmentAcceptedReasons,
+  assessmentBlockReasons,
+  assessmentDecisionStatuses,
+  assessmentLockReasons,
+  assessmentReasonCodes,
+  assessmentSubmissionIntents,
+  assessmentWarningCodes,
+  evaluateLeetCodeAssessment,
+  getLeetCodeSolveTimeTargetSeconds,
+  type AssessmentAcceptedReason,
+  type AssessmentBlockReason,
+  type AssessmentBlockedReason,
+  type AssessmentDecisionStatus,
+  type AssessmentLockReason,
+  type AssessmentPracticeContext,
+  type AssessmentReason,
+  type AssessmentReasonCode,
+  type AssessmentReasonSignals,
+  type AssessmentSubmissionIntent,
+  type AssessmentTimingSettings,
+  type AssessmentWarning,
+  type AssessmentWarningCode,
+  type LeetCodeAssessmentDecision,
+  type LeetCodeAssessmentInput,
+} from './domain'
 ```
-
-Expected output: imports/re-exports come from `./domain`.
 
 - [ ] **Step 4: Typecheck**
 
