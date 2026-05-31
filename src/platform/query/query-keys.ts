@@ -1,4 +1,8 @@
 export const queryKeys = {
+  analytics: {
+    all: ['analytics'] as const,
+    summary: () => [...queryKeys.analytics.all, 'summary'] as const,
+  },
   appShell: {
     all: ['app-shell-data'] as const,
     popup: () => [...queryKeys.appShell.all, 'popup'] as const,
