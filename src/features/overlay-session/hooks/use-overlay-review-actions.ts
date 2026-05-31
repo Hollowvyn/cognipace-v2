@@ -181,6 +181,7 @@ export function useOverlayReviewActions({
       difficulty: problem.difficulty,
       timing: currentContext.timing,
       elapsedSeconds: timer.readElapsedSeconds(),
+      timerUsed: timer.hasStarted(),
     })
 
     if (decision.status === 'blocked') {
@@ -206,6 +207,7 @@ export function useOverlayReviewActions({
       timing: currentContext.timing,
       selectedRating: overlayRef.current.selectedRating,
       elapsedSeconds: timer.readElapsedSeconds(),
+      timerUsed: timer.hasStarted(),
     })
 
     if (decision.status === 'blocked') {
@@ -230,6 +232,7 @@ export function useOverlayReviewActions({
       difficulty: problem.difficulty,
       timing: currentContext.timing,
       elapsedSeconds: timer.readElapsedSeconds(),
+      timerUsed: timer.hasStarted(),
     })
 
     if (decision.status === 'blocked') {
@@ -258,12 +261,14 @@ export function useOverlayReviewActions({
             difficulty: problem.difficulty,
             timing: currentContext.timing,
             elapsedSeconds: timer.readElapsedSeconds(),
+            timerUsed: timer.hasStarted(),
           }
         : {
             intent: 'fail',
             difficulty: problem.difficulty,
             timing: currentContext.timing,
             elapsedSeconds: timer.readElapsedSeconds(),
+            timerUsed: timer.hasStarted(),
           },
     )
 
@@ -486,6 +491,16 @@ function formatAssessmentFeedback(
     return {
       tone: 'warning',
       message: 'Failed attempt saved as Again.',
+    }
+  }
+
+  if (
+    decision.reason.code === 'leetcode-easy-fast' ||
+    decision.reason.code === 'quick-easy-fast'
+  ) {
+    return {
+      tone: 'success',
+      message: 'Fast solve — saved as Easy.',
     }
   }
 
