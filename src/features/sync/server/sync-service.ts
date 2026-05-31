@@ -277,7 +277,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
     const message = await runExclusive(async () => {
       await deps.writeMetadata({ enabled })
 
-      return enabled ? 'GitHub sync enabled.' : 'GitHub sync disabled.'
+      return enabled ? 'Auto-sync resumed.' : 'Auto-sync paused.'
     })
 
     return createActionResult({
@@ -356,9 +356,12 @@ export function createSyncService(deps: SyncServiceDependencies) {
     options: PullLatestOptions = {},
   ): Promise<SyncActionResult> {
     return runAction('pull-latest', 'pull', async () => {
-      const metadata = await deps.readMetadata()
+      const [metadata, tokenStatus] = await Promise.all([
+        deps.readMetadata(),
+        deps.getTokenStatus(),
+      ])
 
-      if (!metadata.enabled || !metadata.gistId) {
+      if (!metadata.gistId || !tokenStatus.configured) {
         await deps.writeMetadata({ lastBlockingReason: 'not-configured' })
 
         return createActionResult({
@@ -409,7 +412,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
         })
       }
 
-      await pullRemote(remote)
+      await pullRemote(remote, { enabled: metadata.enabled })
 
       return createActionResult({
         action: 'pull-latest',
@@ -425,9 +428,12 @@ export function createSyncService(deps: SyncServiceDependencies) {
     options: PushLocalOptions = {},
   ): Promise<SyncActionResult> {
     return runAction('push-local', 'push', async () => {
-      const metadata = await deps.readMetadata()
+      const [metadata, tokenStatus] = await Promise.all([
+        deps.readMetadata(),
+        deps.getTokenStatus(),
+      ])
 
-      if (!metadata.enabled || !metadata.gistId) {
+      if (!metadata.gistId || !tokenStatus.configured) {
         await deps.writeMetadata({ lastBlockingReason: 'not-configured' })
 
         return createActionResult({
@@ -471,7 +477,9 @@ export function createSyncService(deps: SyncServiceDependencies) {
         metadata.gistId,
         local.content,
       )
-      await recordPush(updated, local.dataUpdatedAt)
+      await recordPush(updated, local.dataUpdatedAt, {
+        enabled: metadata.enabled,
+      })
 
       return createActionResult({
         action: 'push-local',
@@ -481,14 +489,17 @@ export function createSyncService(deps: SyncServiceDependencies) {
     })
   }
 
-  async function pullRemote(gist: GitHubGistSummary) {
+  async function pullRemote(
+    gist: GitHubGistSummary,
+    options: { enabled?: boolean } = {},
+  ) {
     const envelope = parseRemoteSyncEnvelope(gist)
     await runRemoteRestore(async () => {
       await deps.restoreBackup(envelope.backup)
       await deps.flushDbSnapshot()
       await Promise.resolve(deps.broadcastInvalidation())
       await deps.writeMetadata({
-        enabled: true,
+        enabled: options.enabled ?? true,
         gistId: gist.id,
         lastSyncAt: deps.now().toISOString(),
         lastSyncDirection: 'pull',
@@ -504,7 +515,11 @@ export function createSyncService(deps: SyncServiceDependencies) {
     })
   }
 
-  async function recordPush(gist: GitHubGistSummary, dataUpdatedAt: string) {
+  async function recordPush(
+    gist: GitHubGistSummary,
+    dataUpdatedAt: string,
+    options: { enabled?: boolean } = {},
+  ) {
     const metadata = await deps.readMetadata()
     const changedDuringPush =
       metadata.dirtySinceLastSync &&
@@ -512,7 +527,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
       metadata.localDataUpdatedAt !== dataUpdatedAt
 
     await deps.writeMetadata({
-      enabled: true,
+      enabled: options.enabled ?? true,
       gistId: gist.id,
       lastSyncAt: deps.now().toISOString(),
       lastSyncDirection: 'push',

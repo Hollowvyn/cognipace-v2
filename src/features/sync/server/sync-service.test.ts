@@ -293,6 +293,48 @@ describe('sync service', () => {
     })
   })
 
+  it('pullLatest works while auto-sync is paused and keeps auto-sync paused', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: false,
+      gistId: 'gist_1',
+      dirtySinceLastSync: false,
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:10:00.000Z',
+        remoteVersion: 'remote_2',
+        content: JSON.stringify(
+          buildSyncEnvelope({
+            backup,
+            dataUpdatedAt: '2026-05-26T12:10:00.000Z',
+          }),
+        ),
+      }),
+    )
+
+    await expect(harness.service.pullLatest()).resolves.toMatchObject({
+      action: 'pull-latest',
+      direction: 'pull',
+      outcome: 'success',
+      message: 'Latest Gist data pulled.',
+      status: {
+        enabled: false,
+        configured: true,
+      },
+    })
+    expect(harness.restoreBackup).toHaveBeenCalledWith(backup)
+    expect(harness.getMetadata()).toMatchObject({
+      enabled: false,
+      dirtySinceLastSync: false,
+      lastPullAt: currentTime,
+      lastRemoteVersion: 'remote_2',
+      lastSyncDirection: 'pull',
+    })
+  })
+
   it('pullLatest restores normalized v1 remote backup data', async () => {
     const harness = createHarness()
     harness.setMetadata({
@@ -617,6 +659,50 @@ describe('sync service', () => {
     })
     expect(harness.githubClient.updateSyncGist).toHaveBeenCalledTimes(1)
     expect(harness.getMetadata()).toMatchObject({
+      dirtySinceLastSync: false,
+      lastPushAt: currentTime,
+      lastRemoteVersion: 'remote_2',
+      lastSyncDirection: 'push',
+    })
+  })
+
+  it('pushLocal works while auto-sync is paused and keeps auto-sync paused', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: false,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:05:00.000Z',
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:00:00.000Z',
+        remoteVersion: 'remote_1',
+      }),
+    )
+    harness.githubClient.updateSyncGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: currentTime,
+        remoteVersion: 'remote_2',
+      }),
+    )
+
+    await expect(harness.service.pushLocal()).resolves.toMatchObject({
+      action: 'push-local',
+      direction: 'push',
+      outcome: 'success',
+      message: 'Local data pushed to Gist.',
+      status: {
+        enabled: false,
+        configured: true,
+      },
+    })
+    expect(harness.githubClient.updateSyncGist).toHaveBeenCalledTimes(1)
+    expect(harness.getMetadata()).toMatchObject({
+      enabled: false,
       dirtySinceLastSync: false,
       lastPushAt: currentTime,
       lastRemoteVersion: 'remote_2',
@@ -998,6 +1084,29 @@ describe('sync service', () => {
     await syncPromise
     await disablePromise
     expect(harness.getMetadata().enabled).toBe(false)
+  })
+
+  it('setEnabled returns auto-sync pause and resume messages', async () => {
+    const harness = createHarness()
+
+    await expect(harness.service.setEnabled(false)).resolves.toMatchObject({
+      action: 'set-enabled',
+      direction: null,
+      outcome: 'success',
+      message: 'Auto-sync paused.',
+      status: {
+        enabled: false,
+      },
+    })
+    await expect(harness.service.setEnabled(true)).resolves.toMatchObject({
+      action: 'set-enabled',
+      direction: null,
+      outcome: 'success',
+      message: 'Auto-sync resumed.',
+      status: {
+        enabled: true,
+      },
+    })
   })
 
   it('keeps data dirty when local data changes during an in-flight push', async () => {
