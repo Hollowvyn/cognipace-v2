@@ -5,10 +5,8 @@ export function readAutoSyncRetryDelayMinutes(attempt: number) {
     throw new Error('Auto-sync retry attempt must be a non-negative integer.')
   }
 
-  const delay = retryDelaysMinutes[Math.min(
-    attempt,
-    retryDelaysMinutes.length - 1,
-  )]
+  const delay =
+    retryDelaysMinutes[Math.min(attempt, retryDelaysMinutes.length - 1)]
 
   if (delay === undefined) {
     throw new Error('Auto-sync retry delay is not configured.')

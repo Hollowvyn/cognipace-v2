@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 
 import type { UiSurface } from '@/extension/messaging'
-import { checkRemoteOnOpenViaRuntime } from '@/features/sync/api/sync-api'
+import { checkRemoteOnOpenViaRuntime } from '@/features/sync'
 import {
   invalidateTaggedQueries,
   type CacheInvalidationTag,

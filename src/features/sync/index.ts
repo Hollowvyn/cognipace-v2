@@ -1,6 +1,7 @@
 export { DashboardSyncActions } from './components/dashboard-sync-actions'
 export { GitHubSyncPanel } from './components/github-sync-panel'
 export { GitHubSyncSettingsSection } from './components/github-sync-settings-section'
+export { checkRemoteOnOpenViaRuntime } from './api/sync-api'
 export { useGithubSyncController } from './hooks/use-github-sync-controller'
 export {
   syncActionResultSchema,

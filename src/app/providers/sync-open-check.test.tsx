@@ -11,9 +11,8 @@ import { SyncOpenCheck } from './sync-open-check'
 const checkRemoteOnOpen =
   vi.fn<(surface: 'popup') => Promise<SyncActionResult>>()
 
-vi.mock('@/features/sync/api/sync-api', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/features/sync/api/sync-api')>()
+vi.mock('@/features/sync', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/sync')>()
 
   return {
     ...actual,
