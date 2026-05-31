@@ -1,17 +1,29 @@
 export {
+  evaluateLeetCodeAssessment,
+  getLeetCodeSolveTimeTargetSeconds,
+  type LeetCodeAssessmentDecision,
+  type LeetCodeAssessmentInput,
+} from './assessment'
+
+export {
   assessmentAcceptedReasons,
   assessmentBlockReasons,
   assessmentDecisionStatuses,
   assessmentLockReasons,
+  assessmentReasonCodes,
   assessmentSubmissionIntents,
-  evaluateLeetCodeAssessment,
-  getLeetCodeSolveTimeTargetSeconds,
+  assessmentWarningCodes,
   type AssessmentAcceptedReason,
   type AssessmentBlockReason,
+  type AssessmentBlockedReason,
   type AssessmentDecisionStatus,
   type AssessmentLockReason,
+  type AssessmentPracticeContext,
+  type AssessmentReason,
+  type AssessmentReasonCode,
+  type AssessmentReasonSignals,
   type AssessmentSubmissionIntent,
   type AssessmentTimingSettings,
-  type LeetCodeAssessmentDecision,
-  type LeetCodeAssessmentInput,
-} from './assessment'
+  type AssessmentWarning,
+  type AssessmentWarningCode,
+} from './assessment-types'
