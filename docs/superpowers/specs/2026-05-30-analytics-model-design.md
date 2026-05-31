@@ -152,7 +152,7 @@ Follow the builder-helper pattern from `queue.test.ts`. Cover:
 
 ### `getWeakProblemCandidates(db)`
 - Joins `problems + fsrsCards + problemPractice`
-- Filters: started, non-suspended, `lapses > 0`
+- Filters: non-suspended, `lapses > 0`, and `status != 'new'` (started = has had at least one review attempt)
 - Returns `Array<{ slug, title, lapseCount, difficulty, stability, lastReviewAt }>`
 - Retrievability is computed in the service (needs `now`), not in SQL
 
@@ -170,10 +170,11 @@ getSummary(db, now = new Date()):
        getUpcomingCards(db, addDays(now, 14))
        getWeakProblemCandidates(db)
        getSettings(db)
-  2. [sequential — needs settings.dailyGoal]
+  2. [sequential — needs settings.dailyGoal from step 1]
        getPracticeProgressSummary(db)
-       → buildPracticeProgressSummary(allAttempts, dailyGoal, now)
+       → buildPracticeProgressSummary(allAttempts, settings.dailyGoal, now)
        → extract currentStreak
+       (pass the service's `now` through so streak uses the same timestamp as the rest of the summary)
   3. Enrich weak candidates:
        map each → getRetrievability(stability, lastReviewAt, now)
   4. Build domain objects:
