@@ -203,12 +203,14 @@ export type AssessmentAcceptedReason =
 
 - [ ] **Step 2: Update domain `index.ts` to re-export from both modules**
 
-Replace `src/features/assessment/domain/index.ts` entirely:
+`LeetCodeAssessmentInput` and `LeetCodeAssessmentDecision` keep flowing through `./assessment` (legacy shape) until Task 8 swaps `assessment.ts` over. All the new supporting types come from `./assessment-types`. Replace `src/features/assessment/domain/index.ts` entirely:
 
 ```ts
 export {
   evaluateLeetCodeAssessment,
   getLeetCodeSolveTimeTargetSeconds,
+  type LeetCodeAssessmentDecision,
+  type LeetCodeAssessmentInput,
 } from './assessment'
 
 export {
@@ -232,8 +234,6 @@ export {
   type AssessmentTimingSettings,
   type AssessmentWarning,
   type AssessmentWarningCode,
-  type LeetCodeAssessmentDecision,
-  type LeetCodeAssessmentInput,
 } from './assessment-types'
 ```
 
@@ -1603,6 +1603,8 @@ git commit -m "feat(assessment): score deterministic confidence as multiplicativ
 This task replaces the old single function with the pipeline and updates the existing table-driven test to the new `reason: { code, signals }` shape, plus end-to-end coverage of `confidence` and `warnings`.
 
 - [ ] **Step 1: Replace `assessment.ts` with the orchestrator**
+
+After replacing `assessment.ts`, also update `src/features/assessment/domain/index.ts` to source `type LeetCodeAssessmentDecision` and `type LeetCodeAssessmentInput` from `./assessment-types` (they have flowed through `./assessment` since Task 1 to bridge the legacy shape). Remove those two `type` re-exports from the `./assessment` export block and add them to the `./assessment-types` export block.
 
 Open `src/features/assessment/domain/assessment.ts` and replace its full contents with:
 
