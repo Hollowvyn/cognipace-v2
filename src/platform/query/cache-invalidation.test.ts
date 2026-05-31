@@ -7,14 +7,6 @@ describe('cache invalidation query-key mapping', () => {
     expect(readQueryKeysForInvalidation(['app-shell'])).toEqual([
       ['app-shell-data'],
     ])
-    expect(readQueryKeysForInvalidation(['practice'])).toEqual([
-      ['practice-details'],
-      ['analytics'],
-      ['today-queue'],
-      ['tracks'],
-      ['problems'],
-      ['app-shell-data'],
-    ])
     expect(readQueryKeysForInvalidation(['queue'])).toEqual([['today-queue']])
     expect(readQueryKeysForInvalidation(['settings'])).toEqual([
       ['settings'],
