@@ -89,9 +89,32 @@ export function createDueNotification(deps: DueNotificationDeps) {
   }
 
   async function onSettingsChanged(
-    _prev: Pick<UserSettings, 'reminders'>,
-    _next: Pick<UserSettings, 'reminders'>,
-  ): Promise<void> {}
+    prev: Pick<UserSettings, 'reminders'>,
+    next: Pick<UserSettings, 'reminders'>,
+  ): Promise<void> {
+    const prevDaily = prev.reminders.daily
+    const nextDaily = next.reminders.daily
+
+    if (prevDaily.enabled === nextDaily.enabled && prevDaily.time === nextDaily.time) {
+      return
+    }
+
+    if (!nextDaily.enabled) {
+      await deps.scheduler.clear(dueCheckAlarmName)
+      return
+    }
+
+    if (!prevDaily.enabled) {
+      await handleStartup()
+      return
+    }
+
+    // Enabled, time changed
+    await deps.scheduler.clear(dueCheckAlarmName)
+    await deps.scheduler.schedule(dueCheckAlarmName, {
+      delayInMinutes: normalizeNotificationTime(nextDaily.time, deps.now()),
+    })
+  }
 
   function registerJobs(): void {
     if (jobsRegistered) return

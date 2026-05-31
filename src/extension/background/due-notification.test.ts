@@ -243,3 +243,72 @@ describe('handleStartup', () => {
     })
   })
 })
+
+describe('onSettingsChanged', () => {
+  it('clears the alarm when notifications are toggled off', async () => {
+    const deps = createDeps()
+    const { registerJobs, onSettingsChanged } = createDueNotification(deps)
+    registerJobs()
+
+    await onSettingsChanged(
+      makeReminders({ enabled: true, time: '09:00' }),
+      makeReminders({ enabled: false, time: '09:00' }),
+    )
+
+    expect(deps.scheduler.clear).toHaveBeenCalledWith(dueCheckAlarmName)
+    expect(deps.scheduler.schedule).not.toHaveBeenCalled()
+  })
+
+  it('schedules alarm via handleStartup when notifications are toggled on', async () => {
+    // now=10:00 UTC, new time=11:00 → upcoming → schedule for 60 min
+    const deps = createDeps({
+      now: () => new Date('2026-05-30T10:00:00.000Z'),
+      readSettings: vi.fn(async () => makeReminders({ enabled: true, time: '11:00' })),
+      checkAlarmScheduled: vi.fn(async () => false),
+    })
+    const { registerJobs, onSettingsChanged } = createDueNotification(deps)
+    registerJobs()
+
+    await onSettingsChanged(
+      makeReminders({ enabled: false, time: '11:00' }),
+      makeReminders({ enabled: true, time: '11:00' }),
+    )
+
+    expect(deps.scheduler.schedule).toHaveBeenCalledWith(dueCheckAlarmName, {
+      delayInMinutes: 60,
+    })
+  })
+
+  it('clears old alarm and schedules new one when time changes while enabled', async () => {
+    // now=10:00 UTC, new time=11:00 → 60 min
+    const deps = createDeps({
+      now: () => new Date('2026-05-30T10:00:00.000Z'),
+    })
+    const { registerJobs, onSettingsChanged } = createDueNotification(deps)
+    registerJobs()
+
+    await onSettingsChanged(
+      makeReminders({ enabled: true, time: '09:00' }),
+      makeReminders({ enabled: true, time: '11:00' }),
+    )
+
+    expect(deps.scheduler.clear).toHaveBeenCalledWith(dueCheckAlarmName)
+    expect(deps.scheduler.schedule).toHaveBeenCalledWith(dueCheckAlarmName, {
+      delayInMinutes: 60,
+    })
+  })
+
+  it('does nothing when neither enabled nor time changed', async () => {
+    const deps = createDeps()
+    const { registerJobs, onSettingsChanged } = createDueNotification(deps)
+    registerJobs()
+
+    await onSettingsChanged(
+      makeReminders({ enabled: true, time: '09:00' }),
+      makeReminders({ enabled: true, time: '09:00' }),
+    )
+
+    expect(deps.scheduler.clear).not.toHaveBeenCalled()
+    expect(deps.scheduler.schedule).not.toHaveBeenCalled()
+  })
+})
