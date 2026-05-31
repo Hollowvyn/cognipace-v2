@@ -173,3 +173,73 @@ describe('runDailyCheck', () => {
     expect(deps.writeState).toHaveBeenCalledWith('2026-05-30')
   })
 })
+
+describe('handleStartup', () => {
+  it('does nothing when notifications are disabled', async () => {
+    const deps = createDeps({
+      readSettings: vi.fn(async () => makeReminders({ enabled: false })),
+    })
+    const { registerJobs, handleStartup } = createDueNotification(deps)
+    registerJobs()
+
+    await handleStartup()
+
+    expect(deps.scheduler.schedule).not.toHaveBeenCalled()
+    expect(deps.notify).not.toHaveBeenCalled()
+  })
+
+  it('does nothing when alarm is already scheduled', async () => {
+    const deps = createDeps({
+      readSettings: vi.fn(async () => makeReminders({ enabled: true, time: '11:00' })),
+      checkAlarmScheduled: vi.fn(async () => true),
+    })
+    const { registerJobs, handleStartup } = createDueNotification(deps)
+    registerJobs()
+
+    await handleStartup()
+
+    expect(deps.scheduler.schedule).not.toHaveBeenCalled()
+  })
+
+  it('schedules upcoming alarm when daily time is in the future and no alarm exists', async () => {
+    // now=10:00 UTC, time=11:00 → upcoming → schedule for 60 min
+    const deps = createDeps({
+      now: () => new Date('2026-05-30T10:00:00.000Z'),
+      readSettings: vi.fn(async () => makeReminders({ enabled: true, time: '11:00' })),
+      checkAlarmScheduled: vi.fn(async () => false),
+    })
+    const { registerJobs, handleStartup } = createDueNotification(deps)
+    registerJobs()
+
+    await handleStartup()
+
+    expect(deps.scheduler.schedule).toHaveBeenCalledWith(dueCheckAlarmName, {
+      delayInMinutes: 60,
+    })
+    expect(deps.notify).not.toHaveBeenCalled()
+  })
+
+  it('runs daily check immediately when daily time has already passed today', async () => {
+    // now=10:00 UTC, time=09:00 → already passed → fire now + reschedule for tomorrow
+    const deps = createDeps({
+      now: () => new Date('2026-05-30T10:00:00.000Z'),
+      readSettings: vi.fn(async () => makeReminders({ enabled: true, time: '09:00' })),
+      checkAlarmScheduled: vi.fn(async () => false),
+      readState: vi.fn(async () => ({ lastNotifiedDate: null as string | null })),
+      readQueueSummary: vi.fn(async () => ({ dueCount: 2 })),
+    })
+    const { registerJobs, handleStartup } = createDueNotification(deps)
+    registerJobs()
+
+    await handleStartup()
+
+    expect(deps.notify).toHaveBeenCalledWith(
+      'Reviews due',
+      'You have 2 reviews due today.',
+    )
+    // runDailyCheck reschedules for 09:00 tomorrow = 23h from 10:00 now
+    expect(deps.scheduler.schedule).toHaveBeenCalledWith(dueCheckAlarmName, {
+      delayInMinutes: 23 * 60,
+    })
+  })
+})

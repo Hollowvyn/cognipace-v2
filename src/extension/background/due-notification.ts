@@ -31,6 +31,15 @@ function toDateString(date: Date): string {
   return date.toISOString().slice(0, 10)
 }
 
+function hasTimePassed(time: string, now: Date): boolean {
+  const parts = time.split(':').map(Number)
+  const hours = parts[0]!
+  const minutes = parts[1]!
+  const target = new Date(now)
+  target.setHours(hours, minutes, 0, 0)
+  return target <= now
+}
+
 export function createDueNotification(deps: DueNotificationDeps) {
   let jobsRegistered = false
 
@@ -58,7 +67,26 @@ export function createDueNotification(deps: DueNotificationDeps) {
     })
   }
 
-  async function handleStartup(): Promise<void> {}
+  async function handleStartup(): Promise<void> {
+    const settings = await deps.readSettings()
+    if (!settings.reminders.daily.enabled) {
+      return
+    }
+
+    const alreadyScheduled = await deps.checkAlarmScheduled(dueCheckAlarmName)
+    if (alreadyScheduled) {
+      return
+    }
+
+    const { time } = settings.reminders.daily
+    if (hasTimePassed(time, deps.now())) {
+      await runDailyCheck()
+    } else {
+      await deps.scheduler.schedule(dueCheckAlarmName, {
+        delayInMinutes: normalizeNotificationTime(time, deps.now()),
+      })
+    }
+  }
 
   async function onSettingsChanged(
     _prev: Pick<UserSettings, 'reminders'>,
