@@ -75,10 +75,7 @@ describe('GitHubSyncPanel', () => {
 
   it('shows connected and auto-sync badges with management controls', () => {
     render(
-      <GitHubSyncPanel
-        actions={createActions()}
-        status={configuredStatus}
-      />,
+      <GitHubSyncPanel actions={createActions()} status={configuredStatus} />,
     )
 
     expect(screen.getByText('Connected')).toBeInTheDocument()
@@ -104,7 +101,9 @@ describe('GitHubSyncPanel', () => {
     )
 
     expect(screen.getByText('Auto-sync paused')).toBeInTheDocument()
-    expect(screen.getByText(/Manual pull and push still work/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Manual pull and push still work/i),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Pull latest/i })).toBeEnabled()
     expect(screen.getByRole('button', { name: /Push local/i })).toBeEnabled()
   })
@@ -130,10 +129,7 @@ describe('GitHubSyncPanel', () => {
 
   it('renders directional sync actions instead of the generic sync action', () => {
     render(
-      <GitHubSyncPanel
-        actions={createActions()}
-        status={configuredStatus}
-      />,
+      <GitHubSyncPanel actions={createActions()} status={configuredStatus} />,
     )
 
     expect(screen.getByRole('button', { name: /Pull latest/i })).toBeEnabled()

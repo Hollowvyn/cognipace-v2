@@ -55,10 +55,10 @@ describe('GitHubSyncConnectionDialog', () => {
 
     renderDialog({ status: configuredStatus })
 
-    expect(screen.getByLabelText(/Access token/i)).toHaveValue('................')
-    expect(screen.getByLabelText(/Access token/i)).toHaveAttribute(
-      'readOnly',
+    expect(screen.getByLabelText(/Access token/i)).toHaveValue(
+      '................',
     )
+    expect(screen.getByLabelText(/Access token/i)).toHaveAttribute('readOnly')
     expect(screen.queryByDisplayValue(/ghp_/i)).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Replace token/i }))
@@ -167,7 +167,9 @@ describe('GitHubSyncConnectionDialog', () => {
     const onConnectGist = vi.fn().mockResolvedValue(blockedResult)
     const onPullLatest = vi
       .fn()
-      .mockResolvedValue(createResult('pull-latest', 'Latest Gist data pulled.'))
+      .mockResolvedValue(
+        createResult('pull-latest', 'Latest Gist data pulled.'),
+      )
 
     renderDialog({
       actions: createActions({ onConnectGist, onPullLatest }),
@@ -225,7 +227,11 @@ function createResult(
   return {
     action,
     direction:
-      action === 'pull-latest' ? 'pull' : action === 'push-local' ? 'push' : null,
+      action === 'pull-latest'
+        ? 'pull'
+        : action === 'push-local'
+          ? 'push'
+          : null,
     outcome: 'success',
     reason: null,
     retryable: false,

@@ -29,9 +29,8 @@ import { GitHubSyncConnectionDialog } from './github-sync-connection-dialog'
 
 type MaybePromise<T> = T | Promise<T>
 
-export type GitHubSyncActionResult = MaybePromise<
-  SyncActionResult | null | void
->
+export type GitHubSyncActionResult =
+  MaybePromise<SyncActionResult | null | void>
 
 export interface GitHubSyncPanelActions {
   onConnectGist: (gistId: string) => GitHubSyncActionResult
@@ -140,7 +139,10 @@ export function GitHubSyncPanel({
             {readConnectionLabel(status)}
           </Badge>
           {status.configured ? (
-            <Badge tone={status.enabled ? 'success' : 'warning'} variant="outline">
+            <Badge
+              tone={status.enabled ? 'success' : 'warning'}
+              variant="outline"
+            >
               {status.enabled ? 'Auto-sync on' : 'Auto-sync paused'}
             </Badge>
           ) : null}

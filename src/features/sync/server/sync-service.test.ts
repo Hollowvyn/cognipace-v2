@@ -213,9 +213,7 @@ describe('sync service', () => {
     ).rejects.toThrow(/Bad credentials/)
 
     expect(harness.getMetadata().lastError).toBeNull()
-    expect(harness.writeMetadata).not.toHaveBeenCalledWith(
-      expect.objectContaining({ lastError: expect.anything() }),
-    )
+    expect(didWritePersistedLastError(harness)).toBe(false)
   })
 
   it('does not persist lastError when stored token validation fails', async () => {
@@ -229,9 +227,7 @@ describe('sync service', () => {
     )
 
     expect(harness.getMetadata().lastError).toBeNull()
-    expect(harness.writeMetadata).not.toHaveBeenCalledWith(
-      expect.objectContaining({ lastError: expect.anything() }),
-    )
+    expect(didWritePersistedLastError(harness)).toBe(false)
   })
 
   it('does not persist lastError when save token validation fails', async () => {
@@ -246,9 +242,7 @@ describe('sync service', () => {
 
     expect(harness.saveToken).not.toHaveBeenCalled()
     expect(harness.getMetadata().lastError).toBeNull()
-    expect(harness.writeMetadata).not.toHaveBeenCalledWith(
-      expect.objectContaining({ lastError: expect.anything() }),
-    )
+    expect(didWritePersistedLastError(harness)).toBe(false)
   })
 
   it('returns confirmation-required when connecting a remote Gist over dirty local data', async () => {
@@ -1354,6 +1348,12 @@ function createHarness(
     writeMetadata,
     createGitHubClient,
   }
+}
+
+function didWritePersistedLastError(harness: ReturnType<typeof createHarness>) {
+  return harness.writeMetadata.mock.calls.some(
+    ([patch]) => patch.lastError !== undefined && patch.lastError !== null,
+  )
 }
 
 function createDeferred<T>() {

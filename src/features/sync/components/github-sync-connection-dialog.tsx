@@ -200,11 +200,7 @@ export function GitHubSyncConnectionDialog({
           </InlineStatus>
         ) : null}
 
-        <div
-          aria-labelledby={tokenGroupId}
-          className="grid gap-2"
-          role="group"
-        >
+        <div aria-labelledby={tokenGroupId} className="grid gap-2" role="group">
           <p
             className="m-0 text-[length:var(--cp-copy-font-size)] font-semibold"
             id={tokenGroupId}
@@ -315,7 +311,9 @@ export function GitHubSyncConnectionDialog({
               value={gistDraft}
             />
             <Button
-              disabled={isPending || !gistDraft.trim() || !hasTokenForGistActions}
+              disabled={
+                isPending || !gistDraft.trim() || !hasTokenForGistActions
+              }
               onClick={() => {
                 void runConnectionAction(
                   () => actions.onConnectGist(gistDraft.trim()),
@@ -456,7 +454,9 @@ function isSuccessfulAction(result: unknown) {
 function isConfirmationRequired(
   result: SyncActionResult | null | undefined | void,
 ): result is SyncActionResult {
-  return isSyncActionResult(result) && result.outcome === 'confirmation-required'
+  return (
+    isSyncActionResult(result) && result.outcome === 'confirmation-required'
+  )
 }
 
 function isSyncActionResult(result: unknown): result is SyncActionResult {
