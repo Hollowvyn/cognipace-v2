@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest'
 import {
   evaluateLeetCodeAssessment,
   getLeetCodeSolveTimeTargetSeconds,
-  type AssessmentTimingSettings,
-  type LeetCodeAssessmentInput,
 } from './assessment'
+import type {
+  AssessmentTimingSettings,
+  LeetCodeAssessmentInput,
+} from './assessment-types'
 
 type AcceptedAssessment = Extract<
   ReturnType<typeof evaluateLeetCodeAssessment>,

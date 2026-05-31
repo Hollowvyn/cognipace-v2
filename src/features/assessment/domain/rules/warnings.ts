@@ -9,7 +9,6 @@ import type { AssessmentDerivedSignals } from '../derived'
 
 export type CollectWarningsContext = {
   proposedRating: ReviewRating
-  easyUpgraded: boolean
   lockReason: AssessmentLockReason | null
   selectedRatingConflicts: boolean
   /** Required when selectedRatingConflicts is true. */

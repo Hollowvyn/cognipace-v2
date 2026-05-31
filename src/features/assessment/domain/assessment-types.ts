@@ -119,24 +119,3 @@ export type LeetCodeAssessmentDecision =
       targetSeconds: number
       elapsedSeconds: null
     }
-
-/**
- * @deprecated re-exported here so the domain barrel can satisfy the feature
- * barrel's existing contract without touching `assessment.ts`. The same `const`
- * and type live in `assessment.ts`; the domain barrel sources them from this
- * file. Remove after Task 8 replaces `assessment.ts` and the feature barrel is
- * updated.
- */
-export const assessmentAcceptedReasons = [
-  'quick-good',
-  'quick-hard-overtime',
-  'leetcode-good',
-  'leetcode-hard-overtime',
-  'selected-rating',
-  'failed',
-  'hard-mode-overtime',
-] as const
-
-/** @deprecated Use {@link AssessmentReasonCode} instead. Remove after Task 8. */
-export type AssessmentAcceptedReason =
-  (typeof assessmentAcceptedReasons)[number]

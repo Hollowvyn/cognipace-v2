@@ -1,5 +1,4 @@
 export {
-  assessmentAcceptedReasons,
   assessmentBlockReasons,
   assessmentDecisionStatuses,
   assessmentLockReasons,
@@ -8,7 +7,6 @@ export {
   assessmentWarningCodes,
   evaluateLeetCodeAssessment,
   getLeetCodeSolveTimeTargetSeconds,
-  type AssessmentAcceptedReason,
   type AssessmentBlockReason,
   type AssessmentBlockedReason,
   type AssessmentDecisionStatus,

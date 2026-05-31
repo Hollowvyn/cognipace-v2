@@ -4,14 +4,12 @@ export {
 } from './assessment'
 
 export {
-  assessmentAcceptedReasons,
   assessmentBlockReasons,
   assessmentDecisionStatuses,
   assessmentLockReasons,
   assessmentReasonCodes,
   assessmentSubmissionIntents,
   assessmentWarningCodes,
-  type AssessmentAcceptedReason,
   type AssessmentBlockReason,
   type AssessmentBlockedReason,
   type AssessmentDecisionStatus,

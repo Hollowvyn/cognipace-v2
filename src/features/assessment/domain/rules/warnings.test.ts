@@ -46,8 +46,7 @@ describe('collectWarnings', () => {
       codes(
         collectWarnings(input, derived, {
           proposedRating: 'good',
-          easyUpgraded: false,
-          lockReason: null,
+              lockReason: null,
           selectedRatingConflicts: false,
         }),
       ),
@@ -61,7 +60,6 @@ describe('collectWarnings', () => {
     })
     const result = collectWarnings(input, derived, {
       proposedRating: 'good',
-      easyUpgraded: false,
       lockReason: null,
       selectedRatingConflicts: false,
     })
@@ -78,8 +76,7 @@ describe('collectWarnings', () => {
       codes(
         collectWarnings(input, derived, {
           proposedRating: 'good',
-          easyUpgraded: false,
-          lockReason: null,
+              lockReason: null,
           selectedRatingConflicts: false,
         }),
       ),
@@ -94,8 +91,7 @@ describe('collectWarnings', () => {
       codes(
         collectWarnings(input, derived, {
           proposedRating: 'good',
-          easyUpgraded: false,
-          lockReason: null,
+              lockReason: null,
           selectedRatingConflicts: false,
         }),
       ),
@@ -110,8 +106,7 @@ describe('collectWarnings', () => {
       codes(
         collectWarnings(input, derived, {
           proposedRating: 'good',
-          easyUpgraded: false,
-          lockReason: null,
+              lockReason: null,
           selectedRatingConflicts: false,
         }),
       ),
@@ -132,7 +127,6 @@ describe('collectWarnings', () => {
     })
     const warning = collectWarnings(input, derived, {
       proposedRating: 'good',
-      easyUpgraded: false,
       lockReason: null,
       selectedRatingConflicts: false,
     }).find((w) => w.code === 'retry-after-fail')
@@ -149,7 +143,6 @@ describe('collectWarnings', () => {
     })
     const warning = collectWarnings(input, derived, {
       proposedRating: 'hard',
-      easyUpgraded: false,
       lockReason: null,
       selectedRatingConflicts: false,
     }).find((w) => w.code === 'downgrade-from-previous')
@@ -168,7 +161,6 @@ describe('collectWarnings', () => {
     })
     const result = collectWarnings(input, derived, {
       proposedRating: 'easy',
-      easyUpgraded: false,
       lockReason: null,
       selectedRatingConflicts: true,
       policyBaseRating: 'good',
@@ -188,7 +180,6 @@ describe('collectWarnings', () => {
     })
     const result = collectWarnings(input, derived, {
       proposedRating: 'again',
-      easyUpgraded: false,
       lockReason: 'hard-mode-overtime',
       selectedRatingConflicts: true,
       policyBaseRating: 'hard',
@@ -200,7 +191,6 @@ describe('collectWarnings', () => {
     const { input, derived } = build({ elapsedSeconds: null })
     const result = collectWarnings(input, derived, {
       proposedRating: 'good',
-      easyUpgraded: false,
       lockReason: null,
       selectedRatingConflicts: false,
     })

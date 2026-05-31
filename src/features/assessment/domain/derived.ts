@@ -24,14 +24,7 @@ const timingGoalKeyByDifficulty = {
   unknown: 'hard',
 } as const satisfies Record<ProblemDifficulty, 'easy' | 'medium' | 'hard'>
 
-/**
- * Intentionally duplicated from `assessment.ts` during the Task 1→8 transition.
- * `assessment.ts` is still the live export; this copy is here so `derived.ts`
- * has no import dependency on the legacy file. Remove the copy in Task 8 when
- * `assessment.ts` is replaced and this becomes the sole source.
- *
- * @see assessment.ts getLeetCodeSolveTimeTargetSeconds
- */
+// Sole implementation. assessment.ts re-exports this via the domain barrel.
 export function getLeetCodeSolveTimeTargetSeconds(
   difficulty: ProblemDifficulty,
   timing: AssessmentTimingSettings,

@@ -4,13 +4,11 @@ import type {
   AssessmentLockReason,
   AssessmentReason,
   AssessmentReasonCode,
-  AssessmentTimingSettings,
   AssessmentWarning,
   LeetCodeAssessmentDecision,
   LeetCodeAssessmentInput,
 } from './assessment-types'
 
-export type { AssessmentTimingSettings, LeetCodeAssessmentInput }
 import {
   deriveAssessmentSignals,
   getLeetCodeSolveTimeTargetSeconds,
@@ -35,7 +33,6 @@ export function evaluateLeetCodeAssessment(
   if (locked) {
     const warnings = collectWarnings(input, derived, {
       proposedRating: 'again',
-      easyUpgraded: false,
       lockReason: locked.lockReason,
       selectedRatingConflicts: false,
     })
@@ -62,7 +59,6 @@ export function evaluateLeetCodeAssessment(
 
   const warnings = collectWarnings(input, derived, {
     proposedRating: finalOutcome.rating,
-    easyUpgraded: finalOutcome !== base,
     lockReason: null,
     selectedRatingConflicts,
     policyBaseRating,
