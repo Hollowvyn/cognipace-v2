@@ -78,6 +78,29 @@ describe('sync metadata store', () => {
     })
   })
 
+  it('adds auto-sync retry defaults when reading metadata written before retry state', async () => {
+    storage.set('cognipace_sync_metadata_v1', {
+      enabled: true,
+      gistId: 'gist_1',
+      lastSyncAt: '2026-05-26T12:00:00.000Z',
+      lastSyncDirection: 'push',
+      lastRemoteVersion: 'remote_1',
+      lastRemoteUpdatedAt: '2026-05-26T12:00:00.000Z',
+      localDataUpdatedAt: '2026-05-26T11:55:00.000Z',
+      dirtySinceLastSync: false,
+      lastPullAt: null,
+      lastPushAt: null,
+      lastBlockingReason: null,
+      lastError: null,
+      conflict: null,
+    })
+
+    await expect(readSyncMetadata()).resolves.toMatchObject({
+      autoSyncRetryAttempt: 0,
+      lastAutoSyncAt: null,
+    })
+  })
+
   it('falls back to fresh default metadata when stored metadata is invalid', async () => {
     storage.set('cognipace_sync_metadata_v1', { enabled: true })
 
@@ -102,6 +125,18 @@ describe('sync metadata store', () => {
       enabled: true,
       gistId: 'gist_1',
       lastRemoteVersion: 'remote_1',
+    })
+  })
+
+  it('persists auto-sync retry metadata patches', async () => {
+    await writeSyncMetadata({
+      autoSyncRetryAttempt: 2,
+      lastAutoSyncAt: '2026-05-31T12:00:00.000Z',
+    })
+
+    await expect(readSyncMetadata()).resolves.toMatchObject({
+      autoSyncRetryAttempt: 2,
+      lastAutoSyncAt: '2026-05-31T12:00:00.000Z',
     })
   })
 
