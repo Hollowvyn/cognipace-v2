@@ -135,9 +135,7 @@ describe('AnalyticsScreen', () => {
 
     renderAnalyticsScreen()
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Retention needs more data',
-    )
+    expect(await screen.findByText(/Retention needs more data/)).toBeVisible()
     const retentionTile = screen.getByLabelText('Retention metric')
     expect(within(retentionTile).getByText('—')).toBeVisible()
   })

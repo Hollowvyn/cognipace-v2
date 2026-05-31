@@ -15,7 +15,7 @@ export function AnalyticsScreen() {
   if (query.isPending) {
     return (
       <Surface>
-        <InlineStatus role="progressbar">Loading analytics...</InlineStatus>
+        <InlineStatus>Loading analytics...</InlineStatus>
       </Surface>
     )
   }
