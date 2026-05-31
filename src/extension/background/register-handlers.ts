@@ -1,4 +1,6 @@
 import {
+  analyticsSummaryRequestSchema,
+  analyticsSummarySchema,
   backupFileSchema,
   backupPayloadRequestSchema,
   backupRequestSchema,
@@ -58,6 +60,7 @@ import {
   type AppShellRequest,
 } from '@/features/app-shell/api/app-shell-contracts'
 import { getAppShellData } from '@/features/app-shell/server/app-shell-service'
+import { getAnalyticsSummary } from '@/features/analytics/server/analytics-service'
 import {
   exportFullBackup,
   resetLocalData,
@@ -710,6 +713,22 @@ export function registerBackgroundHandlers() {
           source: request.surface,
           tags: ['practice', 'problems', 'app-shell'],
         }),
+    )
+  })
+
+  onMessage('analytics.getSummary', ({ data, sender }) => {
+    const request = analyticsSummaryRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'analytics.getSummary',
+      'dashboard',
+      sender,
+    )
+
+    void request
+
+    return getAppDb().then(async ({ db }) =>
+      analyticsSummarySchema.parse(await getAnalyticsSummary(db)),
     )
   })
 
