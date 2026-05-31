@@ -15,7 +15,9 @@ export type DueNotificationDeps = {
 }
 
 export function normalizeNotificationTime(time: string, now: Date): number {
-  const [hours, minutes] = time.split(':').map(Number)
+  const parts = time.split(':').map(Number)
+  const hours = parts[0]!
+  const minutes = parts[1]!
   const target = new Date(now)
   target.setHours(hours, minutes, 0, 0)
   if (target > now) {
