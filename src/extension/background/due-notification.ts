@@ -25,17 +25,6 @@ export function normalizeNotificationTime(time: string, now: Date): number {
   return Math.ceil((target.getTime() - now.getTime()) / 60_000)
 }
 
-function hasTimePassed(time: string, now: Date): boolean {
-  const [hours, minutes] = time.split(':').map(Number)
-  const target = new Date(now)
-  target.setHours(hours, minutes, 0, 0)
-  return target <= now
-}
-
-function toDateString(date: Date): string {
-  return date.toISOString().slice(0, 10)
-}
-
 export function createDueNotification(deps: DueNotificationDeps) {
   let jobsRegistered = false
 
