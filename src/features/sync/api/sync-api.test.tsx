@@ -11,6 +11,7 @@ import {
   pullLatestViaRuntime,
   pushLocalViaRuntime,
   saveGithubTokenViaRuntime,
+  validateStoredGithubTokenViaRuntime,
   usePullLatest,
   usePushLocal,
   useSyncAction,
@@ -34,6 +35,16 @@ describe('sync API', () => {
     expect(sendMessage).toHaveBeenCalledWith('sync.saveGithubToken', {
       surface: 'dashboard',
       token: 'ghp_secret',
+    })
+  })
+
+  it('sends stored token validation through the dashboard runtime boundary', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(syncActionResult)
+
+    await validateStoredGithubTokenViaRuntime()
+
+    expect(sendMessage).toHaveBeenCalledWith('sync.validateStoredGithubToken', {
+      surface: 'dashboard',
     })
   })
 

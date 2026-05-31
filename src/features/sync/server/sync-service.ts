@@ -127,37 +127,51 @@ export function createSyncService(deps: SyncServiceDependencies) {
   }
 
   async function validateGithubToken(token: string): Promise<SyncActionResult> {
-    try {
-      const client = deps.createGitHubClient(token)
-      await client.validateToken()
+    const client = deps.createGitHubClient(token)
+    await client.validateToken()
 
-      return createActionResult({
-        action: 'validate-token',
-        direction: null,
-        message: 'GitHub token validated.',
-      })
-    } catch (error) {
-      await recordError(error, false)
-      throw error
-    }
+    return createActionResult({
+      action: 'validate-token',
+      direction: null,
+      message: 'GitHub token validated.',
+    })
+  }
+
+  async function validateStoredGithubToken(): Promise<SyncActionResult> {
+    const message = await runExclusive(
+      async () => {
+        const client = await readConfiguredClient()
+        await client.validateToken()
+        await deps.writeMetadata({ lastError: null })
+
+        return 'GitHub token validated.'
+      },
+      { recordErrors: false },
+    )
+
+    return createActionResult({
+      action: 'validate-token',
+      direction: null,
+      message,
+    })
   }
 
   async function saveGithubToken(token: string): Promise<SyncActionResult> {
-    try {
-      const client = deps.createGitHubClient(token)
-      await client.validateToken()
+    const client = deps.createGitHubClient(token)
+    await client.validateToken()
+
+    const message = await runExclusive(async () => {
       await deps.saveToken(token)
       await deps.writeMetadata({ lastError: null })
 
-      return createActionResult({
-        action: 'save-token',
-        direction: null,
-        message: 'GitHub token saved.',
-      })
-    } catch (error) {
-      await recordError(error, false)
-      throw error
-    }
+      return 'GitHub token saved.'
+    })
+
+    return createActionResult({
+      action: 'save-token',
+      direction: null,
+      message,
+    })
   }
 
   async function deleteGithubToken(): Promise<SyncActionResult> {
@@ -670,6 +684,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
     saveGithubToken,
     setEnabled,
     validateGithubToken,
+    validateStoredGithubToken,
   }
 }
 

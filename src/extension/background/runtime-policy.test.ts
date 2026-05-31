@@ -186,6 +186,7 @@ describe('runtime-policy', () => {
   it('keeps privileged sync writes dashboard-only', () => {
     for (const method of [
       'sync.validateGithubToken',
+      'sync.validateStoredGithubToken',
       'sync.saveGithubToken',
       'sync.deleteGithubToken',
       'sync.createGithubGist',

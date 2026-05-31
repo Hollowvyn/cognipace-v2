@@ -171,6 +171,86 @@ describe('sync service', () => {
     expect(syncActionResultSchema.parse(actionResult)).toEqual(actionResult)
   })
 
+  it('validates the configured token without exposing the token to UI payloads', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      lastError: {
+        kind: 'auth',
+        message: 'Previous token failure.',
+        occurredAt: '2026-05-26T12:00:00.000Z',
+        retryable: false,
+      },
+    })
+
+    const result = await harness.service.validateStoredGithubToken()
+
+    expect(harness.readToken).toHaveBeenCalledTimes(1)
+    expect(harness.createGitHubClient).toHaveBeenCalledWith('ghp_secret')
+    expect(harness.githubClient.validateToken).toHaveBeenCalledTimes(1)
+    expect(result).toMatchObject({
+      action: 'validate-token',
+      direction: null,
+      outcome: 'success',
+      message: 'GitHub token validated.',
+      status: {
+        lastError: null,
+      },
+    })
+    expect(JSON.stringify(result)).not.toContain('ghp_secret')
+  })
+
+  it('does not persist lastError when explicit token validation fails', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      lastError: null,
+    })
+    harness.githubClient.validateToken.mockRejectedValue(
+      new Error('Bad credentials for ghp_secret'),
+    )
+
+    await expect(
+      harness.service.validateGithubToken('ghp_secret'),
+    ).rejects.toThrow(/Bad credentials/)
+
+    expect(harness.getMetadata().lastError).toBeNull()
+    expect(harness.writeMetadata).not.toHaveBeenCalledWith(
+      expect.objectContaining({ lastError: expect.anything() }),
+    )
+  })
+
+  it('does not persist lastError when stored token validation fails', async () => {
+    const harness = createHarness()
+    harness.githubClient.validateToken.mockRejectedValue(
+      new Error('Bad credentials for ghp_secret'),
+    )
+
+    await expect(harness.service.validateStoredGithubToken()).rejects.toThrow(
+      /Bad credentials/,
+    )
+
+    expect(harness.getMetadata().lastError).toBeNull()
+    expect(harness.writeMetadata).not.toHaveBeenCalledWith(
+      expect.objectContaining({ lastError: expect.anything() }),
+    )
+  })
+
+  it('does not persist lastError when save token validation fails', async () => {
+    const harness = createHarness()
+    harness.githubClient.validateToken.mockRejectedValue(
+      new Error('Bad credentials for ghp_secret'),
+    )
+
+    await expect(harness.service.saveGithubToken('ghp_secret')).rejects.toThrow(
+      /Bad credentials/,
+    )
+
+    expect(harness.saveToken).not.toHaveBeenCalled()
+    expect(harness.getMetadata().lastError).toBeNull()
+    expect(harness.writeMetadata).not.toHaveBeenCalledWith(
+      expect.objectContaining({ lastError: expect.anything() }),
+    )
+  })
+
   it('returns confirmation-required when connecting a remote Gist over dirty local data', async () => {
     const harness = createHarness()
     harness.setMetadata({
@@ -1230,17 +1310,22 @@ function createHarness(
       vi.fn<(gistId: string, content: string) => Promise<GitHubGistSummary>>(),
   }
 
+  const readToken = vi.fn().mockResolvedValue('ghp_secret')
+  const saveToken = vi.fn().mockResolvedValue(undefined)
+  const writeMetadata = vi.fn((patch: Partial<SyncMetadata>) => {
+    metadata = { ...metadata, ...patch }
+    return Promise.resolve(metadata)
+  })
+  const createGitHubClient = vi.fn(() => githubClient)
+
   const service = createSyncService({
-    readToken: vi.fn().mockResolvedValue('ghp_secret'),
-    saveToken: vi.fn().mockResolvedValue(undefined),
+    readToken,
+    saveToken,
     deleteToken: vi.fn().mockResolvedValue(undefined),
     getTokenStatus: vi.fn().mockResolvedValue(tokenStatus),
-    createGitHubClient: () => githubClient,
+    createGitHubClient,
     readMetadata: vi.fn(() => Promise.resolve(metadata)),
-    writeMetadata: vi.fn((patch: Partial<SyncMetadata>) => {
-      metadata = { ...metadata, ...patch }
-      return Promise.resolve(metadata)
-    }),
+    writeMetadata,
     exportFullBackup,
     restoreBackup,
     flushDbSnapshot,
@@ -1264,6 +1349,10 @@ function createHarness(
     exportFullBackup,
     flushDbSnapshot,
     broadcastInvalidation,
+    readToken,
+    saveToken,
+    writeMetadata,
+    createGitHubClient,
   }
 }
 

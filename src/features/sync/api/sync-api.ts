@@ -35,6 +35,12 @@ export function validateGithubTokenViaRuntime(token: string) {
   })
 }
 
+export function validateStoredGithubTokenViaRuntime() {
+  return sendMessage('sync.validateStoredGithubToken', {
+    surface: 'dashboard',
+  })
+}
+
 export function saveGithubTokenViaRuntime(token: string) {
   return sendMessage('sync.saveGithubToken', { surface: 'dashboard', token })
 }
