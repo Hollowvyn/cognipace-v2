@@ -12,6 +12,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
+- [`specs/2026-05-31-nonblocking-gist-open-check-design.md`](./specs/2026-05-31-nonblocking-gist-open-check-design.md): approved approach for changing surface-open Gist checks into lightweight runtime scheduling so popup, dashboard, and overlay startup never wait on background sync I/O.
 - [`specs/2026-05-31-auto-gist-sync-design.md`](./specs/2026-05-31-auto-gist-sync-design.md): approved design for automatic safe GitHub Gist sync with alarm-backed auto-push, clean auto-pull on surface open, reusable scheduler foundations, and manual force pull/push precedence.
 - [`specs/2026-05-29-topic-graph-standardization-design.md`](./specs/2026-05-29-topic-graph-standardization-design.md): approved design for standardizing problem topics into a topic graph with stored aliases, multiple parent topics, LeetCode topic seeding, migration cleanup, backup/sync support, and analytics-ready rollups.
 - [`specs/2026-05-26-directional-gist-sync-design.md`](./specs/2026-05-26-directional-gist-sync-design.md): approved design for replacing the vague GitHub Gist `Sync now` action with explicit manual pull and push actions, dashboard header shortcuts, and focused sync tests. Use as implementation history; verify current behavior against `docs/product.md` and source code.
