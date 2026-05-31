@@ -31,15 +31,9 @@ describe('normalizeNotificationTime', () => {
 // --- Test helpers ---
 
 function createFakeScheduler() {
-  const scheduled: Array<{ name: string; delayInMinutes: number }> = []
-  const cleared: string[] = []
   return {
-    scheduled,
-    cleared,
-    clear: vi.fn(async (name: string) => { cleared.push(name) }),
-    schedule: vi.fn(async (name: string, info: { delayInMinutes?: number }) => {
-      scheduled.push({ name, delayInMinutes: info.delayInMinutes ?? 0 })
-    }),
+    clear: vi.fn(async (_name: string) => {}),
+    schedule: vi.fn(async (_name: string, _info: { delayInMinutes?: number }) => {}),
     register: vi.fn(),
   }
 }
@@ -159,5 +153,23 @@ describe('runDailyCheck', () => {
       'Reviews due',
       'You have 1 review due today.',
     )
+  })
+
+  it('notifies when lastNotifiedDate is a past date (stale dedup key)', async () => {
+    const deps = createDeps({
+      readSettings: vi.fn(async () => makeReminders({ enabled: true, time: '11:00' })),
+      readState: vi.fn(async () => ({ lastNotifiedDate: '2026-05-29' })), // yesterday
+      readQueueSummary: vi.fn(async () => ({ dueCount: 4 })),
+    })
+    const { registerJobs, runDailyCheck } = createDueNotification(deps)
+    registerJobs()
+
+    await runDailyCheck()
+
+    expect(deps.notify).toHaveBeenCalledWith(
+      'Reviews due',
+      'You have 4 reviews due today.',
+    )
+    expect(deps.writeState).toHaveBeenCalledWith('2026-05-30')
   })
 })
