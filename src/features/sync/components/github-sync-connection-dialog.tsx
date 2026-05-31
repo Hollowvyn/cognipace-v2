@@ -3,6 +3,7 @@ import {
   GitBranch,
   KeyRound,
   Loader2,
+  Trash2,
   UploadCloud,
 } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
@@ -385,6 +386,29 @@ export function GitHubSyncConnectionDialog({
         ) : null}
 
         <div className="flex flex-wrap justify-end gap-2">
+          {status.tokenConfigured ? (
+            <Button
+              disabled={isPending}
+              onClick={() => {
+                void runConnectionAction(
+                  () => actions.onDeleteToken(),
+                  'GitHub token deleted.',
+                  {
+                    afterSuccess: () => {
+                      setReplacingToken(true)
+                      setToken('')
+                      setTokenSavedInSession(false)
+                    },
+                  },
+                )
+              }}
+              size="sm"
+              variant="ghost"
+            >
+              <Trash2 aria-hidden="true" />
+              Delete token
+            </Button>
+          ) : null}
           <Button
             disabled={isPending}
             onClick={onClose}

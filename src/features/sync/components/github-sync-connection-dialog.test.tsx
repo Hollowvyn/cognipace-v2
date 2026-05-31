@@ -113,6 +113,26 @@ describe('GitHubSyncConnectionDialog', () => {
     )
   })
 
+  it('deletes a saved token from the manage dialog', async () => {
+    const user = userEvent.setup()
+    const onDeleteToken = vi
+      .fn()
+      .mockResolvedValue(createResult('delete-token', 'GitHub token deleted.'))
+
+    renderDialog({
+      actions: createActions({ onDeleteToken }),
+      status: configuredStatus,
+    })
+
+    await user.click(screen.getByRole('button', { name: /Delete token/i }))
+
+    expect(onDeleteToken).toHaveBeenCalled()
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      /GitHub token deleted/i,
+    )
+    expect(screen.getByLabelText(/Access token/i)).toHaveValue('')
+  })
+
   it('enables Gist connection actions after a token is saved in the dialog', async () => {
     const user = userEvent.setup()
     const onSaveToken = vi

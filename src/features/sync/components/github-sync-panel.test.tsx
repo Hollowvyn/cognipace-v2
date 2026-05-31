@@ -38,7 +38,10 @@ describe('GitHubSyncPanel', () => {
       />,
     )
 
-    await user.type(screen.getByLabelText(/GitHub token/i), 'ghp_secret')
+    await user.click(
+      screen.getByRole('button', { name: /Connect GitHub Sync/i }),
+    )
+    await user.type(screen.getByLabelText(/Access token/i), 'ghp_secret')
     await user.click(screen.getByRole('button', { name: /Save token/i }))
     await user.click(
       screen.getByRole('button', { name: /Create private Gist/i }),
@@ -46,6 +49,83 @@ describe('GitHubSyncPanel', () => {
 
     expect(onSaveToken).toHaveBeenCalledWith('ghp_secret')
     expect(onCreateGist).toHaveBeenCalled()
+  })
+
+  it('shows only a connection CTA before GitHub Sync is configured', () => {
+    render(
+      <GitHubSyncPanel
+        actions={createActions()}
+        status={notConfiguredStatus}
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: /Connect GitHub Sync/i }),
+    ).toBeEnabled()
+    expect(
+      screen.queryByRole('button', { name: /Pull latest/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Push local/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Save token/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows connected and auto-sync badges with management controls', () => {
+    render(
+      <GitHubSyncPanel
+        actions={createActions()}
+        status={configuredStatus}
+      />,
+    )
+
+    expect(screen.getByText('Connected')).toBeInTheDocument()
+    expect(screen.getByText('Auto-sync on')).toBeInTheDocument()
+    expect(screen.getByText(/Connected to private Gist/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Manage connection/i }),
+    ).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: /Pause auto-sync/i }),
+    ).toBeEnabled()
+  })
+
+  it('keeps manual pull and push enabled while auto-sync is paused', () => {
+    render(
+      <GitHubSyncPanel
+        actions={createActions()}
+        status={{
+          ...configuredStatus,
+          enabled: false,
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Auto-sync paused')).toBeInTheDocument()
+    expect(screen.getByText(/Manual pull and push still work/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Pull latest/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /Push local/i })).toBeEnabled()
+  })
+
+  it('resumes auto-sync without disconnecting the saved connection', async () => {
+    const user = userEvent.setup()
+    const onSetAutoSyncEnabled = vi.fn().mockResolvedValue(syncActionResult)
+
+    render(
+      <GitHubSyncPanel
+        actions={createActions({ onSetAutoSyncEnabled })}
+        status={{
+          ...configuredStatus,
+          enabled: false,
+        }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Resume auto-sync/i }))
+
+    expect(onSetAutoSyncEnabled).toHaveBeenCalledWith(true)
   })
 
   it('renders directional sync actions instead of the generic sync action', () => {
@@ -171,7 +251,10 @@ describe('GitHubSyncPanel', () => {
       />,
     )
 
-    await user.type(screen.getByLabelText(/GitHub token/i), 'ghp_secret')
+    await user.click(
+      screen.getByRole('button', { name: /Connect GitHub Sync/i }),
+    )
+    await user.type(screen.getByLabelText(/Access token/i), 'ghp_secret')
     await user.click(screen.getByRole('button', { name: /Save token/i }))
 
     const feedback = await screen.findByText('GitHub token was not saved.')
@@ -179,7 +262,7 @@ describe('GitHubSyncPanel', () => {
       'data-cp-tone',
       'warning',
     )
-    expect(screen.getByLabelText(/GitHub token/i)).toHaveValue('ghp_secret')
+    expect(screen.getByLabelText(/Access token/i)).toHaveValue('ghp_secret')
     expect(
       screen.getByRole('button', { name: /Create private Gist/i }),
     ).toBeDisabled()
