@@ -33,7 +33,7 @@ export default defineContentScript({
         const root = createRoot(container)
 
         root.render(
-          <AppProviders>
+          <AppProviders surface="content-script">
             <OverlayApp />
           </AppProviders>,
         )

@@ -7,7 +7,7 @@ import { AppProviders } from '@/app/providers/app-providers'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AppProviders>
+    <AppProviders surface="popup">
       <PopupApp />
     </AppProviders>
   </StrictMode>,

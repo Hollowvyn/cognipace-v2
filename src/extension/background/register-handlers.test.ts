@@ -101,6 +101,7 @@ const backgroundMocks = vi.hoisted(() => {
     markSyncLocalDataChanged: vi.fn(),
     readSyncMetadata: vi.fn(),
     syncService: {
+      checkRemoteOnOpen: vi.fn(),
       connectGithubGist: vi.fn(),
       createGithubGist: vi.fn(),
       deleteGithubToken: vi.fn(),
@@ -282,6 +283,9 @@ describe('background handler registration', () => {
     backgroundMocks.syncService.connectGithubGist.mockResolvedValue(
       syncActionResult,
     )
+    backgroundMocks.syncService.checkRemoteOnOpen.mockResolvedValue(
+      syncOpenCheckResult,
+    )
     backgroundMocks.syncService.createGithubGist.mockResolvedValue(
       syncActionResult,
     )
@@ -374,6 +378,51 @@ describe('background handler registration', () => {
     expectSyncFactoryForDb()
     expect(backgroundMocks.syncService.getStatus).toHaveBeenCalledTimes(1)
     expect(response).toEqual(syncStatusSchema.parse(syncStatus))
+  })
+
+  it('registers sync open checks with UI-surface policy and response parsing', async () => {
+    const contentScriptSender = {
+      tab: { id: 7 },
+      url: 'https://leetcode.com/problems/two-sum/',
+    }
+
+    const response = await sendRuntimeMessage(
+      'sync.checkRemoteOnOpen',
+      {
+        surface: 'content-script',
+      },
+      contentScriptSender,
+    )
+
+    expectRuntimePolicy(
+      'sync.checkRemoteOnOpen',
+      'content-script',
+      contentScriptSender,
+    )
+    expectSyncFactoryForDb()
+    expect(backgroundMocks.syncService.checkRemoteOnOpen).toHaveBeenCalledTimes(
+      1,
+    )
+    expect(response).toEqual(syncActionResultSchema.parse(syncOpenCheckResult))
+  })
+
+  it('rejects malformed sync open check requests before service access', () => {
+    expect(() =>
+      sendRuntimeMessage('sync.checkRemoteOnOpen', {
+        surface: 'popup',
+        confirmLocalOverwrite: true,
+      }),
+    ).toThrow()
+
+    expect(
+      backgroundMocks.assertCanSenderCallExtensionMethod,
+    ).not.toHaveBeenCalledWith(
+      'sync.checkRemoteOnOpen',
+      expect.anything(),
+      expect.anything(),
+    )
+    expect(backgroundMocks.getAppDb).not.toHaveBeenCalled()
+    expect(backgroundMocks.syncService.checkRemoteOnOpen).not.toHaveBeenCalled()
   })
 
   it('registers privileged directional sync dashboard actions with request and response parsing', async () => {
@@ -1505,6 +1554,11 @@ const syncActionResult = syncActionResultSchema.parse({
   status: syncStatus,
   message: 'Sync complete.',
   occurredAt: syncTimestamp,
+})
+const syncOpenCheckResult = syncActionResultSchema.parse({
+  ...syncActionResult,
+  action: 'check-remote-on-open',
+  message: 'Remote check complete.',
 })
 const cleanSyncMetadata = {
   enabled: true,

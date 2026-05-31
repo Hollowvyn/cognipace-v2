@@ -314,6 +314,21 @@ export function registerBackgroundHandlers() {
     )
   })
 
+  onMessage('sync.checkRemoteOnOpen', ({ data, sender }) => {
+    const request = syncRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'sync.checkRemoteOnOpen',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) => service.checkRemoteOnOpen()),
+      ),
+    )
+  })
+
   onMessage('sync.pullLatest', ({ data, sender }) => {
     const request = syncPullLatestRequestSchema.parse(data)
 

@@ -6,6 +6,7 @@ import { queryKeys } from '@/platform/query/query-keys'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import {
+  checkRemoteOnOpenViaRuntime,
   connectGithubGistViaRuntime,
   pullLatestViaRuntime,
   pushLocalViaRuntime,
@@ -81,6 +82,16 @@ describe('sync API', () => {
     expect(sendMessage).toHaveBeenCalledWith('sync.pushLocal', {
       surface: 'dashboard',
       confirmRemoteOverwrite: true,
+    })
+  })
+
+  it('checks remote on open through the claimed surface', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(syncActionResult)
+
+    await checkRemoteOnOpenViaRuntime('popup')
+
+    expect(sendMessage).toHaveBeenCalledWith('sync.checkRemoteOnOpen', {
+      surface: 'popup',
     })
   })
 
