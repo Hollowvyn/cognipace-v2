@@ -2,6 +2,14 @@ import { defineExtensionMessaging } from '@webext-core/messaging'
 import { z } from 'zod'
 
 import type {
+  AnalyticsSummaryRequest,
+  SerializedAnalyticsSummary,
+} from '@/features/analytics/api/analytics-contracts'
+export {
+  analyticsSummaryRequestSchema,
+  analyticsSummarySchema,
+} from '@/features/analytics/api/analytics-contracts'
+import type {
   AppShellData,
   AppShellRequest,
 } from '@/features/app-shell/api/app-shell-contracts'
@@ -255,6 +263,7 @@ export type LeetCodeSubmissionResultRemoteRuntimeRequest = z.infer<
 >
 
 export interface ProtocolMap {
+  'analytics.getSummary'(request: AnalyticsSummaryRequest): SerializedAnalyticsSummary
   'cache.invalidate'(request: CacheInvalidationEvent): null
   'runtime.ping'(request: PingRequest): PingResponse
   'app.getShellData'(request: AppShellRequest): AppShellData

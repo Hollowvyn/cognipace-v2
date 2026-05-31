@@ -111,6 +111,7 @@ async function expectPracticeMutation<TRequest>(input: {
   ])
   expect(invalidateQueries.mock.calls.map(([call]) => call)).toEqual([
     { queryKey: ['practice-details'] },
+    { queryKey: ['analytics'] },
     { queryKey: ['problems'] },
     { queryKey: ['app-shell-data'] },
     { queryKey: ['today-queue'] },
