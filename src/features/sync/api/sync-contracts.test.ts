@@ -49,6 +49,46 @@ describe('sync contracts', () => {
     )
   })
 
+  it('validates open remote check action results', () => {
+    const result = syncActionResultSchema.parse({
+      action: 'check-remote-on-open',
+      direction: null,
+      outcome: 'no-change',
+      reason: 'remote-unchanged',
+      retryable: false,
+      message: 'Remote check found no changes.',
+      occurredAt: '2026-05-26T12:30:00.000Z',
+      status: {
+        enabled: true,
+        configured: true,
+        tokenConfigured: true,
+        tokenStatus: {
+          provider: 'github:gist',
+          configured: true,
+          updatedAt: '2026-05-26T12:00:00.000Z',
+          fingerprint: 'abcdef123456',
+        },
+        gistId: 'gist_1',
+        isSyncing: false,
+        lastSyncAt: '2026-05-26T12:30:00.000Z',
+        lastSyncDirection: 'no-change',
+        lastPullAt: null,
+        lastPushAt: null,
+        needsPush: false,
+        lastBlockingReason: null,
+        lastError: null,
+        conflict: null,
+      },
+    })
+
+    expect(result).toMatchObject({
+      action: 'check-remote-on-open',
+      direction: null,
+      outcome: 'no-change',
+      reason: 'remote-unchanged',
+    })
+  })
+
   it('requires explicit confirmation for overwrite pushes at the request boundary', () => {
     expect(
       syncPushLocalRequestSchema.parse({

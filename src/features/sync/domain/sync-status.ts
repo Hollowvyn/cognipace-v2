@@ -11,6 +11,7 @@ export type SyncAction =
   | 'set-enabled'
   | 'pull-latest'
   | 'push-local'
+  | 'check-remote-on-open'
 
 export type SyncActionDirection = 'pull' | 'push' | null
 
