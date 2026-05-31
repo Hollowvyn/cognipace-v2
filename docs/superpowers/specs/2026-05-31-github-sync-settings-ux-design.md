@@ -74,7 +74,8 @@ The UI must distinguish two concepts:
 Manual pull/push actions belong to connection, not auto-sync. If the app is
 connected but auto-sync is paused, `Pull latest` and `Push local` still work.
 Pausing auto-sync only stops background sync work and clears pending automatic
-jobs.
+jobs. Manual pull or push from a paused state must not silently resume
+auto-sync.
 
 The existing sync metadata `enabled` flag should be treated as auto-sync enabled
 state. For this v1, keep the existing runtime/storage field name unless a later
@@ -222,7 +223,8 @@ confirmation dialogs.
 
 ## Error Handling
 
-- Token validation failures stay scoped to the connect/manage dialog.
+- Token validation failures stay scoped to the connect/manage dialog and must
+  not persist `lastError` into card-level sync metadata.
 - GitHub permission, authentication, network, missing Gist, invalid remote, and
   unsupported schema errors continue to use existing sync error classification.
 - The card shows compact error or retry-needed state when sync metadata contains

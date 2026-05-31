@@ -106,7 +106,7 @@ it('pullLatest works while auto-sync is paused when token and Gist are connected
   })
   expect(harness.restoreBackup).toHaveBeenCalledWith(backup)
   expect(harness.getMetadata()).toMatchObject({
-    enabled: true,
+    enabled: false,
     gistId: 'gist_1',
     lastPullAt: currentTime,
     lastSyncDirection: 'pull',
@@ -145,7 +145,7 @@ it('pushLocal works while auto-sync is paused when token and Gist are connected'
   })
   expect(harness.githubClient.updateSyncGist).toHaveBeenCalledTimes(1)
   expect(harness.getMetadata()).toMatchObject({
-    enabled: true,
+    enabled: false,
     dirtySinceLastSync: false,
     lastPushAt: currentTime,
     lastSyncDirection: 'push',
@@ -172,6 +172,10 @@ it('uses auto-sync wording when pausing or resuming sync automation', async () =
   expect(harness.getMetadata().enabled).toBe(true)
 })
 ```
+
+The existing background handler test `clears pending automatic sync only after
+disabling sync succeeds` already covers the required pending-job cleanup when
+auto-sync is paused. Keep that test passing.
 
 - [ ] **Step 2: Run the focused service tests and verify failure**
 
@@ -247,6 +251,82 @@ if (!metadata.gistId || !tokenStatus.configured) {
 
 Do not change `checkRemoteOnOpen`; it must continue to skip when `metadata.enabled` is false.
 
+Also update `pullRemote` and `recordPush` so manual pull/push preserve the
+current auto-sync state. A paused manual action must not write `enabled: true`.
+One acceptable shape is:
+
+```ts
+await pullRemote(remote, { enabled: metadata.enabled })
+```
+
+```ts
+await recordPush(updated, local.dataUpdatedAt, { enabled: metadata.enabled })
+```
+
+Then update the helpers:
+
+```ts
+async function pullRemote(
+  gist: GitHubGistSummary,
+  options: { enabled?: boolean } = {},
+) {
+  const envelope = parseRemoteSyncEnvelope(gist)
+  await runRemoteRestore(async () => {
+    await deps.restoreBackup(envelope.backup)
+    await deps.flushDbSnapshot()
+    await Promise.resolve(deps.broadcastInvalidation())
+    await deps.writeMetadata({
+      enabled: options.enabled ?? true,
+      gistId: gist.id,
+      lastSyncAt: deps.now().toISOString(),
+      lastSyncDirection: 'pull',
+      lastPullAt: deps.now().toISOString(),
+      lastRemoteVersion: gist.remoteVersion,
+      lastRemoteUpdatedAt: gist.updatedAt,
+      localDataUpdatedAt: envelope.dataUpdatedAt,
+      dirtySinceLastSync: false,
+      lastBlockingReason: null,
+      conflict: null,
+      lastError: null,
+    })
+  })
+}
+```
+
+```ts
+async function recordPush(
+  gist: GitHubGistSummary,
+  dataUpdatedAt: string,
+  options: { enabled?: boolean } = {},
+) {
+  const metadata = await deps.readMetadata()
+  const changedDuringPush =
+    metadata.dirtySinceLastSync &&
+    metadata.localDataUpdatedAt !== null &&
+    metadata.localDataUpdatedAt !== dataUpdatedAt
+
+  await deps.writeMetadata({
+    enabled: options.enabled ?? true,
+    gistId: gist.id,
+    lastSyncAt: deps.now().toISOString(),
+    lastSyncDirection: 'push',
+    lastPushAt: deps.now().toISOString(),
+    lastRemoteVersion: gist.remoteVersion,
+    lastRemoteUpdatedAt: gist.updatedAt,
+    localDataUpdatedAt: changedDuringPush
+      ? metadata.localDataUpdatedAt
+      : dataUpdatedAt,
+    dirtySinceLastSync: changedDuringPush,
+    lastBlockingReason: null,
+    conflict: null,
+    lastError: null,
+  })
+}
+```
+
+Keep create/connect flows on the default helper behavior so a new connection
+still starts with auto-sync on.
+
 - [ ] **Step 4: Run the service tests and verify pass**
 
 Run:
@@ -296,6 +376,35 @@ it('validates the configured token without exposing it to the UI', async () => {
   })
 
   expect(harness.githubClient.validateToken).toHaveBeenCalledTimes(1)
+})
+
+it('keeps token validation failures scoped to the caller instead of sync metadata', async () => {
+  const harness = createHarness()
+  harness.githubClient.validateToken.mockRejectedValue(
+    new Error('Bad credentials'),
+  )
+
+  await expect(
+    harness.service.validateGithubToken('ghp_invalid'),
+  ).rejects.toThrow(/Bad credentials/i)
+  expect(harness.getMetadata().lastError).toBeNull()
+
+  await expect(harness.service.validateStoredGithubToken()).rejects.toThrow(
+    /Bad credentials/i,
+  )
+  expect(harness.getMetadata().lastError).toBeNull()
+})
+
+it('keeps token save validation failures scoped to the caller instead of sync metadata', async () => {
+  const harness = createHarness()
+  harness.githubClient.validateToken.mockRejectedValue(
+    new Error('Bad credentials'),
+  )
+
+  await expect(harness.service.saveGithubToken('ghp_invalid')).rejects.toThrow(
+    /Bad credentials/i,
+  )
+  expect(harness.getMetadata().lastError).toBeNull()
 })
 ```
 
@@ -402,9 +511,40 @@ async function validateStoredGithubToken(): Promise<SyncActionResult> {
       message: 'GitHub token validated.',
     })
   } catch (error) {
-    await recordError(error, false)
     throw error
   }
+}
+```
+
+Also change `validateGithubToken` and `saveGithubToken` so token validation or
+save failures do not persist `lastError` into sync metadata. These failures are
+dialog-scoped setup feedback, not card-level sync errors:
+
+```ts
+async function validateGithubToken(token: string): Promise<SyncActionResult> {
+  const client = deps.createGitHubClient(token)
+  await client.validateToken()
+
+  return createActionResult({
+    action: 'validate-token',
+    direction: null,
+    message: 'GitHub token validated.',
+  })
+}
+```
+
+```ts
+async function saveGithubToken(token: string): Promise<SyncActionResult> {
+  const client = deps.createGitHubClient(token)
+  await client.validateToken()
+  await deps.saveToken(token)
+  await deps.writeMetadata({ lastError: null })
+
+  return createActionResult({
+    action: 'save-token',
+    direction: null,
+    message: 'GitHub token saved.',
+  })
 }
 ```
 
@@ -853,6 +993,38 @@ describe('GitHubSyncConnectionDialog', () => {
     expect(actions.onConnectGist).toHaveBeenCalledWith('gist_2')
     expect(actions.onCreateGist).toHaveBeenCalledTimes(1)
   })
+
+  it('shows pull and push decision actions when connecting a Gist needs a direction choice', async () => {
+    const user = userEvent.setup()
+    const actions = createActions()
+    actions.onConnectGist.mockResolvedValue({
+      ...syncActionResult,
+      action: 'connect-gist',
+      outcome: 'confirmation-required',
+      reason: 'remote-changed',
+      message: 'Choose whether to pull remote data or push local data.',
+    })
+
+    render(
+      <GitHubSyncConnectionDialog
+        actions={actions}
+        isPending={false}
+        onActionResult={vi.fn()}
+        onClose={vi.fn()}
+        status={configuredStatus}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Connect Gist' }))
+
+    expect(
+      screen.getByText(
+        'Choose whether to pull remote data or push local data.',
+      ),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Pull latest' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Push local' })).toBeEnabled()
+  })
 })
 
 const notConfiguredStatus = {
@@ -973,6 +1145,9 @@ export function GitHubSyncConnectionDialog({
     message: string
     tone: 'danger' | 'success' | 'warning'
   } | null>(null)
+  const [connectionDecision, setConnectionDecision] = useState<string | null>(
+    null,
+  )
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useRef<HTMLElement>(null)
 
@@ -1021,6 +1196,12 @@ export function GitHubSyncConnectionDialog({
             ? 'danger'
             : 'warning',
       })
+      setConnectionDecision(
+        result?.action === 'connect-gist' &&
+          result.outcome === 'confirmation-required'
+          ? result.message
+          : null,
+      )
       onActionResult(result)
 
       if (successful) {
@@ -1113,6 +1294,48 @@ export function GitHubSyncConnectionDialog({
           >
             {feedback.message}
           </InlineStatus>
+        ) : null}
+
+        {connectionDecision ? (
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-[var(--cp-control-radius)] border border-border bg-background p-3">
+            <p className="m-0 text-[length:var(--cp-copy-font-size)] text-muted-foreground">
+              {connectionDecision}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                disabled={isPending}
+                onClick={() => {
+                  void runConnectionAction(
+                    () =>
+                      actions.onPullLatest({
+                        confirmLocalOverwrite: false,
+                      }),
+                    'Latest Gist data pulled.',
+                  )
+                }}
+                size="sm"
+                variant="outline"
+              >
+                Pull latest
+              </Button>
+              <Button
+                disabled={isPending}
+                onClick={() => {
+                  void runConnectionAction(
+                    () =>
+                      actions.onPushLocal({
+                        confirmRemoteOverwrite: false,
+                      }),
+                    'Local data pushed to Gist.',
+                  )
+                }}
+                size="sm"
+                variant="outline"
+              >
+                Push local
+              </Button>
+            </div>
+          </div>
         ) : null}
 
         <fieldset
@@ -1545,6 +1768,22 @@ const [connectionDialogOpen, setConnectionDialogOpen] = useState(false)
       isPending={isPending}
       onActionResult={(result) => {
         if (
+          result?.action === 'pull-latest' ||
+          result?.action === 'push-local'
+        ) {
+          setConnectionDialogOpen(false)
+          setDialog(
+            createSyncActionDialogState(
+              result,
+              result.action === 'pull-latest'
+                ? 'Latest Gist data pulled.'
+                : 'Local data pushed to Gist.',
+            ),
+          )
+          return
+        }
+
+        if (
           isSuccessfulAction(result) &&
           (result?.action === 'connect-gist' ||
             result?.action === 'create-gist' ||
@@ -1644,16 +1883,16 @@ function readConnectedSummaryDetail(status: SerializedSyncStatus) {
 - Change the header badges:
 
 ```tsx
-;<Badge tone={status.configured ? 'success' : 'neutral'} variant="outline">
-  {status.configured ? 'Connected' : 'Not connected'}
-</Badge>
-{
-  status.configured ? (
+<div className="flex flex-wrap items-center gap-2">
+  <Badge tone={status.configured ? 'success' : 'neutral'} variant="outline">
+    {status.configured ? 'Connected' : 'Not connected'}
+  </Badge>
+  {status.configured ? (
     <Badge tone={status.enabled ? 'success' : 'warning'} variant="outline">
       {status.enabled ? 'Auto-sync on' : 'Auto-sync paused'}
     </Badge>
-  ) : null
-}
+  ) : null}
+</div>
 ```
 
 - Keep `SyncStatusBlock` below the summary for conflict/error/dirty/push-needed status, but remove the old token and Gist setup text from normal connected/not-connected rendering.
