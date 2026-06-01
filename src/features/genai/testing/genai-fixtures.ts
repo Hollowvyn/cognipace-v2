@@ -45,6 +45,30 @@ export function makeAnthropicSuccessResponse<T>(payload: T): Response {
   })
 }
 
+export function makeGeminiSuccessResponse<T>(payload: T): Response {
+  const body = {
+    candidates: [
+      {
+        content: {
+          role: 'model',
+          parts: [{ text: JSON.stringify(payload) }],
+        },
+        finishReason: 'STOP',
+      },
+    ],
+    usageMetadata: {
+      promptTokenCount: 100,
+      candidatesTokenCount: 50,
+      totalTokenCount: 150,
+    },
+    modelVersion: 'gemini-test-001',
+  }
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
 export function makeProviderErrorResponse(
   provider: GenAiProviderId,
   status: number,
