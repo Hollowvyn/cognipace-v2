@@ -1,3 +1,4 @@
+import { isAiAssessmentAvailable } from '@/features/genai/server/genai-settings-service'
 import {
   serializeNormalizedPracticeState,
   serializePracticeDetails,
@@ -110,6 +111,7 @@ async function getMainAppShellData(db: Db, now: Date) {
       practice: settings.practice,
       review: settings.review,
       assessment: settings.assessment,
+      aiAssessment: settings.aiAssessment,
     },
   } satisfies Omit<PopupAppShellData, 'surface' | 'popup'>
 
@@ -124,12 +126,18 @@ async function getOverlayAppShellData(
   request: Extract<AppShellRequest, { surface: 'overlay' }>,
   now: Date,
 ) {
-  const settings = await getSettings(db)
+  const [settings, aiAssessmentAvailable] = await Promise.all([
+    getSettings(db),
+    isAiAssessmentAvailable(db),
+  ])
 
   return {
     generatedAt: now.toISOString(),
     surface: 'overlay',
-    overlay: await getOverlayPayload(db, request, now, settings),
+    overlay: {
+      ...(await getOverlayPayload(db, request, now, settings)),
+      aiAssessmentAvailable,
+    },
   } satisfies AppShellData
 }
 

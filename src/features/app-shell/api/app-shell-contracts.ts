@@ -109,11 +109,14 @@ const overlayAutomationSettingsSchema = z.object({
   autoDetectSolved: userSettingsSchema.shape.overlay.shape.autoDetectSolved,
 })
 
+const appShellAiAssessmentSettingsSchema = userSettingsSchema.shape.aiAssessment
+
 const appShellSettingsSummarySchema = z.object({
   appearance: userSettingsSchema.shape.appearance,
   practice: userSettingsSchema.shape.practice,
   review: userSettingsSchema.shape.review,
   assessment: appShellAssessmentSettingsSchema,
+  aiAssessment: appShellAiAssessmentSettingsSchema,
 })
 
 const appShellPracticeProgressSchema = z.object({
@@ -173,6 +176,7 @@ export const overlayAppShellDataSchema = z.object({
     practice: practiceDetailsSchema.nullable(),
     timing: appShellAssessmentSettingsSchema,
     nextStep: overlayNextStepSchema.nullable(),
+    aiAssessmentAvailable: z.boolean(),
   }),
 })
 

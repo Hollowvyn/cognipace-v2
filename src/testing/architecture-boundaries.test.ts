@@ -97,6 +97,25 @@ describe('architecture boundaries', () => {
 
     expect(offenders.map(toRepoPath)).toEqual([])
   })
+
+  it('keeps the apiKey literal out of every feature except genai', () => {
+    const apiKeyPattern = /\bapiKey\b/
+    const genaiPath = `${join(srcRoot, 'features/genai')}/`
+    const offenders = sourceFiles([
+      'app',
+      'components',
+      'entrypoints',
+      'features',
+      'hooks',
+      'lib',
+      'platform',
+      'utils',
+    ])
+      .filter((file) => !file.startsWith(genaiPath))
+      .filter((file) => apiKeyPattern.test(readFileSync(file, 'utf8')))
+
+    expect(offenders.map(toRepoPath)).toEqual([])
+  })
 })
 
 function sourceFiles(directories: string[]) {
