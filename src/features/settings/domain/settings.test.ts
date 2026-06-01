@@ -319,3 +319,74 @@ describe('settings domain', () => {
     ).toBe(false)
   })
 })
+
+describe('aiAssessment settings', () => {
+  it('parses old rows missing the aiAssessment block by filling defaults', () => {
+    const oldRow = {
+      schemaVersion: 1,
+      appearance: { themeMode: 'system' },
+      practice: {
+        dailyGoal: 4,
+        mode: 'studyPlan',
+        problemFilters: { skipPremium: false },
+      },
+      review: { targetRetention: 0.9, order: 'dueFirst' },
+      assessment: {
+        requireSolveTime: false,
+        strictTiming: false,
+        timeTargetsMinutes: { easy: 20, medium: 35, hard: 50 },
+      },
+      overlay: { autoDetectSolved: true },
+      reminders: { daily: { enabled: false, time: '09:00' } },
+    }
+    const parsed = parseStoredUserSettings(oldRow)
+    expect(parsed.aiAssessment).toEqual({
+      enabled: false,
+      provider: 'openai',
+      model: '',
+    })
+  })
+
+  it('defaultUserSettings.aiAssessment matches documented defaults', () => {
+    expect(defaultUserSettings.aiAssessment).toEqual({
+      enabled: false,
+      provider: 'openai',
+      model: '',
+    })
+  })
+
+  it('merges an aiAssessment patch into existing settings', () => {
+    const next = mergeUserSettings(defaultUserSettings, {
+      aiAssessment: { enabled: true, model: 'gpt-test' },
+    })
+    expect(next.aiAssessment).toEqual({
+      enabled: true,
+      provider: 'openai',
+      model: 'gpt-test',
+    })
+  })
+
+  it('createUserSettingsPatch produces a diff containing changed aiAssessment fields only', () => {
+    const draft = {
+      ...defaultUserSettings,
+      aiAssessment: {
+        ...defaultUserSettings.aiAssessment,
+        enabled: true,
+        provider: 'anthropic' as const,
+      },
+    }
+    const patch = createUserSettingsPatch(defaultUserSettings, draft)
+    expect(patch).toEqual({
+      aiAssessment: { enabled: true, provider: 'anthropic' },
+    })
+  })
+
+  it('rejects an invalid provider value', () => {
+    expect(() =>
+      mergeUserSettings(defaultUserSettings, {
+        // @ts-expect-error — invalid provider id, deliberately ill-typed
+        aiAssessment: { provider: 'mistral' },
+      }),
+    ).toThrow()
+  })
+})
