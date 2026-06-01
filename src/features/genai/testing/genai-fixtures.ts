@@ -29,6 +29,22 @@ export function makeOpenAiSuccessResponse<T>(payload: T): Response {
   return jsonResponse(body, 200)
 }
 
+export function makeAnthropicSuccessResponse<T>(payload: T): Response {
+  const body = {
+    id: 'msg_test_1',
+    type: 'message',
+    role: 'assistant',
+    model: 'claude-test',
+    content: [{ type: 'text', text: JSON.stringify(payload) }],
+    stop_reason: 'end_turn',
+    usage: { input_tokens: 100, output_tokens: 50 },
+  }
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
 export function makeProviderErrorResponse(
   provider: GenAiProviderId,
   status: number,
