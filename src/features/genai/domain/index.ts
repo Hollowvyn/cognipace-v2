@@ -9,3 +9,11 @@ export {
   type GenAiProviderId,
   type GenAiProviderMetadata,
 } from './genai-types'
+
+export {
+  aiProviderSecretsSchema,
+  emptyAiProviderSecrets,
+  makeEmptyAiProviderSecretPresence,
+  type AiProviderSecretPresence,
+  type AiProviderSecrets,
+} from './genai-secrets-types'
