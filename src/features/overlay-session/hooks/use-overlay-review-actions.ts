@@ -15,8 +15,10 @@ import { readErrorMessage } from '@/utils/errors'
 
 import {
   createOverlayDraftFromLog,
+  deriveOverlayAssessmentSessionContext,
   hasSubmittedSessionChanges,
   hasUnpersistedDraftChanges,
+  toAssessmentPracticeContext,
   toPracticeLogPatch,
   type OverlayFeedback,
   type OverlaySessionState,
@@ -176,12 +178,20 @@ export function useOverlayReviewActions({
       return
     }
 
+    const session = deriveOverlayAssessmentSessionContext({
+      context: currentContext,
+      overlay: overlayRef.current,
+      submissionSource: 'collapsed-quick',
+      timerUsed: timer.hasStarted(),
+    })
+
     const decision = evaluateLeetCodeAssessment({
       intent: 'quick-submit',
       difficulty: problem.difficulty,
       timing: currentContext.timing,
       elapsedSeconds: timer.readElapsedSeconds(),
-      timerUsed: timer.hasStarted(),
+      timerUsed: session.timerUsed,
+      practiceContext: toAssessmentPracticeContext(session),
     })
 
     if (decision.status === 'blocked') {
@@ -201,13 +211,21 @@ export function useOverlayReviewActions({
       return
     }
 
+    const session = deriveOverlayAssessmentSessionContext({
+      context: currentContext,
+      overlay: overlayRef.current,
+      submissionSource: 'manual-overlay',
+      timerUsed: timer.hasStarted(),
+    })
+
     const decision = evaluateLeetCodeAssessment({
       intent: 'selected-rating',
       difficulty: problem.difficulty,
       timing: currentContext.timing,
       selectedRating: overlayRef.current.selectedRating,
       elapsedSeconds: timer.readElapsedSeconds(),
-      timerUsed: timer.hasStarted(),
+      timerUsed: session.timerUsed,
+      practiceContext: toAssessmentPracticeContext(session),
     })
 
     if (decision.status === 'blocked') {
@@ -227,12 +245,20 @@ export function useOverlayReviewActions({
       return
     }
 
+    const session = deriveOverlayAssessmentSessionContext({
+      context: currentContext,
+      overlay: overlayRef.current,
+      submissionSource: 'manual-overlay',
+      timerUsed: timer.hasStarted(),
+    })
+
     const decision = evaluateLeetCodeAssessment({
       intent: 'fail',
       difficulty: problem.difficulty,
       timing: currentContext.timing,
       elapsedSeconds: timer.readElapsedSeconds(),
-      timerUsed: timer.hasStarted(),
+      timerUsed: session.timerUsed,
+      practiceContext: toAssessmentPracticeContext(session),
     })
 
     if (decision.status === 'blocked') {
@@ -254,6 +280,14 @@ export function useOverlayReviewActions({
       return false
     }
 
+    const session = deriveOverlayAssessmentSessionContext({
+      context: currentContext,
+      overlay: overlayRef.current,
+      submissionSource: 'leetcode-watcher',
+      timerUsed: timer.hasStarted(),
+    })
+    const practiceContext = toAssessmentPracticeContext(session)
+
     const decision = evaluateLeetCodeAssessment(
       result.status === 'accepted'
         ? {
@@ -261,14 +295,16 @@ export function useOverlayReviewActions({
             difficulty: problem.difficulty,
             timing: currentContext.timing,
             elapsedSeconds: timer.readElapsedSeconds(),
-            timerUsed: timer.hasStarted(),
+            timerUsed: session.timerUsed,
+            practiceContext,
           }
         : {
             intent: 'fail',
             difficulty: problem.difficulty,
             timing: currentContext.timing,
             elapsedSeconds: timer.readElapsedSeconds(),
-            timerUsed: timer.hasStarted(),
+            timerUsed: session.timerUsed,
+            practiceContext,
           },
     )
 

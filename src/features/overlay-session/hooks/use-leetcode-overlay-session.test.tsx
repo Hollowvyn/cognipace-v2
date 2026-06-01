@@ -186,6 +186,51 @@ describe('useLeetCodeOverlaySession', () => {
     expect(result.current.overlay.reviewStatus).toBe('submitted-clean')
   })
 
+  it('fires the Easy gate on a fast recall solve beating the previous best', async () => {
+    const startTime = Date.now()
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(startTime)
+    const { result } = await renderReadySession({
+      practice: createSavedPracticeDetails({
+        latestAttempt: { elapsedSeconds: 1800 },
+      }),
+    })
+
+    act(() => {
+      result.current.actions.startTimer()
+    })
+    // Medium target = 35 * 60 = 2100s. 600s is 28% of target and beats prior best (1800s).
+    nowSpy.mockReturnValue(startTime + 600 * 1000)
+
+    await runOverlayAction(result.current.actions.prepareQuickSubmit)
+
+    expect(latestSavedReviewRequest()).toMatchObject({
+      rating: 'easy',
+      elapsedSeconds: 600,
+      isCorrect: true,
+    })
+  })
+
+  it('does not fire the Easy gate on a first solve even with a fast time', async () => {
+    const startTime = Date.now()
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(startTime)
+    const { result } = await renderReadySession({
+      // Default practice is null → first-solve. Easy gate cannot fire.
+    })
+
+    act(() => {
+      result.current.actions.startTimer()
+    })
+    nowSpy.mockReturnValue(startTime + 600 * 1000)
+
+    await runOverlayAction(result.current.actions.prepareQuickSubmit)
+
+    expect(latestSavedReviewRequest()).toMatchObject({
+      rating: 'good',
+      elapsedSeconds: 600,
+      isCorrect: true,
+    })
+  })
+
   it('submits selected rating without requiring timer usage', async () => {
     const { result } = await renderReadySession({
       timing: { requireSolveTime: true },
@@ -598,8 +643,9 @@ type DeferredPracticeDetails = ReturnType<
 async function renderReadySession(options?: {
   autoDetectSolved?: boolean
   timing?: Partial<OverlayAppShellData['overlay']['timing']>
+  practice?: OverlayAppShellData['overlay']['practice']
 }): Promise<RenderedOverlaySession> {
-  if (options?.autoDetectSolved || options?.timing) {
+  if (options?.autoDetectSolved || options?.timing || options?.practice !== undefined) {
     const overlayDataOptions: Parameters<typeof createOverlayData>[0] = {}
 
     if (options.autoDetectSolved !== undefined) {
@@ -608,6 +654,10 @@ async function renderReadySession(options?: {
 
     if (options.timing) {
       overlayDataOptions.timing = options.timing
+    }
+
+    if (options.practice !== undefined) {
+      overlayDataOptions.practice = options.practice
     }
 
     vi.mocked(getOverlayAppShellDataViaRuntime).mockResolvedValue(
