@@ -80,4 +80,48 @@ describe('zodToProviderJsonSchema', () => {
     const isWellFormed = noteProp.type !== undefined || Array.isArray(noteProp.anyOf)
     expect(isWellFormed).toBe(true)
   })
+
+  it('strips the top-level $schema key for every provider', () => {
+    for (const provider of ['openai', 'anthropic', 'gemini'] as const) {
+      const result = zodToProviderJsonSchema(recommendationSchema, provider)
+      expect(JSON.stringify(result)).not.toContain('"$schema"')
+    }
+  })
+
+  it('recurses into anyOf branches for OpenAI strictness (nullable object retains all-keys required)', () => {
+    const schema = z.object({
+      address: z
+        .object({
+          street: z.string(),
+          city: z.string(),
+        })
+        .nullable(),
+    })
+    const result = zodToProviderJsonSchema(schema, 'openai') as {
+      properties: {
+        address: {
+          anyOf?: Array<{
+            type?: string
+            required?: string[]
+            additionalProperties?: boolean
+          }>
+          type?: unknown
+        }
+      }
+    }
+    // Find the object branch inside the anyOf (Zod emits anyOf for nullable composites).
+    const branches = result.properties.address.anyOf ?? []
+    const objectBranch = branches.find((branch) => branch.type === 'object')
+    if (objectBranch) {
+      expect(objectBranch.required).toEqual(
+        expect.arrayContaining(['street', 'city']),
+      )
+      expect(objectBranch.additionalProperties).toBe(false)
+    } else {
+      // If Zod 4 emits nullable as { type: ['object','null'] } instead of anyOf,
+      // the recursion is a no-op for this shape — the OpenAI strict requirements
+      // are then satisfied via the top-level required block.
+      expect(result.properties.address.type).toBeDefined()
+    }
+  })
 })

@@ -18,7 +18,14 @@ export type GenAiProviderConfig = {
   provider: GenAiProviderId
   model: string
   apiKey: string
-  /** Optional override for proxies, self-hosted, OpenAI-compatible endpoints. */
+  /**
+   * Optional override for proxies, self-hosted endpoints, or OpenAI-compatible
+   * services. Each adapter appends a provider-specific path:
+   * - OpenAI: `${baseUrl}/responses` (the default `https://api.openai.com/v1`
+   *   already contains the API version; override must include `/v1` too)
+   * - Anthropic: `${baseUrl}/v1/messages`
+   * - Gemini: `${baseUrl}/v1beta/models/{model}:generateContent`
+   */
   baseUrl?: string
 }
 

@@ -6,7 +6,7 @@ export function zodToProviderJsonSchema(
   schema: ZodType<unknown>,
   provider: GenAiProviderId,
 ): unknown {
-  const raw = z.toJSONSchema(schema)
+  const raw = stripTopLevelSchemaKey(z.toJSONSchema(schema))
   switch (provider) {
     case 'openai':
       return applyOpenAiStrictness(raw)
@@ -15,6 +15,19 @@ export function zodToProviderJsonSchema(
     case 'gemini':
       return stripGeminiUnsupported(raw)
   }
+}
+
+function stripTopLevelSchemaKey(node: unknown): unknown {
+  if (typeof node !== 'object' || node === null || Array.isArray(node)) {
+    return node
+  }
+  const obj = node as Record<string, unknown>
+  if (!('$schema' in obj)) {
+    return node
+  }
+  const result = { ...obj }
+  delete result['$schema']
+  return result
 }
 
 function applyOpenAiStrictness(node: unknown): unknown {
@@ -38,6 +51,13 @@ function applyOpenAiStrictness(node: unknown): unknown {
 
   if (result.type === 'array' && result.items !== undefined) {
     result.items = applyOpenAiStrictness(result.items)
+  }
+
+  for (const key of ['anyOf', 'oneOf', 'allOf'] as const) {
+    const branch = result[key]
+    if (Array.isArray(branch)) {
+      result[key] = branch.map((member) => applyOpenAiStrictness(member))
+    }
   }
 
   return result
