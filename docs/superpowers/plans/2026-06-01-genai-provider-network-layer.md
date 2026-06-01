@@ -1055,7 +1055,7 @@ export async function requestJson<T>(
       },
       {
         timeoutMs: request.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-        externalSignal: request.signal,
+        ...(request.signal !== undefined ? { externalSignal: request.signal } : {}),
       },
     )
   } catch (error) {
@@ -1527,7 +1527,7 @@ export async function requestJson<T>(
       },
       {
         timeoutMs: request.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-        externalSignal: request.signal,
+        ...(request.signal !== undefined ? { externalSignal: request.signal } : {}),
       },
     )
   } catch (error) {
@@ -2000,7 +2000,7 @@ export async function requestJson<T>(
       },
       {
         timeoutMs: request.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-        externalSignal: request.signal,
+        ...(request.signal !== undefined ? { externalSignal: request.signal } : {}),
       },
     )
   } catch (error) {
