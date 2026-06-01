@@ -38,7 +38,7 @@ describe('useGenAiSecretPresenceQuery', () => {
       openai: true,
       anthropic: false,
       gemini: false,
-    } as never)
+    })
 
     const { result } = renderHook(() => useGenAiSecretPresenceQuery(), { wrapper })
 
@@ -61,7 +61,7 @@ describe('useSetAiProviderSecretMutation', () => {
       openai: true,
       anthropic: false,
       gemini: false,
-    } as never)
+    })
 
     const { result } = renderHook(() => useSetAiProviderSecretMutation(), {
       wrapper,
@@ -86,7 +86,7 @@ describe('useSetAiProviderSecretMutation', () => {
       openai: true,
       anthropic: false,
       gemini: false,
-    } as never)
+    })
 
     const { result } = renderHook(() => useSetAiProviderSecretMutation(), {
       wrapper,
@@ -109,7 +109,7 @@ describe('useSetAiProviderSecretMutation', () => {
 
   it('updates the presence cache on success', async () => {
     const presence = { openai: false, anthropic: true, gemini: false }
-    vi.mocked(sendMessage).mockResolvedValue(presence as never)
+    vi.mocked(sendMessage).mockResolvedValue(presence)
 
     const { result } = renderHook(() => useSetAiProviderSecretMutation(), {
       wrapper,
@@ -131,7 +131,7 @@ describe('useSetAiProviderSecretMutation', () => {
 describe('useClearAiProviderSecretMutation', () => {
   it('calls clearAiProviderSecret via sendMessage and updates the cache', async () => {
     const presence = { openai: false, anthropic: false, gemini: false }
-    vi.mocked(sendMessage).mockResolvedValue(presence as never)
+    vi.mocked(sendMessage).mockResolvedValue(presence)
 
     const { result } = renderHook(() => useClearAiProviderSecretMutation(), {
       wrapper,
