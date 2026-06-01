@@ -25,6 +25,17 @@ export {
   backupRequestSchema,
   backupSummarySchema,
 } from '@/features/backup/api/backup-contracts'
+import type {
+  ClearAiProviderSecretRequest,
+  GetAiProviderSecretPresenceRequest,
+  SetAiProviderSecretRequest,
+} from '@/features/genai/api'
+export {
+  clearAiProviderSecretRequestSchema,
+  getAiProviderSecretPresenceRequestSchema,
+  setAiProviderSecretRequestSchema,
+} from '@/features/genai/api'
+import type { AiProviderSecretPresence } from '@/features/genai'
 import {
   leetcodeProblemRemoteRequestSchema,
   leetcodeSubmissionResultRemoteRequestSchema,
@@ -272,6 +283,15 @@ export interface ProtocolMap {
   'backup.validateFullBackup'(request: BackupPayloadRequest): BackupSummary
   'backup.restoreFullBackup'(request: BackupPayloadRequest): BackupSummary
   'backup.resetLocalData'(request: BackupRequest): null
+  'genai.getAiProviderSecretPresence'(
+    request: GetAiProviderSecretPresenceRequest,
+  ): AiProviderSecretPresence
+  'genai.setAiProviderSecret'(
+    request: SetAiProviderSecretRequest,
+  ): AiProviderSecretPresence
+  'genai.clearAiProviderSecret'(
+    request: ClearAiProviderSecretRequest,
+  ): AiProviderSecretPresence
   'sync.getStatus'(request: SyncRequest): SerializedSyncStatus
   'sync.validateGithubToken'(request: SyncGithubTokenRequest): SyncActionResult
   'sync.validateStoredGithubToken'(request: SyncRequest): SyncActionResult

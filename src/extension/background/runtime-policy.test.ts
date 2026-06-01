@@ -248,6 +248,30 @@ describe('runtime-policy', () => {
     ).toBe(false)
   })
 
+  describe('genai method surface enforcement', () => {
+    it('allows popup and dashboard to call genai secret methods', () => {
+      for (const method of [
+        'genai.getAiProviderSecretPresence',
+        'genai.setAiProviderSecret',
+        'genai.clearAiProviderSecret',
+      ] as const) {
+        expect(canCallExtensionMethod(method, 'popup')).toBe(true)
+        expect(canCallExtensionMethod(method, 'dashboard')).toBe(true)
+      }
+    })
+
+    it('blocks content-script and background from calling genai secret methods', () => {
+      for (const method of [
+        'genai.getAiProviderSecretPresence',
+        'genai.setAiProviderSecret',
+        'genai.clearAiProviderSecret',
+      ] as const) {
+        expect(canCallExtensionMethod(method, 'content-script')).toBe(false)
+        expect(canCallExtensionMethod(method, 'background')).toBe(false)
+      }
+    })
+  })
+
   it('allows content scripts to use practice controls for the current problem', () => {
     expect(() =>
       assertCanSenderCallExtensionMethod(

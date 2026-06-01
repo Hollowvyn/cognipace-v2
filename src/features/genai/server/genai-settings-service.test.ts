@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { createTestDb } from '@/platform/db/test-db'
-import {
-  getSettings,
-  updateSettings,
-} from '@/features/settings/server/settings-service'
+import { updateSettings } from '@/features/settings/server/settings-service'
 
 import {
   clearAiProviderSecret,
