@@ -10,3 +10,11 @@ export {
   type GenAiProviderId,
   type GenAiProviderMetadata,
 } from './domain'
+
+export {
+  useClearAiProviderSecretMutation,
+  useGenAiSecretPresenceQuery,
+  useSetAiProviderSecretMutation,
+  type ClearAiProviderSecretHookInput,
+  type SetAiProviderSecretHookInput,
+} from './api'
