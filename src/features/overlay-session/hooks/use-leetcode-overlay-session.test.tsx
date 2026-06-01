@@ -805,6 +805,7 @@ function createOverlayData(options?: {
         ...options?.timing,
       },
       nextStep,
+      aiAssessmentAvailable: false,
     },
   }
 }

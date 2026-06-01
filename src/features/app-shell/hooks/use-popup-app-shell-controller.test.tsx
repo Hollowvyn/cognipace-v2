@@ -93,6 +93,7 @@ const popupData = {
     practice: defaultUserSettings.practice,
     review: defaultUserSettings.review,
     assessment: defaultUserSettings.assessment,
+    aiAssessment: defaultUserSettings.aiAssessment,
   },
   popup: {
     queuePreview: [

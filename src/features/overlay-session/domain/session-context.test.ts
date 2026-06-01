@@ -93,6 +93,7 @@ function makeContext(
       timeTargetsMinutes: { easy: 20, medium: 35, hard: 50 },
     },
     nextStep: null,
+    aiAssessmentAvailable: false,
   }
 }
 
