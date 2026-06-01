@@ -38,7 +38,7 @@ describe('anthropic requestJson', () => {
     vi.restoreAllMocks()
   })
 
-  async function expectNoKeyLeak(result: { message?: string }) {
+  function expectNoKeyLeak(result: { message?: string }) {
     expect(result.message ?? '').not.toContain(API_KEY)
   }
 
@@ -94,7 +94,7 @@ describe('anthropic requestJson', () => {
     expect(result.status).toBe('error')
     if (result.status === 'error') {
       expect(result.code).toBe('invalid-output')
-      await expectNoKeyLeak(result)
+      expectNoKeyLeak(result)
     }
   })
 
@@ -111,7 +111,7 @@ describe('anthropic requestJson', () => {
     expect(result.status).toBe('error')
     if (result.status === 'error') {
       expect(result.code).toBe('invalid-output')
-      await expectNoKeyLeak(result)
+      expectNoKeyLeak(result)
     }
   })
 
@@ -127,7 +127,7 @@ describe('anthropic requestJson', () => {
     expect(result.status).toBe('error')
     if (result.status === 'error') {
       expect(result.code).toBe('invalid-output')
-      await expectNoKeyLeak(result)
+      expectNoKeyLeak(result)
     }
   })
 
@@ -141,7 +141,7 @@ describe('anthropic requestJson', () => {
     expect(result.status).toBe('error')
     if (result.status === 'error') {
       expect(result.code).toBe('invalid-output')
-      await expectNoKeyLeak(result)
+      expectNoKeyLeak(result)
     }
   })
 
@@ -158,7 +158,7 @@ describe('anthropic requestJson', () => {
     expect(result.status).toBe('error')
     if (result.status === 'error') {
       expect(result.code).toBe(code)
-      await expectNoKeyLeak(result)
+      expectNoKeyLeak(result)
     }
   })
 
@@ -171,7 +171,7 @@ describe('anthropic requestJson', () => {
     expect(result.status).toBe('error')
     if (result.status === 'error') {
       expect(result.code).toBe('network')
-      await expectNoKeyLeak(result)
+      expectNoKeyLeak(result)
     }
   })
 

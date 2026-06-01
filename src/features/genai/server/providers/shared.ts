@@ -33,7 +33,7 @@ export async function fetchWithTimeout(
     return await fetch(url, { ...init, signal: composedSignal })
   } catch (error) {
     if (timeoutController.signal.aborted) {
-      const reason = timeoutController.signal.reason
+      const reason: unknown = timeoutController.signal.reason
       throw reason instanceof GenAiTimeoutError ? reason : new GenAiTimeoutError()
     }
     throw error

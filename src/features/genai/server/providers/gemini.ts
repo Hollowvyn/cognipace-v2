@@ -118,7 +118,7 @@ function extractText(envelope: unknown): string | null {
   if (!Array.isArray(candidates) || candidates.length === 0) {
     return null
   }
-  const first = candidates[0]
+  const first: unknown = candidates[0]
   if (!isObject(first)) {
     return null
   }
@@ -130,7 +130,7 @@ function extractText(envelope: unknown): string | null {
   if (!Array.isArray(parts) || parts.length === 0) {
     return null
   }
-  const part = parts[0]
+  const part: unknown = parts[0]
   if (isObject(part) && typeof part.text === 'string') {
     return part.text
   }
