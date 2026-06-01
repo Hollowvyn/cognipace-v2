@@ -16,5 +16,6 @@ export default defineConfig({
     exclude: [...configDefaults.exclude, '.worktrees/**'],
     globals: true,
     setupFiles: ['./src/testing/setup-tests.ts'],
+    env: { TZ: 'UTC' },
   },
 })
