@@ -20,7 +20,7 @@ vi.mock('./providers/gemini', () => ({
 import { requestJson as openaiRequestJson } from './providers/openai'
 import { requestJson as anthropicRequestJson } from './providers/anthropic'
 import { requestJson as geminiRequestJson } from './providers/gemini'
-import { generateJson } from './genai-client'
+import { generateJson } from './genai-service'
 
 const schema = z.object({ ok: z.boolean() })
 

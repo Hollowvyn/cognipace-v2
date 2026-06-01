@@ -1,1 +1,1 @@
-export { generateJson } from './genai-client'
+export { generateJson } from './genai-service'
