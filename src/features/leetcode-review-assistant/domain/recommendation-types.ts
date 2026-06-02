@@ -5,16 +5,16 @@ import type {
   GenAiProviderMetadata,
 } from '@/features/genai'
 import type { OverlayAssessmentSessionContext } from '@/features/overlay-session'
-import type { ProblemDifficulty } from '@/features/problems'
+import type { ProblemDifficulty, ProblemSlug } from '@/features/problems'
 
 export const PROMPT_VERSION = 'leetcode-assessment-v1' as const
 export type PromptVersion = typeof PROMPT_VERSION
 
 export type AssessmentRecommendationProblem = {
-  slug: string
+  slug: ProblemSlug
   title: string
   difficulty: ProblemDifficulty
-  topics: ReadonlyArray<string>
+  topics: readonly string[]
   /** May be omitted or truncated; see STATEMENT_CHAR_LIMIT. */
   statement?: string
 }
@@ -79,14 +79,14 @@ export type AssessmentRecommendation = {
   confidence: AssessmentRecommendationConfidence
   summary: string
   primaryReason: string
-  evidence: ReadonlyArray<string>
+  evidence: readonly string[]
   complexity: {
     time: string
     space: string
     confidence: AssessmentRecommendationConfidence
   }
-  improvementPoints: ReadonlyArray<string>
-  edgeCaseNotes: ReadonlyArray<string>
+  improvementPoints: readonly string[]
+  edgeCaseNotes: readonly string[]
   shouldUpdateRating: boolean
   promptVersion: PromptVersion
 }
