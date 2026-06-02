@@ -1,7 +1,4 @@
-import type {
-  AssessmentTimingSettings,
-  LeetCodeAssessmentDecision,
-} from '@/features/assessment'
+import type { LeetCodeAssessmentDecision } from '@/features/assessment'
 import type {
   GenAiProviderConfig,
   GenAiProviderMetadata,
@@ -19,12 +16,6 @@ import {
   type AssessmentRecommendationTiming,
   type RecommendAssessmentInput,
 } from '../domain/recommendation-types'
-
-export const _baseTiming: AssessmentTimingSettings = {
-  requireSolveTime: false,
-  strictTiming: false,
-  timeTargetsMinutes: { easy: 20, medium: 35, hard: 50 },
-}
 
 const baseLatestAttempt: OverlayAssessmentLatestAttempt = {
   id: 'attempt-1',
