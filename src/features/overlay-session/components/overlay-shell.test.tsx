@@ -103,6 +103,7 @@ function createSession(
           hard: 50,
         },
       },
+      aiAssessmentAvailable: false,
     },
     draft: {
       clearField: vi.fn(),

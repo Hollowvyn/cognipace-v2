@@ -124,6 +124,7 @@ const shellData = {
         hard: 50,
       },
     },
+    aiAssessment: { enabled: false, provider: 'openai', model: '' },
   },
   popup: {
     queuePreview: [],

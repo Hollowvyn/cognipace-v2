@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { genAiProviderIds } from '@/features/genai'
+
 export const reviewOrderSchema = z.enum([
   'dueFirst',
   'weakestFirst',
@@ -110,6 +112,20 @@ const assessmentSettingsSchema = z
     }
   })
 
+export const aiAssessmentProviderSchema = z.enum(genAiProviderIds)
+
+export const aiAssessmentModelSchema = z
+  .string()
+  .max(120, 'Maximum 120 characters')
+
+const aiAssessmentSettingsSchema = z
+  .object({
+    enabled: z.boolean().default(false),
+    provider: aiAssessmentProviderSchema.default('openai'),
+    model: aiAssessmentModelSchema.default(''),
+  })
+  .strict()
+
 const overlaySettingsSchema = z
   .object({
     autoDetectSolved: z.boolean().default(true),
@@ -136,6 +152,11 @@ export const userSettingsSchema = z
     practice: practiceSettingsSchema,
     review: reviewSettingsSchema,
     assessment: assessmentSettingsSchema,
+    aiAssessment: aiAssessmentSettingsSchema.default({
+      enabled: false,
+      provider: 'openai',
+      model: '',
+    }),
     overlay: overlaySettingsSchema,
     reminders: remindersSettingsSchema,
   })
@@ -166,6 +187,14 @@ export const userSettingsPatchSchema = z
           .partial()
           .strict()
           .optional(),
+      })
+      .strict()
+      .optional(),
+    aiAssessment: z
+      .object({
+        enabled: aiAssessmentSettingsSchema.shape.enabled.optional(),
+        provider: aiAssessmentSettingsSchema.shape.provider.optional(),
+        model: aiAssessmentSettingsSchema.shape.model.optional(),
       })
       .strict()
       .optional(),
@@ -212,6 +241,11 @@ export const defaultUserSettings: UserSettings = {
       medium: 35,
       hard: 50,
     },
+  },
+  aiAssessment: {
+    enabled: false,
+    provider: 'openai',
+    model: '',
   },
   overlay: {
     autoDetectSolved: true,
@@ -304,6 +338,10 @@ function createMergedUserSettings(
         ...current.assessment.timeTargetsMinutes,
         ...patch.assessment?.timeTargetsMinutes,
       },
+    },
+    aiAssessment: {
+      ...current.aiAssessment,
+      ...patch.aiAssessment,
     },
     overlay: {
       ...current.overlay,
@@ -410,6 +448,20 @@ export function createUserSettingsPatch(
   }
   if (hasObjectKeys(assessmentPatch)) {
     patch.assessment = assessmentPatch
+  }
+
+  const aiAssessmentPatch: NonNullable<UserSettingsPatch['aiAssessment']> = {}
+  if (saved.aiAssessment.enabled !== draft.aiAssessment.enabled) {
+    aiAssessmentPatch.enabled = draft.aiAssessment.enabled
+  }
+  if (saved.aiAssessment.provider !== draft.aiAssessment.provider) {
+    aiAssessmentPatch.provider = draft.aiAssessment.provider
+  }
+  if (saved.aiAssessment.model !== draft.aiAssessment.model) {
+    aiAssessmentPatch.model = draft.aiAssessment.model
+  }
+  if (hasObjectKeys(aiAssessmentPatch)) {
+    patch.aiAssessment = aiAssessmentPatch
   }
 
   const overlayPatch: NonNullable<UserSettingsPatch['overlay']> = {}

@@ -10,6 +10,10 @@ export const queryKeys = {
     overlay: (problemSlug?: string | null) =>
       [...queryKeys.appShell.all, 'overlay', problemSlug ?? null] as const,
   },
+  genai: {
+    all: ['genai'] as const,
+    secretPresence: () => [...queryKeys.genai.all, 'secret-presence'] as const,
+  },
   practice: {
     all: ['practice-details'] as const,
     details: (problemSlug: string, at?: string | null) =>

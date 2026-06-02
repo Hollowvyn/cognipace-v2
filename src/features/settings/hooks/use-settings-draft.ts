@@ -2,6 +2,8 @@ import { useEffect, useReducer, useState } from 'react'
 
 import { readErrorMessage } from '@/utils/errors'
 
+import type { GenAiProviderId } from '@/features/genai'
+
 import { useSettings, useUpdateSettings } from '../api/settings-api'
 import {
   createUserSettingsPatch,
@@ -38,6 +40,9 @@ export interface SettingsDraftActions {
   resetDefaults: () => Promise<void>
   retry: () => void
   save: () => Promise<void>
+  setAiEnabled: (value: boolean) => void
+  setAiModel: (value: string) => void
+  setAiProvider: (value: GenAiProviderId) => void
   setAutoDetectSolved: (value: boolean) => void
   setNumberInput: (field: SettingsNumberField, value: string) => void
   setRequireSolveTime: (value: boolean) => void
@@ -79,6 +84,9 @@ type SettingsDraftAction =
   | { type: 'loaded'; settings: UserSettings }
   | { type: 'number-input-changed'; field: SettingsNumberField; value: string }
   | { type: 'saved'; settings: UserSettings }
+  | { type: 'set-ai-enabled'; value: boolean }
+  | { type: 'set-ai-model'; value: string }
+  | { type: 'set-ai-provider'; value: GenAiProviderId }
   | { type: 'set-auto-detect-solved'; value: boolean }
   | { type: 'set-require-solve-time'; value: boolean }
   | { type: 'set-review-order'; value: ReviewOrder }
@@ -246,6 +254,9 @@ export function useSettingsDraft(): SettingsDraftController {
         void settingsQuery.refetch()
       },
       save,
+      setAiEnabled: (value) => dispatch({ type: 'set-ai-enabled', value }),
+      setAiModel: (value) => dispatch({ type: 'set-ai-model', value }),
+      setAiProvider: (value) => dispatch({ type: 'set-ai-provider', value }),
       setAutoDetectSolved: (value) => {
         dispatch({ type: 'set-auto-detect-solved', value })
       },
@@ -297,6 +308,33 @@ function settingsDraftReducer(
       return applyNumberInputChange(state, action.field, action.value)
     case 'saved':
       return createStateFromSettings(action.type, action.settings)
+    case 'set-ai-enabled':
+      if (!state.draft) return state
+      return {
+        ...state,
+        draft: {
+          ...state.draft,
+          aiAssessment: { ...state.draft.aiAssessment, enabled: action.value },
+        },
+      }
+    case 'set-ai-model':
+      if (!state.draft) return state
+      return {
+        ...state,
+        draft: {
+          ...state.draft,
+          aiAssessment: { ...state.draft.aiAssessment, model: action.value },
+        },
+      }
+    case 'set-ai-provider':
+      if (!state.draft) return state
+      return {
+        ...state,
+        draft: {
+          ...state.draft,
+          aiAssessment: { ...state.draft.aiAssessment, provider: action.value },
+        },
+      }
     case 'set-auto-detect-solved':
       return updateDraft(state, (draft) => ({
         ...draft,

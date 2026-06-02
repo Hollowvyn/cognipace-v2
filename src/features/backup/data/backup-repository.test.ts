@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
+import { setAiProviderSecret } from '@/features/genai/server/genai-settings-service'
 import { defaultUserSettings } from '@/features/settings/domain'
 import {
   companies,
@@ -253,6 +254,25 @@ describe('backup repository', () => {
     expect(await db.select().from(trackSession)).toEqual([
       expect.objectContaining({ id: 'active' }),
     ])
+  })
+
+  it('excludes genai-secrets from the exported backup payload', async () => {
+    const { db } = await createTestDb({ now })
+    await insertCustomState(db)
+
+    // Store a real AI provider secret so genai-secrets row exists in settingsKv
+    await setAiProviderSecret(db, 'openai', { apiKey: 'sk-test' })
+
+    // Export must not throw a ZodError even though genai-secrets row is present
+    const backupData = await createBackupRepository(db).readBackupData()
+
+    // The payload must not contain the secret value or the genai-secrets key
+    const serialized = JSON.stringify(backupData)
+    expect(serialized).not.toContain('sk-test')
+    expect(serialized).not.toContain('genai-secrets')
+
+    // The settings array must only contain the user-settings row
+    expect(backupData.settings.every((row) => row.key === 'user-settings')).toBe(true)
   })
 })
 

@@ -82,6 +82,7 @@ export function createDashboardAppShellData(
           hard: 50,
         },
       },
+      aiAssessment: { enabled: false, provider: 'openai', model: '' },
     },
     overview: {
       practiceProgress,

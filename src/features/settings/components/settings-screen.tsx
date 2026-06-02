@@ -8,6 +8,7 @@ import { DataManagementScreen } from '@/features/backup'
 
 import { useSettingsDraft } from '../hooks/use-settings-draft'
 import { AdvancedReviewSection } from './sections/advanced-review-section'
+import { AiAssessmentSection } from './sections/ai-assessment-section'
 import { AppearanceSection } from './sections/appearance-section'
 import { DailyPracticeSection } from './sections/daily-practice-section'
 import { LeetCodeOverlaySection } from './sections/leetcode-overlay-section'
@@ -92,6 +93,14 @@ export function SettingsScreen() {
               draft={controller.draft}
               fieldErrors={controller.fieldErrors}
               numberInputs={controller.numberInputs}
+            />
+            <AiAssessmentSection
+              actions={{
+                setAiEnabled: controller.actions.setAiEnabled,
+                setAiModel: controller.actions.setAiModel,
+                setAiProvider: controller.actions.setAiProvider,
+              }}
+              draft={controller.draft}
             />
           </div>
           <SettingsSaveDock

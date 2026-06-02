@@ -5,6 +5,8 @@ import {
   backupPayloadRequestSchema,
   backupRequestSchema,
   backupSummarySchema,
+  clearAiProviderSecretRequestSchema,
+  getAiProviderSecretPresenceRequestSchema,
   leetcodeProblemRemoteRuntimeRequestSchema,
   leetcodeSubmissionResultRemoteRuntimeRequestSchema,
   onMessage,
@@ -23,6 +25,7 @@ import {
   problemsUpdateProblemRequestSchema,
   problemsUpsertFromPageRequestSchema,
   queueRequestSchema,
+  setAiProviderSecretRequestSchema,
   settingsCycleThemeModeRequestSchema,
   settingsRequestSchema,
   settingsToggleStudyModeRequestSchema,
@@ -61,6 +64,11 @@ import {
 } from '@/features/app-shell/api/app-shell-contracts'
 import { getAppShellData } from '@/features/app-shell/server/app-shell-service'
 import { getAnalyticsSummary } from '@/features/analytics/server/analytics-service'
+import {
+  clearAiProviderSecret,
+  getAiProviderSecretPresence,
+  setAiProviderSecret,
+} from '@/features/genai/server/genai-settings-service'
 import {
   exportFullBackup,
   resetLocalData,
@@ -1101,6 +1109,43 @@ export function registerBackgroundHandlers() {
     return runSettingsMutation(request.surface, (db) =>
       cycleThemeMode(db),
     ).then(() => null)
+  })
+
+  onMessage('genai.getAiProviderSecretPresence', ({ data, sender }) => {
+    const request = getAiProviderSecretPresenceRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'genai.getAiProviderSecretPresence',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(({ db }) => getAiProviderSecretPresence(db))
+  })
+
+  onMessage('genai.setAiProviderSecret', ({ data, sender }) => {
+    const request = setAiProviderSecretRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'genai.setAiProviderSecret',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(({ db }) =>
+      setAiProviderSecret(db, request.provider, request.secret),
+    )
+  })
+
+  onMessage('genai.clearAiProviderSecret', ({ data, sender }) => {
+    const request = clearAiProviderSecretRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'genai.clearAiProviderSecret',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(({ db }) =>
+      clearAiProviderSecret(db, request.provider),
+    )
   })
 
   onMessage('leetcode.readProblemMetadata', ({ data, sender }) => {
