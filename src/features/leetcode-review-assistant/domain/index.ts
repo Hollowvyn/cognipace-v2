@@ -12,3 +12,8 @@ export {
   type RecommendAssessmentInput,
   type RecommendAssessmentOutput,
 } from './recommendation-types'
+
+export {
+  assessmentRecommendationSchema,
+  assessmentRecommendationSchemaLimits,
+} from './recommendation-schema'
