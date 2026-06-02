@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { InlineStatus } from '@/components/ui/inline-status'
 import {
   genAiProviderIds,
   useClearAiProviderSecretMutation,
@@ -58,13 +59,21 @@ export function AiAssessmentSection({ actions, draft }: AiAssessmentSectionProps
 
   const handleSaveKey = async () => {
     if (keyInput === '') return
-    await setSecret.mutateAsync({ provider, key: keyInput })
-    setKeyInput('')
+    try {
+      await setSecret.mutateAsync({ provider, key: keyInput })
+      setKeyInput('')
+    } catch {
+      // setSecret.isError will be true; error message rendered below
+    }
   }
 
   const handleClearKey = async () => {
-    await clearSecret.mutateAsync({ provider })
-    setKeyInput('')
+    try {
+      await clearSecret.mutateAsync({ provider })
+      setKeyInput('')
+    } catch {
+      // clearSecret.isError will be true; error message rendered below
+    }
   }
 
   return (
@@ -172,6 +181,12 @@ export function AiAssessmentSection({ actions, draft }: AiAssessmentSectionProps
           >
             Remove key
           </Button>
+        ) : null}
+        {setSecret.isError ? (
+          <InlineStatus tone="danger">Save failed. Please try again.</InlineStatus>
+        ) : null}
+        {clearSecret.isError ? (
+          <InlineStatus tone="danger">Remove failed. Please try again.</InlineStatus>
         ) : null}
       </SettingsRow>
     </SettingsSection>

@@ -148,4 +148,24 @@ describe('AiAssessmentSection', () => {
     await user.type(modelInput, 'gpt-test')
     expect(actions.setAiModel).toHaveBeenCalled()
   })
+
+  it('shows an error message when save key fails', async () => {
+    vi.mocked(sendMessage)
+      .mockResolvedValueOnce({ openai: false, anthropic: false, gemini: false }) // initial presence
+      .mockRejectedValueOnce(new Error('Save failed')) // save fails
+
+    renderSection({ provider: 'openai', model: 'gpt-test', enabled: false })
+    await waitFor(() => expect(sendMessage).toHaveBeenCalled())
+
+    const user = userEvent.setup()
+    const keyInput = screen
+      .getAllByLabelText(/openai api key/i)
+      .find((el) => el.tagName === 'INPUT') as HTMLInputElement
+    await user.type(keyInput, 'sk-test')
+    await user.click(screen.getByRole('button', { name: /save key/i }))
+
+    await waitFor(() =>
+      expect(screen.getByText(/save failed/i)).toBeInTheDocument(),
+    )
+  })
 })

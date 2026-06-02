@@ -144,10 +144,13 @@ export class BackupRepository {
           updatedAt: toIso(row.updatedAt),
         })),
       },
-      settings: settingsRows.map((row) => ({
-        ...row,
-        updatedAt: toIso(row.updatedAt),
-      })),
+      // Filter to only the user-settings row; never include genai-secrets in backups
+      settings: settingsRows
+        .filter((row) => row.key === 'user-settings')
+        .map((row) => ({
+          ...row,
+          updatedAt: toIso(row.updatedAt),
+        })),
     })
   }
 }

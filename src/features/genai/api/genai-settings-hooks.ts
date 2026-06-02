@@ -6,13 +6,15 @@ import { queryKeys } from '@/platform/query/query-keys'
 import type { AiProviderSecretPresence } from '../domain/genai-secrets-types'
 import type { GenAiProviderId } from '../domain/genai-types'
 
-export function useGenAiSecretPresenceQuery() {
+type GenAiHookSurface = 'popup' | 'dashboard'
+
+export function useGenAiSecretPresenceQuery(
+  surface: GenAiHookSurface = 'dashboard',
+) {
   return useQuery({
     queryKey: queryKeys.genai.secretPresence(),
     queryFn: (): Promise<AiProviderSecretPresence> =>
-      sendMessage('genai.getAiProviderSecretPresence', {
-        surface: 'dashboard',
-      }),
+      sendMessage('genai.getAiProviderSecretPresence', { surface }),
   })
 }
 
@@ -22,12 +24,14 @@ export type SetAiProviderSecretHookInput = {
   baseUrl?: string
 }
 
-export function useSetAiProviderSecretMutation() {
+export function useSetAiProviderSecretMutation(
+  surface: GenAiHookSurface = 'dashboard',
+) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: SetAiProviderSecretHookInput) =>
       sendMessage('genai.setAiProviderSecret', {
-        surface: 'dashboard',
+        surface,
         provider: input.provider,
         secret: {
           apiKey: input.key,
@@ -44,12 +48,14 @@ export type ClearAiProviderSecretHookInput = {
   provider: GenAiProviderId
 }
 
-export function useClearAiProviderSecretMutation() {
+export function useClearAiProviderSecretMutation(
+  surface: GenAiHookSurface = 'dashboard',
+) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: ClearAiProviderSecretHookInput) =>
       sendMessage('genai.clearAiProviderSecret', {
-        surface: 'dashboard',
+        surface,
         provider: input.provider,
       }),
     onSuccess: (presence) => {
