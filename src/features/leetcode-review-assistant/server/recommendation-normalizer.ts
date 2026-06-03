@@ -14,14 +14,10 @@ export function normalizeRecommendation(
   if (deterministic.status !== 'accepted') {
     return aiOutput
   }
-  if (deterministic.lockReason === 'failed') {
-    return {
-      ...aiOutput,
-      recommendedRating: 'again',
-      shouldUpdateRating: false,
-    }
-  }
-  if (deterministic.lockReason === 'hard-mode-overtime') {
+  if (
+    deterministic.lockReason === 'failed' ||
+    deterministic.lockReason === 'hard-mode-overtime'
+  ) {
     return {
       ...aiOutput,
       recommendedRating: 'again',
