@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { GenAiError, GenAiGenerateJsonResult } from '@/features/genai'
+import type { GenAiError } from '@/features/genai'
 
 vi.mock('@/features/genai/server/genai-service', async () => {
   const actual = await vi.importActual<
@@ -14,7 +14,6 @@ vi.mock('@/features/genai/server/genai-service', async () => {
 
 import { generateJson } from '@/features/genai/server/genai-service'
 
-import type { AssessmentRecommendation } from '../domain/recommendation-types'
 import { recommendAssessment } from './recommendation-service'
 import {
   makeFailedDecision,
@@ -40,7 +39,7 @@ describe('recommendAssessment — AI success', () => {
       status: 'success',
       data: aiOutput,
       providerMetadata: makeProviderMetadata(),
-    } as GenAiGenerateJsonResult<AssessmentRecommendation>)
+    })
 
     const result = await recommendAssessment(makeRecommendAssessmentInput())
 
@@ -58,7 +57,7 @@ describe('recommendAssessment — AI success', () => {
       status: 'success',
       data: aiOutput,
       providerMetadata: makeProviderMetadata(),
-    } as GenAiGenerateJsonResult<AssessmentRecommendation>)
+    })
 
     const result = await recommendAssessment(
       makeRecommendAssessmentInput({
@@ -78,21 +77,23 @@ describe('recommendAssessment — AI success', () => {
       status: 'success',
       data: makeValidRecommendation(),
       providerMetadata: makeProviderMetadata(),
-    } as GenAiGenerateJsonResult<AssessmentRecommendation>)
+    })
 
     await recommendAssessment(makeRecommendAssessmentInput())
 
     expect(generateJsonMock).toHaveBeenCalledOnce()
-    const [arg] = generateJsonMock.mock.calls[0]!
-    const request = arg as Record<string, unknown>
-    expect(request.provider).toBe('openai')
-    expect(request.model).toBe('gpt-test')
-    expect(request.apiKey).toBe('sk-test-fixture')
-    expect(request.prompt).toMatchObject({
-      system: expect.stringContaining('CogniPace'),
-      user: expect.stringContaining('## Problem'),
-    })
-    expect(request.schema).toBeDefined()
+    expect(generateJsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'openai',
+        model: 'gpt-test',
+        apiKey: 'sk-test-fixture',
+        prompt: expect.objectContaining({
+          system: expect.stringContaining('CogniPace') as unknown,
+          user: expect.stringContaining('## Problem') as unknown,
+        }) as unknown,
+        schema: expect.anything() as unknown,
+      }),
+    )
   })
 })
 
@@ -116,7 +117,7 @@ describe('recommendAssessment — AI error → fallback', () => {
           model: 'gpt-test',
           durationMs: 100,
         },
-      } as GenAiGenerateJsonResult<AssessmentRecommendation>)
+      })
 
       const result = await recommendAssessment(makeRecommendAssessmentInput())
 
@@ -136,7 +137,7 @@ describe('recommendAssessment — AI error → fallback', () => {
       code: 'network',
       message: 'down',
       providerMetadata: { provider: 'openai', model: 'gpt-test', durationMs: 100 },
-    } as GenAiGenerateJsonResult<AssessmentRecommendation>)
+    })
 
     const result = await recommendAssessment(
       makeRecommendAssessmentInput({
