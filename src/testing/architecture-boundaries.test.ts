@@ -124,7 +124,8 @@ function sourceFiles(directories: string[]) {
       (file) =>
         (file.endsWith('.ts') || file.endsWith('.tsx')) &&
         !file.endsWith('.test.ts') &&
-        !file.endsWith('.test.tsx'),
+        !file.endsWith('.test.tsx') &&
+        !toRepoPath(file).includes('/testing/'),
     ),
   )
 }
