@@ -2,6 +2,8 @@ export {
   PROMPT_VERSION,
   assessmentRecommendationConfidenceLevels,
   assessmentRecommendationRatings,
+  assessmentRecommendationSchema,
+  assessmentRecommendationSchemaLimits,
   type AssessmentRecommendation,
   type AssessmentRecommendationConfidence,
   type AssessmentRecommendationProblem,
