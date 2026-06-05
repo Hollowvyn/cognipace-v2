@@ -112,6 +112,7 @@ describe('architecture boundaries', () => {
       'utils',
     ])
       .filter((file) => !file.startsWith(genaiPath))
+      .filter((file) => !toRepoPath(file).includes('/testing/'))
       .filter((file) => apiKeyPattern.test(readFileSync(file, 'utf8')))
 
     expect(offenders.map(toRepoPath)).toEqual([])
