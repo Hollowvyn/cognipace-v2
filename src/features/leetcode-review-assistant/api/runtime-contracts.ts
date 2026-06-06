@@ -1,16 +1,18 @@
 import { genAiProviderIds } from '@/features/genai/domain/genai-types'
-import { problemSlugSchema } from '@/features/problems/api/problems-contracts'
+import {
+  problemDifficultySchema,
+  problemSlugSchema,
+} from '@/features/problems/api/problems-contracts'
 import { z } from 'zod'
 
 import {
   PROMPT_VERSION,
   assessmentRecommendationConfidenceLevels,
   assessmentRecommendationRatings,
+  type AssessmentRecommendation,
 } from '../domain/recommendation-types'
 
 const reviewRatingSchema = z.enum(['again', 'hard', 'good', 'easy'])
-
-const problemDifficultySchema = z.enum(['easy', 'medium', 'hard'])
 
 const assessmentRecommendationProblemSchema = z
   .object({
@@ -78,6 +80,8 @@ const assessmentBlockedReasonSchema = z
   })
   .strict()
 
+// .loose() so future warning codes can carry extra context without breaking
+// the wire parse. The handler reads only `.code` from each warning.
 const assessmentWarningSchema = z
   .object({ code: z.string() })
   .loose()
@@ -169,7 +173,7 @@ const assessmentRecommendationSchemaForResponse = z
     shouldUpdateRating: z.boolean(),
     promptVersion: z.literal(PROMPT_VERSION),
   })
-  .strict()
+  .strict() satisfies z.ZodType<AssessmentRecommendation>
 
 const genAiProviderMetadataSchemaForResponse = z
   .object({

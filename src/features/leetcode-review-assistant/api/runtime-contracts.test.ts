@@ -179,6 +179,15 @@ describe('recommendLeetCodeAssessmentRequestSchema', () => {
       }),
     ).not.toThrow()
   })
+
+  it('accepts a problem.difficulty of "unknown"', () => {
+    expect(() =>
+      recommendLeetCodeAssessmentRequestSchema.parse({
+        ...validRequest,
+        problem: { ...validRequest.problem, difficulty: 'unknown' },
+      }),
+    ).not.toThrow()
+  })
 })
 
 describe('recommendLeetCodeAssessmentResponseSchema', () => {
