@@ -25,6 +25,7 @@ import {
   problemsUpdateProblemRequestSchema,
   problemsUpsertFromPageRequestSchema,
   queueRequestSchema,
+  recommendLeetCodeAssessmentRequestSchema,
   setAiProviderSecretRequestSchema,
   settingsCycleThemeModeRequestSchema,
   settingsRequestSchema,
@@ -69,6 +70,7 @@ import {
   getAiProviderSecretPresence,
   setAiProviderSecret,
 } from '@/features/genai/server/genai-settings-service'
+import { recommendLeetCodeAssessmentInBackground } from '@/features/leetcode-review-assistant/server/runtime-handler-service'
 import {
   exportFullBackup,
   resetLocalData,
@@ -1145,6 +1147,19 @@ export function registerBackgroundHandlers() {
     )
     return getAppDb().then(({ db }) =>
       clearAiProviderSecret(db, request.provider),
+    )
+  })
+
+  onMessage('genai.recommendLeetCodeAssessment', ({ data, sender }) => {
+    const request = recommendLeetCodeAssessmentRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'genai.recommendLeetCodeAssessment',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(({ db }) =>
+      recommendLeetCodeAssessmentInBackground(db, request),
     )
   })
 

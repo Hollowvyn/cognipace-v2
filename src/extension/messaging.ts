@@ -36,6 +36,14 @@ export {
   setAiProviderSecretRequestSchema,
 } from '@/features/genai/api'
 import type { AiProviderSecretPresence } from '@/features/genai'
+import type {
+  RecommendLeetCodeAssessmentRequest,
+  RecommendLeetCodeAssessmentResponse,
+} from '@/features/leetcode-review-assistant'
+export {
+  recommendLeetCodeAssessmentRequestSchema,
+  recommendLeetCodeAssessmentResponseSchema,
+} from '@/features/leetcode-review-assistant'
 import {
   leetcodeProblemRemoteRequestSchema,
   leetcodeSubmissionResultRemoteRequestSchema,
@@ -292,6 +300,9 @@ export interface ProtocolMap {
   'genai.clearAiProviderSecret'(
     request: ClearAiProviderSecretRequest,
   ): AiProviderSecretPresence
+  'genai.recommendLeetCodeAssessment'(
+    request: RecommendLeetCodeAssessmentRequest,
+  ): RecommendLeetCodeAssessmentResponse
   'sync.getStatus'(request: SyncRequest): SerializedSyncStatus
   'sync.validateGithubToken'(request: SyncGithubTokenRequest): SyncActionResult
   'sync.validateStoredGithubToken'(request: SyncRequest): SyncActionResult
