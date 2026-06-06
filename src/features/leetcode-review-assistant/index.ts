@@ -14,3 +14,11 @@ export {
   type RecommendAssessmentInput,
   type RecommendAssessmentOutput,
 } from './domain'
+
+export {
+  recommendLeetCodeAssessmentRequestSchema,
+  recommendLeetCodeAssessmentResponseSchema,
+  type RecommendLeetCodeAssessmentErrorCode,
+  type RecommendLeetCodeAssessmentRequest,
+  type RecommendLeetCodeAssessmentResponse,
+} from './api'
