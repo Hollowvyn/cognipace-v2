@@ -1538,7 +1538,7 @@ describe('background handler registration', () => {
 
       expect(
         backgroundMocks.recommendLeetCodeAssessmentInBackground,
-      ).toHaveBeenCalledOnce()
+      ).toHaveBeenCalledWith(backgroundMocks.db, baseRequest)
       expect((result as { status: string }).status).toBe('unavailable')
       expect(
         backgroundMocks.assertCanSenderCallExtensionMethod,

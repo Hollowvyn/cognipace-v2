@@ -70,7 +70,6 @@ import {
   getAiProviderSecretPresence,
   setAiProviderSecret,
 } from '@/features/genai/server/genai-settings-service'
-import { recommendLeetCodeAssessmentInBackground } from '@/features/leetcode-review-assistant/server/runtime-handler-service'
 import {
   exportFullBackup,
   resetLocalData,
@@ -82,6 +81,7 @@ import {
   readLeetCodeProblemMetadataInBackground,
   readLeetCodeSubmissionResultInBackground,
 } from '@/features/leetcode-capture/server/leetcode-capture-service'
+import { recommendLeetCodeAssessmentInBackground } from '@/features/leetcode-review-assistant/server/runtime-handler-service'
 import {
   practiceDetailsRequestSchema,
   practiceOverrideLastReviewResultRequestSchema,
