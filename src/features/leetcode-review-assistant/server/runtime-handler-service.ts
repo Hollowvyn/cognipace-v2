@@ -39,16 +39,17 @@ export async function recommendLeetCodeAssessmentInBackground(
     }
   }
 
-  // The Zod-inferred request types are structurally compatible with the domain
-  // types used by recommendAssessment; the cast bridges minor exactOptionalPropertyTypes
-  // and discriminated-union literal differences that are validated by the schema at
-  // the call site before this handler is invoked.
+  // `problem` and `submission` casts bridge exactOptionalPropertyTypes mismatches
+  // between the Zod-inferred types and the domain types; `deterministicDecision` cast
+  // bridges the unnarrowed `reason.code: string` in the wire schema vs the domain
+  // enum. All three are validated by the schema at the call site before this handler
+  // is invoked.
   const assessmentInput: RecommendAssessmentInput = {
     problem: request.problem as RecommendAssessmentInput['problem'],
     submission: request.submission as RecommendAssessmentInput['submission'],
     timing: request.timing,
     deterministicDecision: request.deterministicDecision as RecommendAssessmentInput['deterministicDecision'],
-    sessionContext: request.sessionContext as RecommendAssessmentInput['sessionContext'],
+    sessionContext: request.sessionContext,
     providerConfig,
   }
 
@@ -57,9 +58,7 @@ export async function recommendLeetCodeAssessmentInBackground(
   if (result.status === 'ai') {
     return {
       status: 'ready',
-      // AssessmentRecommendation uses readonly arrays; the response schema expects
-      // mutable arrays. The data is structurally identical at runtime.
-      recommendation: result.recommendation as RecommendLeetCodeAssessmentResponse & { status: 'ready' } extends { recommendation: infer R } ? R : never,
+      recommendation: result.recommendation,
       providerMetadata: result.providerMetadata,
       submissionFingerprint: request.submissionFingerprint,
     }
@@ -76,8 +75,8 @@ export async function recommendLeetCodeAssessmentInBackground(
 
   return {
     status: 'error',
-    code: errorCode as RecommendLeetCodeAssessmentErrorCode,
-    message: ERROR_MESSAGE_BY_CODE[errorCode as RecommendLeetCodeAssessmentErrorCode],
+    code: errorCode,
+    message: ERROR_MESSAGE_BY_CODE[errorCode],
     submissionFingerprint: request.submissionFingerprint,
   }
 }

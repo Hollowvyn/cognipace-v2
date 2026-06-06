@@ -1,3 +1,4 @@
+import { assessmentLockReasons } from '@/features/assessment'
 import { genAiProviderIds } from '@/features/genai/domain/genai-types'
 import {
   problemDifficultySchema,
@@ -95,7 +96,7 @@ const leetCodeAssessmentDecisionSchema = z.discriminatedUnion('status', [
       elapsedSeconds: z.number().nullable(),
       targetSeconds: z.number(),
       isOverTarget: z.boolean(),
-      lockReason: z.string().nullable(),
+      lockReason: z.enum(assessmentLockReasons).nullable(),
       reason: assessmentReasonSchema,
       warnings: z.array(assessmentWarningSchema),
       confidence: z.number(),
@@ -160,7 +161,7 @@ const assessmentRecommendationSchemaForResponse = z
     confidence: z.enum(assessmentRecommendationConfidenceLevels),
     summary: z.string(),
     primaryReason: z.string(),
-    evidence: z.array(z.string()),
+    evidence: z.array(z.string()).readonly(),
     complexity: z
       .object({
         time: z.string(),
@@ -168,8 +169,8 @@ const assessmentRecommendationSchemaForResponse = z
         confidence: z.enum(assessmentRecommendationConfidenceLevels),
       })
       .strict(),
-    improvementPoints: z.array(z.string()),
-    edgeCaseNotes: z.array(z.string()),
+    improvementPoints: z.array(z.string()).readonly(),
+    edgeCaseNotes: z.array(z.string()).readonly(),
     shouldUpdateRating: z.boolean(),
     promptVersion: z.literal(PROMPT_VERSION),
   })

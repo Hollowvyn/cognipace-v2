@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { GenAiError, GenAiProviderConfig } from '@/features/genai'
+import type { GenAiProviderConfig } from '@/features/genai'
 
 vi.mock('@/features/genai/server/genai-settings-service', async () => {
   const actual = await vi.importActual<
@@ -163,7 +163,7 @@ describe('recommendLeetCodeAssessmentInBackground — error', () => {
       recommendAssessmentMock.mockResolvedValue({
         status: 'fallback',
         recommendation: makeValidRecommendation(),
-        error: { code: code as GenAiError, message: 'provider said no' },
+        error: { code, message: 'provider said no' },
       })
 
       const result = await recommendLeetCodeAssessmentInBackground(
@@ -249,5 +249,17 @@ describe('recommendLeetCodeAssessmentInBackground — secrets redaction', () => 
     )
     expect(JSON.stringify(error)).not.toMatch(/apiKey/i)
     expect(JSON.stringify(error)).not.toContain('sk-test-fixture')
+  })
+})
+
+describe('recommendLeetCodeAssessmentInBackground — no practice writes', () => {
+  it('does not import or call anything from features/practice', async () => {
+    // The architecture-boundary tests enforce this statically. This test is a
+    // runtime sanity check that the handler's import graph does not transitively
+    // pull in practice mutation code.
+    const handlerModule = await import('./runtime-handler-service')
+    const handlerSource = handlerModule.recommendLeetCodeAssessmentInBackground.toString()
+
+    expect(handlerSource).not.toMatch(/practice/i)
   })
 })
