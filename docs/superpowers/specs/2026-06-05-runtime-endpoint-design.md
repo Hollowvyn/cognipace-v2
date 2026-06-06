@@ -169,7 +169,7 @@ The `apiKey` literal token stays inside `features/genai/` (existing architecture
 |---|---|
 | `auth` | `"AI authentication failed. Check the API key in settings."` |
 | `rate-limit` | `"AI is rate-limited. Try again in a moment."` |
-| `network` | `"AI request couldn't reach the provider."` |
+| `network` | `"AI request could not reach the provider."` |
 | `timeout` | `"AI request timed out."` |
 | `invalid-output` | `"AI returned an unexpected response."` |
 | `unknown` | `"AI request failed."` |
