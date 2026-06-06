@@ -1,3 +1,4 @@
+import type { GenAiProviderConfig } from '@/features/genai'
 import { loadActiveProviderConfig } from '@/features/genai/server/genai-settings-service'
 import type { Db } from '@/platform/db'
 
@@ -39,21 +40,9 @@ export async function recommendLeetCodeAssessmentInBackground(
     }
   }
 
-  // `problem` and `submission` casts bridge exactOptionalPropertyTypes mismatches
-  // between the Zod-inferred types and the domain types; `deterministicDecision` cast
-  // bridges the unnarrowed `reason.code: string` in the wire schema vs the domain
-  // enum. All three are validated by the schema at the call site before this handler
-  // is invoked.
-  const assessmentInput: RecommendAssessmentInput = {
-    problem: request.problem as RecommendAssessmentInput['problem'],
-    submission: request.submission as RecommendAssessmentInput['submission'],
-    timing: request.timing,
-    deterministicDecision: request.deterministicDecision as RecommendAssessmentInput['deterministicDecision'],
-    sessionContext: request.sessionContext,
-    providerConfig,
-  }
-
-  const result = await recommendAssessment(assessmentInput)
+  const result = await recommendAssessment(
+    buildOrchestratorInput(request, providerConfig),
+  )
 
   if (result.status === 'ai') {
     return {
@@ -78,6 +67,24 @@ export async function recommendLeetCodeAssessmentInBackground(
     code: errorCode,
     message: ERROR_MESSAGE_BY_CODE[errorCode],
     submissionFingerprint: request.submissionFingerprint,
+  }
+}
+
+function buildOrchestratorInput(
+  request: RecommendLeetCodeAssessmentRequest,
+  providerConfig: GenAiProviderConfig,
+): RecommendAssessmentInput {
+  // Wire schemas use z.string().optional() (yields `string | undefined`) and
+  // z.string() for nested enum fields like reason.code. The domain types use
+  // `string?` (exactOptionalPropertyTypes: true) and concrete enums. These
+  // casts are validated by Zod at the runtime boundary above.
+  return {
+    problem: request.problem as RecommendAssessmentInput['problem'],
+    submission: request.submission as RecommendAssessmentInput['submission'],
+    timing: request.timing,
+    deterministicDecision: request.deterministicDecision as RecommendAssessmentInput['deterministicDecision'],
+    sessionContext: request.sessionContext,
+    providerConfig,
   }
 }
 
