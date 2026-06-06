@@ -1540,17 +1540,16 @@ describe('background handler registration', () => {
         backgroundMocks.recommendLeetCodeAssessmentInBackground,
       ).toHaveBeenCalledOnce()
       expect((result as { status: string }).status).toBe('unavailable')
+      expect(
+        backgroundMocks.assertCanSenderCallExtensionMethod,
+      ).toHaveBeenCalledWith(
+        'genai.recommendLeetCodeAssessment',
+        'content-script',
+        contentScriptSender,
+      )
     })
 
-    it('throws when sender claims a non-content-script surface', () => {
-      backgroundMocks.assertCanSenderCallExtensionMethod.mockImplementation(
-        (_method: string, surface: string) => {
-          if (surface !== 'content-script') {
-            throw new Error('blocked')
-          }
-        },
-      )
-
+    it('throws at the schema layer when wire payload claims non-content-script surface', () => {
       const handler = backgroundMocks.handlers.get(
         'genai.recommendLeetCodeAssessment',
       )
@@ -1561,6 +1560,39 @@ describe('background handler registration', () => {
           sender: contentScriptSender,
         }),
       ).toThrow()
+
+      expect(
+        backgroundMocks.assertCanSenderCallExtensionMethod,
+      ).not.toHaveBeenCalled()
+    })
+
+    it('throws when sender url resolves to a different surface than the claim', () => {
+      // Schema-valid request: surface is 'content-script' as the wire says.
+      // The policy mock throws to simulate the real-world rejection where the
+      // actual sender (popup.html URL) doesn't match the claimed surface.
+      backgroundMocks.assertCanSenderCallExtensionMethod.mockImplementation(
+        (_method: string, surface: string, sender: unknown) => {
+          const senderRecord = sender as { url?: string }
+          if (senderRecord.url?.includes('popup.html') && surface === 'content-script') {
+            throw new Error(`Sender surface "popup" cannot claim "${surface}".`)
+          }
+        },
+      )
+
+      const handler = backgroundMocks.handlers.get(
+        'genai.recommendLeetCodeAssessment',
+      )
+
+      expect(() =>
+        handler!({
+          data: baseRequest, // surface stays 'content-script'
+          sender: { url: 'chrome-extension://extension-id/popup.html' },
+        }),
+      ).toThrow(/cannot claim/i)
+
+      expect(
+        backgroundMocks.recommendLeetCodeAssessmentInBackground,
+      ).not.toHaveBeenCalled()
     })
   })
 })
