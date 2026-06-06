@@ -43,6 +43,14 @@ import {
   type SerializedLeetCodeProblemContentResult,
   type SerializedLeetCodeSubmissionResultRemoteResponse,
 } from '@/features/leetcode-capture/api/leetcode-capture-contracts'
+import type {
+  RecommendLeetCodeAssessmentRequest,
+  RecommendLeetCodeAssessmentResponse,
+} from '@/features/leetcode-review-assistant'
+export {
+  recommendLeetCodeAssessmentRequestSchema,
+  recommendLeetCodeAssessmentResponseSchema,
+} from '@/features/leetcode-review-assistant'
 import {
   normalizedPracticeStateSchema,
   type PracticeDetailsRequest,
@@ -292,6 +300,9 @@ export interface ProtocolMap {
   'genai.clearAiProviderSecret'(
     request: ClearAiProviderSecretRequest,
   ): AiProviderSecretPresence
+  'genai.recommendLeetCodeAssessment'(
+    request: RecommendLeetCodeAssessmentRequest,
+  ): RecommendLeetCodeAssessmentResponse
   'sync.getStatus'(request: SyncRequest): SerializedSyncStatus
   'sync.validateGithubToken'(request: SyncGithubTokenRequest): SyncActionResult
   'sync.validateStoredGithubToken'(request: SyncRequest): SyncActionResult
