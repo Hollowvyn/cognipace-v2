@@ -13,11 +13,6 @@ import { recommendAssessment } from './recommendation-service'
 const UNAVAILABLE_MESSAGE =
   'AI is not configured. Add a provider in settings to get recommendations.'
 
-const AI_PROVIDER_HOST_PERMISSIONS_APPROVED = false
-
-const HOST_PERMISSION_GATE_MESSAGE =
-  'AI recommendations are disabled until provider host permissions are approved.'
-
 const ERROR_MESSAGE_BY_CODE: Record<
   RecommendLeetCodeAssessmentErrorCode,
   string
@@ -41,14 +36,6 @@ export async function recommendLeetCodeAssessmentInBackground(
     return {
       status: 'unavailable',
       message: UNAVAILABLE_MESSAGE,
-      submissionFingerprint: request.submissionFingerprint,
-    }
-  }
-
-  if (!AI_PROVIDER_HOST_PERMISSIONS_APPROVED) {
-    return {
-      status: 'unavailable',
-      message: HOST_PERMISSION_GATE_MESSAGE,
       submissionFingerprint: request.submissionFingerprint,
     }
   }
