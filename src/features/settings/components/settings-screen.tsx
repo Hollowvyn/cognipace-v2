@@ -12,6 +12,7 @@ import { AiAssessmentSection } from './sections/ai-assessment-section'
 import { AppearanceSection } from './sections/appearance-section'
 import { DailyPracticeSection } from './sections/daily-practice-section'
 import { LeetCodeOverlaySection } from './sections/leetcode-overlay-section'
+import { RemindersSection } from './sections/reminders-section'
 import { SettingsSaveDock } from './settings-save-bar'
 import { SettingsToast } from './settings-toast'
 
@@ -86,6 +87,13 @@ export function SettingsScreen() {
             />
             <LeetCodeOverlaySection
               actions={controller.actions}
+              draft={controller.draft}
+            />
+            <RemindersSection
+              actions={{
+                setRemindersEnabled: controller.actions.setRemindersEnabled,
+                setRemindersTime: controller.actions.setRemindersTime,
+              }}
               draft={controller.draft}
             />
             <AdvancedReviewSection

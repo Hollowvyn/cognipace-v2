@@ -324,6 +324,16 @@ describe('buildTodayQueue', () => {
   })
 })
 
+describe('QueueCandidate track independence', () => {
+  it('accepts only problem and practice state — no track membership fields', () => {
+    // QueueCandidate is { problem, state } only.
+    // Track selection, membership, order, and progress play no role in queue building.
+    const c: QueueCandidate = candidate({ slug: 'two-sum' })
+
+    expect(Object.keys(c)).toEqual(['problem', 'state'])
+  })
+})
+
 function candidate(input: {
   slug: string
   isPremium?: boolean
