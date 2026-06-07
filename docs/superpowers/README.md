@@ -12,6 +12,8 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
+- [`specs/2026-06-07-cognipace-agent-governance-design.md`](./specs/2026-06-07-cognipace-agent-governance-design.md): companion design for strict CogniPace AI-agent workflow across Codex, Claude, and future agents, including required skills, validation matrix, PR/issue standards, and enforcement path.
+- [`specs/2026-06-07-repo-hardening-governance-design.md`](./specs/2026-06-07-repo-hardening-governance-design.md): master design for strict repository-hardening governance, including phased CI, branch protection, PR hygiene, release, dependency, and security automation.
 - [`specs/2026-06-07-nonblocking-leetcode-open-sync-design.md`](./specs/2026-06-07-nonblocking-leetcode-open-sync-design.md): approved design for moving surface-open GitHub Gist checks out of the LeetCode, popup, and dashboard startup request path and into coalesced background scheduling.
 - [`specs/2026-06-07-closed-issue-rescue-and-smoke-lab-design.md`](./specs/2026-06-07-closed-issue-rescue-and-smoke-lab-design.md): approved design for the closed-issue rescue pass and hidden dashboard smoke lab covering Analytics, queue aliases, due notifications, GenAI provider path, background smoke, and docs alignment.
 - [`specs/2026-06-07-post-analytics-stabilization-design.md`](./specs/2026-06-07-post-analytics-stabilization-design.md): approved design for stabilizing post-Analytics work across runtime policy, Analytics wiring, GenAI trusted secrets, AI permission gating, notification permission documentation, and docs alignment.
