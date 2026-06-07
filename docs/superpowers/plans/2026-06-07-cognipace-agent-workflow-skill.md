@@ -140,6 +140,38 @@ git commit -m "docs(agent-governance): capture workflow skill red baseline"
 
 Expected: one docs commit containing the recorded RED findings.
 
+### RED Baseline Findings
+
+- Scenario 1, non-trivial popup runtime messaging change: mostly compliant. The
+  agent listed the root authority docs, `docs/superpowers/README.md`, and
+  `.agents/skills/cognipace-bulletproof-react` references; selected
+  `superpowers:using-superpowers`, `superpowers:brainstorming`,
+  `cognipace-bulletproof-react`, and optional implementation skills only when
+  needed; and named design/planning gates, runtime Zod validation, sender
+  authorization, invalidation, sync rules, and validation/handoff proof. RED
+  finding: there is still no single obvious repo-local workflow skill, so the
+  route is scattered across using-superpowers, root docs, governance docs, and
+  the architecture skill. Use this as a Task 5 regression check for routing
+  through one workflow entrypoint before delegated boundary skills.
+- Scenario 2, quick docs/governance tweak: compliant for the trivial docs-only
+  path. The agent kept governance gates, used a short stated design instead of a
+  full spec/plan, skipped runtime validation and smoke with reasons, required
+  `npx prettier --check <touched markdown files>`, and required exact
+  validation/skipped-command reporting. Use this as a Task 5 regression check
+  that the new workflow skill preserves lightweight docs-only handling.
+- Scenario 3, new repo-local skill: compliant for skill creation. The agent
+  scoped work under `.agents/skills`, oriented through root governance and
+  planning docs, selected `skill-creator`, `superpowers:writing-skills`, and
+  `superpowers:brainstorming`, required a RED baseline before writing, turned
+  observed failures into acceptance criteria, drafted design/plan context, and
+  then wrote minimal `SKILL.md`. Use this as a Task 5 regression check that
+  skill creation continues to route through `superpowers:writing-skills` and
+  RED/GREEN/REFACTOR.
+
+Conclusion: the new workflow skill remains justified because current behavior
+can be compliant, but the guidance is scattered and lacks a single repo-local
+workflow entrypoint for non-trivial CogniPace work.
+
 ## Task 2: GREEN Draft The Workflow Skill
 
 **Files:**
