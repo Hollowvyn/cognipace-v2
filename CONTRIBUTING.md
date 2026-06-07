@@ -63,6 +63,9 @@ release pull request creates the GitHub Release and triggers the extension zip
 artifact upload. Chrome Web Store submission remains a manual maintainer step
 using the zip attached to the GitHub Release.
 
+The Release Please workflow uses the `RELEASE_PLEASE_TOKEN` repository secret so
+generated release pull requests still trigger normal pull request checks.
+
 See `docs/release.md` for the complete release process.
 
 ## Architecture

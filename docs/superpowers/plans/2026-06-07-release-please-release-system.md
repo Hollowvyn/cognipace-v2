@@ -18,7 +18,9 @@
 - Create `release-please-config.json`: Release Please manifest configuration for the root Node package.
 - Create `.release-please-manifest.json`: current known release version manifest.
 - Create `CHANGELOG.md`: release-please-managed changelog file.
-- Create `docs/release.md`: maintainer release workflow, semantic title rules, first `1.0.0` bootstrap, failure handling, Chrome Web Store handoff.
+- Create `docs/release.md`: maintainer release workflow, semantic title rules,
+  `RELEASE_PLEASE_TOKEN` setup, first `1.0.0` bootstrap, failure handling,
+  Chrome Web Store handoff.
 - Modify `CONTRIBUTING.md`: add PR title and release workflow expectations.
 
 ## Task 1: Add Standard CI Workflow
@@ -245,7 +247,7 @@ jobs:
         id: release
         uses: googleapis/release-please-action@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
@@ -394,7 +396,15 @@ local-first data handling`.
 
 ## Normal Release Flow
 
-1. Merge feature and fix pull requests with semantic titles.
+The `Release Please` workflow requires a `RELEASE_PLEASE_TOKEN` repository
+secret. Use a fine-grained personal access token or GitHub App token that can
+write contents, open pull requests, create GitHub Releases, and update release
+PR labels or comments. Do not use the default `GITHUB_TOKEN` for the Release
+Please step, because pull requests created with that token do not trigger the
+normal pull request workflows.
+
+1. Merge release-triggering pull requests (`feat`, `fix`, `deps`, or breaking
+   changes) with semantic titles.
 2. Release Please opens or updates a release pull request on `main`.
 3. Review the release pull request version and changelog.
 4. Merge the release pull request when ready to ship.
@@ -519,6 +529,9 @@ Release Please maintains the release pull request on `main`. Merging that
 release pull request creates the GitHub Release and triggers the extension zip
 artifact upload. Chrome Web Store submission remains a manual maintainer step
 using the zip attached to the GitHub Release.
+
+The Release Please workflow uses the `RELEASE_PLEASE_TOKEN` repository secret so
+generated release pull requests still trigger normal pull request checks.
 
 See `docs/release.md` for the complete release process.
 ````

@@ -218,6 +218,8 @@ the GitHub Release artifact job failed.
 - Add `docs/release.md` with maintainer release instructions.
 - Update `CONTRIBUTING.md` with pull request title rules and release basics.
 - Add a small helper script only if WXT zip discovery is awkward in CI.
+- Require a `RELEASE_PLEASE_TOKEN` repository secret for the Release Please step
+  so generated release pull requests trigger normal pull request workflows.
 
 ## Implementation Defaults
 
@@ -227,6 +229,8 @@ the GitHub Release artifact job failed.
   `package-lock.json`, and `CHANGELOG.md` are updated together.
 - Configure Release Please to use root package releases with tags formatted as
   `vX.Y.Z`.
+- Use `secrets.RELEASE_PLEASE_TOKEN` for the Release Please action and keep the
+  default `GITHUB_TOKEN` for `gh release upload`.
 - Keep normal CI focused on `npm run check`.
 - Run `npm run build` and `npm run zip` in the release artifact path after a
   GitHub Release is created.

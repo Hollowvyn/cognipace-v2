@@ -49,6 +49,13 @@ local-first data handling`.
 
 ## Normal Release Flow
 
+The `Release Please` workflow requires a `RELEASE_PLEASE_TOKEN` repository
+secret. Use a fine-grained personal access token or GitHub App token that can
+write contents, open pull requests, create GitHub Releases, and update release
+PR labels or comments. Do not use the default `GITHUB_TOKEN` for the Release
+Please step, because pull requests created with that token do not trigger the
+normal pull request workflows.
+
 1. Merge release-triggering pull requests (`feat`, `fix`, `deps`, or breaking
    changes) with semantic titles.
 2. Release Please opens or updates a release pull request on `main`.
