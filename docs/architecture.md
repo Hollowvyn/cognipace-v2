@@ -92,6 +92,8 @@ Not every feature needs every folder. Add only the folder needed for the change.
 ## Feature Ownership
 
 - `app-shell`: popup, dashboard, and overlay shell data composition.
+- `analytics`: local dashboard review-health read models, due forecast,
+  retention proxy, and weak-problem ranking.
 - `overlay-session`: LeetCode overlay UI state, timer, draft fields, page sync,
   submission automation, and review action orchestration.
 - `practice`: FSRS-backed practice state, review logs, scheduling details,
@@ -106,6 +108,8 @@ Not every feature needs every folder. Add only the folder needed for the change.
   behavior.
 - `sync`: GitHub Gist configuration, sync metadata, directional pull/push
   rules, Settings/header sync UI, and background orchestration.
+- `genai`: AI provider settings contracts, trusted provider key storage,
+  provider network adapters, and gated assistant availability.
 - `assessment`: assessment domain rules.
 - `leetcode-capture`: LeetCode metadata, content, and submission result reads
   through the content-script/background bridge.
@@ -182,6 +186,12 @@ Background mutations are serialized through the mutation queue in
 `src/platform/db/instance.ts`, which restores a matching stored snapshot or
 creates a fresh migrated and seeded database.
 
+Due-review notifications are local background work. The extension declares the
+Chrome `notifications` permission so `src/extension/background/due-notification.ts`
+can create one due-review reminder per day when enabled. Notification scheduling
+uses Chrome alarms and local dedup state; React components must not call
+`chrome.notifications` directly.
+
 Automatic Gist sync is orchestrated in the background layer. After a local
 mutation commits, sync metadata is marked dirty, the database snapshot is
 flushed, normal invalidation is broadcast, and an alarm-backed auto-push is
@@ -219,6 +229,13 @@ must not be exported in backups, serialized in sync envelopes, logged, or stored
 in TanStack Query cache payloads. Stored-token validation also runs through a
 dashboard-authorized runtime method so the UI can test the saved token without
 receiving or echoing the secret value.
+
+GenAI provider keys use `src/platform/secrets` with provider ids
+`genai:openai`, `genai:anthropic`, and `genai:google`. UI and runtime status
+payloads may expose provider key presence only. Raw keys must not be written to
+the app database, backup exports, sync envelopes, logs, or query cache. AI
+provider network calls remain gated until provider host permissions are
+explicitly approved.
 
 ## Database And Persistence
 

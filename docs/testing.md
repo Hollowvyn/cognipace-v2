@@ -35,6 +35,9 @@ npm run build
 5. After rebuilding, click the reload button for CogniPace in
    `chrome://extensions`.
 
+The extension requests the Chrome `notifications` permission for local
+due-review reminders. It does not add notification-related host permissions.
+
 ## Smoke Flows
 
 ### Open The Dashboard
@@ -89,6 +92,19 @@ Expected: backup validation happens before restore, restore and clear require
 confirmation, restore success resets the import card, and clear offers backup
 first inside the confirmation dialog. After that backup export succeeds, the
 dialog button changes to a success state labeled Backup exported.
+
+### AI Assessment Settings
+
+1. Open the dashboard.
+2. Navigate to Settings.
+3. Find AI assessment.
+4. Select a provider and enter a model id.
+5. Save and remove a test API key.
+6. Confirm the UI shows key presence without revealing the key value.
+
+Expected: provider keys are stored locally in trusted extension secret storage.
+AI recommendations remain unavailable until provider host permissions are
+explicitly approved.
 
 ### GitHub Gist Sync
 
@@ -164,6 +180,18 @@ Expected: active track state, group state, problem order, and track progress are
 local and update the dashboard without changing global practice history unless a
 review is saved.
 
+### Dashboard Analytics
+
+1. Open the dashboard.
+2. Navigate to Analytics.
+3. Confirm metric tiles render for review days, total reviews, and retention.
+4. Confirm the 14-day due forecast renders.
+5. Confirm the weak-problems section renders an empty state or local problem
+   rows.
+
+Expected: Analytics loads through the extension runtime without the failed-load
+state, and it only reflects local practice data.
+
 ### LeetCode Overlay
 
 1. Open a LeetCode problem page in Chrome.
@@ -189,8 +217,6 @@ refresh across surfaces.
 ## Current Incomplete Surfaces
 
 - Overview is a reserved dashboard route for a future guided-practice home.
-- Analytics is a reserved dashboard route for future scheduling and reporting
-  work.
 
 Do not report these as broken unless they stop rendering or navigation fails.
 
