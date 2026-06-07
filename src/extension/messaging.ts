@@ -327,6 +327,7 @@ export interface ProtocolMap {
   'sync.connectGithubGist'(request: SyncGithubGistRequest): SyncActionResult
   'sync.setEnabled'(request: SyncSetEnabledRequest): SyncActionResult
   'sync.checkRemoteOnOpen'(request: SyncRequest): SyncActionResult
+  'sync.requestOpenCheck'(request: SyncRequest): null
   'sync.pullLatest'(request: SyncPullLatestRequest): SyncActionResult
   'sync.pushLocal'(request: SyncPushLocalRequest): SyncActionResult
   'problems.upsertFromPage'(
@@ -427,6 +428,7 @@ export const protocolMethodNames = [
   'sync.connectGithubGist',
   'sync.setEnabled',
   'sync.checkRemoteOnOpen',
+  'sync.requestOpenCheck',
   'sync.pullLatest',
   'sync.pushLocal',
   'problems.upsertFromPage',
