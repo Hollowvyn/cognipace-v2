@@ -148,6 +148,7 @@ Handoffs and agent-authored PR summaries must include:
 - issue link or documented exception
 - validation commands run
 - validation commands skipped and why
+- remaining validation risk
 - risk areas touched
 - release impact
 - rollback or recovery notes when relevant

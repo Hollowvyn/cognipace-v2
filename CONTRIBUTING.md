@@ -11,8 +11,8 @@ small, local-first, and easy to reason about.
   feature-boundary, or state-flow changes.
 - Read `docs/testing.md` before manual validation or friend-facing QA.
 - Read `design.md` before visible UI changes.
-- Agents should read `AGENTS.md` and the relevant skill files in
-  `.agents/skills`.
+- Agents should read their root guide, `docs/agent-governance.md`, and the
+  relevant skill files in `.agents/skills`.
 - Prefer the current architecture over generic framework advice.
 - Keep changes scoped to the feature or layer that owns the behavior.
 - Avoid adding ceremony unless it removes real duplication or prevents a real
@@ -27,8 +27,9 @@ full agent lifecycle, skill rules, validation matrix, skipped-validation policy,
 PR and issue expectations, release-impact notes, and smoke expectations.
 
 For agent work, handoffs and PR summaries must include exact validation commands
-run, commands skipped with reasons, risk areas, release impact, issue context or
-a documented exception, and rollback or recovery notes when relevant.
+run, commands skipped with reasons, remaining validation risk, risk areas,
+release impact, issue context or a documented exception, and rollback or
+recovery notes when relevant.
 
 Do not duplicate the full validation matrix here. Keep detailed validation rules
 in `docs/agent-governance.md` so Codex, Claude, future agents, and human
