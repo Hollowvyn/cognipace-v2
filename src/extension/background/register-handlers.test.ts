@@ -4,6 +4,7 @@ import {
   activeTrackSchema,
   backupFileSchema,
   backupSummarySchema,
+  devSmokeReportSchema,
   queueRequestSchema,
   syncActionResultSchema,
   syncStatusSchema,
@@ -79,6 +80,7 @@ const backgroundMocks = vi.hoisted(() => {
     backupValidateFullBackup: vi.fn(),
     broadcastCacheInvalidation: vi.fn(),
     getAnalyticsSummary: vi.fn(),
+    getTodayQueue: vi.fn(),
     flushDbSnapshot: vi.fn(),
     getActiveTrack: vi.fn(),
     getAppDb: vi.fn(),
@@ -103,6 +105,10 @@ const backgroundMocks = vi.hoisted(() => {
     setPracticeSuspended: vi.fn(),
     setActiveTrack: vi.fn(),
     getSettings: vi.fn(),
+    getAiProviderSecretPresence: vi.fn(),
+    setAiProviderSecret: vi.fn(),
+    clearAiProviderSecret: vi.fn(),
+    loadActiveProviderConfig: vi.fn(),
     cycleThemeMode: vi.fn(),
     toggleStudyMode: vi.fn(),
     tabsCreate: vi.fn(),
@@ -174,6 +180,17 @@ vi.mock('@/features/app-shell/server/app-shell-service', () => ({
 
 vi.mock('@/features/analytics/server/analytics-service', () => ({
   getAnalyticsSummary: backgroundMocks.getAnalyticsSummary,
+}))
+
+vi.mock('@/features/queue/server/queue-service', () => ({
+  getTodayQueue: backgroundMocks.getTodayQueue,
+}))
+
+vi.mock('@/features/genai/server/genai-settings-service', () => ({
+  getAiProviderSecretPresence: backgroundMocks.getAiProviderSecretPresence,
+  setAiProviderSecret: backgroundMocks.setAiProviderSecret,
+  clearAiProviderSecret: backgroundMocks.clearAiProviderSecret,
+  loadActiveProviderConfig: backgroundMocks.loadActiveProviderConfig,
 }))
 
 vi.mock('@/features/backup/server/backup-service', () => ({
@@ -331,6 +348,7 @@ describe('background handler registration', () => {
     backgroundMocks.backupValidateFullBackup.mockReturnValue(validBackupSummary)
     backgroundMocks.flushDbSnapshot.mockResolvedValue(undefined)
     backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
+    backgroundMocks.getTodayQueue.mockResolvedValue(todayQueue)
     backgroundMocks.getProblemLibrary.mockResolvedValue(problemLibraryResponse)
     backgroundMocks.createProblem.mockResolvedValue(problemForEditResponse)
     backgroundMocks.createTrack.mockResolvedValue(trackForEditResponse)
@@ -354,6 +372,26 @@ describe('background handler registration', () => {
     backgroundMocks.setActiveTrack.mockResolvedValue(undefined)
     backgroundMocks.clearActiveTrack.mockResolvedValue(undefined)
     backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
+    backgroundMocks.getAiProviderSecretPresence.mockResolvedValue({
+      openai: { configured: false, updatedAt: null, fingerprint: null },
+      anthropic: { configured: false, updatedAt: null, fingerprint: null },
+      gemini: { configured: false, updatedAt: null, fingerprint: null },
+    })
+    backgroundMocks.setAiProviderSecret.mockResolvedValue({
+      openai: {
+        configured: true,
+        updatedAt: syncTimestamp,
+        fingerprint: 'abc',
+      },
+      anthropic: { configured: false, updatedAt: null, fingerprint: null },
+      gemini: { configured: false, updatedAt: null, fingerprint: null },
+    })
+    backgroundMocks.clearAiProviderSecret.mockResolvedValue({
+      openai: { configured: false, updatedAt: null, fingerprint: null },
+      anthropic: { configured: false, updatedAt: null, fingerprint: null },
+      gemini: { configured: false, updatedAt: null, fingerprint: null },
+    })
+    backgroundMocks.loadActiveProviderConfig.mockResolvedValue(null)
     backgroundMocks.cycleThemeMode.mockResolvedValue(defaultUserSettings)
     backgroundMocks.toggleStudyMode.mockResolvedValue(defaultUserSettings)
     backgroundMocks.tabsCreate.mockResolvedValue({})
@@ -487,6 +525,35 @@ describe('background handler registration', () => {
         averageRetrievability: 0.8,
       },
     })
+  })
+
+  it('registers dev smoke handling with dashboard policy and response parsing', async () => {
+    const response = await sendRuntimeMessage('devSmoke.run', {
+      surface: 'dashboard',
+    })
+
+    expectRuntimePolicy('devSmoke.run', 'dashboard')
+    expect(backgroundMocks.getAppDb).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
+      backgroundMocks.db,
+    )
+    expect(backgroundMocks.getTodayQueue).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      expect.any(Date),
+    )
+    expect(backgroundMocks.loadActiveProviderConfig).toHaveBeenCalledWith(
+      backgroundMocks.db,
+    )
+    expect(
+      devSmokeReportSchema.parse(response).checks.map((check) => check.id),
+    ).toEqual([
+      'health',
+      'analytics',
+      'queue',
+      'notifications',
+      'genai.config',
+      'genai.live',
+    ])
   })
 
   it('opens dashboard pages from content scripts through the background tab API', async () => {
@@ -2014,6 +2081,19 @@ const trackForEditResponse = createTrackForEditResponse()
 const parsedTrackForEditResponse =
   trackForEditResponseSchema.parse(trackForEditResponse)
 const trackWorkspaceResponse = createTrackWorkspaceResponse()
+const todayQueue = todayQueueSchema.parse({
+  generatedAt: '2026-06-07T12:00:00.000Z',
+  dueCount: 1,
+  dueToday: 1,
+  newCount: 2,
+  newAvailable: 2,
+  queueLoad: 3,
+  reinforcementCount: 0,
+  excludedCount: 0,
+  recommendationReason: 'due-now',
+  items: [],
+  topRecommendation: null,
+})
 const backupTimestamp = '2026-05-25T12:00:00.000Z'
 const syncTimestamp = '2026-05-26T12:00:00.000Z'
 const syncStatus = syncStatusSchema.parse({

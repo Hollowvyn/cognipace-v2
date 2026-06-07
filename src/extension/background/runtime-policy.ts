@@ -14,6 +14,7 @@ const methodSurfaceAccess = {
   'genai.setAiProviderSecret': ['popup', 'dashboard'],
   'genai.clearAiProviderSecret': ['popup', 'dashboard'],
   'genai.recommendLeetCodeAssessment': ['content-script'],
+  'devSmoke.run': ['dashboard'],
   'sync.getStatus': ['popup', 'dashboard', 'content-script'],
   'sync.validateGithubToken': ['dashboard'],
   'sync.validateStoredGithubToken': ['dashboard'],

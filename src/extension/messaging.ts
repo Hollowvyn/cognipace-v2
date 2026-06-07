@@ -36,6 +36,11 @@ export {
   setAiProviderSecretRequestSchema,
 } from '@/features/genai/api'
 import type { AiProviderSecretPresence } from '@/features/genai'
+import type { DevSmokeReport, DevSmokeRequest } from '@/features/dev-smoke'
+export {
+  devSmokeReportSchema,
+  devSmokeRequestSchema,
+} from '@/features/dev-smoke'
 import {
   leetcodeProblemRemoteRequestSchema,
   leetcodeSubmissionResultRemoteRequestSchema,
@@ -311,6 +316,7 @@ export interface ProtocolMap {
   'genai.recommendLeetCodeAssessment'(
     request: RecommendLeetCodeAssessmentRequest,
   ): RecommendLeetCodeAssessmentResponse
+  'devSmoke.run'(request: DevSmokeRequest): DevSmokeReport
   'sync.getStatus'(request: SyncRequest): SerializedSyncStatus
   'sync.validateGithubToken'(request: SyncGithubTokenRequest): SyncActionResult
   'sync.validateStoredGithubToken'(request: SyncRequest): SyncActionResult
@@ -410,6 +416,7 @@ export const protocolMethodNames = [
   'genai.setAiProviderSecret',
   'genai.clearAiProviderSecret',
   'genai.recommendLeetCodeAssessment',
+  'devSmoke.run',
   'sync.getStatus',
   'sync.validateGithubToken',
   'sync.validateStoredGithubToken',

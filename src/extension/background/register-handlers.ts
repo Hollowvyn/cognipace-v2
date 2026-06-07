@@ -6,6 +6,8 @@ import {
   backupRequestSchema,
   backupSummarySchema,
   clearAiProviderSecretRequestSchema,
+  devSmokeReportSchema,
+  devSmokeRequestSchema,
   getAiProviderSecretPresenceRequestSchema,
   leetcodeProblemRemoteRuntimeRequestSchema,
   leetcodeSubmissionResultRemoteRuntimeRequestSchema,
@@ -68,8 +70,10 @@ import { getAnalyticsSummary } from '@/features/analytics/server/analytics-servi
 import {
   clearAiProviderSecret,
   getAiProviderSecretPresence,
+  loadActiveProviderConfig,
   setAiProviderSecret,
 } from '@/features/genai/server/genai-settings-service'
+import { generateJson } from '@/features/genai/server'
 import {
   exportFullBackup,
   resetLocalData,
@@ -145,8 +149,10 @@ import {
 } from '@/features/tracks/server/tracks-service'
 import { getDashboardUrl } from '@/platform/chrome/extension-pages'
 import { flushDbSnapshot, getAppDb, type Db } from '@/platform/db'
+import { z } from 'zod'
 
 import { broadcastCacheInvalidation } from './cache-invalidation-broadcaster'
+import { createDevSmokeService } from './dev-smoke-service'
 import { assertCanSenderCallExtensionMethod } from './runtime-policy'
 import { createAlarmScheduler } from './scheduler/alarm-scheduler'
 import { createSyncAutoSync } from './sync-auto-sync'
@@ -861,6 +867,61 @@ export function registerBackgroundHandlers() {
     )
   })
 
+  onMessage('devSmoke.run', ({ data, sender }) => {
+    const request = devSmokeRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod('devSmoke.run', request.surface, sender)
+
+    return getAppDb().then(async ({ db }) => {
+      const smoke = createDevSmokeService({
+        now: () => new Date(),
+        readAnalyticsSummary: () => getAnalyticsSummary(db),
+        readQueueSummary: async () => {
+          const queue = await getTodayQueue(db, new Date())
+
+          return {
+            dueToday: queue.dueToday,
+            newAvailable: queue.newAvailable,
+            queueLoad: queue.queueLoad,
+            recommendationReason: queue.recommendationReason,
+          }
+        },
+        readGenAiConfig: async () => {
+          const config = await loadActiveProviderConfig(db)
+
+          if (!config) {
+            return {
+              enabled: false,
+              provider: 'openai',
+              model: 'not-configured',
+              hasSecret: false,
+            }
+          }
+
+          return {
+            enabled: true,
+            provider: config.provider,
+            model: config.model,
+            hasSecret: true,
+          }
+        },
+        runNotificationDryRun: async () => ({
+          status: 'skip',
+          detail: 'Dry-run wiring is available; notification was not sent.',
+        }),
+        runLiveGenAi: () => runLiveGenAiSmoke(db),
+      })
+
+      return devSmokeReportSchema.parse(
+        await smoke.run({
+          ...(request.runLiveGenAi !== undefined
+            ? { runLiveGenAi: request.runLiveGenAi }
+            : {}),
+        }),
+      )
+    })
+  })
+
   onMessage('queue.getTodayQueue', ({ data, sender }) => {
     const request = queueRequestSchema.parse(data)
 
@@ -1199,6 +1260,52 @@ export function registerBackgroundHandlers() {
     )
     return readLeetCodeSubmissionResultInBackground(request)
   })
+}
+
+const genAiLiveSmokeSchema = z.object({
+  ok: z.literal(true),
+})
+
+async function runLiveGenAiSmoke(db: Db) {
+  const config = await loadActiveProviderConfig(db)
+
+  if (!config) {
+    return {
+      status: 'skip' as const,
+      detail: 'Live GenAI skipped because no active provider config exists.',
+    }
+  }
+
+  const result = await generateJson({
+    ...config,
+    prompt: {
+      system:
+        'Return compact JSON for a CogniPace developer smoke test. No prose.',
+      user: 'Return {"ok":true}.',
+    },
+    schema: genAiLiveSmokeSchema,
+    temperature: 0,
+    timeoutMs: 10_000,
+  })
+
+  if (result.status === 'success') {
+    return {
+      status: 'pass' as const,
+      detail: `Provider ${config.provider} responded for model ${config.model}.`,
+      latencyMs: result.providerMetadata.durationMs,
+    }
+  }
+
+  return {
+    status:
+      result.code === 'rate-limit' ||
+      result.code === 'network' ||
+      result.code === 'timeout'
+        ? ('warn' as const)
+        : ('fail' as const),
+    detail: `Provider ${config.provider} returned ${result.code}: ${result.message}`,
+    latencyMs: result.providerMetadata.durationMs,
+  }
 }
 
 async function runSettingsMutation(

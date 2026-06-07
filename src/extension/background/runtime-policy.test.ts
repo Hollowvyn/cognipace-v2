@@ -33,6 +33,13 @@ describe('runtime-policy', () => {
     ).toBe(false)
   })
 
+  it('keeps dev smoke dashboard-only', () => {
+    expect(canCallExtensionMethod('devSmoke.run', 'dashboard')).toBe(true)
+    expect(canCallExtensionMethod('devSmoke.run', 'popup')).toBe(false)
+    expect(canCallExtensionMethod('devSmoke.run', 'content-script')).toBe(false)
+    expect(canCallExtensionMethod('devSmoke.run', 'background')).toBe(false)
+  })
+
   it('allows content scripts to read overlay app-shell data', () => {
     expect(canCallExtensionMethod('app.getShellData', 'content-script')).toBe(
       true,
