@@ -3,6 +3,23 @@
 CogniPace releases are managed with Release Please and GitHub Actions. The
 Chrome Web Store upload remains manual.
 
+## Release Cadence
+
+Release Please uses a hybrid cadence instead of running after every merge to
+`main`. Bug-fix and dependency pull requests (`fix` and `deps`) open or update a
+patch release pull request immediately after merge. Other release-triggering
+work is batched into the weekly Friday run at 15:00 UTC, and maintainers can
+also run the GitHub Actions `Release Please` workflow manually when an off-cycle
+release is needed.
+
+Normal pull requests can continue merging while a release pull request is open.
+New bug fixes refresh the release pull request immediately; other release-worthy
+changes refresh it on the next scheduled or manual workflow run. Merging the
+Release Please pull request still finalizes the version immediately: the
+workflow allows release merge commits through its `push` trigger so Release
+Please can create the semver tag and GitHub Release, then upload the extension
+zip.
+
 ## Pull Request Titles
 
 The repository uses squash merge, so the pull request title becomes the squash
@@ -58,16 +75,23 @@ normal pull request workflows.
 
 1. Merge release-triggering pull requests (`feat`, `fix`, `deps`, or breaking
    changes) with semantic titles.
-2. Release Please opens or updates a release pull request on `main`.
-3. Review the release pull request version and changelog.
-4. Merge the release pull request when ready to ship.
-5. Release Please creates the semver tag and GitHub Release.
-6. The release workflow runs `npm run check`, `npm run build`, and
+2. If the merge is a `fix` or `deps` commit, Release Please opens or updates a
+   patch release pull request immediately.
+3. For other release-triggering commits, Release Please opens or updates a
+   release pull request on Friday at 15:00 UTC, or when a maintainer manually
+   runs the workflow.
+4. Review the release pull request version and changelog.
+5. If more pull requests merge before ship time, bug fixes refresh
+   automatically; otherwise run the workflow manually or wait for the next
+   Friday run.
+6. Merge the release pull request when ready to ship.
+7. Release Please creates the semver tag and GitHub Release.
+8. The release workflow runs `npm run check`, `npm run build`, and
    `npm run zip`.
-7. The release workflow uploads `cognipace-<version>-chrome-mv3.zip` to the
+9. The release workflow uploads `cognipace-<version>-chrome-mv3.zip` to the
    GitHub Release.
-8. Upload that exact GitHub Release zip to the Chrome Web Store developer
-   dashboard.
+10. Upload that exact GitHub Release zip to the Chrome Web Store developer
+    dashboard.
 
 The GitHub Release zip is the official artifact for the version.
 
@@ -104,6 +128,10 @@ END_COMMIT_OVERRIDE
 - If CI fails, fix the pull request before merge.
 - If the release PR version or changelog is wrong, fix the source commit
   convention or use a documented Release Please override before shipping.
+- If a newly merged pull request is missing from an open release pull request,
+  check whether it was a `fix` or `deps` commit. Patch-class commits should
+  refresh automatically; otherwise run the `Release Please` workflow manually or
+  wait for the next Friday run.
 - If release artifact upload fails, do not upload a local zip to the Chrome Web
   Store for that version.
 - If Chrome Web Store review rejects the package for code or manifest reasons,
