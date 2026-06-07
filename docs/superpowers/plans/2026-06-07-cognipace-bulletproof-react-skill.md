@@ -30,6 +30,7 @@ rtk sed -n '1,240p' .agents/skills/bulletproof-react-auditor/SKILL.md
 rtk sed -n '1,260p' docs/architecture.md
 rtk sed -n '1,240p' CONTRIBUTING.md
 rtk sed -n '1,260p' src/testing/architecture-boundaries.test.ts
+rtk sed -n '1,220p' eslint.config.js
 ```
 
 Expected: enough context to compare generic Bulletproof React guidance against
