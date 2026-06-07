@@ -17,6 +17,8 @@ Current authority, in order of relevance:
 - `CONTRIBUTING.md`: contribution, review, validation, and release expectations.
 - `AGENTS.md`: Codex-facing root operating guide.
 - `CLAUDE.md`: Claude-facing root operating guide.
+- `.agents/skills/cognipace-agent-workflow/SKILL.md`: CogniPace workflow,
+  validation, PR/issue, governance, and agent-process routing skill.
 - `.agents/skills/cognipace-bulletproof-react/SKILL.md`: CogniPace architecture
   ownership lens.
 - `docs/superpowers/README.md`: planning artifact index and historical context.
@@ -48,6 +50,10 @@ relevant sections before proposing edits.
 
 Use explicit skills that match the affected boundary.
 
+- Use `cognipace-agent-workflow` as the first repo-local skill for non-trivial
+  CogniPace work involving product behavior, feature changes, runtime,
+  database, UI surfaces, sync, GenAI, CI, release, governance, PR/issue
+  workflow, validation, or agent-process changes.
 - Use `superpowers:brainstorming` before substantial creative work, behavior
   changes, feature changes, architecture changes, repo governance changes, CI
   changes, release changes, or agent-workflow changes.

@@ -22,6 +22,8 @@ before proposing edits.
 
 ## Hard Gates
 
+- Use `cognipace-agent-workflow` as the first repo-local skill for non-trivial
+  CogniPace work.
 - Use `superpowers:brainstorming` before substantial design, behavior,
   architecture, governance, CI, release, or workflow work.
 - Use `cognipace-bulletproof-react` for ownership, runtime, React architecture,
@@ -35,10 +37,13 @@ before proposing edits.
 
 ## Skills
 
-Use repo-local skills under `.agents/skills` when they match the work. The
-CogniPace-specific architecture skill is:
+Use repo-local skills under `.agents/skills` when they match the work:
 
-- `.agents/skills/cognipace-bulletproof-react/SKILL.md`
+- `.agents/skills/cognipace-agent-workflow/SKILL.md` for non-trivial CogniPace
+  workflow, validation, PR/issue, governance, and agent-process work.
+- `.agents/skills/cognipace-bulletproof-react/SKILL.md` for CogniPace
+  architecture ownership, runtime boundaries, dependency direction, and
+  popup/dashboard/overlay responsibility decisions.
 
 Use documentation lookup tooling for current library, framework, SDK, API, CLI,
 or cloud-service questions. Resolve the library first, then query current docs.
