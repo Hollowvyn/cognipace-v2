@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { SyncActionResult } from '@/features/sync/api/sync-contracts'
 import {
@@ -11,6 +11,9 @@ import {
   createSyncAutoSync,
   syncAutoPushAlarmName,
   syncAutoPushDelayMinutes,
+  syncOpenCheckAlarmName,
+  syncOpenCheckDelayMs,
+  syncOpenCheckFallbackDelayMinutes,
   syncPollAlarmName,
   syncPollPeriodMinutes,
   syncRetryAlarmName,
@@ -31,6 +34,10 @@ describe('sync auto-sync orchestrator', () => {
         return Promise.resolve(metadata)
       }),
     })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('schedules auto-push after a local mutation when sync is configured', async () => {
@@ -211,7 +218,105 @@ describe('sync auto-sync orchestrator', () => {
     expect(deps.scheduler.clear).toHaveBeenCalledWith(syncRetryAlarmName)
   })
 
-  it('registers push, retry, and poll jobs with startup poll repair settings', () => {
+  it('registers the requested open-check fallback job', () => {
+    const syncAutoSync = createSyncAutoSync(deps)
+
+    syncAutoSync.registerJobs()
+
+    expect(deps.scheduler.register).toHaveBeenCalledWith({
+      name: syncOpenCheckAlarmName,
+      run: syncAutoSync.runRequestedOpenCheck,
+    })
+  })
+
+  it('coalesces repeated surface-open check requests behind one timer and fallback alarm', async () => {
+    vi.useFakeTimers()
+    const syncAutoSync = createSyncAutoSync(deps)
+
+    await syncAutoSync.requestOpenCheckAfterSurfaceOpen()
+    await syncAutoSync.requestOpenCheckAfterSurfaceOpen()
+
+    expect(deps.scheduler.schedule).toHaveBeenCalledTimes(1)
+    expect(deps.scheduler.schedule).toHaveBeenCalledWith(
+      syncOpenCheckAlarmName,
+      {
+        delayInMinutes: syncOpenCheckFallbackDelayMinutes,
+      },
+    )
+
+    await vi.advanceTimersByTimeAsync(syncOpenCheckDelayMs)
+
+    expect(deps.runCleanPullCheck).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not wedge requested open checks when fallback scheduling fails', async () => {
+    vi.useFakeTimers()
+    const scheduleError = new Error('Alarms unavailable.')
+    vi.mocked(deps.scheduler.schedule).mockRejectedValueOnce(scheduleError)
+    const syncAutoSync = createSyncAutoSync(deps)
+
+    await expect(
+      syncAutoSync.requestOpenCheckAfterSurfaceOpen(),
+    ).rejects.toThrow(scheduleError)
+
+    expect(deps.scheduler.schedule).toHaveBeenCalledTimes(1)
+
+    vi.mocked(deps.scheduler.schedule).mockResolvedValueOnce(undefined)
+
+    await syncAutoSync.requestOpenCheckAfterSurfaceOpen()
+
+    expect(deps.scheduler.schedule).toHaveBeenCalledTimes(2)
+    expect(deps.scheduler.schedule).toHaveBeenLastCalledWith(
+      syncOpenCheckAlarmName,
+      {
+        delayInMinutes: syncOpenCheckFallbackDelayMinutes,
+      },
+    )
+
+    await vi.advanceTimersByTimeAsync(syncOpenCheckDelayMs)
+
+    expect(deps.runCleanPullCheck).toHaveBeenCalledTimes(1)
+  })
+
+  it('runs requested open checks through the existing clean pull path and clears the fallback alarm', async () => {
+    const syncAutoSync = createSyncAutoSync(deps)
+
+    await syncAutoSync.requestOpenCheckAfterSurfaceOpen()
+    await syncAutoSync.runRequestedOpenCheck()
+
+    expect(deps.runCleanPullCheck).toHaveBeenCalledTimes(1)
+    expect(deps.scheduler.clear).toHaveBeenCalledWith(syncOpenCheckAlarmName)
+  })
+
+  it('keeps requested open checks coalesced while a clean pull is in flight', async () => {
+    vi.useFakeTimers()
+    const pullCheck = createDeferred<SyncActionResult>()
+    vi.mocked(deps.runCleanPullCheck).mockReturnValueOnce(pullCheck.promise)
+    const syncAutoSync = createSyncAutoSync(deps)
+
+    await syncAutoSync.requestOpenCheckAfterSurfaceOpen()
+    const runningOpenCheck = syncAutoSync.runRequestedOpenCheck()
+    await flushMicrotasks()
+
+    expect(deps.runCleanPullCheck).toHaveBeenCalledTimes(1)
+
+    await syncAutoSync.requestOpenCheckAfterSurfaceOpen()
+
+    expect(deps.scheduler.schedule).toHaveBeenCalledTimes(1)
+    expect(deps.runCleanPullCheck).toHaveBeenCalledTimes(1)
+
+    pullCheck.resolve(
+      createActionResult({
+        direction: 'pull',
+        outcome: 'success',
+      }),
+    )
+    await runningOpenCheck
+
+    expect(deps.scheduler.clear).toHaveBeenCalledWith(syncOpenCheckAlarmName)
+  })
+
+  it('registers push, retry, poll, and open-check jobs with startup poll repair settings', () => {
     const syncAutoSync = createSyncAutoSync(deps)
 
     syncAutoSync.registerJobs()
@@ -278,6 +383,20 @@ function createScheduler(): SchedulerDependency {
     repairStartupAlarms: vi.fn(() => Promise.resolve(undefined)),
     schedule: vi.fn(() => Promise.resolve(undefined)),
   }
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve
+  })
+
+  return { promise, resolve }
+}
+
+async function flushMicrotasks() {
+  await Promise.resolve()
+  await Promise.resolve()
 }
 
 function createMetadata(patch: Partial<SyncMetadata> = {}): SyncMetadata {

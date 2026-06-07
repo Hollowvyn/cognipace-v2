@@ -182,9 +182,17 @@ const syncAutoSync = createSyncAutoSync({
   runCleanPullCheck: async () => {
     const { db } = await getAppDb()
 
-    return parseSyncActionResult(
-      await runQueuedSyncAction(db, (service) => service.checkRemoteOnOpen()),
-    )
+    try {
+      return parseSyncActionResult(
+        await runQueuedSyncAction(db, (service) => service.checkRemoteOnOpen()),
+      )
+    } finally {
+      try {
+        await broadcastSyncInvalidation('dashboard')
+      } catch {
+        // Sync status refresh is best-effort after background open checks.
+      }
+    }
   },
 })
 
@@ -443,6 +451,22 @@ export function registerBackgroundHandlers() {
         await runQueuedSyncAction(db, (service) => service.checkRemoteOnOpen()),
       ),
     )
+  })
+
+  onMessage('sync.requestOpenCheck', ({ data, sender }) => {
+    const request = syncRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'sync.requestOpenCheck',
+      request.surface,
+      sender,
+    )
+
+    void syncAutoSync.requestOpenCheckAfterSurfaceOpen().catch(() => {
+      // Opening a UI surface must not fail when automatic sync scheduling fails.
+    })
+
+    return null
   })
 
   onMessage('sync.pullLatest', ({ data, sender }) => {
@@ -1561,6 +1585,14 @@ function broadcastTracksInvalidation(input: {
     reason: 'tracks-updated',
     source: input.source,
     tags: input.tags ?? ['tracks'],
+  })
+}
+
+function broadcastSyncInvalidation(source: 'dashboard') {
+  return broadcastCacheInvalidation({
+    reason: 'sync-updated',
+    source,
+    tags: ['sync'],
   })
 }
 

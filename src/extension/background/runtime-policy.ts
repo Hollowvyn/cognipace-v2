@@ -24,6 +24,7 @@ const methodSurfaceAccess = {
   'sync.connectGithubGist': ['dashboard'],
   'sync.setEnabled': ['dashboard'],
   'sync.checkRemoteOnOpen': ['popup', 'dashboard', 'content-script'],
+  'sync.requestOpenCheck': ['popup', 'dashboard', 'content-script'],
   'sync.pullLatest': ['dashboard'],
   'sync.pushLocal': ['dashboard'],
   'problems.upsertFromPage': ['content-script', 'dashboard'],

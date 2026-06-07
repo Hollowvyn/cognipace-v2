@@ -202,10 +202,13 @@ describe('runtime-policy', () => {
   })
 
   it('allows safe sync open checks from every UI surface', () => {
-    for (const surface of ['popup', 'dashboard', 'content-script'] as const) {
-      expect(canCallExtensionMethod('sync.checkRemoteOnOpen', surface)).toBe(
-        true,
-      )
+    for (const method of [
+      'sync.checkRemoteOnOpen',
+      'sync.requestOpenCheck',
+    ] as const) {
+      for (const surface of ['popup', 'dashboard', 'content-script'] as const) {
+        expect(canCallExtensionMethod(method, surface)).toBe(true)
+      }
     }
   })
 
