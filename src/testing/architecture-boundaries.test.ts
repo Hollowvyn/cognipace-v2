@@ -12,6 +12,16 @@ const featureIndexRuntimeExportPattern =
   /export\s+(?:type\s+)?(?:\{[\s\S]*?\}|\*)\s+from\s+['"]\.\/(?:data|server)(?:\/|['"])/
 const reviewSchedulingWritePattern =
   /\.\s*(?:insert|update|delete)\s*\(\s*(?:reviewAttempts|problemPractice|fsrsCards)\b/
+const existingNonAiHostPermissions = [
+  'https://leetcode.com/*',
+  'https://www.leetcode.com/*',
+  'https://api.github.com/*',
+]
+const approvedAiProviderHostPermissions = [
+  'https://api.openai.com/*',
+  'https://api.anthropic.com/*',
+  'https://generativelanguage.googleapis.com/*',
+]
 
 describe('architecture boundaries', () => {
   it('keeps shared infrastructure from importing app or feature code', () => {
@@ -120,12 +130,20 @@ describe('architecture boundaries', () => {
 
   it('declares only the approved AI provider host permissions', () => {
     const config = readFileSync(join(repoRoot, 'wxt.config.ts'), 'utf8')
+    const hostPermissions = extractHostPermissions(config)
+    const aiProviderHostPermissions = hostPermissions.filter(
+      (hostPermission) =>
+        !existingNonAiHostPermissions.includes(hostPermission),
+    )
 
-    expect(config).toContain('https://api.openai.com/*')
-    expect(config).toContain('https://api.anthropic.com/*')
-    expect(config).toContain('https://generativelanguage.googleapis.com/*')
-    expect(config).not.toContain('https://*/*')
-    expect(config).not.toContain('*://*/*')
+    expect(hostPermissions).toEqual(
+      expect.arrayContaining(existingNonAiHostPermissions),
+    )
+    expect(aiProviderHostPermissions).toEqual(
+      approvedAiProviderHostPermissions,
+    )
+    expect(hostPermissions).not.toContain('https://*/*')
+    expect(hostPermissions).not.toContain('*://*/*')
   })
 
   it('keeps the notifications permission documented for due reminders', () => {
@@ -162,6 +180,26 @@ function featureRootIndexFiles() {
 
     return parts.length === 2 && parts[1] === 'index.ts'
   })
+}
+
+function extractHostPermissions(config: string) {
+  const [, hostPermissionsBlock] =
+    config.match(/host_permissions:\s*\[([\s\S]*?)\]/) ?? []
+
+  if (!hostPermissionsBlock) {
+    throw new Error('wxt.config.ts must declare manifest.host_permissions')
+  }
+
+  return Array.from(
+    hostPermissionsBlock.matchAll(/['"]([^'"]+)['"]/g),
+    ([, hostPermission]) => {
+      if (!hostPermission) {
+        throw new Error('host_permissions contains an unreadable host entry')
+      }
+
+      return hostPermission
+    },
+  )
 }
 
 function findNestedFeatureImports(file: string) {
