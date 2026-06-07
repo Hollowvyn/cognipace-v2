@@ -19,6 +19,7 @@
 - Read: `docs/architecture.md`
 - Read: `CONTRIBUTING.md`
 - Read: `src/testing/architecture-boundaries.test.ts`
+- Read: `eslint.config.js`
 
 - [x] **Step 1: Re-read the current generic skill and repo authority files**
 
