@@ -78,6 +78,7 @@ const backgroundMocks = vi.hoisted(() => {
     backupRestoreFullBackup: vi.fn(),
     backupValidateFullBackup: vi.fn(),
     broadcastCacheInvalidation: vi.fn(),
+    getAnalyticsSummary: vi.fn(),
     flushDbSnapshot: vi.fn(),
     getActiveTrack: vi.fn(),
     getAppDb: vi.fn(),
@@ -169,6 +170,10 @@ vi.mock('wxt/browser', () => ({
 
 vi.mock('@/features/app-shell/server/app-shell-service', () => ({
   getAppShellData: backgroundMocks.getAppShellData,
+}))
+
+vi.mock('@/features/analytics/server/analytics-service', () => ({
+  getAnalyticsSummary: backgroundMocks.getAnalyticsSummary,
 }))
 
 vi.mock('@/features/backup/server/backup-service', () => ({
@@ -292,6 +297,21 @@ describe('background handler registration', () => {
     backgroundMocks.handlers.clear()
     vi.clearAllMocks()
     backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
+    backgroundMocks.getAnalyticsSummary.mockResolvedValue({
+      generatedAt: '2026-01-15T12:00:00.000Z',
+      reviewDays: 3,
+      totalReviews: 12,
+      currentStreak: 2,
+      retentionProxy: 0.75,
+      retentionProxyLabel: '75%',
+      retentionSampleSize: 12,
+      lowSample: false,
+      dueForecast14Days: Array.from({ length: 14 }, (_, index) => ({
+        date: `2026-01-${String(15 + index).padStart(2, '0')}`,
+        dueCount: index,
+      })),
+      weakProblems: [],
+    })
     backgroundMocks.backupExportFullBackup.mockResolvedValue(validBackup)
     backgroundMocks.backupResetLocalData.mockResolvedValue(null)
     backgroundMocks.backupRestoreFullBackup.mockResolvedValue(
@@ -428,6 +448,24 @@ describe('background handler registration', () => {
       activeTrack: {
         dueAt: '2026-03-01T00:00:00.000Z',
       },
+    })
+  })
+
+  it('registers analytics summary handling with dashboard policy and response parsing', async () => {
+    const response = await sendRuntimeMessage('analytics.getSummary', {})
+
+    expectRuntimePolicy('analytics.getSummary', 'dashboard')
+    expect(backgroundMocks.getAppDb).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
+      backgroundMocks.db,
+    )
+    expect(response).toMatchObject({
+      generatedAt: '2026-01-15T12:00:00.000Z',
+      reviewDays: 3,
+      totalReviews: 12,
+      currentStreak: 2,
+      retentionProxyLabel: '75%',
+      weakProblems: [],
     })
   })
 
