@@ -25,6 +25,18 @@ export interface DevSmokeDeps {
   }>
 }
 
+export type NotificationDryRunInput = {
+  now: Date
+  reminders: {
+    daily: {
+      enabled: boolean
+      time: string
+    }
+  }
+  dueToday: number
+  lastNotifiedDate: string | null
+}
+
 type SmokeCheck = DevSmokeReport['checks'][number]
 
 export function createDevSmokeService(deps: DevSmokeDeps) {
@@ -54,6 +66,37 @@ export function createDevSmokeService(deps: DevSmokeDeps) {
 
       return { generatedAt, checks }
     },
+  }
+}
+
+export function computeNotificationDryRun(input: NotificationDryRunInput): {
+  status: SmokeStatus
+  detail: string
+} {
+  if (!input.reminders.daily.enabled) {
+    return {
+      status: 'skip',
+      detail: 'Daily reminders are disabled.',
+    }
+  }
+
+  if (input.dueToday === 0) {
+    return {
+      status: 'skip',
+      detail: 'No due reviews are available for a reminder.',
+    }
+  }
+
+  if (input.lastNotifiedDate === toDateString(input.now)) {
+    return {
+      status: 'skip',
+      detail: 'A due-review reminder was already sent today.',
+    }
+  }
+
+  return {
+    status: 'pass',
+    detail: `Would send a ${input.reminders.daily.time} reminder for ${input.dueToday} due review${input.dueToday === 1 ? '' : 's'}.`,
   }
 }
 
@@ -168,4 +211,8 @@ function redactSecrets(value: string) {
     .replace(/\bsk-ant-[A-Za-z0-9_-]+\b/g, '[redacted-secret]')
     .replace(/\bsk-[A-Za-z0-9_-]+\b/g, '[redacted-secret]')
     .replace(/\bAIza[A-Za-z0-9_-]+\b/g, '[redacted-secret]')
+}
+
+function toDateString(date: Date): string {
+  return date.toISOString().slice(0, 10)
 }

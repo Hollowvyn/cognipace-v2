@@ -528,12 +528,27 @@ describe('background handler registration', () => {
   })
 
   it('registers dev smoke handling with dashboard policy and response parsing', async () => {
+    backgroundMocks.getSettings.mockResolvedValue({
+      ...defaultUserSettings,
+      reminders: {
+        daily: {
+          enabled: true,
+          time: '09:00',
+        },
+      },
+    })
+    backgroundMocks.readDueNotificationState.mockResolvedValue({
+      lastNotifiedDate: '2026-06-06',
+    })
+
     const response = await sendRuntimeMessage('devSmoke.run', {
       surface: 'dashboard',
     })
+    const report = devSmokeReportSchema.parse(response)
 
     expectRuntimePolicy('devSmoke.run', 'dashboard')
     expect(backgroundMocks.getAppDb).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.getSettings).toHaveBeenCalledWith(backgroundMocks.db)
     expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
       backgroundMocks.db,
     )
@@ -544,9 +559,9 @@ describe('background handler registration', () => {
     expect(backgroundMocks.loadActiveProviderConfig).toHaveBeenCalledWith(
       backgroundMocks.db,
     )
-    expect(
-      devSmokeReportSchema.parse(response).checks.map((check) => check.id),
-    ).toEqual([
+    expect(backgroundMocks.readDueNotificationState).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.writeDueNotificationState).not.toHaveBeenCalled()
+    expect(report.checks.map((check) => check.id)).toEqual([
       'health',
       'analytics',
       'queue',
@@ -554,6 +569,12 @@ describe('background handler registration', () => {
       'genai.config',
       'genai.live',
     ])
+    expect(
+      report.checks.find((check) => check.id === 'notifications'),
+    ).toMatchObject({
+      status: 'pass',
+      detail: 'Would send a 09:00 reminder for 1 due review.',
+    })
   })
 
   it('opens dashboard pages from content scripts through the background tab API', async () => {

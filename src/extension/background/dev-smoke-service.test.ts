@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { createDevSmokeService, type DevSmokeDeps } from './dev-smoke-service'
+import {
+  computeNotificationDryRun,
+  createDevSmokeService,
+  type DevSmokeDeps,
+} from './dev-smoke-service'
 
 describe('createDevSmokeService', () => {
   it('returns ordered pass checks for reachable dependencies', async () => {
@@ -76,6 +80,64 @@ describe('createDevSmokeService', () => {
     ).toMatchObject({
       status: 'fail',
       detail: expect.stringContaining('[redacted-secret]'),
+    })
+  })
+})
+
+describe('computeNotificationDryRun', () => {
+  it('skips when daily reminders are disabled', () => {
+    expect(
+      computeNotificationDryRun({
+        now: new Date('2026-06-07T12:00:00.000Z'),
+        reminders: { daily: { enabled: false, time: '09:00' } },
+        dueToday: 3,
+        lastNotifiedDate: null,
+      }),
+    ).toEqual({
+      status: 'skip',
+      detail: 'Daily reminders are disabled.',
+    })
+  })
+
+  it('skips when there are no due reviews', () => {
+    expect(
+      computeNotificationDryRun({
+        now: new Date('2026-06-07T12:00:00.000Z'),
+        reminders: { daily: { enabled: true, time: '09:00' } },
+        dueToday: 0,
+        lastNotifiedDate: null,
+      }),
+    ).toEqual({
+      status: 'skip',
+      detail: 'No due reviews are available for a reminder.',
+    })
+  })
+
+  it('skips when a reminder was already sent today', () => {
+    expect(
+      computeNotificationDryRun({
+        now: new Date('2026-06-07T12:00:00.000Z'),
+        reminders: { daily: { enabled: true, time: '09:00' } },
+        dueToday: 2,
+        lastNotifiedDate: '2026-06-07',
+      }),
+    ).toEqual({
+      status: 'skip',
+      detail: 'A due-review reminder was already sent today.',
+    })
+  })
+
+  it('passes when a reminder would be sent without mutating state', () => {
+    expect(
+      computeNotificationDryRun({
+        now: new Date('2026-06-07T12:00:00.000Z'),
+        reminders: { daily: { enabled: true, time: '09:00' } },
+        dueToday: 4,
+        lastNotifiedDate: '2026-06-06',
+      }),
+    ).toEqual({
+      status: 'pass',
+      detail: 'Would send a 09:00 reminder for 4 due reviews.',
     })
   })
 })

@@ -152,7 +152,10 @@ import { flushDbSnapshot, getAppDb, type Db } from '@/platform/db'
 import { z } from 'zod'
 
 import { broadcastCacheInvalidation } from './cache-invalidation-broadcaster'
-import { createDevSmokeService } from './dev-smoke-service'
+import {
+  computeNotificationDryRun,
+  createDevSmokeService,
+} from './dev-smoke-service'
 import { assertCanSenderCallExtensionMethod } from './runtime-policy'
 import { createAlarmScheduler } from './scheduler/alarm-scheduler'
 import { createSyncAutoSync } from './sync-auto-sync'
@@ -905,10 +908,7 @@ export function registerBackgroundHandlers() {
             hasSecret: true,
           }
         },
-        runNotificationDryRun: async () => ({
-          status: 'skip',
-          detail: 'Dry-run wiring is available; notification was not sent.',
-        }),
+        runNotificationDryRun: () => runNotificationSmokeDryRun(db),
         runLiveGenAi: () => runLiveGenAiSmoke(db),
       })
 
@@ -1265,6 +1265,22 @@ export function registerBackgroundHandlers() {
 const genAiLiveSmokeSchema = z.object({
   ok: z.literal(true),
 })
+
+async function runNotificationSmokeDryRun(db: Db) {
+  const now = new Date()
+  const [settings, queue, state] = await Promise.all([
+    getSettings(db),
+    getTodayQueue(db, now),
+    readDueNotificationState(),
+  ])
+
+  return computeNotificationDryRun({
+    now,
+    reminders: settings.reminders,
+    dueToday: queue.dueToday,
+    lastNotifiedDate: state.lastNotifiedDate,
+  })
+}
 
 async function runLiveGenAiSmoke(db: Db) {
   const config = await loadActiveProviderConfig(db)
