@@ -117,6 +117,20 @@ describe('architecture boundaries', () => {
 
     expect(offenders.map(toRepoPath)).toEqual([])
   })
+
+  it('keeps notification background code from importing FSRS internals directly', () => {
+    const notificationFiles = sourceFiles(['extension']).filter(
+      (file) =>
+        file.includes('due-notification') ||
+        file.includes('alarm-scheduler'),
+    )
+    const offenders = notificationFiles.filter((file) => {
+      const content = readFileSync(file, 'utf8')
+      return /from ['"]@\/lib\/fsrs/.test(content)
+    })
+
+    expect(offenders.map(toRepoPath)).toEqual([])
+  })
 })
 
 function sourceFiles(directories: string[]) {
