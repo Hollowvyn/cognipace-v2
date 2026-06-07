@@ -17,9 +17,9 @@ export function AnalyticsMemoryProfile({
 
   return (
     <Surface aria-label="Memory profile" className="grid gap-3" role="region">
-      <div className="text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
+      <h2 className="m-0 text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
         Memory Profile
-      </div>
+      </h2>
 
       <div className="grid min-w-0 gap-3 sm:grid-cols-3">
         <div className="grid min-h-[5rem] gap-2 rounded-[var(--cp-control-radius)] border border-border bg-muted p-3">
@@ -43,6 +43,11 @@ export function AnalyticsMemoryProfile({
           >
             {retrievabilityLabel}
           </div>
+          {profile.lowSample && hasRetrievability ? (
+            <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
+              Limited review sample
+            </p>
+          ) : null}
         </div>
 
         <div className="grid min-h-[5rem] gap-2 rounded-[var(--cp-control-radius)] border border-border bg-muted p-3">

@@ -119,9 +119,35 @@ describe('AnalyticsScreen', () => {
       name: 'Memory profile',
     })
 
+    expect(
+      within(memoryProfile).getByRole('heading', { name: 'Memory Profile' }),
+    ).toBeVisible()
     expect(within(memoryProfile).getByText('12')).toBeVisible()
     expect(within(memoryProfile).getByText('74%')).toBeVisible()
     expect(within(memoryProfile).getByText('3 due today')).toBeVisible()
+  })
+
+  it('shows limited-sample caveat when memory profile has a non-null low-sample average', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      createAnalyticsSummary({
+        memoryProfile: {
+          ...baseAnalyticsSummary().memoryProfile,
+          averageRetrievability: 0.74,
+          lowSample: true,
+        },
+      }),
+    )
+
+    renderAnalyticsScreen()
+
+    const memoryProfile = await screen.findByRole('region', {
+      name: 'Memory profile',
+    })
+
+    expect(within(memoryProfile).getByText('74%')).toBeVisible()
+    expect(
+      within(memoryProfile).getByText('Limited review sample'),
+    ).toBeVisible()
   })
 
   it('renders not-enough-review-data state for memory profile average', async () => {
