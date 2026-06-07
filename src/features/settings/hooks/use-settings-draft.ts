@@ -45,6 +45,8 @@ export interface SettingsDraftActions {
   setAiProvider: (value: GenAiProviderId) => void
   setAutoDetectSolved: (value: boolean) => void
   setNumberInput: (field: SettingsNumberField, value: string) => void
+  setRemindersEnabled: (value: boolean) => void
+  setRemindersTime: (value: string) => void
   setRequireSolveTime: (value: boolean) => void
   setReviewOrder: (value: ReviewOrder) => void
   setSkipPremium: (value: boolean) => void
@@ -88,6 +90,8 @@ type SettingsDraftAction =
   | { type: 'set-ai-model'; value: string }
   | { type: 'set-ai-provider'; value: GenAiProviderId }
   | { type: 'set-auto-detect-solved'; value: boolean }
+  | { type: 'set-reminders-enabled'; value: boolean }
+  | { type: 'set-reminders-time'; value: string }
   | { type: 'set-require-solve-time'; value: boolean }
   | { type: 'set-review-order'; value: ReviewOrder }
   | { type: 'set-skip-premium'; value: boolean }
@@ -122,7 +126,11 @@ export function useSettingsDraft(): SettingsDraftController {
   }, [settingsQuery.data])
 
   const fieldErrors = createFieldErrors(state.numberInputs)
-  const hasValidationErrors = Object.values(fieldErrors).some(Boolean)
+  const hasTimeError = Boolean(
+    state.draft?.reminders.daily.enabled &&
+    state.draft?.reminders.daily.time === ''
+  )
+  const hasValidationErrors = Object.values(fieldErrors).some(Boolean) || hasTimeError
   const hasChanges = hasLocalChanges(state)
   const hasSettingsChanges = hasPersistableSettingsChanges(state)
   const isMutatingSettings = updateSettings.isPending
@@ -266,6 +274,10 @@ export function useSettingsDraft(): SettingsDraftController {
       setRequireSolveTime: (value) => {
         dispatch({ type: 'set-require-solve-time', value })
       },
+      setRemindersEnabled: (value) =>
+        dispatch({ type: 'set-reminders-enabled', value }),
+      setRemindersTime: (value) =>
+        dispatch({ type: 'set-reminders-time', value }),
       setReviewOrder: (value) => {
         dispatch({ type: 'set-review-order', value })
       },
@@ -351,6 +363,22 @@ function settingsDraftReducer(
           strictTiming: draft.assessment.requireSolveTime
             ? action.value
             : false,
+        },
+      }))
+    case 'set-reminders-enabled':
+      return updateDraft(state, (draft) => ({
+        ...draft,
+        reminders: {
+          ...draft.reminders,
+          daily: { ...draft.reminders.daily, enabled: action.value },
+        },
+      }))
+    case 'set-reminders-time':
+      return updateDraft(state, (draft) => ({
+        ...draft,
+        reminders: {
+          ...draft.reminders,
+          daily: { ...draft.reminders.daily, time: action.value },
         },
       }))
     case 'set-require-solve-time':
