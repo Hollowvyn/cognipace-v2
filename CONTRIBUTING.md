@@ -74,10 +74,14 @@ fix(docs): clarify Chrome Web Store release handoff
 ci(release): upload extension zip to GitHub releases
 ```
 
-Release Please maintains the release pull request on `main`. Merging that
-release pull request creates the GitHub Release and triggers the extension zip
-artifact upload. Chrome Web Store submission remains a manual maintainer step
-using the zip attached to the GitHub Release.
+Release Please maintains the release pull request on `main` with a hybrid
+cadence: `fix` and `deps` commits open or update a patch release pull request
+immediately, while other release-triggering work is batched into the Friday
+15:00 UTC run. Maintainers can run the `Release Please` workflow manually for
+off-cycle releases. Multiple merged pull requests can ship in one release.
+Merging the release pull request creates the GitHub Release and triggers the
+extension zip artifact upload. Chrome Web Store submission remains a manual
+maintainer step using the zip attached to the GitHub Release.
 
 The Release Please workflow uses the `RELEASE_PLEASE_TOKEN` repository secret so
 generated release pull requests still trigger normal pull request checks.
