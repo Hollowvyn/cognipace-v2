@@ -131,6 +131,51 @@ describe('architecture boundaries', () => {
 
     expect(offenders.map(toRepoPath)).toEqual([])
   })
+
+  it('keeps ts-fsrs package import to src/lib/fsrs only', () => {
+    const libFsrsPath = join(srcRoot, 'lib', 'fsrs')
+    const offenders = productionSourceFiles()
+      .filter((file) => !file.startsWith(libFsrsPath + '/'))
+      .filter((file) => {
+        const content = readFileSync(file, 'utf8')
+        return /from ['"]ts-fsrs['"]/.test(content)
+      })
+
+    expect(offenders.map(toRepoPath)).toEqual([])
+  })
+
+  it('keeps src/app/dashboard free of @/lib/fsrs imports', () => {
+    const offenders = sourceFiles(['app']).filter((file) => {
+      if (!file.includes('/dashboard/')) return false
+      const content = readFileSync(file, 'utf8')
+      return /from ['"]@\/lib\/fsrs/.test(content)
+    })
+
+    expect(offenders.map(toRepoPath)).toEqual([])
+  })
+
+  it('keeps queue feature free of tracks dependency', () => {
+    const offenders = sourceFiles(['features']).filter((file) => {
+      if (!file.includes('/features/queue/')) return false
+      const content = readFileSync(file, 'utf8')
+      return /from ['"]@\/features\/tracks/.test(content)
+    })
+
+    expect(offenders.map(toRepoPath)).toEqual([])
+  })
+
+  it('keeps settings components free of browser alarm and notification API calls', () => {
+    const settingsComponentsPath = join(srcRoot, 'features', 'settings', 'components')
+    const offenders = sourceFiles(['features']).filter((file) => {
+      if (!file.startsWith(settingsComponentsPath + '/')) return false
+      const content = readFileSync(file, 'utf8')
+      return /browser\.alarms|chrome\.alarms|browser\.notifications|chrome\.notifications/.test(
+        content,
+      )
+    })
+
+    expect(offenders.map(toRepoPath)).toEqual([])
+  })
 })
 
 function sourceFiles(directories: string[]) {
