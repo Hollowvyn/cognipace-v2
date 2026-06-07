@@ -12,6 +12,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
+- [`specs/2026-06-07-cognipace-agent-workflow-skill-design.md`](./specs/2026-06-07-cognipace-agent-workflow-skill-design.md): Phase B design for adding a concise CogniPace workflow skill that routes agents through governance, skill selection, validation, and PR-ready handoffs without duplicating the canonical governance doc.
 - [`specs/2026-06-07-cognipace-agent-governance-design.md`](./specs/2026-06-07-cognipace-agent-governance-design.md): companion design for strict CogniPace AI-agent workflow across Codex, Claude, and future agents, including required skills, validation matrix, PR/issue standards, and enforcement path.
 - [`specs/2026-06-07-repo-hardening-governance-design.md`](./specs/2026-06-07-repo-hardening-governance-design.md): master design for strict repository-hardening governance, including phased CI, branch protection, PR hygiene, release, dependency, and security automation.
 - [`specs/2026-06-07-nonblocking-leetcode-open-sync-design.md`](./specs/2026-06-07-nonblocking-leetcode-open-sync-design.md): approved design for moving surface-open GitHub Gist checks out of the LeetCode, popup, and dashboard startup request path and into coalesced background scheduling.
