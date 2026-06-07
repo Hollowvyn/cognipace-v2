@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
+import type { SerializedAnalyticsSummary } from '@/features/analytics/api/analytics-contracts'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import { AnalyticsScreen } from './analytics-screen'
@@ -11,7 +12,7 @@ vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
 }))
 
-function baseAnalyticsSummary() {
+function baseAnalyticsSummary(): SerializedAnalyticsSummary {
   return {
     generatedAt: '2026-01-15T12:00:00.000Z',
     reviewDays: 42,
@@ -49,7 +50,7 @@ function baseAnalyticsSummary() {
 }
 
 function createAnalyticsSummary(
-  overrides: Partial<ReturnType<typeof baseAnalyticsSummary>> = {},
+  overrides: Partial<SerializedAnalyticsSummary> = {},
 ) {
   return { ...baseAnalyticsSummary(), ...overrides }
 }

@@ -10,9 +10,10 @@ interface AnalyticsMemoryProfileProps {
 export function AnalyticsMemoryProfile({
   profile,
 }: AnalyticsMemoryProfileProps) {
-  const hasRetrievability = profile.averageRetrievability !== null
+  const averageRetrievability = profile.averageRetrievability
+  const hasRetrievability = averageRetrievability !== null
   const retrievabilityLabel = hasRetrievability
-    ? `${Math.round(profile.averageRetrievability * 100)}%`
+    ? `${Math.round(averageRetrievability * 100)}%`
     : 'Not enough review data'
 
   return (
