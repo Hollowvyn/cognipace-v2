@@ -1,0 +1,4 @@
+interface:
+  display_name: "CogniPace Bulletproof React"
+  short_description: "CogniPace repo-specific React architecture guide"
+  default_prompt: "Use $cognipace-bulletproof-react to audit where this change belongs in CogniPace."
