@@ -31,6 +31,7 @@ export type SyncAutoSyncDependencies = {
 export function createSyncAutoSync(deps: SyncAutoSyncDependencies) {
   let jobsRegistered = false
   let openCheckPending = false
+  let openCheckRunning = false
   let openCheckTimer: ReturnType<typeof globalThis.setTimeout> | null = null
 
   async function scheduleAutoPushAfterMutation() {
@@ -112,7 +113,7 @@ export function createSyncAutoSync(deps: SyncAutoSyncDependencies) {
   }
 
   async function requestOpenCheckAfterSurfaceOpen() {
-    if (openCheckPending) {
+    if (openCheckPending || openCheckRunning) {
       return
     }
 
@@ -128,17 +129,26 @@ export function createSyncAutoSync(deps: SyncAutoSyncDependencies) {
   }
 
   async function runRequestedOpenCheck() {
+    if (openCheckRunning) {
+      return
+    }
+
     if (openCheckTimer !== null) {
       globalThis.clearTimeout(openCheckTimer)
       openCheckTimer = null
     }
 
-    openCheckPending = false
+    openCheckRunning = true
 
     try {
       await runCleanPullCheck()
     } finally {
-      await deps.scheduler.clear(syncOpenCheckAlarmName)
+      try {
+        await deps.scheduler.clear(syncOpenCheckAlarmName)
+      } finally {
+        openCheckPending = false
+        openCheckRunning = false
+      }
     }
   }
 

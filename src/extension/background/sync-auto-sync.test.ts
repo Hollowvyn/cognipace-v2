@@ -259,6 +259,34 @@ describe('sync auto-sync orchestrator', () => {
     expect(deps.scheduler.clear).toHaveBeenCalledWith(syncOpenCheckAlarmName)
   })
 
+  it('keeps requested open checks coalesced while a clean pull is in flight', async () => {
+    vi.useFakeTimers()
+    const pullCheck = createDeferred<SyncActionResult>()
+    vi.mocked(deps.runCleanPullCheck).mockReturnValueOnce(pullCheck.promise)
+    const syncAutoSync = createSyncAutoSync(deps)
+
+    await syncAutoSync.requestOpenCheckAfterSurfaceOpen()
+    const runningOpenCheck = syncAutoSync.runRequestedOpenCheck()
+    await flushMicrotasks()
+
+    expect(deps.runCleanPullCheck).toHaveBeenCalledTimes(1)
+
+    await syncAutoSync.requestOpenCheckAfterSurfaceOpen()
+
+    expect(deps.scheduler.schedule).toHaveBeenCalledTimes(1)
+    expect(deps.runCleanPullCheck).toHaveBeenCalledTimes(1)
+
+    pullCheck.resolve(
+      createActionResult({
+        direction: 'pull',
+        outcome: 'success',
+      }),
+    )
+    await runningOpenCheck
+
+    expect(deps.scheduler.clear).toHaveBeenCalledWith(syncOpenCheckAlarmName)
+  })
+
   it('registers push, retry, poll, and open-check jobs with startup poll repair settings', () => {
     const syncAutoSync = createSyncAutoSync(deps)
 
@@ -326,6 +354,20 @@ function createScheduler(): SchedulerDependency {
     repairStartupAlarms: vi.fn(() => Promise.resolve(undefined)),
     schedule: vi.fn(() => Promise.resolve(undefined)),
   }
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve
+  })
+
+  return { promise, resolve }
+}
+
+async function flushMicrotasks() {
+  await Promise.resolve()
+  await Promise.resolve()
 }
 
 function createMetadata(patch: Partial<SyncMetadata> = {}): SyncMetadata {
