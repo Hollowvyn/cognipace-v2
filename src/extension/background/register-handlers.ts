@@ -890,22 +890,25 @@ export function registerBackgroundHandlers() {
           }
         },
         readGenAiConfig: async () => {
-          const config = await loadActiveProviderConfig(db)
+          const settings = await getSettings(db)
+          const ai = settings.aiAssessment
+          const secretPresence = await getAiProviderSecretPresence(db)
+          const hasConfiguredModel = ai.model.trim() !== ''
 
-          if (!config) {
+          if (!ai.enabled || !hasConfiguredModel) {
             return {
               enabled: false,
-              provider: 'openai',
-              model: 'not-configured',
-              hasSecret: false,
+              provider: ai.provider,
+              model: hasConfiguredModel ? ai.model : 'not-configured',
+              hasSecret: secretPresence[ai.provider],
             }
           }
 
           return {
             enabled: true,
-            provider: config.provider,
-            model: config.model,
-            hasSecret: true,
+            provider: ai.provider,
+            model: ai.model,
+            hasSecret: secretPresence[ai.provider],
           }
         },
         runNotificationDryRun: () => runNotificationSmokeDryRun(db),

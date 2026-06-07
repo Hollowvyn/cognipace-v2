@@ -378,23 +378,19 @@ describe('background handler registration', () => {
     backgroundMocks.clearActiveTrack.mockResolvedValue(undefined)
     backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
     backgroundMocks.getAiProviderSecretPresence.mockResolvedValue({
-      openai: { configured: false, updatedAt: null, fingerprint: null },
-      anthropic: { configured: false, updatedAt: null, fingerprint: null },
-      gemini: { configured: false, updatedAt: null, fingerprint: null },
+      openai: false,
+      anthropic: false,
+      gemini: false,
     })
     backgroundMocks.setAiProviderSecret.mockResolvedValue({
-      openai: {
-        configured: true,
-        updatedAt: syncTimestamp,
-        fingerprint: 'abc',
-      },
-      anthropic: { configured: false, updatedAt: null, fingerprint: null },
-      gemini: { configured: false, updatedAt: null, fingerprint: null },
+      openai: true,
+      anthropic: false,
+      gemini: false,
     })
     backgroundMocks.clearAiProviderSecret.mockResolvedValue({
-      openai: { configured: false, updatedAt: null, fingerprint: null },
-      anthropic: { configured: false, updatedAt: null, fingerprint: null },
-      gemini: { configured: false, updatedAt: null, fingerprint: null },
+      openai: false,
+      anthropic: false,
+      gemini: false,
     })
     backgroundMocks.loadActiveProviderConfig.mockResolvedValue(null)
     backgroundMocks.generateJson.mockResolvedValue({
@@ -570,9 +566,11 @@ describe('background handler registration', () => {
       backgroundMocks.db,
       expect.any(Date),
     )
-    expect(backgroundMocks.loadActiveProviderConfig).toHaveBeenCalledWith(
+    expect(backgroundMocks.getSettings).toHaveBeenCalledWith(backgroundMocks.db)
+    expect(backgroundMocks.getAiProviderSecretPresence).toHaveBeenCalledWith(
       backgroundMocks.db,
     )
+    expect(backgroundMocks.loadActiveProviderConfig).not.toHaveBeenCalled()
     expect(backgroundMocks.readDueNotificationState).toHaveBeenCalledTimes(1)
     expect(backgroundMocks.writeDueNotificationState).not.toHaveBeenCalled()
     expect(report.checks.map((check) => check.id)).toEqual([
@@ -591,7 +589,50 @@ describe('background handler registration', () => {
     })
   })
 
+  it('reports the selected GenAI provider and model when the secret is missing', async () => {
+    backgroundMocks.getSettings.mockResolvedValue({
+      ...defaultUserSettings,
+      aiAssessment: {
+        enabled: true,
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-latest',
+      },
+    })
+    backgroundMocks.getAiProviderSecretPresence.mockResolvedValue({
+      openai: false,
+      anthropic: false,
+      gemini: false,
+    })
+
+    const response = await sendRuntimeMessage('devSmoke.run', {
+      surface: 'dashboard',
+    })
+    const report = devSmokeReportSchema.parse(response)
+
+    expect(backgroundMocks.loadActiveProviderConfig).not.toHaveBeenCalled()
+    expect(
+      report.checks.find((check) => check.id === 'genai.config'),
+    ).toMatchObject({
+      status: 'warn',
+      detail:
+        'Provider anthropic is configured with model claude-3-5-sonnet-latest; secret present: no.',
+    })
+  })
+
   it('runs live GenAI smoke when requested and redacts provider errors', async () => {
+    backgroundMocks.getSettings.mockResolvedValue({
+      ...defaultUserSettings,
+      aiAssessment: {
+        enabled: true,
+        provider: 'openai',
+        model: 'gpt-4.1-mini',
+      },
+    })
+    backgroundMocks.getAiProviderSecretPresence.mockResolvedValue({
+      openai: true,
+      anthropic: false,
+      gemini: false,
+    })
     backgroundMocks.loadActiveProviderConfig.mockResolvedValue({
       provider: 'openai',
       model: 'gpt-4.1-mini',

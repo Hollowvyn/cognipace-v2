@@ -81,7 +81,7 @@ describe('useSetAiProviderSecretMutation', () => {
     })
   })
 
-  it('includes baseUrl in the runtime payload when provided', async () => {
+  it('omits baseUrl from the runtime payload when provided', async () => {
     vi.mocked(sendMessage).mockResolvedValue({
       openai: true,
       anthropic: false,
@@ -92,18 +92,20 @@ describe('useSetAiProviderSecretMutation', () => {
       wrapper,
     })
 
+    const input = {
+      provider: 'gemini' as const,
+      key: 'g-test',
+      baseUrl: 'https://proxy.example.test',
+    }
+
     await act(async () => {
-      await result.current.mutateAsync({
-        provider: 'gemini',
-        key: 'g-test',
-        baseUrl: 'https://proxy.example.test',
-      })
+      await result.current.mutateAsync(input)
     })
 
     expect(sendMessage).toHaveBeenCalledWith('genai.setAiProviderSecret', {
       surface: 'dashboard',
       provider: 'gemini',
-      secret: { apiKey: 'g-test', baseUrl: 'https://proxy.example.test' },
+      secret: { apiKey: 'g-test' },
     })
   })
 

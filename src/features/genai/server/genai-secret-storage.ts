@@ -5,6 +5,7 @@ import {
   saveSecret,
   type SecretProviderId,
 } from '@/platform/secrets'
+import { z } from 'zod'
 
 import {
   aiProviderSecretSchema,
@@ -70,7 +71,14 @@ export async function loadAiProviderSecretFromTrustedStorage(
 
 function parseStoredAiProviderSecret(value: string): AiProviderSecret | null {
   try {
-    return aiProviderSecretSchema.parse(JSON.parse(value))
+    const parsed = z
+      .object({
+        apiKey: z.string().min(1, 'Required'),
+      })
+      .passthrough()
+      .parse(JSON.parse(value))
+
+    return aiProviderSecretSchema.parse({ apiKey: parsed.apiKey })
   } catch {
     const legacySecret = aiProviderSecretSchema.safeParse({ apiKey: value })
 

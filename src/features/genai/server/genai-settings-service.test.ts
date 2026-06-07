@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { settingsKv } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
 import { updateSettings } from '@/features/settings/server/settings-service'
+import { saveSecret } from '@/platform/secrets'
 
 import {
   clearAiProviderSecret,
@@ -102,20 +103,22 @@ describe('loadActiveProviderConfig', () => {
     })
   })
 
-  it('includes baseUrl when the secret has one', async () => {
+  it('does not include baseUrl even when a stale saved secret has one', async () => {
     const handle = await createTestDb({ seed: false })
     await updateSettings(handle.db, {
       aiAssessment: { enabled: true, provider: 'gemini', model: 'gemini-test' },
     })
-    await setAiProviderSecret(handle.db, 'gemini', {
-      apiKey: 'g-test',
-      baseUrl: 'https://proxy.example.test',
-    })
+    await saveSecret(
+      'genai:google',
+      JSON.stringify({
+        apiKey: 'g-test',
+        baseUrl: 'https://proxy.example.test',
+      }),
+    )
     expect(await loadActiveProviderConfig(handle.db)).toEqual({
       provider: 'gemini',
       model: 'gemini-test',
       apiKey: 'g-test',
-      baseUrl: 'https://proxy.example.test',
     })
   })
 

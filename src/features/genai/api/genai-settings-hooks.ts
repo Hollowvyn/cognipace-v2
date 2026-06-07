@@ -21,7 +21,6 @@ export function useGenAiSecretPresenceQuery(
 export type SetAiProviderSecretHookInput = {
   provider: GenAiProviderId
   key: string
-  baseUrl?: string
 }
 
 export function useSetAiProviderSecretMutation(
@@ -35,7 +34,6 @@ export function useSetAiProviderSecretMutation(
         provider: input.provider,
         secret: {
           apiKey: input.key,
-          ...(input.baseUrl !== undefined ? { baseUrl: input.baseUrl } : {}),
         },
       }),
     onSuccess: (presence) => {

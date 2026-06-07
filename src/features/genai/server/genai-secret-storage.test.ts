@@ -64,7 +64,7 @@ describe('genai trusted secret storage', () => {
     ).resolves.toEqual({ apiKey: 'sk-legacy' })
   })
 
-  it('preserves baseUrl when a trusted stored secret includes one', async () => {
+  it('loads stale stored baseUrl as an apiKey-only secret', async () => {
     secretStoreMocks.readSecret.mockResolvedValue(
       JSON.stringify({
         apiKey: 'g-test',
@@ -76,7 +76,6 @@ describe('genai trusted secret storage', () => {
       loadAiProviderSecretFromTrustedStorage('gemini'),
     ).resolves.toEqual({
       apiKey: 'g-test',
-      baseUrl: 'https://proxy.example.test',
     })
   })
 

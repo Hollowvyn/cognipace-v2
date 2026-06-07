@@ -61,7 +61,6 @@ export async function loadActiveProviderConfig(
     provider: ai.provider,
     model: ai.model,
     apiKey: secret.apiKey,
-    ...(secret.baseUrl !== undefined ? { baseUrl: secret.baseUrl } : {}),
   }
 }
 

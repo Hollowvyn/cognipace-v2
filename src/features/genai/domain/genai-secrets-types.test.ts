@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  aiProviderSecretSchema,
   aiProviderSecretsSchema,
   emptyAiProviderSecrets,
   makeEmptyAiProviderSecretPresence,
@@ -9,12 +10,20 @@ import {
 describe('genai secrets domain', () => {
   it('accepts a row with per-provider secrets', () => {
     const parsed = aiProviderSecretsSchema.parse({
-      openai: { apiKey: 'sk-test', baseUrl: 'https://api.openai.com/v1' },
+      openai: { apiKey: 'sk-test' },
       anthropic: { apiKey: 'sk-ant-test' },
     })
     expect(parsed.openai?.apiKey).toBe('sk-test')
-    expect(parsed.anthropic?.baseUrl).toBeUndefined()
     expect(parsed.gemini).toBeUndefined()
+  })
+
+  it('rejects baseUrl via .strict()', () => {
+    expect(() =>
+      aiProviderSecretSchema.parse({
+        apiKey: 'sk-x',
+        baseUrl: 'https://proxy.example.test',
+      }),
+    ).toThrow()
   })
 
   it('accepts an empty row', () => {
@@ -32,14 +41,6 @@ describe('genai secrets domain', () => {
   it('rejects empty apiKey', () => {
     expect(() =>
       aiProviderSecretsSchema.parse({ openai: { apiKey: '' } }),
-    ).toThrow()
-  })
-
-  it('rejects invalid baseUrl', () => {
-    expect(() =>
-      aiProviderSecretsSchema.parse({
-        openai: { apiKey: 'sk-x', baseUrl: 'not-a-url' },
-      }),
     ).toThrow()
   })
 

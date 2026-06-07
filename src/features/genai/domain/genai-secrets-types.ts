@@ -5,7 +5,6 @@ import { genAiProviderIds, type GenAiProviderId } from './genai-types'
 export const aiProviderSecretSchema = z
   .object({
     apiKey: z.string().min(1, 'Required'),
-    baseUrl: z.string().url().optional(),
   })
   .strict()
 
