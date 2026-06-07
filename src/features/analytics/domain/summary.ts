@@ -18,6 +18,29 @@ export interface WeakProblem {
   retrievability: number
 }
 
+export interface MemoryProfileInput {
+  totalTracked: number
+  dueToday: number
+  overdue: number
+  learning: number
+  review: number
+  mastered: number
+  suspended: number
+  retrievabilities: number[]
+}
+
+export interface MemoryProfile {
+  totalTracked: number
+  dueToday: number
+  overdue: number
+  learning: number
+  review: number
+  mastered: number
+  suspended: number
+  averageRetrievability: number | null
+  lowSample: boolean
+}
+
 export interface AnalyticsSummaryInput {
   generatedAt: Date
   reviewDays: number
@@ -26,6 +49,7 @@ export interface AnalyticsSummaryInput {
   retention: RetentionProxyResult
   forecast: ForecastEntry[]
   weakProblems: WeakProblem[]
+  memoryProfile: MemoryProfile
 }
 
 export interface AnalyticsSummary {
@@ -39,6 +63,7 @@ export interface AnalyticsSummary {
   lowSample: boolean
   dueForecast14Days: ForecastEntry[]
   weakProblems: WeakProblem[]
+  memoryProfile: MemoryProfile
 }
 
 export function buildRetentionProxy(
@@ -96,7 +121,33 @@ export function buildWeakProblems(candidates: WeakProblem[]): WeakProblem[] {
     .slice(0, 10)
 }
 
-export function buildAnalyticsSummary(input: AnalyticsSummaryInput): AnalyticsSummary {
+export function buildMemoryProfile(input: MemoryProfileInput): MemoryProfile {
+  const sampleSize = input.retrievabilities.length
+  const averageRetrievability =
+    sampleSize === 0
+      ? null
+      : Math.round(
+          (input.retrievabilities.reduce((sum, value) => sum + value, 0) /
+            sampleSize) *
+            100,
+        ) / 100
+
+  return {
+    totalTracked: input.totalTracked,
+    dueToday: input.dueToday,
+    overdue: input.overdue,
+    learning: input.learning,
+    review: input.review,
+    mastered: input.mastered,
+    suspended: input.suspended,
+    averageRetrievability,
+    lowSample: sampleSize < 10,
+  }
+}
+
+export function buildAnalyticsSummary(
+  input: AnalyticsSummaryInput,
+): AnalyticsSummary {
   return {
     generatedAt: input.generatedAt.toISOString(),
     reviewDays: input.reviewDays,
@@ -108,6 +159,7 @@ export function buildAnalyticsSummary(input: AnalyticsSummaryInput): AnalyticsSu
     lowSample: input.retention.lowSample,
     dueForecast14Days: input.forecast,
     weakProblems: input.weakProblems,
+    memoryProfile: input.memoryProfile,
   }
 }
 

@@ -36,6 +36,12 @@ export {
   setAiProviderSecretRequestSchema,
 } from '@/features/genai/api'
 import type { AiProviderSecretPresence } from '@/features/genai'
+import type { DevSmokeReport, DevSmokeRequest } from '@/features/dev-smoke'
+export {
+  devSmokeReportSchema,
+  devSmokeRequestSchema,
+} from '@/features/dev-smoke'
+export type { DevSmokeReport, DevSmokeRequest } from '@/features/dev-smoke'
 import {
   leetcodeProblemRemoteRequestSchema,
   leetcodeSubmissionResultRemoteRequestSchema,
@@ -224,9 +230,15 @@ export const queueItemSchema = z.object({
 export const todayQueueSchema = z.object({
   generatedAt: z.iso.datetime(),
   dueCount: z.number().int().min(0),
+  dueToday: z.number().int().min(0),
   newCount: z.number().int().min(0),
+  newAvailable: z.number().int().min(0),
+  queueLoad: z.number().int().min(0),
   reinforcementCount: z.number().int().min(0),
   excludedCount: z.number().int().min(0),
+  recommendationReason: z
+    .enum(['overdue', 'due-now', 'reinforcement', 'new-problem'])
+    .nullable(),
   items: z.array(queueItemSchema),
   topRecommendation: queueItemSchema.nullable(),
 })
@@ -282,7 +294,9 @@ export type LeetCodeSubmissionResultRemoteRuntimeRequest = z.infer<
 >
 
 export interface ProtocolMap {
-  'analytics.getSummary'(request: AnalyticsSummaryRequest): SerializedAnalyticsSummary
+  'analytics.getSummary'(
+    request: AnalyticsSummaryRequest,
+  ): SerializedAnalyticsSummary
   'cache.invalidate'(request: CacheInvalidationEvent): null
   'runtime.ping'(request: PingRequest): PingResponse
   'app.getShellData'(request: AppShellRequest): AppShellData
@@ -303,6 +317,7 @@ export interface ProtocolMap {
   'genai.recommendLeetCodeAssessment'(
     request: RecommendLeetCodeAssessmentRequest,
   ): RecommendLeetCodeAssessmentResponse
+  'devSmoke.run'(request: DevSmokeRequest): DevSmokeReport
   'sync.getStatus'(request: SyncRequest): SerializedSyncStatus
   'sync.validateGithubToken'(request: SyncGithubTokenRequest): SyncActionResult
   'sync.validateStoredGithubToken'(request: SyncRequest): SyncActionResult
@@ -387,6 +402,74 @@ export interface ProtocolMap {
     request: LeetCodeSubmissionResultRemoteRuntimeRequest,
   ): SerializedLeetCodeSubmissionResultRemoteResponse
 }
+
+export const protocolMethodNames = [
+  'analytics.getSummary',
+  'cache.invalidate',
+  'runtime.ping',
+  'app.getShellData',
+  'app.openDashboard',
+  'backup.exportFullBackup',
+  'backup.validateFullBackup',
+  'backup.restoreFullBackup',
+  'backup.resetLocalData',
+  'genai.getAiProviderSecretPresence',
+  'genai.setAiProviderSecret',
+  'genai.clearAiProviderSecret',
+  'genai.recommendLeetCodeAssessment',
+  'devSmoke.run',
+  'sync.getStatus',
+  'sync.validateGithubToken',
+  'sync.validateStoredGithubToken',
+  'sync.saveGithubToken',
+  'sync.deleteGithubToken',
+  'sync.createGithubGist',
+  'sync.connectGithubGist',
+  'sync.setEnabled',
+  'sync.checkRemoteOnOpen',
+  'sync.pullLatest',
+  'sync.pushLocal',
+  'problems.upsertFromPage',
+  'problems.getLibrary',
+  'problems.getProblemForEdit',
+  'problems.createProblem',
+  'problems.updateProblem',
+  'problems.deleteProblem',
+  'problems.bulkUpdateProblems',
+  'problems.bulkDelete',
+  'practice.saveReviewResult',
+  'practice.getDetails',
+  'practice.overrideLastReviewResult',
+  'practice.setSuspended',
+  'practice.resetSchedule',
+  'practice.updateCurrentLog',
+  'queue.getTodayQueue',
+  'tracks.getActiveTrack',
+  'tracks.getWorkspace',
+  'tracks.getTrackForEdit',
+  'tracks.setActiveTrack',
+  'tracks.clearActiveTrack',
+  'tracks.setActiveGroup',
+  'tracks.createTrack',
+  'tracks.updateTrack',
+  'tracks.deleteTrack',
+  'tracks.resetTrackProgress',
+  'settings.getSettings',
+  'settings.updateSettings',
+  'settings.toggleStudyMode',
+  'settings.cycleThemeMode',
+  'leetcode.readProblemMetadata',
+  'leetcode.readProblemContent',
+  'leetcode.readSubmissionResult',
+] as const satisfies readonly (keyof ProtocolMap)[]
+
+type MissingProtocolMethod = Exclude<
+  keyof ProtocolMap,
+  (typeof protocolMethodNames)[number]
+>
+
+const protocolMethodCoverageCheck: Record<MissingProtocolMethod, never> = {}
+void protocolMethodCoverageCheck
 
 const extensionMessenger = defineExtensionMessaging<ProtocolMap>()
 

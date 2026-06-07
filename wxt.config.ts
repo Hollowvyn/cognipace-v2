@@ -15,6 +15,9 @@ export default defineConfig({
       'https://leetcode.com/*',
       'https://www.leetcode.com/*',
       'https://api.github.com/*',
+      'https://api.openai.com/*',
+      'https://api.anthropic.com/*',
+      'https://generativelanguage.googleapis.com/*',
     ],
     content_security_policy: {
       extension_pages:

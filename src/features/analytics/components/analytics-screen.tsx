@@ -6,6 +6,7 @@ import { Surface } from '@/components/ui/surface'
 
 import { useAnalyticsSummary } from '../api/analytics-api'
 import { AnalyticsForecast } from './analytics-forecast'
+import { AnalyticsMemoryProfile } from './analytics-memory-profile'
 import { AnalyticsMetricRow } from './analytics-metric-row'
 import { AnalyticsWeakProblems } from './analytics-weak-problems'
 
@@ -47,6 +48,7 @@ export function AnalyticsScreen() {
   return (
     <div className="flex min-w-0 flex-col gap-[var(--cp-surface-gap)]">
       <AnalyticsMetricRow summary={data} />
+      <AnalyticsMemoryProfile profile={data.memoryProfile} />
       <AnalyticsForecast forecast={data.dueForecast14Days} />
       <AnalyticsWeakProblems problems={data.weakProblems} />
     </div>

@@ -6,6 +6,7 @@ import {
   buildDueForecast,
   buildWeakProblems,
   buildAnalyticsSummary,
+  buildMemoryProfile,
 } from './summary'
 
 const now = new Date(2026, 0, 15, 12, 0, 0)
@@ -29,8 +30,14 @@ describe('buildRetentionProxy', () => {
 
   it('returns correct percentage for sufficient sample', () => {
     const attempts = [
-      ...Array.from({ length: 7 }, () => ({ rating: 'good', reviewedAt: recentDate })),
-      ...Array.from({ length: 3 }, () => ({ rating: 'again', reviewedAt: recentDate })),
+      ...Array.from({ length: 7 }, () => ({
+        rating: 'good',
+        reviewedAt: recentDate,
+      })),
+      ...Array.from({ length: 3 }, () => ({
+        rating: 'again',
+        reviewedAt: recentDate,
+      })),
     ]
 
     const result = buildRetentionProxy(attempts, now)
@@ -47,7 +54,10 @@ describe('buildRetentionProxy', () => {
       { rating: 'easy', reviewedAt: recentDate },
       { rating: 'again', reviewedAt: recentDate },
       { rating: 'hard', reviewedAt: recentDate },
-      ...Array.from({ length: 6 }, () => ({ rating: 'good', reviewedAt: recentDate })),
+      ...Array.from({ length: 6 }, () => ({
+        rating: 'good',
+        reviewedAt: recentDate,
+      })),
     ]
 
     const result = buildRetentionProxy(attempts, now)
@@ -132,10 +142,34 @@ describe('buildDueForecast', () => {
 describe('buildWeakProblems', () => {
   it('sorts by lapses DESC, then difficulty DESC, then retrievability ASC', () => {
     const result = buildWeakProblems([
-      { slug: 'a', title: 'A', lapseCount: 2, difficulty: 5, retrievability: 0.8 },
-      { slug: 'b', title: 'B', lapseCount: 3, difficulty: 4, retrievability: 0.9 },
-      { slug: 'c', title: 'C', lapseCount: 2, difficulty: 7, retrievability: 0.5 },
-      { slug: 'd', title: 'D', lapseCount: 2, difficulty: 5, retrievability: 0.3 },
+      {
+        slug: 'a',
+        title: 'A',
+        lapseCount: 2,
+        difficulty: 5,
+        retrievability: 0.8,
+      },
+      {
+        slug: 'b',
+        title: 'B',
+        lapseCount: 3,
+        difficulty: 4,
+        retrievability: 0.9,
+      },
+      {
+        slug: 'c',
+        title: 'C',
+        lapseCount: 2,
+        difficulty: 7,
+        retrievability: 0.5,
+      },
+      {
+        slug: 'd',
+        title: 'D',
+        lapseCount: 2,
+        difficulty: 5,
+        retrievability: 0.3,
+      },
     ])
 
     expect(result.map((p) => p.slug)).toEqual(['b', 'c', 'd', 'a'])
@@ -155,13 +189,70 @@ describe('buildWeakProblems', () => {
 
   it('does not mutate the input array', () => {
     const candidates = [
-      { slug: 'a', title: 'A', lapseCount: 1, difficulty: 5, retrievability: 0.8 },
-      { slug: 'b', title: 'B', lapseCount: 3, difficulty: 5, retrievability: 0.5 },
+      {
+        slug: 'a',
+        title: 'A',
+        lapseCount: 1,
+        difficulty: 5,
+        retrievability: 0.8,
+      },
+      {
+        slug: 'b',
+        title: 'B',
+        lapseCount: 3,
+        difficulty: 5,
+        retrievability: 0.5,
+      },
     ]
     const copy = [...candidates]
     buildWeakProblems(candidates)
 
     expect(candidates).toEqual(copy)
+  })
+})
+
+describe('buildMemoryProfile', () => {
+  it('computes counts and rounded average retrievability', () => {
+    const result = buildMemoryProfile({
+      totalTracked: 12,
+      dueToday: 4,
+      overdue: 2,
+      learning: 1,
+      review: 8,
+      mastered: 2,
+      suspended: 1,
+      retrievabilities: [
+        0.812, 0.744, 0.654, 0.913, 0.881, 0.777, 0.699, 0.955, 0.833, 0.701,
+      ],
+    })
+
+    expect(result).toEqual({
+      totalTracked: 12,
+      dueToday: 4,
+      overdue: 2,
+      learning: 1,
+      review: 8,
+      mastered: 2,
+      suspended: 1,
+      averageRetrievability: 0.8,
+      lowSample: false,
+    })
+  })
+
+  it('returns null averageRetrievability when no samples exist', () => {
+    const result = buildMemoryProfile({
+      totalTracked: 3,
+      dueToday: 0,
+      overdue: 0,
+      learning: 0,
+      review: 3,
+      mastered: 0,
+      suspended: 0,
+      retrievabilities: [],
+    })
+
+    expect(result.averageRetrievability).toBeNull()
+    expect(result.lowSample).toBe(true)
   })
 })
 
@@ -178,6 +269,17 @@ describe('buildAnalyticsSummary', () => {
       date: `2026-01-${String(15 + i).padStart(2, '0')}`,
       dueCount: i,
     }))
+    const memoryProfile = {
+      totalTracked: 12,
+      dueToday: 4,
+      overdue: 2,
+      learning: 1,
+      review: 8,
+      mastered: 2,
+      suspended: 1,
+      averageRetrievability: 0.8,
+      lowSample: false,
+    }
 
     const result = buildAnalyticsSummary({
       generatedAt,
@@ -187,6 +289,7 @@ describe('buildAnalyticsSummary', () => {
       retention,
       forecast,
       weakProblems: [],
+      memoryProfile,
     })
 
     expect(result.generatedAt).toBe(generatedAt.toISOString())
@@ -199,5 +302,6 @@ describe('buildAnalyticsSummary', () => {
     expect(result.lowSample).toBe(false)
     expect(result.dueForecast14Days).toBe(forecast)
     expect(result.weakProblems).toEqual([])
+    expect(result.memoryProfile).toBe(memoryProfile)
   })
 })

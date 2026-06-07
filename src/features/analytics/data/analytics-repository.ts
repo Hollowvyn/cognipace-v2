@@ -25,6 +25,21 @@ export interface UpcomingCard {
   dueAt: Date
 }
 
+export interface MemoryProfileCard {
+  dueAt: Date
+  stability: number
+  difficulty: number
+  elapsedDays: number
+  scheduledDays: number
+  learningSteps: number
+  reps: number
+  lapses: number
+  state: string
+  lastReviewAt: Date | null
+  practiceStatus: string
+  isSuspended: boolean
+}
+
 export interface WeakProblemCandidate {
   slug: string
   title: string
@@ -88,6 +103,47 @@ export async function getUpcomingCards(
   return rows.map((row) => ({ dueAt: new Date(row.dueAt) }))
 }
 
+export async function getMemoryProfileCards(
+  db: Db,
+): Promise<MemoryProfileCard[]> {
+  const rows = await db
+    .select({
+      dueAt: fsrsCards.dueAt,
+      stability: fsrsCards.stability,
+      difficulty: fsrsCards.difficulty,
+      elapsedDays: fsrsCards.elapsedDays,
+      scheduledDays: fsrsCards.scheduledDays,
+      learningSteps: fsrsCards.learningSteps,
+      reps: fsrsCards.reps,
+      lapses: fsrsCards.lapses,
+      state: fsrsCards.state,
+      lastReviewAt: fsrsCards.lastReviewAt,
+      practiceStatus: problemPractice.status,
+      isSuspended: problemPractice.isSuspended,
+    })
+    .from(fsrsCards)
+    .innerJoin(
+      problemPractice,
+      eq(problemPractice.problemSlug, fsrsCards.problemSlug),
+    )
+    .where(eq(fsrsCards.cardKind, defaultFsrsCardKind))
+
+  return rows.map((row) => ({
+    dueAt: new Date(row.dueAt),
+    stability: row.stability,
+    difficulty: row.difficulty,
+    elapsedDays: row.elapsedDays,
+    scheduledDays: row.scheduledDays,
+    learningSteps: row.learningSteps,
+    reps: row.reps,
+    lapses: row.lapses,
+    state: row.state,
+    lastReviewAt: row.lastReviewAt === null ? null : new Date(row.lastReviewAt),
+    practiceStatus: row.practiceStatus,
+    isSuspended: row.isSuspended,
+  }))
+}
+
 export async function getWeakProblemCandidates(
   db: Db,
 ): Promise<WeakProblemCandidate[]> {
@@ -108,10 +164,7 @@ export async function getWeakProblemCandidates(
         eq(fsrsCards.cardKind, defaultFsrsCardKind),
       ),
     )
-    .innerJoin(
-      problemPractice,
-      eq(problemPractice.problemSlug, problems.slug),
-    )
+    .innerJoin(problemPractice, eq(problemPractice.problemSlug, problems.slug))
     .where(
       and(
         ne(problemPractice.status, 'new'),
@@ -128,7 +181,6 @@ export async function getWeakProblemCandidates(
     lapseCount: row.lapseCount,
     difficulty: row.difficulty,
     stability: row.stability,
-    lastReviewAt:
-      row.lastReviewAt === null ? null : new Date(row.lastReviewAt),
+    lastReviewAt: row.lastReviewAt === null ? null : new Date(row.lastReviewAt),
   }))
 }

@@ -6,6 +6,8 @@ import {
   backupRequestSchema,
   backupSummarySchema,
   clearAiProviderSecretRequestSchema,
+  devSmokeReportSchema,
+  devSmokeRequestSchema,
   getAiProviderSecretPresenceRequestSchema,
   leetcodeProblemRemoteRuntimeRequestSchema,
   leetcodeSubmissionResultRemoteRuntimeRequestSchema,
@@ -68,8 +70,10 @@ import { getAnalyticsSummary } from '@/features/analytics/server/analytics-servi
 import {
   clearAiProviderSecret,
   getAiProviderSecretPresence,
+  loadActiveProviderConfig,
   setAiProviderSecret,
 } from '@/features/genai/server/genai-settings-service'
+import { generateJson } from '@/features/genai/server'
 import {
   exportFullBackup,
   resetLocalData,
@@ -145,8 +149,13 @@ import {
 } from '@/features/tracks/server/tracks-service'
 import { getDashboardUrl } from '@/platform/chrome/extension-pages'
 import { flushDbSnapshot, getAppDb, type Db } from '@/platform/db'
+import { z } from 'zod'
 
 import { broadcastCacheInvalidation } from './cache-invalidation-broadcaster'
+import {
+  computeNotificationDryRun,
+  createDevSmokeService,
+} from './dev-smoke-service'
 import { assertCanSenderCallExtensionMethod } from './runtime-policy'
 import { createAlarmScheduler } from './scheduler/alarm-scheduler'
 import { createSyncAutoSync } from './sync-auto-sync'
@@ -188,7 +197,7 @@ const dueNotification = createDueNotification({
   readQueueSummary: async () => {
     const { db } = await getAppDb()
     const queue = await getTodayQueue(db, new Date())
-    return { dueCount: queue.dueCount }
+    return { dueToday: queue.dueToday }
   },
   readState: readDueNotificationState,
   writeState: writeDueNotificationState,
@@ -847,15 +856,73 @@ export function registerBackgroundHandlers() {
 
     assertCanSenderCallExtensionMethod(
       'analytics.getSummary',
-      'dashboard',
+      request.surface,
       sender,
     )
 
-    void request
-
     return getAppDb().then(async ({ db }) =>
-      analyticsSummarySchema.parse(await getAnalyticsSummary(db)),
+      analyticsSummarySchema.parse(
+        await getAnalyticsSummary(
+          db,
+          request.at ? new Date(request.at) : undefined,
+        ),
+      ),
     )
+  })
+
+  onMessage('devSmoke.run', ({ data, sender }) => {
+    const request = devSmokeRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod('devSmoke.run', request.surface, sender)
+
+    return getAppDb().then(async ({ db }) => {
+      const smoke = createDevSmokeService({
+        now: () => new Date(),
+        readAnalyticsSummary: () => getAnalyticsSummary(db),
+        readQueueSummary: async () => {
+          const queue = await getTodayQueue(db, new Date())
+
+          return {
+            dueToday: queue.dueToday,
+            newAvailable: queue.newAvailable,
+            queueLoad: queue.queueLoad,
+            recommendationReason: queue.recommendationReason,
+          }
+        },
+        readGenAiConfig: async () => {
+          const settings = await getSettings(db)
+          const ai = settings.aiAssessment
+          const secretPresence = await getAiProviderSecretPresence(db)
+          const hasConfiguredModel = ai.model.trim() !== ''
+
+          if (!ai.enabled || !hasConfiguredModel) {
+            return {
+              enabled: false,
+              provider: ai.provider,
+              model: hasConfiguredModel ? ai.model : 'not-configured',
+              hasSecret: secretPresence[ai.provider],
+            }
+          }
+
+          return {
+            enabled: true,
+            provider: ai.provider,
+            model: ai.model,
+            hasSecret: secretPresence[ai.provider],
+          }
+        },
+        runNotificationDryRun: () => runNotificationSmokeDryRun(db),
+        runLiveGenAi: () => runLiveGenAiSmoke(db),
+      })
+
+      return devSmokeReportSchema.parse(
+        await smoke.run({
+          ...(request.runLiveGenAi !== undefined
+            ? { runLiveGenAi: request.runLiveGenAi }
+            : {}),
+        }),
+      )
+    })
   })
 
   onMessage('queue.getTodayQueue', ({ data, sender }) => {
@@ -1198,6 +1265,68 @@ export function registerBackgroundHandlers() {
   })
 }
 
+const genAiLiveSmokeSchema = z.object({
+  ok: z.literal(true),
+})
+
+async function runNotificationSmokeDryRun(db: Db) {
+  const now = new Date()
+  const [settings, queue, state] = await Promise.all([
+    getSettings(db),
+    getTodayQueue(db, now),
+    readDueNotificationState(),
+  ])
+
+  return computeNotificationDryRun({
+    now,
+    reminders: settings.reminders,
+    dueToday: queue.dueToday,
+    lastNotifiedDate: state.lastNotifiedDate,
+  })
+}
+
+async function runLiveGenAiSmoke(db: Db) {
+  const config = await loadActiveProviderConfig(db)
+
+  if (!config) {
+    return {
+      status: 'skip' as const,
+      detail: 'Live GenAI skipped because no active provider config exists.',
+    }
+  }
+
+  const result = await generateJson({
+    ...config,
+    prompt: {
+      system:
+        'Return compact JSON for a CogniPace developer smoke test. No prose.',
+      user: 'Return {"ok":true}.',
+    },
+    schema: genAiLiveSmokeSchema,
+    temperature: 0,
+    timeoutMs: 10_000,
+  })
+
+  if (result.status === 'success') {
+    return {
+      status: 'pass' as const,
+      detail: `Provider ${config.provider} responded for model ${config.model}.`,
+      latencyMs: result.providerMetadata.durationMs,
+    }
+  }
+
+  return {
+    status:
+      result.code === 'rate-limit' ||
+      result.code === 'network' ||
+      result.code === 'timeout'
+        ? ('warn' as const)
+        : ('fail' as const),
+    detail: `Provider ${config.provider} returned ${result.code}: ${result.message}`,
+    latencyMs: result.providerMetadata.durationMs,
+  }
+}
+
 async function runSettingsMutation(
   source: 'popup' | 'dashboard',
   writeSettings: (db: Db) => Promise<UserSettings>,
@@ -1457,9 +1586,13 @@ function serializeTodayQueue(queue: TodayQueue): SerializedTodayQueue {
   return todayQueueSchema.parse({
     generatedAt: queue.generatedAt.toISOString(),
     dueCount: queue.dueCount,
+    dueToday: queue.dueToday,
     newCount: queue.newCount,
+    newAvailable: queue.newAvailable,
+    queueLoad: queue.queueLoad,
     reinforcementCount: queue.reinforcementCount,
     excludedCount: queue.excludedCount,
+    recommendationReason: queue.recommendationReason,
     items: queue.items.map(serializeItem),
     topRecommendation: queue.topRecommendation
       ? serializeItem(queue.topRecommendation)

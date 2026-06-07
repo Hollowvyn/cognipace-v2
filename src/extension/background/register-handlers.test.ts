@@ -4,6 +4,7 @@ import {
   activeTrackSchema,
   backupFileSchema,
   backupSummarySchema,
+  devSmokeReportSchema,
   queueRequestSchema,
   syncActionResultSchema,
   syncStatusSchema,
@@ -78,6 +79,8 @@ const backgroundMocks = vi.hoisted(() => {
     backupRestoreFullBackup: vi.fn(),
     backupValidateFullBackup: vi.fn(),
     broadcastCacheInvalidation: vi.fn(),
+    getAnalyticsSummary: vi.fn(),
+    getTodayQueue: vi.fn(),
     flushDbSnapshot: vi.fn(),
     getActiveTrack: vi.fn(),
     getAppDb: vi.fn(),
@@ -102,6 +105,11 @@ const backgroundMocks = vi.hoisted(() => {
     setPracticeSuspended: vi.fn(),
     setActiveTrack: vi.fn(),
     getSettings: vi.fn(),
+    getAiProviderSecretPresence: vi.fn(),
+    setAiProviderSecret: vi.fn(),
+    clearAiProviderSecret: vi.fn(),
+    loadActiveProviderConfig: vi.fn(),
+    generateJson: vi.fn(),
     cycleThemeMode: vi.fn(),
     toggleStudyMode: vi.fn(),
     tabsCreate: vi.fn(),
@@ -169,6 +177,25 @@ vi.mock('wxt/browser', () => ({
 
 vi.mock('@/features/app-shell/server/app-shell-service', () => ({
   getAppShellData: backgroundMocks.getAppShellData,
+}))
+
+vi.mock('@/features/analytics/server/analytics-service', () => ({
+  getAnalyticsSummary: backgroundMocks.getAnalyticsSummary,
+}))
+
+vi.mock('@/features/queue/server/queue-service', () => ({
+  getTodayQueue: backgroundMocks.getTodayQueue,
+}))
+
+vi.mock('@/features/genai/server/genai-settings-service', () => ({
+  getAiProviderSecretPresence: backgroundMocks.getAiProviderSecretPresence,
+  setAiProviderSecret: backgroundMocks.setAiProviderSecret,
+  clearAiProviderSecret: backgroundMocks.clearAiProviderSecret,
+  loadActiveProviderConfig: backgroundMocks.loadActiveProviderConfig,
+}))
+
+vi.mock('@/features/genai/server', () => ({
+  generateJson: backgroundMocks.generateJson,
 }))
 
 vi.mock('@/features/backup/server/backup-service', () => ({
@@ -292,6 +319,32 @@ describe('background handler registration', () => {
     backgroundMocks.handlers.clear()
     vi.clearAllMocks()
     backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
+    backgroundMocks.getAnalyticsSummary.mockResolvedValue({
+      generatedAt: '2026-01-15T12:00:00.000Z',
+      reviewDays: 3,
+      totalReviews: 12,
+      currentStreak: 2,
+      retentionProxy: 0.75,
+      retentionProxyLabel: '75%',
+      retentionSampleSize: 12,
+      lowSample: false,
+      dueForecast14Days: Array.from({ length: 14 }, (_, index) => ({
+        date: `2026-01-${String(15 + index).padStart(2, '0')}`,
+        dueCount: index,
+      })),
+      weakProblems: [],
+      memoryProfile: {
+        totalTracked: 12,
+        dueToday: 4,
+        overdue: 2,
+        learning: 0,
+        review: 12,
+        mastered: 0,
+        suspended: 0,
+        averageRetrievability: 0.8,
+        lowSample: false,
+      },
+    })
     backgroundMocks.backupExportFullBackup.mockResolvedValue(validBackup)
     backgroundMocks.backupResetLocalData.mockResolvedValue(null)
     backgroundMocks.backupRestoreFullBackup.mockResolvedValue(
@@ -300,6 +353,7 @@ describe('background handler registration', () => {
     backgroundMocks.backupValidateFullBackup.mockReturnValue(validBackupSummary)
     backgroundMocks.flushDbSnapshot.mockResolvedValue(undefined)
     backgroundMocks.getAppDb.mockResolvedValue({ db: backgroundMocks.db })
+    backgroundMocks.getTodayQueue.mockResolvedValue(todayQueue)
     backgroundMocks.getProblemLibrary.mockResolvedValue(problemLibraryResponse)
     backgroundMocks.createProblem.mockResolvedValue(problemForEditResponse)
     backgroundMocks.createTrack.mockResolvedValue(trackForEditResponse)
@@ -323,6 +377,31 @@ describe('background handler registration', () => {
     backgroundMocks.setActiveTrack.mockResolvedValue(undefined)
     backgroundMocks.clearActiveTrack.mockResolvedValue(undefined)
     backgroundMocks.getSettings.mockResolvedValue(defaultUserSettings)
+    backgroundMocks.getAiProviderSecretPresence.mockResolvedValue({
+      openai: false,
+      anthropic: false,
+      gemini: false,
+    })
+    backgroundMocks.setAiProviderSecret.mockResolvedValue({
+      openai: true,
+      anthropic: false,
+      gemini: false,
+    })
+    backgroundMocks.clearAiProviderSecret.mockResolvedValue({
+      openai: false,
+      anthropic: false,
+      gemini: false,
+    })
+    backgroundMocks.loadActiveProviderConfig.mockResolvedValue(null)
+    backgroundMocks.generateJson.mockResolvedValue({
+      status: 'success',
+      data: { ok: true },
+      providerMetadata: {
+        provider: 'openai',
+        model: 'gpt-4.1-mini',
+        durationMs: 25,
+      },
+    })
     backgroundMocks.cycleThemeMode.mockResolvedValue(defaultUserSettings)
     backgroundMocks.toggleStudyMode.mockResolvedValue(defaultUserSettings)
     backgroundMocks.tabsCreate.mockResolvedValue({})
@@ -380,7 +459,9 @@ describe('background handler registration', () => {
       syncActionResult,
     )
     backgroundMocks.dueNotification.handleStartup.mockResolvedValue(undefined)
-    backgroundMocks.dueNotification.onSettingsChanged.mockResolvedValue(undefined)
+    backgroundMocks.dueNotification.onSettingsChanged.mockResolvedValue(
+      undefined,
+    )
     backgroundMocks.dueNotification.registerJobs.mockReturnValue(undefined)
     backgroundMocks.dueNotification.runDailyCheck.mockResolvedValue(undefined)
     backgroundMocks.createDueNotification.mockReturnValue(
@@ -435,6 +516,169 @@ describe('background handler registration', () => {
       activeTrack: {
         dueAt: '2026-03-01T00:00:00.000Z',
       },
+    })
+  })
+
+  it('registers analytics summary handling with dashboard policy and response parsing', async () => {
+    const response = await sendRuntimeMessage('analytics.getSummary', {
+      surface: 'dashboard',
+      at: '2026-01-15T12:00:00.000Z',
+    })
+
+    expectRuntimePolicy('analytics.getSummary', 'dashboard')
+    expect(backgroundMocks.getAppDb).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      new Date('2026-01-15T12:00:00.000Z'),
+    )
+    expect(response).toMatchObject({
+      generatedAt: '2026-01-15T12:00:00.000Z',
+      reviewDays: 3,
+      totalReviews: 12,
+      currentStreak: 2,
+      retentionProxyLabel: '75%',
+      weakProblems: [],
+      memoryProfile: {
+        averageRetrievability: 0.8,
+      },
+    })
+  })
+
+  it('registers dev smoke handling with dashboard policy and response parsing', async () => {
+    backgroundMocks.getSettings.mockResolvedValue({
+      ...defaultUserSettings,
+      reminders: {
+        daily: {
+          enabled: true,
+          time: '09:00',
+        },
+      },
+    })
+    backgroundMocks.readDueNotificationState.mockResolvedValue({
+      lastNotifiedDate: '2026-06-06',
+    })
+
+    const response = await sendRuntimeMessage('devSmoke.run', {
+      surface: 'dashboard',
+    })
+    const report = devSmokeReportSchema.parse(response)
+
+    expectRuntimePolicy('devSmoke.run', 'dashboard')
+    expect(backgroundMocks.getAppDb).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.getSettings).toHaveBeenCalledWith(backgroundMocks.db)
+    expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
+      backgroundMocks.db,
+    )
+    expect(backgroundMocks.getTodayQueue).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      expect.any(Date),
+    )
+    expect(backgroundMocks.getSettings).toHaveBeenCalledWith(backgroundMocks.db)
+    expect(backgroundMocks.getAiProviderSecretPresence).toHaveBeenCalledWith(
+      backgroundMocks.db,
+    )
+    expect(backgroundMocks.loadActiveProviderConfig).not.toHaveBeenCalled()
+    expect(backgroundMocks.readDueNotificationState).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.writeDueNotificationState).not.toHaveBeenCalled()
+    expect(report.checks.map((check) => check.id)).toEqual([
+      'health',
+      'analytics',
+      'queue',
+      'notifications',
+      'genai.config',
+      'genai.live',
+    ])
+    expect(
+      report.checks.find((check) => check.id === 'notifications'),
+    ).toMatchObject({
+      status: 'pass',
+      detail: 'Would send a 09:00 reminder for 1 due review.',
+    })
+  })
+
+  it('reports the selected GenAI provider and model when the secret is missing', async () => {
+    backgroundMocks.getSettings.mockResolvedValue({
+      ...defaultUserSettings,
+      aiAssessment: {
+        enabled: true,
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-latest',
+      },
+    })
+    backgroundMocks.getAiProviderSecretPresence.mockResolvedValue({
+      openai: false,
+      anthropic: false,
+      gemini: false,
+    })
+
+    const response = await sendRuntimeMessage('devSmoke.run', {
+      surface: 'dashboard',
+    })
+    const report = devSmokeReportSchema.parse(response)
+
+    expect(backgroundMocks.loadActiveProviderConfig).not.toHaveBeenCalled()
+    expect(
+      report.checks.find((check) => check.id === 'genai.config'),
+    ).toMatchObject({
+      status: 'warn',
+      detail:
+        'Provider anthropic is configured with model claude-3-5-sonnet-latest; secret present: no.',
+    })
+  })
+
+  it('runs live GenAI smoke when requested and redacts provider errors', async () => {
+    backgroundMocks.getSettings.mockResolvedValue({
+      ...defaultUserSettings,
+      aiAssessment: {
+        enabled: true,
+        provider: 'openai',
+        model: 'gpt-4.1-mini',
+      },
+    })
+    backgroundMocks.getAiProviderSecretPresence.mockResolvedValue({
+      openai: true,
+      anthropic: false,
+      gemini: false,
+    })
+    backgroundMocks.loadActiveProviderConfig.mockResolvedValue({
+      provider: 'openai',
+      model: 'gpt-4.1-mini',
+      apiKey: 'sk-test-secret',
+    })
+    backgroundMocks.generateJson.mockResolvedValue({
+      status: 'error',
+      code: 'auth',
+      message: 'Provider rejected sk-test-secret.',
+      providerMetadata: {
+        provider: 'openai',
+        model: 'gpt-4.1-mini',
+        durationMs: 31,
+      },
+    })
+
+    const response = await sendRuntimeMessage('devSmoke.run', {
+      surface: 'dashboard',
+      runLiveGenAi: true,
+    })
+    const report = devSmokeReportSchema.parse(response)
+
+    expectRuntimePolicy('devSmoke.run', 'dashboard')
+    expect(backgroundMocks.generateJson).toHaveBeenCalledTimes(1)
+    expect(JSON.stringify(report)).not.toContain('sk-test-secret')
+    expect(
+      report.checks.find((check) => check.id === 'genai.config'),
+    ).toMatchObject({
+      status: 'pass',
+      detail:
+        'Provider openai is configured with model gpt-4.1-mini; secret present: yes.',
+    })
+    expect(
+      report.checks.find((check) => check.id === 'genai.live'),
+    ).toMatchObject({
+      status: 'fail',
+      detail:
+        'Provider openai returned auth: Provider rejected [redacted-secret].',
+      latencyMs: 31,
     })
   })
 
@@ -585,9 +829,12 @@ describe('background handler registration', () => {
   })
 
   it('delegates stored token validation through dashboard policy without accepting token payloads', async () => {
-    const response = await sendRuntimeMessage('sync.validateStoredGithubToken', {
-      surface: 'dashboard',
-    })
+    const response = await sendRuntimeMessage(
+      'sync.validateStoredGithubToken',
+      {
+        surface: 'dashboard',
+      },
+    )
 
     expectRuntimePolicy('sync.validateStoredGithubToken', 'dashboard')
     expectSyncFactoryForDb()
@@ -1527,11 +1774,13 @@ describe('background handler registration', () => {
     })
 
     it('calls the handler when sender is content-script', async () => {
-      backgroundMocks.recommendLeetCodeAssessmentInBackground.mockResolvedValue({
-        status: 'unavailable',
-        message: 'AI is not configured.',
-        submissionFingerprint: 'fp-abc-123',
-      })
+      backgroundMocks.recommendLeetCodeAssessmentInBackground.mockResolvedValue(
+        {
+          status: 'unavailable',
+          message: 'AI is not configured.',
+          submissionFingerprint: 'fp-abc-123',
+        },
+      )
 
       const handler = backgroundMocks.handlers.get(
         'genai.recommendLeetCodeAssessment',
@@ -1580,7 +1829,10 @@ describe('background handler registration', () => {
       backgroundMocks.assertCanSenderCallExtensionMethod.mockImplementation(
         (_method: string, surface: string, sender: unknown) => {
           const senderRecord = sender as { url?: string }
-          if (senderRecord.url?.includes('popup.html') && surface === 'content-script') {
+          if (
+            senderRecord.url?.includes('popup.html') &&
+            surface === 'content-script'
+          ) {
             throw new Error(`Sender surface "popup" cannot claim "${surface}".`)
           }
         },
@@ -1624,11 +1876,16 @@ describe('background handler serializers', () => {
     expect(() =>
       todayQueueSchema.parse({
         generatedAt: 'not-a-date',
-        dailyGoal: 4,
         dueCount: 0,
+        dueToday: 0,
         newCount: 0,
+        newAvailable: 0,
+        queueLoad: 0,
         reinforcementCount: 0,
+        excludedCount: 0,
+        recommendationReason: null,
         items: [],
+        topRecommendation: null,
       }),
     ).toThrow()
     expect(() =>
@@ -1950,6 +2207,19 @@ const trackForEditResponse = createTrackForEditResponse()
 const parsedTrackForEditResponse =
   trackForEditResponseSchema.parse(trackForEditResponse)
 const trackWorkspaceResponse = createTrackWorkspaceResponse()
+const todayQueue = todayQueueSchema.parse({
+  generatedAt: '2026-06-07T12:00:00.000Z',
+  dueCount: 1,
+  dueToday: 1,
+  newCount: 2,
+  newAvailable: 2,
+  queueLoad: 3,
+  reinforcementCount: 0,
+  excludedCount: 0,
+  recommendationReason: 'due-now',
+  items: [],
+  topRecommendation: null,
+})
 const backupTimestamp = '2026-05-25T12:00:00.000Z'
 const syncTimestamp = '2026-05-26T12:00:00.000Z'
 const syncStatus = syncStatusSchema.parse({

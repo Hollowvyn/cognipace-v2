@@ -32,9 +32,13 @@ export interface QueueItem {
 export interface TodayQueue {
   generatedAt: Date
   dueCount: number
+  dueToday: number
   newCount: number
+  newAvailable: number
+  queueLoad: number
   reinforcementCount: number
   excludedCount: number
+  recommendationReason: RecommendationReason | null
   items: QueueItem[]
   topRecommendation: QueueItem | null
 }
@@ -69,9 +73,13 @@ export function buildTodayQueue(
   return {
     generatedAt,
     dueCount: dueItems.length,
+    dueToday: dueItems.length,
     newCount: newItems.length,
+    newAvailable: newItems.length,
+    queueLoad: items.length,
     reinforcementCount: reinforcementItems.length,
     excludedCount,
+    recommendationReason: items[0]?.reason ?? null,
     items,
     topRecommendation: items[0] ?? null,
   }

@@ -7,7 +7,7 @@ export const dueCheckAlarmName = 'due:daily-check'
 export type DueNotificationDeps = {
   now: () => Date
   readSettings: () => Promise<Pick<UserSettings, 'reminders'>>
-  readQueueSummary: () => Promise<{ dueCount: number }>
+  readQueueSummary: () => Promise<{ dueToday: number }>
   readState: () => Promise<{ lastNotifiedDate: string | null }>
   writeState: (date: string) => Promise<void>
   notify: (title: string, message: string) => Promise<void>
@@ -67,12 +67,12 @@ export function createDueNotification(deps: DueNotificationDeps) {
     const now = deps.now()
     const today = toDateString(now)
     const state = await deps.readState()
-    const { dueCount } = await deps.readQueueSummary()
+    const { dueToday } = await deps.readQueueSummary()
 
-    if (state.lastNotifiedDate !== today && dueCount > 0) {
+    if (state.lastNotifiedDate !== today && dueToday > 0) {
       await deps.notify(
         'Reviews due',
-        `You have ${dueCount} review${dueCount === 1 ? '' : 's'} due today.`,
+        `You have ${dueToday} review${dueToday === 1 ? '' : 's'} due today.`,
       )
       await deps.writeState(today)
     }

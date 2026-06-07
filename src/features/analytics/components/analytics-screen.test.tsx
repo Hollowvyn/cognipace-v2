@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
+import type { SerializedAnalyticsSummary } from '@/features/analytics/api/analytics-contracts'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import { AnalyticsScreen } from './analytics-screen'
@@ -11,7 +12,7 @@ vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
 }))
 
-function baseAnalyticsSummary() {
+function baseAnalyticsSummary(): SerializedAnalyticsSummary {
   return {
     generatedAt: '2026-01-15T12:00:00.000Z',
     reviewDays: 42,
@@ -21,6 +22,17 @@ function baseAnalyticsSummary() {
     retentionProxyLabel: '72%',
     retentionSampleSize: 58,
     lowSample: false,
+    memoryProfile: {
+      totalTracked: 12,
+      dueToday: 3,
+      overdue: 1,
+      learning: 2,
+      review: 8,
+      mastered: 1,
+      suspended: 1,
+      averageRetrievability: 0.74,
+      lowSample: false,
+    },
     dueForecast14Days: Array.from({ length: 14 }, (_, i) => ({
       date: `2026-01-${String(15 + i).padStart(2, '0')}`,
       dueCount: i === 0 ? 6 : (i + 1) * 3,
@@ -38,7 +50,7 @@ function baseAnalyticsSummary() {
 }
 
 function createAnalyticsSummary(
-  overrides: Partial<ReturnType<typeof baseAnalyticsSummary>> = {},
+  overrides: Partial<SerializedAnalyticsSummary> = {},
 ) {
   return { ...baseAnalyticsSummary(), ...overrides }
 }
@@ -99,14 +111,80 @@ describe('AnalyticsScreen', () => {
     expect(within(retentionTile).getByText('72%')).toBeVisible()
   })
 
+  it('renders memory profile totals and retrievability', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(createAnalyticsSummary())
+
+    renderAnalyticsScreen()
+
+    const memoryProfile = await screen.findByRole('region', {
+      name: 'Memory profile',
+    })
+
+    expect(
+      within(memoryProfile).getByRole('heading', { name: 'Memory Profile' }),
+    ).toBeVisible()
+    expect(within(memoryProfile).getByText('12')).toBeVisible()
+    expect(within(memoryProfile).getByText('74%')).toBeVisible()
+    expect(within(memoryProfile).getByText('3 due today')).toBeVisible()
+  })
+
+  it('shows limited-sample caveat when memory profile has a non-null low-sample average', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      createAnalyticsSummary({
+        memoryProfile: {
+          ...baseAnalyticsSummary().memoryProfile,
+          averageRetrievability: 0.74,
+          lowSample: true,
+        },
+      }),
+    )
+
+    renderAnalyticsScreen()
+
+    const memoryProfile = await screen.findByRole('region', {
+      name: 'Memory profile',
+    })
+
+    expect(within(memoryProfile).getByText('74%')).toBeVisible()
+    expect(
+      within(memoryProfile).getByText('Limited review sample'),
+    ).toBeVisible()
+  })
+
+  it('renders not-enough-review-data state for memory profile average', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      createAnalyticsSummary({
+        memoryProfile: {
+          ...baseAnalyticsSummary().memoryProfile,
+          averageRetrievability: null,
+          lowSample: true,
+        },
+      }),
+    )
+
+    renderAnalyticsScreen()
+
+    const memoryProfile = await screen.findByRole('region', {
+      name: 'Memory profile',
+    })
+
+    expect(
+      within(memoryProfile).getByText('Not enough review data'),
+    ).toBeVisible()
+  })
+
   it('renders 14 forecast bars with a Today label', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(createAnalyticsSummary())
 
     renderAnalyticsScreen()
 
-    const forecastRegion = await screen.findByRole('region', { name: '14-day due forecast' })
+    const forecastRegion = await screen.findByRole('region', {
+      name: '14-day due forecast',
+    })
     expect(screen.getAllByTestId('forecast-bar')).toHaveLength(14)
-    expect(within(forecastRegion).getAllByText('Today').length).toBeGreaterThanOrEqual(1)
+    expect(
+      within(forecastRegion).getAllByText('Today').length,
+    ).toBeGreaterThanOrEqual(1)
   })
 
   it('renders weak problem rows with lapse count and retention', async () => {
@@ -162,9 +240,7 @@ describe('AnalyticsScreen', () => {
     expect(
       await screen.findByRole('region', { name: '14-day due forecast' }),
     ).toBeVisible()
-    expect(
-      screen.getByRole('region', { name: 'Weak problems' }),
-    ).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Weak problems' })).toBeVisible()
   })
 })
 
