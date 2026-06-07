@@ -1683,11 +1683,16 @@ describe('background handler serializers', () => {
     expect(() =>
       todayQueueSchema.parse({
         generatedAt: 'not-a-date',
-        dailyGoal: 4,
         dueCount: 0,
+        dueToday: 0,
         newCount: 0,
+        newAvailable: 0,
+        queueLoad: 0,
         reinforcementCount: 0,
+        excludedCount: 0,
+        recommendationReason: null,
         items: [],
+        topRecommendation: null,
       }),
     ).toThrow()
     expect(() =>

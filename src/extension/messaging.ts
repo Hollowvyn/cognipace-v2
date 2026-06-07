@@ -224,9 +224,15 @@ export const queueItemSchema = z.object({
 export const todayQueueSchema = z.object({
   generatedAt: z.iso.datetime(),
   dueCount: z.number().int().min(0),
+  dueToday: z.number().int().min(0),
   newCount: z.number().int().min(0),
+  newAvailable: z.number().int().min(0),
+  queueLoad: z.number().int().min(0),
   reinforcementCount: z.number().int().min(0),
   excludedCount: z.number().int().min(0),
+  recommendationReason: z
+    .enum(['overdue', 'due-now', 'reinforcement', 'new-problem'])
+    .nullable(),
   items: z.array(queueItemSchema),
   topRecommendation: queueItemSchema.nullable(),
 })

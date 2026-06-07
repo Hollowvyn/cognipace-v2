@@ -188,7 +188,7 @@ const dueNotification = createDueNotification({
   readQueueSummary: async () => {
     const { db } = await getAppDb()
     const queue = await getTodayQueue(db, new Date())
-    return { dueCount: queue.dueCount }
+    return { dueToday: queue.dueToday }
   },
   readState: readDueNotificationState,
   writeState: writeDueNotificationState,
@@ -1460,9 +1460,13 @@ function serializeTodayQueue(queue: TodayQueue): SerializedTodayQueue {
   return todayQueueSchema.parse({
     generatedAt: queue.generatedAt.toISOString(),
     dueCount: queue.dueCount,
+    dueToday: queue.dueToday,
     newCount: queue.newCount,
+    newAvailable: queue.newAvailable,
+    queueLoad: queue.queueLoad,
     reinforcementCount: queue.reinforcementCount,
     excludedCount: queue.excludedCount,
+    recommendationReason: queue.recommendationReason,
     items: queue.items.map(serializeItem),
     topRecommendation: queue.topRecommendation
       ? serializeItem(queue.topRecommendation)

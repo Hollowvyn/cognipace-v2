@@ -56,7 +56,7 @@ function createDeps(overrides: Partial<DueNotificationDeps> = {}): DueNotificati
   return {
     now: () => new Date('2026-05-30T10:00:00.000Z'), // 10:00 UTC
     readSettings: vi.fn(() => Promise.resolve(makeReminders())),
-    readQueueSummary: vi.fn(() => Promise.resolve({ dueCount: 0 })),
+    readQueueSummary: vi.fn(() => Promise.resolve({ dueToday: 0 })),
     readState: vi.fn(() => Promise.resolve({ lastNotifiedDate: null as string | null })),
     writeState: vi.fn(() => Promise.resolve()),
     notify: vi.fn(() => Promise.resolve()),
@@ -86,7 +86,7 @@ describe('runDailyCheck', () => {
     const deps = createDeps({
       readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '11:00' }))),
       readState: vi.fn(() => Promise.resolve({ lastNotifiedDate: '2026-05-30' })),
-      readQueueSummary: vi.fn(() => Promise.resolve({ dueCount: 5 })),
+      readQueueSummary: vi.fn(() => Promise.resolve({ dueToday: 5 })),
     })
     const { registerJobs, runDailyCheck } = createDueNotification(deps)
     registerJobs()
@@ -100,11 +100,11 @@ describe('runDailyCheck', () => {
     })
   })
 
-  it('skips notification when dueCount is 0 but still reschedules', async () => {
+  it('skips notification when dueToday is 0 but still reschedules', async () => {
     const deps = createDeps({
       readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '11:00' }))),
       readState: vi.fn(() => Promise.resolve({ lastNotifiedDate: null })),
-      readQueueSummary: vi.fn(() => Promise.resolve({ dueCount: 0 })),
+      readQueueSummary: vi.fn(() => Promise.resolve({ dueToday: 0 })),
     })
     const { registerJobs, runDailyCheck } = createDueNotification(deps)
     registerJobs()
@@ -118,12 +118,12 @@ describe('runDailyCheck', () => {
     })
   })
 
-  it('notifies, writes today date, and reschedules when dueCount > 0 and not deduped', async () => {
+  it('notifies, writes today date, and reschedules when dueToday > 0 and not deduped', async () => {
     // now=10:00 UTC, next alarm time=11:00 → 60 min delay
     const deps = createDeps({
       readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '11:00' }))),
       readState: vi.fn(() => Promise.resolve({ lastNotifiedDate: null })),
-      readQueueSummary: vi.fn(() => Promise.resolve({ dueCount: 3 })),
+      readQueueSummary: vi.fn(() => Promise.resolve({ dueToday: 3 })),
     })
     const { registerJobs, runDailyCheck } = createDueNotification(deps)
     registerJobs()
@@ -140,11 +140,11 @@ describe('runDailyCheck', () => {
     })
   })
 
-  it('uses singular "review" when dueCount is 1', async () => {
+  it('uses singular "review" when dueToday is 1', async () => {
     const deps = createDeps({
       readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '11:00' }))),
       readState: vi.fn(() => Promise.resolve({ lastNotifiedDate: null })),
-      readQueueSummary: vi.fn(() => Promise.resolve({ dueCount: 1 })),
+      readQueueSummary: vi.fn(() => Promise.resolve({ dueToday: 1 })),
     })
     const { registerJobs, runDailyCheck } = createDueNotification(deps)
     registerJobs()
@@ -161,7 +161,7 @@ describe('runDailyCheck', () => {
     const deps = createDeps({
       readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '11:00' }))),
       readState: vi.fn(() => Promise.resolve({ lastNotifiedDate: '2026-05-29' })), // yesterday
-      readQueueSummary: vi.fn(() => Promise.resolve({ dueCount: 4 })),
+      readQueueSummary: vi.fn(() => Promise.resolve({ dueToday: 4 })),
     })
     const { registerJobs, runDailyCheck } = createDueNotification(deps)
     registerJobs()
@@ -228,7 +228,7 @@ describe('handleStartup', () => {
       readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '09:00' }))),
       checkAlarmScheduled: vi.fn(() => Promise.resolve(false)),
       readState: vi.fn(() => Promise.resolve({ lastNotifiedDate: null as string | null })),
-      readQueueSummary: vi.fn(() => Promise.resolve({ dueCount: 2 })),
+      readQueueSummary: vi.fn(() => Promise.resolve({ dueToday: 2 })),
     })
     const { registerJobs, handleStartup } = createDueNotification(deps)
     registerJobs()
