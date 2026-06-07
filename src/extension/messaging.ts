@@ -282,7 +282,9 @@ export type LeetCodeSubmissionResultRemoteRuntimeRequest = z.infer<
 >
 
 export interface ProtocolMap {
-  'analytics.getSummary'(request: AnalyticsSummaryRequest): SerializedAnalyticsSummary
+  'analytics.getSummary'(
+    request: AnalyticsSummaryRequest,
+  ): SerializedAnalyticsSummary
   'cache.invalidate'(request: CacheInvalidationEvent): null
   'runtime.ping'(request: PingRequest): PingResponse
   'app.getShellData'(request: AppShellRequest): AppShellData

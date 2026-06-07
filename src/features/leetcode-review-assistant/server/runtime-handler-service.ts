@@ -95,7 +95,8 @@ function buildOrchestratorInput(
     problem: request.problem as RecommendAssessmentInput['problem'],
     submission: request.submission as RecommendAssessmentInput['submission'],
     timing: request.timing,
-    deterministicDecision: request.deterministicDecision as RecommendAssessmentInput['deterministicDecision'],
+    deterministicDecision:
+      request.deterministicDecision as RecommendAssessmentInput['deterministicDecision'],
     sessionContext: request.sessionContext,
     providerConfig,
   }

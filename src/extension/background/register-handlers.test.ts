@@ -400,7 +400,9 @@ describe('background handler registration', () => {
       syncActionResult,
     )
     backgroundMocks.dueNotification.handleStartup.mockResolvedValue(undefined)
-    backgroundMocks.dueNotification.onSettingsChanged.mockResolvedValue(undefined)
+    backgroundMocks.dueNotification.onSettingsChanged.mockResolvedValue(
+      undefined,
+    )
     backgroundMocks.dueNotification.registerJobs.mockReturnValue(undefined)
     backgroundMocks.dueNotification.runDailyCheck.mockResolvedValue(undefined)
     backgroundMocks.createDueNotification.mockReturnValue(
@@ -616,9 +618,12 @@ describe('background handler registration', () => {
   })
 
   it('delegates stored token validation through dashboard policy without accepting token payloads', async () => {
-    const response = await sendRuntimeMessage('sync.validateStoredGithubToken', {
-      surface: 'dashboard',
-    })
+    const response = await sendRuntimeMessage(
+      'sync.validateStoredGithubToken',
+      {
+        surface: 'dashboard',
+      },
+    )
 
     expectRuntimePolicy('sync.validateStoredGithubToken', 'dashboard')
     expectSyncFactoryForDb()
@@ -1558,11 +1563,13 @@ describe('background handler registration', () => {
     })
 
     it('calls the handler when sender is content-script', async () => {
-      backgroundMocks.recommendLeetCodeAssessmentInBackground.mockResolvedValue({
-        status: 'unavailable',
-        message: 'AI is not configured.',
-        submissionFingerprint: 'fp-abc-123',
-      })
+      backgroundMocks.recommendLeetCodeAssessmentInBackground.mockResolvedValue(
+        {
+          status: 'unavailable',
+          message: 'AI is not configured.',
+          submissionFingerprint: 'fp-abc-123',
+        },
+      )
 
       const handler = backgroundMocks.handlers.get(
         'genai.recommendLeetCodeAssessment',
@@ -1611,7 +1618,10 @@ describe('background handler registration', () => {
       backgroundMocks.assertCanSenderCallExtensionMethod.mockImplementation(
         (_method: string, surface: string, sender: unknown) => {
           const senderRecord = sender as { url?: string }
-          if (senderRecord.url?.includes('popup.html') && surface === 'content-script') {
+          if (
+            senderRecord.url?.includes('popup.html') &&
+            surface === 'content-script'
+          ) {
             throw new Error(`Sender surface "popup" cannot claim "${surface}".`)
           }
         },

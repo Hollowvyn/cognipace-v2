@@ -92,9 +92,7 @@ describe('genai trusted secret storage', () => {
         provider,
         configured: provider === 'genai:anthropic',
         updatedAt:
-          provider === 'genai:anthropic'
-            ? '2026-06-07T00:00:00.000Z'
-            : null,
+          provider === 'genai:anthropic' ? '2026-06-07T00:00:00.000Z' : null,
         fingerprint: provider === 'genai:anthropic' ? 'abcdef123456' : null,
       }),
     )

@@ -108,7 +108,6 @@ describe('recommendLeetCodeAssessmentInBackground — unavailable', () => {
     }
     expect(recommendAssessmentMock).not.toHaveBeenCalled()
   })
-
 })
 
 describe('recommendLeetCodeAssessmentInBackground — internal consistency', () => {

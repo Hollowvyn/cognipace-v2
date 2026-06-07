@@ -17,24 +17,30 @@ import {
 } from './genai-secret-storage'
 
 export async function getAiProviderSecretPresence(
-  _db: Db,
+  db: Db,
 ): Promise<AiProviderSecretPresence> {
+  void db
+
   return getAiProviderSecretPresenceFromTrustedStorage()
 }
 
 export async function setAiProviderSecret(
-  _db: Db,
+  db: Db,
   provider: GenAiProviderId,
   secret: AiProviderSecret,
 ): Promise<AiProviderSecretPresence> {
+  void db
+
   await saveAiProviderSecretToTrustedStorage(provider, secret)
   return getAiProviderSecretPresenceFromTrustedStorage()
 }
 
 export async function clearAiProviderSecret(
-  _db: Db,
+  db: Db,
   provider: GenAiProviderId,
 ): Promise<AiProviderSecretPresence> {
+  void db
+
   await clearAiProviderSecretFromTrustedStorage(provider)
   return getAiProviderSecretPresenceFromTrustedStorage()
 }

@@ -272,7 +272,9 @@ describe('backup repository', () => {
     expect(serialized).not.toContain('genai-secrets')
 
     // The settings array must only contain the user-settings row
-    expect(backupData.settings.every((row) => row.key === 'user-settings')).toBe(true)
+    expect(
+      backupData.settings.every((row) => row.key === 'user-settings'),
+    ).toBe(true)
   })
 })
 

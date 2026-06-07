@@ -59,9 +59,9 @@ const methodSurfaceAccess = {
   'leetcode.readSubmissionResult': ['content-script'],
 } as const satisfies Record<string, readonly ExtensionSurface[]>
 
-export const extensionMethodNames = Object.keys(
-  methodSurfaceAccess,
-) as Array<keyof typeof methodSurfaceAccess>
+export const extensionMethodNames = Object.keys(methodSurfaceAccess) as Array<
+  keyof typeof methodSurfaceAccess
+>
 
 export type ExtensionMethod = keyof typeof methodSurfaceAccess
 
