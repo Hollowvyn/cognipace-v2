@@ -1,6 +1,8 @@
 import type { ExtensionSurface } from '@/extension/messaging'
 
 const methodSurfaceAccess = {
+  'analytics.getSummary': ['dashboard'],
+  'cache.invalidate': ['background'],
   'runtime.ping': ['background', 'popup', 'dashboard', 'content-script'],
   'app.getShellData': ['popup', 'dashboard', 'content-script'],
   'app.openDashboard': ['content-script'],
@@ -12,6 +14,7 @@ const methodSurfaceAccess = {
   'genai.setAiProviderSecret': ['popup', 'dashboard'],
   'genai.clearAiProviderSecret': ['popup', 'dashboard'],
   'genai.recommendLeetCodeAssessment': ['content-script'],
+  'devSmoke.run': ['dashboard'],
   'sync.getStatus': ['popup', 'dashboard', 'content-script'],
   'sync.validateGithubToken': ['dashboard'],
   'sync.validateStoredGithubToken': ['dashboard'],
@@ -56,6 +59,10 @@ const methodSurfaceAccess = {
   'leetcode.readProblemContent': ['content-script'],
   'leetcode.readSubmissionResult': ['content-script'],
 } as const satisfies Record<string, readonly ExtensionSurface[]>
+
+export const extensionMethodNames = Object.keys(methodSurfaceAccess) as Array<
+  keyof typeof methodSurfaceAccess
+>
 
 export type ExtensionMethod = keyof typeof methodSurfaceAccess
 

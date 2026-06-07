@@ -7,7 +7,6 @@ const surfaceSchema = z.enum(['popup', 'dashboard'])
 const aiProviderSecretBodySchema = z
   .object({
     apiKey: z.string().min(1),
-    baseUrl: z.string().url().optional(),
   })
   .strict()
 

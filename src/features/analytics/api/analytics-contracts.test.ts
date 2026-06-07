@@ -1,17 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  analyticsSummaryRequestSchema,
   analyticsSummarySchema,
   forecastEntrySchema,
   weakProblemSchema,
+  type SerializedAnalyticsSummary,
 } from './analytics-contracts'
 
-const validForecast = Array.from({ length: 14 }, (_, i) => ({
-  date: `2026-01-${String(15 + i).padStart(2, '0')}`,
-  dueCount: i,
+const validForecast = Array.from({ length: 14 }, (_, index) => ({
+  date: `2026-01-${String(15 + index).padStart(2, '0')}`,
+  dueCount: index,
 }))
 
-const validSummary = {
+const validSummary: SerializedAnalyticsSummary = {
   generatedAt: '2026-01-15T12:00:00.000Z',
   reviewDays: 10,
   totalReviews: 42,
@@ -22,7 +24,39 @@ const validSummary = {
   lowSample: false,
   dueForecast14Days: validForecast,
   weakProblems: [],
+  memoryProfile: {
+    totalTracked: 1,
+    dueToday: 0,
+    overdue: 0,
+    learning: 0,
+    review: 1,
+    mastered: 0,
+    suspended: 0,
+    averageRetrievability: 0.8,
+    lowSample: true,
+  },
 }
+
+describe('analyticsSummaryRequestSchema', () => {
+  it('requires the dashboard surface', () => {
+    expect(() => analyticsSummaryRequestSchema.parse({})).toThrow()
+    expect(
+      analyticsSummaryRequestSchema.parse({ surface: 'dashboard' }),
+    ).toEqual({ surface: 'dashboard' })
+  })
+
+  it('accepts optional ISO at', () => {
+    expect(
+      analyticsSummaryRequestSchema.parse({
+        surface: 'dashboard',
+        at: '2026-01-15T12:00:00.000Z',
+      }),
+    ).toEqual({
+      surface: 'dashboard',
+      at: '2026-01-15T12:00:00.000Z',
+    })
+  })
+})
 
 describe('analyticsSummarySchema', () => {
   it('accepts a valid full summary', () => {
@@ -49,44 +83,76 @@ describe('analyticsSummarySchema', () => {
   })
 
   it('rejects more than 10 weak problems', () => {
-    const tooMany = Array.from({ length: 11 }, (_, i) => ({
-      slug: `problem-${i}`,
-      title: `Problem ${i}`,
+    const tooMany = Array.from({ length: 11 }, (_, index) => ({
+      slug: `problem-${index}`,
+      title: `Problem ${index}`,
       lapseCount: 1,
       difficulty: 5,
       retrievability: 0.8,
     }))
     expect(
-      analyticsSummarySchema.safeParse({ ...validSummary, weakProblems: tooMany }).success,
+      analyticsSummarySchema.safeParse({
+        ...validSummary,
+        weakProblems: tooMany,
+      }).success,
     ).toBe(false)
   })
 
   it('rejects negative integer counts', () => {
     expect(
-      analyticsSummarySchema.safeParse({ ...validSummary, reviewDays: -1 }).success,
+      analyticsSummarySchema.safeParse({ ...validSummary, reviewDays: -1 })
+        .success,
     ).toBe(false)
     expect(
-      analyticsSummarySchema.safeParse({ ...validSummary, totalReviews: -1 }).success,
+      analyticsSummarySchema.safeParse({ ...validSummary, totalReviews: -1 })
+        .success,
     ).toBe(false)
     expect(
-      analyticsSummarySchema.safeParse({ ...validSummary, currentStreak: -1 }).success,
+      analyticsSummarySchema.safeParse({ ...validSummary, currentStreak: -1 })
+        .success,
     ).toBe(false)
     expect(
-      analyticsSummarySchema.safeParse({ ...validSummary, retentionSampleSize: -1 }).success,
+      analyticsSummarySchema.safeParse({
+        ...validSummary,
+        retentionSampleSize: -1,
+      }).success,
     ).toBe(false)
+  })
+
+  it('rejects out-of-range average retrievability', () => {
+    expect(() =>
+      analyticsSummarySchema.parse({
+        ...validSummary,
+        memoryProfile: {
+          ...validSummary.memoryProfile,
+          averageRetrievability: 1.01,
+        },
+      }),
+    ).toThrow()
+    expect(() =>
+      analyticsSummarySchema.parse({
+        ...validSummary,
+        memoryProfile: {
+          ...validSummary.memoryProfile,
+          averageRetrievability: -0.01,
+        },
+      }),
+    ).toThrow()
   })
 })
 
 describe('forecastEntrySchema', () => {
   it('accepts a valid forecast entry', () => {
     expect(
-      forecastEntrySchema.safeParse({ date: '2026-01-15', dueCount: 3 }).success,
+      forecastEntrySchema.safeParse({ date: '2026-01-15', dueCount: 3 })
+        .success,
     ).toBe(true)
   })
 
   it('rejects a negative dueCount', () => {
     expect(
-      forecastEntrySchema.safeParse({ date: '2026-01-15', dueCount: -1 }).success,
+      forecastEntrySchema.safeParse({ date: '2026-01-15', dueCount: -1 })
+        .success,
     ).toBe(false)
   })
 

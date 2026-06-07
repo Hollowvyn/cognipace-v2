@@ -1,4 +1,8 @@
-import { getRetrievability, type FsrsCardSnapshot } from '@/lib/fsrs'
+import {
+  getRetrievability,
+  parseFsrsCardState,
+  type FsrsCardSnapshot,
+} from '@/lib/fsrs'
 
 import type { Db } from '@/platform/db'
 
@@ -8,14 +12,17 @@ import { getSettings } from '@/features/settings/server/settings-service'
 import {
   getReviewDayStats,
   getRecentRatings,
+  getMemoryProfileCards,
   getUpcomingCards,
   getWeakProblemCandidates,
+  type MemoryProfileCard,
 } from '../data/analytics-repository'
 
 import {
   buildRetentionProxy,
   buildDueForecast,
   buildWeakProblems,
+  buildMemoryProfile,
   buildAnalyticsSummary,
   type AnalyticsSummary,
 } from '../domain/summary'
@@ -28,14 +35,21 @@ export async function getAnalyticsSummary(
   const fourteenDaysLater = addDays(now, 14)
 
   // Step 1: run all reads in parallel
-  const [dayStats, recentRatings, upcomingCards, weakCandidates, settings] =
-    await Promise.all([
-      getReviewDayStats(db),
-      getRecentRatings(db, thirtyDaysAgo),
-      getUpcomingCards(db, fourteenDaysLater),
-      getWeakProblemCandidates(db),
-      getSettings(db),
-    ])
+  const [
+    dayStats,
+    recentRatings,
+    upcomingCards,
+    weakCandidates,
+    memoryProfileCards,
+    settings,
+  ] = await Promise.all([
+    getReviewDayStats(db),
+    getRecentRatings(db, thirtyDaysAgo),
+    getUpcomingCards(db, fourteenDaysLater),
+    getWeakProblemCandidates(db),
+    getMemoryProfileCards(db),
+    getSettings(db),
+  ])
 
   // Step 2: get streak (needs dailyGoal from settings)
   const practiceProgress = await getPracticeProgressSummary(db, {
@@ -52,7 +66,12 @@ export async function getAnalyticsSummary(
         lapseCount: candidate.lapseCount,
         difficulty: candidate.difficulty,
         retrievability: getRetrievability(
-          buildMinimalCard(candidate.stability, candidate.difficulty, candidate.lapseCount, candidate.lastReviewAt),
+          buildMinimalCard(
+            candidate.stability,
+            candidate.difficulty,
+            candidate.lapseCount,
+            candidate.lastReviewAt,
+          ),
           now,
         ),
       },
@@ -63,6 +82,7 @@ export async function getAnalyticsSummary(
   const retention = buildRetentionProxy(recentRatings, now)
   const forecast = buildDueForecast(upcomingCards, now)
   const weakProblems = buildWeakProblems(enrichedCandidates)
+  const memoryProfile = buildMemoryProfileInput(memoryProfileCards, now)
 
   // Step 5: assemble
   return buildAnalyticsSummary({
@@ -73,7 +93,65 @@ export async function getAnalyticsSummary(
     retention,
     forecast,
     weakProblems,
+    memoryProfile,
   })
+}
+
+function buildMemoryProfileInput(cards: MemoryProfileCard[], now: Date) {
+  const activeCards = cards.filter((card) => !isSuspendedMemoryCard(card))
+  const todayKey = toLocalDateKey(now)
+
+  return buildMemoryProfile({
+    totalTracked: cards.length,
+    dueToday: activeCards.filter(
+      (card) => card.dueAt < now || toLocalDateKey(card.dueAt) === todayKey,
+    ).length,
+    overdue: activeCards.filter((card) => card.dueAt < now).length,
+    learning: activeCards.filter(isLearningMemoryCard).length,
+    review: activeCards.filter(isReviewMemoryCard).length,
+    mastered: activeCards.filter((card) => card.practiceStatus === 'mastered')
+      .length,
+    suspended: cards.filter(isSuspendedMemoryCard).length,
+    retrievabilities: activeCards.flatMap((card) =>
+      card.lastReviewAt ? [getRetrievability(buildMemoryCard(card), now)] : [],
+    ),
+  })
+}
+
+function isSuspendedMemoryCard(card: MemoryProfileCard): boolean {
+  return card.isSuspended || card.practiceStatus === 'suspended'
+}
+
+function isLearningMemoryCard(card: MemoryProfileCard): boolean {
+  if (card.practiceStatus === 'mastered') return false
+
+  const state = parseFsrsCardState(card.state)
+  return (
+    card.practiceStatus === 'learning' ||
+    state === 'new' ||
+    state === 'learning' ||
+    state === 'relearning'
+  )
+}
+
+function isReviewMemoryCard(card: MemoryProfileCard): boolean {
+  if (card.practiceStatus === 'mastered') return false
+  return parseFsrsCardState(card.state) === 'review'
+}
+
+function buildMemoryCard(card: MemoryProfileCard): FsrsCardSnapshot {
+  return {
+    dueAt: card.dueAt,
+    stability: card.stability,
+    difficulty: card.difficulty,
+    elapsedDays: card.elapsedDays,
+    scheduledDays: card.scheduledDays,
+    learningSteps: card.learningSteps,
+    reps: card.reps,
+    lapses: card.lapses,
+    state: parseFsrsCardState(card.state),
+    lastReviewAt: card.lastReviewAt,
+  }
 }
 
 function buildMinimalCard(
@@ -106,4 +184,11 @@ function addDays(date: Date, days: number): Date {
   const result = new Date(date)
   result.setDate(result.getDate() + days)
   return result
+}
+
+function toLocalDateKey(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }

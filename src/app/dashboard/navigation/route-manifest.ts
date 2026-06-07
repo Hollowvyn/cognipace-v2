@@ -29,6 +29,7 @@ export const dashboardPaths = {
   library: '/library',
   analytics: '/analytics',
   settings: '/settings',
+  devSmoke: '/dev/smoke',
   trackNew: '/tracks/new',
   trackEdit: '/tracks/$trackId/edit',
   trackProblemEdit: '/tracks/problems/$problemSlug/edit',
@@ -122,6 +123,23 @@ export const dashboardTopLevelRoutes = [
   dashboardRouteMeta.analytics,
   dashboardRouteMeta.settings,
 ] as const satisfies readonly DashboardTopLevelRoute[]
+
+export const dashboardHiddenRouteMeta = {
+  devSmoke: {
+    path: dashboardPaths.devSmoke,
+    staticData: {
+      presentation: 'page',
+      section: 'settings',
+      title: 'Dev Smoke',
+    },
+  },
+} as const satisfies Record<
+  string,
+  {
+    path: string
+    staticData: DashboardRouteStaticData & { presentation: 'page' }
+  }
+>
 
 export const dashboardModalRouteMeta = {
   trackNew: {

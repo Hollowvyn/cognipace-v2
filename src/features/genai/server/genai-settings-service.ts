@@ -5,23 +5,23 @@ import type {
   AiProviderSecret,
   AiProviderSecretPresence,
 } from '../domain/genai-secrets-types'
-import { makeEmptyAiProviderSecretPresence } from '../domain/genai-secrets-types'
 import type {
   GenAiProviderConfig,
   GenAiProviderId,
 } from '../domain/genai-types'
-import { genAiProviderIds } from '../domain/genai-types'
-import { createGenAiSecretsStore } from './genai-secrets-store'
+import {
+  clearAiProviderSecretFromTrustedStorage,
+  getAiProviderSecretPresenceFromTrustedStorage,
+  loadAiProviderSecretFromTrustedStorage,
+  saveAiProviderSecretToTrustedStorage,
+} from './genai-secret-storage'
 
 export async function getAiProviderSecretPresence(
   db: Db,
 ): Promise<AiProviderSecretPresence> {
-  const secrets = await createGenAiSecretsStore(db).read()
-  const presence = makeEmptyAiProviderSecretPresence()
-  for (const id of genAiProviderIds) {
-    presence[id] = secrets[id] !== undefined
-  }
-  return presence
+  void db
+
+  return getAiProviderSecretPresenceFromTrustedStorage()
 }
 
 export async function setAiProviderSecret(
@@ -29,16 +29,20 @@ export async function setAiProviderSecret(
   provider: GenAiProviderId,
   secret: AiProviderSecret,
 ): Promise<AiProviderSecretPresence> {
-  await createGenAiSecretsStore(db).setProvider(provider, secret)
-  return getAiProviderSecretPresence(db)
+  void db
+
+  await saveAiProviderSecretToTrustedStorage(provider, secret)
+  return getAiProviderSecretPresenceFromTrustedStorage()
 }
 
 export async function clearAiProviderSecret(
   db: Db,
   provider: GenAiProviderId,
 ): Promise<AiProviderSecretPresence> {
-  await createGenAiSecretsStore(db).clearProvider(provider)
-  return getAiProviderSecretPresence(db)
+  void db
+
+  await clearAiProviderSecretFromTrustedStorage(provider)
+  return getAiProviderSecretPresenceFromTrustedStorage()
 }
 
 export async function loadActiveProviderConfig(
@@ -50,15 +54,13 @@ export async function loadActiveProviderConfig(
   if (!ai.enabled) return null
   if (ai.model.trim() === '') return null
 
-  const secrets = await createGenAiSecretsStore(db).read()
-  const secret = secrets[ai.provider]
+  const secret = await loadAiProviderSecretFromTrustedStorage(ai.provider)
   if (!secret) return null
 
   return {
     provider: ai.provider,
     model: ai.model,
     apiKey: secret.apiKey,
-    ...(secret.baseUrl !== undefined ? { baseUrl: secret.baseUrl } : {}),
   }
 }
 

@@ -34,6 +34,9 @@ npm run dev
 `npm run dev` starts WXT for local extension development. Load the generated
 extension from `.output/chrome-mv3` when testing in Chrome.
 
+Local extension development also has dashboard dev smoke checks; see
+[Testing](./docs/testing.md) for the hidden route and expected flow.
+
 For a production-style local build:
 
 ```sh

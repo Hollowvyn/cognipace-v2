@@ -49,14 +49,16 @@ Implemented or meaningfully wired:
 - Tracks workspace and management
 - Settings
 - Backup, restore, and clear local data from Settings
+- Analytics dashboard route for local review-health reporting
 - Optional GitHub Gist pseudo-sync from Settings > Data Management
 - FSRS-backed practice scheduling
+- AI assessment settings and trusted local provider key storage for approved
+  BYOK providers
 - Runtime messaging, cache invalidation, local database, migrations, and seed data
 
 Currently incomplete or intentionally light:
 
 - Overview is a dashboard route with a planned guided-practice home.
-- Analytics is a dashboard route reserved for future scheduling and reporting work.
 
 ## Product Surfaces
 
@@ -107,8 +109,11 @@ Current behavior:
   selective import sections, and performs explicit full local clear/reset.
 - The dashboard header shows compact pull and push shortcuts after GitHub Gist
   sync is configured.
-- Overview and Analytics currently reserve route ownership and are not finished
-  product surfaces.
+- Analytics shows local review-day totals, all-time review counts, current
+  streak, a low-sample-aware retention proxy, tracked-card memory profile, due
+  today/overdue/learning/review counts, average retrievability, a 14-day due
+  forecast, and weak problems derived from local practice state.
+- Overview currently reserves route ownership for a future guided-practice home.
 
 ### Background Service Worker
 
@@ -121,6 +126,7 @@ The background service worker owns trusted extension runtime work:
 - database snapshot persistence
 - cache invalidation broadcasts
 - GitHub Gist sync orchestration and background-only token access
+- local due-review reminder scheduling through Chrome alarms and notifications
 
 ## Features
 
@@ -162,6 +168,24 @@ can contain groups and ordered problem memberships.
 Settings owns persisted preferences, defaults, validation, and the dashboard
 settings form. Changes should flow through the settings feature API and
 invalidate affected query families.
+
+AI assessment settings can store provider preference and model configuration.
+Provider API keys are stored in trusted local extension secret storage, never in
+backup exports, sync payloads, logs, or unmasked UI payloads. When configured,
+trusted background code can call the approved BYOK provider hosts for OpenAI,
+Anthropic, and Google Gemini. Development smoke testing can optionally run a
+live provider check, but that hidden dashboard smoke route is not normal product
+navigation and never reveals stored secret values.
+
+### Analytics
+
+Analytics owns the lightweight local dashboard route for review health,
+retention proxy, memory profile, due forecast, and weak-problem inspection. The
+memory profile is based on tracked local FSRS cards and includes due
+today/overdue/learning/review counts, average retrievability, and low-sample
+messaging when local data is sparse. Analytics is a read-only surface derived
+from local practice state and does not introduce hosted reporting or account
+behavior.
 
 ### Sync
 
@@ -224,7 +248,7 @@ These are possible future directions, not approved work by default:
 - overview home polish
 - richer analytics
 - selective import conflict policies for topics, companies, tracks, and problems
-- improved notification strategy
+- improved notification strategy beyond the current local due-review reminder
 - passphrase lock for local BYOK secrets
 - enterprise KMS-backed secret wrapping
 - richer sync conflict previews and selective merge policies

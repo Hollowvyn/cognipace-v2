@@ -12,6 +12,16 @@ const featureIndexRuntimeExportPattern =
   /export\s+(?:type\s+)?(?:\{[\s\S]*?\}|\*)\s+from\s+['"]\.\/(?:data|server)(?:\/|['"])/
 const reviewSchedulingWritePattern =
   /\.\s*(?:insert|update|delete)\s*\(\s*(?:reviewAttempts|problemPractice|fsrsCards)\b/
+const existingNonAiHostPermissions = [
+  'https://leetcode.com/*',
+  'https://www.leetcode.com/*',
+  'https://api.github.com/*',
+]
+const approvedAiProviderHostPermissions = [
+  'https://api.openai.com/*',
+  'https://api.anthropic.com/*',
+  'https://generativelanguage.googleapis.com/*',
+]
 
 describe('architecture boundaries', () => {
   it('keeps shared infrastructure from importing app or feature code', () => {
@@ -118,6 +128,30 @@ describe('architecture boundaries', () => {
     expect(offenders.map(toRepoPath)).toEqual([])
   })
 
+  it('declares only the approved AI provider host permissions', () => {
+    const config = readFileSync(join(repoRoot, 'wxt.config.ts'), 'utf8')
+    const hostPermissions = extractHostPermissions(config)
+    const aiProviderHostPermissions = hostPermissions.filter(
+      (hostPermission) =>
+        !existingNonAiHostPermissions.includes(hostPermission),
+    )
+
+    expect(hostPermissions).toEqual(
+      expect.arrayContaining(existingNonAiHostPermissions),
+    )
+    expect(aiProviderHostPermissions).toEqual(
+      approvedAiProviderHostPermissions,
+    )
+    expect(hostPermissions).not.toContain('https://*/*')
+    expect(hostPermissions).not.toContain('*://*/*')
+  })
+
+  it('keeps the notifications permission documented for due reminders', () => {
+    const config = readFileSync(join(repoRoot, 'wxt.config.ts'), 'utf8')
+
+    expect(config).toContain("'notifications'")
+  })
+
   it('keeps notification background code from importing FSRS internals directly', () => {
     const notificationFiles = sourceFiles(['extension']).filter(
       (file) =>
@@ -165,7 +199,12 @@ describe('architecture boundaries', () => {
   })
 
   it('keeps settings components free of browser alarm and notification API calls', () => {
-    const settingsComponentsPath = join(srcRoot, 'features', 'settings', 'components')
+    const settingsComponentsPath = join(
+      srcRoot,
+      'features',
+      'settings',
+      'components',
+    )
     const offenders = sourceFiles(['features']).filter((file) => {
       if (!file.startsWith(settingsComponentsPath + '/')) return false
       const content = readFileSync(file, 'utf8')
@@ -205,6 +244,26 @@ function featureRootIndexFiles() {
 
     return parts.length === 2 && parts[1] === 'index.ts'
   })
+}
+
+function extractHostPermissions(config: string) {
+  const [, hostPermissionsBlock] =
+    config.match(/host_permissions:\s*\[([\s\S]*?)\]/) ?? []
+
+  if (!hostPermissionsBlock) {
+    throw new Error('wxt.config.ts must declare manifest.host_permissions')
+  }
+
+  return Array.from(
+    hostPermissionsBlock.matchAll(/['"]([^'"]+)['"]/g),
+    ([, hostPermission]) => {
+      if (!hostPermission) {
+        throw new Error('host_permissions contains an unreadable host entry')
+      }
+
+      return hostPermission
+    },
+  )
 }
 
 function findNestedFeatureImports(file: string) {

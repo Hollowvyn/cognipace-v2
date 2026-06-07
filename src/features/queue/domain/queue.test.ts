@@ -292,6 +292,30 @@ describe('buildTodayQueue', () => {
     expect(queue.topRecommendation?.reason).toBe('due-now')
   })
 
+  it('exposes shared summary aliases for due, new, load, and recommendation reason', () => {
+    const queue = buildTodayQueue(
+      [
+        candidate({
+          slug: 'due-now',
+          card: reviewCard({
+            dueAt: generatedAt,
+            lastReviewAt: new Date('2025-12-01T00:00:00.000Z'),
+            stability: 1,
+          }),
+          practice: practice({ lastRating: 'good' }),
+        }),
+        candidate({ slug: 'unstarted' }),
+      ],
+      defaultUserSettings,
+      generatedAt,
+    )
+
+    expect(queue.dueToday).toBe(queue.dueCount)
+    expect(queue.newAvailable).toBe(queue.newCount)
+    expect(queue.queueLoad).toBe(queue.items.length)
+    expect(queue.recommendationReason).toBe(queue.topRecommendation?.reason)
+  })
+
   it('returns null topRecommendation for an empty queue', () => {
     const queue = buildTodayQueue([], defaultUserSettings, generatedAt)
 
