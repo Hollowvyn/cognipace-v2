@@ -15,6 +15,7 @@ import {
   getMemoryProfileCards,
   getUpcomingCards,
   getWeakProblemCandidates,
+  getRetentionScatterCandidates,
   type MemoryProfileCard,
 } from '../data/analytics-repository'
 
@@ -24,7 +25,10 @@ import {
   buildWeakProblems,
   buildMemoryProfile,
   buildAnalyticsSummary,
+  buildRetentionScatter,
   type AnalyticsSummary,
+  type RetentionScatterEntry,
+  type ReferenceCurvePoint,
 } from '../domain/summary'
 
 export async function getAnalyticsSummary(
@@ -42,6 +46,7 @@ export async function getAnalyticsSummary(
     weakCandidates,
     memoryProfileCards,
     settings,
+    scatterCandidates,
   ] = await Promise.all([
     getReviewDayStats(db),
     getRecentRatings(db, thirtyDaysAgo),
@@ -49,6 +54,7 @@ export async function getAnalyticsSummary(
     getWeakProblemCandidates(db),
     getMemoryProfileCards(db),
     getSettings(db),
+    getRetentionScatterCandidates(db),
   ])
 
   // Step 2: get streak (needs dailyGoal from settings)
@@ -84,6 +90,37 @@ export async function getAnalyticsSummary(
   const weakProblems = buildWeakProblems(enrichedCandidates)
   const memoryProfile = buildMemoryProfileInput(memoryProfileCards, now)
 
+  const dayMs = 24 * 60 * 60 * 1000
+
+  const enrichedScatter: RetentionScatterEntry[] = scatterCandidates.map((c) => ({
+    slug: c.slug,
+    title: c.title,
+    retrievability: getRetrievability(
+      buildMinimalCard(c.stability, c.difficulty, c.lapseCount, c.lastReviewAt),
+      now,
+    ),
+    daysSinceReview: Math.round((now.getTime() - c.lastReviewAt.getTime()) / dayMs),
+    difficulty: c.difficulty,
+    stability: c.stability,
+    lapseCount: c.lapseCount,
+    lastReviewAt: c.lastReviewAt.toISOString(),
+  }))
+
+  const medianStability = computeMedianStability(scatterCandidates.map((c) => c.stability))
+  const maxDays = Math.max(14, ...enrichedScatter.map((e) => e.daysSinceReview), 0)
+  const precomputedCurve: ReferenceCurvePoint[] = Array.from(
+    { length: maxDays + 1 },
+    (_, day) => ({
+      days: day,
+      retrievability: getRetrievability(
+        buildMinimalCard(medianStability, 5, 0, new Date(now.getTime() - day * dayMs)),
+        now,
+      ),
+    }),
+  )
+
+  const { scatter, referenceCurve } = buildRetentionScatter(enrichedScatter, precomputedCurve)
+
   // Step 5: assemble
   return buildAnalyticsSummary({
     generatedAt: now,
@@ -94,6 +131,9 @@ export async function getAnalyticsSummary(
     forecast,
     weakProblems,
     memoryProfile,
+    targetRetention: settings.review.targetRetention,
+    scatter,
+    referenceCurve,
   })
 }
 
@@ -172,6 +212,15 @@ function buildMinimalCard(
     state: 'review',
     lastReviewAt,
   }
+}
+
+function computeMedianStability(stabilities: number[]): number {
+  if (stabilities.length === 0) return 21
+  const sorted = [...stabilities].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!
 }
 
 function subtractDays(date: Date, days: number): Date {

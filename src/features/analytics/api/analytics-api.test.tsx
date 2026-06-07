@@ -15,7 +15,7 @@ describe('analytics runtime API', () => {
     expect(analyticsQueryKeys.summary()).toEqual(['analytics', 'summary'])
   })
 
-  it('calls sendMessage with analytics.getSummary and a dashboard request', async () => {
+  it('calls sendMessage with analytics.getSummary and a dashboard surface request', async () => {
     const payload = { generatedAt: '2026-01-15T12:00:00.000Z', reviewDays: 5 }
     vi.mocked(sendMessage).mockResolvedValueOnce(payload as never)
 

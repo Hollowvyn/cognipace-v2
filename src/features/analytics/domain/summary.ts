@@ -41,6 +41,22 @@ export interface MemoryProfile {
   lowSample: boolean
 }
 
+export interface RetentionScatterEntry {
+  slug: string
+  title: string
+  retrievability: number
+  daysSinceReview: number
+  difficulty: number
+  stability: number
+  lapseCount: number
+  lastReviewAt: string
+}
+
+export interface ReferenceCurvePoint {
+  days: number
+  retrievability: number
+}
+
 export interface AnalyticsSummaryInput {
   generatedAt: Date
   reviewDays: number
@@ -50,6 +66,9 @@ export interface AnalyticsSummaryInput {
   forecast: ForecastEntry[]
   weakProblems: WeakProblem[]
   memoryProfile: MemoryProfile
+  targetRetention: number
+  scatter: RetentionScatterEntry[]
+  referenceCurve: ReferenceCurvePoint[]
 }
 
 export interface AnalyticsSummary {
@@ -64,6 +83,9 @@ export interface AnalyticsSummary {
   dueForecast14Days: ForecastEntry[]
   weakProblems: WeakProblem[]
   memoryProfile: MemoryProfile
+  targetRetention: number
+  retentionScatter: RetentionScatterEntry[]
+  retentionScatterCurve: ReferenceCurvePoint[]
 }
 
 export function buildRetentionProxy(
@@ -145,6 +167,17 @@ export function buildMemoryProfile(input: MemoryProfileInput): MemoryProfile {
   }
 }
 
+// Entries and curve are pre-computed by the service (FSRS math stays server-side); this sorts only.
+export function buildRetentionScatter(
+  entries: RetentionScatterEntry[],
+  referenceCurve: ReferenceCurvePoint[],
+): { scatter: RetentionScatterEntry[]; referenceCurve: ReferenceCurvePoint[] } {
+  return {
+    scatter: [...entries].sort((a, b) => a.daysSinceReview - b.daysSinceReview),
+    referenceCurve,
+  }
+}
+
 export function buildAnalyticsSummary(
   input: AnalyticsSummaryInput,
 ): AnalyticsSummary {
@@ -160,6 +193,9 @@ export function buildAnalyticsSummary(
     dueForecast14Days: input.forecast,
     weakProblems: input.weakProblems,
     memoryProfile: input.memoryProfile,
+    targetRetention: input.targetRetention,
+    retentionScatter: input.scatter,
+    retentionScatterCurve: input.referenceCurve,
   }
 }
 

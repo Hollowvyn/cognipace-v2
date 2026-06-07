@@ -5,4 +5,6 @@ export type {
   AnalyticsSummary,
   WeakProblem,
   ForecastEntry,
+  RetentionScatterEntry,
+  ReferenceCurvePoint,
 } from './domain/summary'

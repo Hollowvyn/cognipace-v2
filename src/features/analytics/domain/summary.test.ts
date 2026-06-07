@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import type { RetentionProxyResult, ForecastEntry } from './summary'
+import type { RetentionProxyResult, ForecastEntry, RetentionScatterEntry, ReferenceCurvePoint } from './summary'
 import {
   buildRetentionProxy,
   buildDueForecast,
   buildWeakProblems,
   buildAnalyticsSummary,
   buildMemoryProfile,
+  buildRetentionScatter,
 } from './summary'
 
 const now = new Date(2026, 0, 15, 12, 0, 0)
@@ -290,6 +291,9 @@ describe('buildAnalyticsSummary', () => {
       forecast,
       weakProblems: [],
       memoryProfile,
+      targetRetention: 0.9,
+      scatter: [],
+      referenceCurve: [],
     })
 
     expect(result.generatedAt).toBe(generatedAt.toISOString())
@@ -303,5 +307,91 @@ describe('buildAnalyticsSummary', () => {
     expect(result.dueForecast14Days).toBe(forecast)
     expect(result.weakProblems).toEqual([])
     expect(result.memoryProfile).toBe(memoryProfile)
+    expect(result.targetRetention).toBe(0.9)
+    expect(result.retentionScatter).toEqual([])
+    expect(result.retentionScatterCurve).toEqual([])
+  })
+})
+
+describe('buildRetentionScatter', () => {
+  it('sorts entries ascending by daysSinceReview', () => {
+    const entries: RetentionScatterEntry[] = [
+      {
+        slug: 'b',
+        title: 'B',
+        retrievability: 0.8,
+        daysSinceReview: 10,
+        difficulty: 5,
+        stability: 20,
+        lapseCount: 0,
+        lastReviewAt: '2026-01-05T12:00:00.000Z',
+      },
+      {
+        slug: 'a',
+        title: 'A',
+        retrievability: 0.95,
+        daysSinceReview: 2,
+        difficulty: 4,
+        stability: 30,
+        lapseCount: 0,
+        lastReviewAt: '2026-01-13T12:00:00.000Z',
+      },
+    ]
+    const curve: ReferenceCurvePoint[] = [
+      { days: 0, retrievability: 1 },
+      { days: 10, retrievability: 0.7 },
+    ]
+
+    const result = buildRetentionScatter(entries, curve)
+
+    expect(result.scatter.map((e) => e.slug)).toEqual(['a', 'b'])
+  })
+
+  it('does not mutate the input entries array', () => {
+    const entries: RetentionScatterEntry[] = [
+      {
+        slug: 'b',
+        title: 'B',
+        retrievability: 0.8,
+        daysSinceReview: 10,
+        difficulty: 5,
+        stability: 20,
+        lapseCount: 0,
+        lastReviewAt: '2026-01-05T12:00:00.000Z',
+      },
+      {
+        slug: 'a',
+        title: 'A',
+        retrievability: 0.95,
+        daysSinceReview: 2,
+        difficulty: 4,
+        stability: 30,
+        lapseCount: 0,
+        lastReviewAt: '2026-01-13T12:00:00.000Z',
+      },
+    ]
+    const copy = [...entries]
+
+    buildRetentionScatter(entries, [])
+
+    expect(entries).toEqual(copy)
+  })
+
+  it('returns the referenceCurve unchanged', () => {
+    const curve: ReferenceCurvePoint[] = [
+      { days: 0, retrievability: 1 },
+      { days: 7, retrievability: 0.9 },
+    ]
+
+    const result = buildRetentionScatter([], curve)
+
+    expect(result.referenceCurve).toBe(curve)
+  })
+
+  it('returns empty scatter when no entries provided', () => {
+    const result = buildRetentionScatter([], [])
+
+    expect(result.scatter).toEqual([])
+    expect(result.referenceCurve).toEqual([])
   })
 })
