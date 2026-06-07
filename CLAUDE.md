@@ -1,6 +1,6 @@
-# Agent Operating Guide
+# Claude Operating Guide
 
-This is the Codex-facing root guide for CogniPace. Follow
+This is the Claude-facing root guide for CogniPace. Follow
 `docs/agent-governance.md` for the full lifecycle, skill rules, validation
 matrix, PR/issue rules, release expectations, and skipped-validation policy.
 
@@ -33,15 +33,15 @@ before proposing edits.
 - Use Conventional Commit titles and PR-ready summaries for agent-authored
   changes.
 
-## Context7
+## Skills
 
-For library, framework, SDK, API, CLI, or cloud-service documentation requests,
-use Context7 MCP. Resolve the library ID first, then query the current docs.
-Use this even for familiar tools because current syntax and migration guidance
-may have changed.
+Use repo-local skills under `.agents/skills` when they match the work. The
+CogniPace-specific architecture skill is:
 
-Do not use Context7 for refactoring, scripts from scratch, business-logic
-debugging, code review, or general programming concepts.
+- `.agents/skills/cognipace-bulletproof-react/SKILL.md`
+
+Use documentation lookup tooling for current library, framework, SDK, API, CLI,
+or cloud-service questions. Resolve the library first, then query current docs.
 
 ## Authority
 
