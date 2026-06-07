@@ -25,7 +25,7 @@ describe('queue runtime API', () => {
 
   it('calls sendMessage with queue.getTodayQueue and the full request', async () => {
     const payload = { dueCount: 3, newCount: 1, items: [] }
-    vi.mocked(sendMessage).mockResolvedValueOnce(payload)
+    vi.mocked(sendMessage).mockResolvedValueOnce(payload as never)
 
     const request = { surface: 'popup' as const }
     const { wrapper } = createQueryTestHarness()
@@ -38,7 +38,7 @@ describe('queue runtime API', () => {
   })
 
   it('forwards the optional at parameter in the request', async () => {
-    vi.mocked(sendMessage).mockResolvedValueOnce({})
+    vi.mocked(sendMessage).mockResolvedValueOnce({} as never)
     const at = '2026-01-15T12:00:00.000Z'
     const request = { surface: 'popup' as const, at }
     const { wrapper } = createQueryTestHarness()

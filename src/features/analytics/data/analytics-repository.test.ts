@@ -164,7 +164,6 @@ describe('getUpcomingCards', () => {
 
   it('includes cards due on or before until and excludes cards due after', async () => {
     const { db } = await createTestDb()
-    const until = new Date('2026-01-20T00:00:00.000Z')
     const before = new Date('2026-01-15T00:00:00.000Z')
     const exactly = new Date('2026-01-20T00:00:00.000Z')
     const after = new Date('2026-01-21T00:00:00.000Z')
