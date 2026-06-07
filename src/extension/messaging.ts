@@ -41,6 +41,7 @@ export {
   devSmokeReportSchema,
   devSmokeRequestSchema,
 } from '@/features/dev-smoke'
+export type { DevSmokeReport, DevSmokeRequest } from '@/features/dev-smoke'
 import {
   leetcodeProblemRemoteRequestSchema,
   leetcodeSubmissionResultRemoteRequestSchema,
