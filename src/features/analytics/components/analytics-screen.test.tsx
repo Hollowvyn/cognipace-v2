@@ -47,8 +47,22 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
       },
     ],
     targetRetention: 0.9,
-    retentionScatter: [],
-    retentionScatterCurve: [],
+    retentionScatter: [
+      {
+        slug: 'two-sum',
+        title: 'Two Sum',
+        retrievability: 0.95,
+        daysSinceReview: 3,
+        difficulty: 0.3,
+        stability: 10.5,
+        lapseCount: 0,
+        lastReviewAt: '2026-01-12T10:00:00.000Z',
+      },
+    ],
+    retentionScatterCurve: [
+      { days: 0, retrievability: 1.0 },
+      { days: 14, retrievability: 0.9 },
+    ],
   }
 }
 
@@ -244,6 +258,29 @@ describe('AnalyticsScreen', () => {
       await screen.findByRole('region', { name: '14-day due forecast' }),
     ).toBeVisible()
     expect(screen.getByRole('region', { name: 'Weak problems' })).toBeVisible()
+  })
+
+  it('renders retention health region when scatter data is present', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(createAnalyticsSummary())
+
+    renderAnalyticsScreen()
+
+    expect(
+      await screen.findByRole('region', { name: 'Retention health' }),
+    ).toBeVisible()
+  })
+
+  it('renders retention health empty state when scatter is empty', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      createAnalyticsSummary({ retentionScatter: [] }),
+    )
+
+    renderAnalyticsScreen()
+
+    await screen.findByRole('region', { name: 'Retention health' })
+    expect(
+      screen.getByText(/No reviewed problems yet/),
+    ).toBeVisible()
   })
 })
 
