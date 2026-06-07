@@ -5,6 +5,13 @@ the WXT build, Chrome extension alarm state, and real notification delivery.
 Run these steps after `#17` (scheduler) and `#18` (notification preferences)
 are merged.
 
+## Status
+
+| Step | Result |
+|---|---|
+| **Option C — direct notification delivery** | ✅ Executed. Service worker console call confirmed Chrome permissions are granted and notifications appear correctly. |
+| **Full alarm-flow (Steps 5–10)** | ⏸ Deferred. Steps 5–10 require a Chrome build with at least one FSRS-scheduled problem whose due date has passed. Deferred until a test environment with real due data is available. |
+
 ## Prerequisites
 
 - Node.js installed; run `npm install` if you have not already.
