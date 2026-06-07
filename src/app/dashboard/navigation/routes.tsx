@@ -8,8 +8,14 @@ import {
 } from '@tanstack/react-router'
 
 import { DashboardShell } from '../dashboard-shell'
-import { dashboardModalRouteMeta, dashboardRouteMeta } from './route-manifest'
+import {
+  dashboardHiddenRouteMeta,
+  dashboardModalRouteMeta,
+  dashboardPaths,
+  dashboardRouteMeta,
+} from './route-manifest'
 import { AnalyticsPage } from '../screens/analytics-page'
+import { DevSmokePage } from '../screens/dev-smoke-page'
 import { LibraryPage } from '../screens/library-page'
 import { OverviewPage } from '../screens/overview-page'
 import {
@@ -110,6 +116,13 @@ const settingsRoute = createRoute({
   staticData: dashboardRouteMeta.settings.staticData,
 })
 
+const devSmokeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: dashboardPaths.devSmoke,
+  component: DevSmokePage,
+  staticData: dashboardHiddenRouteMeta.devSmoke.staticData,
+})
+
 const routeTree = rootRoute.addChildren([
   overviewRoute,
   tracksRoute.addChildren([
@@ -124,6 +137,7 @@ const routeTree = rootRoute.addChildren([
   ]),
   analyticsRoute,
   settingsRoute,
+  devSmokeRoute,
 ])
 
 interface CreateDashboardRouterOptions {

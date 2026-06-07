@@ -170,6 +170,51 @@ describe('dashboard routes', () => {
     expect(await screen.findByText(new RegExp(expectedCopy, 'i'))).toBeVisible()
   })
 
+  it('renders the hidden dev smoke route without adding it to primary navigation', async () => {
+    vi.mocked(sendMessage).mockImplementation((method) => {
+      if (method === 'devSmoke.run') {
+        return Promise.resolve({
+          generatedAt: '2026-06-07T12:00:00.000Z',
+          checks: [
+            {
+              id: 'health',
+              label: 'Background runtime',
+              status: 'pass',
+              detail: 'Background smoke service is reachable.',
+            },
+          ],
+        })
+      }
+
+      if (method === 'app.getShellData') {
+        return Promise.resolve(createDashboardAppShellData())
+      }
+
+      if (method === 'sync.getStatus') {
+        return Promise.resolve(notConfiguredSyncStatus)
+      }
+
+      return Promise.resolve(defaultUserSettings)
+    })
+
+    renderDashboard('/dev/smoke')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Dev Smoke' }),
+    ).toBeVisible()
+    expect(await screen.findByText('Background runtime')).toBeVisible()
+    expect(
+      await screen.findByText('Background smoke service is reachable.'),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('link', { name: 'Dev Smoke' }),
+    ).not.toBeInTheDocument()
+    expect(sendMessage).toHaveBeenCalledWith('devSmoke.run', {
+      surface: 'dashboard',
+      runLiveGenAi: false,
+    })
+  })
+
   it('renders the real Overview route with recommendation and route navigation', async () => {
     renderDashboard('/')
 
