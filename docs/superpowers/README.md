@@ -30,6 +30,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Plans
 
+- [`plans/2026-06-07-cognipace-agent-workflow-skill.md`](./plans/2026-06-07-cognipace-agent-workflow-skill.md): implementation plan for adding the concise CogniPace workflow skill, writing-skills RED/GREEN/REFACTOR checks, and minimal root doc references.
 - [`plans/2026-06-07-nonblocking-leetcode-open-sync.md`](./plans/2026-06-07-nonblocking-leetcode-open-sync.md): implementation plan for moving surface-open GitHub Gist checks out of the LeetCode, popup, and dashboard startup request path.
 - [`plans/2026-06-07-closed-issue-rescue-and-smoke-lab.md`](./plans/2026-06-07-closed-issue-rescue-and-smoke-lab.md): implementation plan for the closed-issue rescue and hidden smoke lab work.
 - [`plans/2026-06-07-post-analytics-stabilization.md`](./plans/2026-06-07-post-analytics-stabilization.md): implementation plan for the post-Analytics stabilization pass.
