@@ -99,10 +99,13 @@ export async function getAnalyticsSummary(
 
 function buildMemoryProfileInput(cards: MemoryProfileCard[], now: Date) {
   const activeCards = cards.filter((card) => !isSuspendedMemoryCard(card))
+  const todayKey = toLocalDateKey(now)
 
   return buildMemoryProfile({
     totalTracked: cards.length,
-    dueToday: activeCards.filter((card) => card.dueAt <= now).length,
+    dueToday: activeCards.filter(
+      (card) => card.dueAt < now || toLocalDateKey(card.dueAt) === todayKey,
+    ).length,
     overdue: activeCards.filter((card) => card.dueAt < now).length,
     learning: activeCards.filter(isLearningMemoryCard).length,
     review: activeCards.filter(isReviewMemoryCard).length,
@@ -181,4 +184,11 @@ function addDays(date: Date, days: number): Date {
   const result = new Date(date)
   result.setDate(result.getDate() + days)
   return result
+}
+
+function toLocalDateKey(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }

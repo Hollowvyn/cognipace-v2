@@ -20,6 +20,13 @@ describe('getAnalyticsSummary memory profile', () => {
       lastReviewAt: new Date('2026-01-14T12:00:00.000Z'),
     })
     await insertTrackedCard(handle.db, {
+      problemSlug: 'two-sum-ii-input-array-is-sorted',
+      status: 'review',
+      state: 'review',
+      dueAt: new Date('2026-01-15T23:00:00.000Z'),
+      lastReviewAt: new Date('2026-01-14T12:00:00.000Z'),
+    })
+    await insertTrackedCard(handle.db, {
       problemSlug: 'valid-palindrome',
       status: 'learning',
       state: 'learning',
@@ -46,15 +53,18 @@ describe('getAnalyticsSummary memory profile', () => {
 
     expect(summary.weakProblems).toEqual([])
     expect(summary.memoryProfile).toMatchObject({
-      totalTracked: 4,
-      dueToday: 2,
+      totalTracked: 5,
+      dueToday: 3,
       overdue: 1,
       learning: 1,
-      review: 1,
+      review: 2,
       mastered: 1,
       suspended: 1,
       lowSample: true,
     })
+    expect(summary.dueForecast14Days[0]?.dueCount).toBe(
+      summary.memoryProfile.dueToday,
+    )
     expect(summary.memoryProfile.averageRetrievability).not.toBeNull()
     expect(summary.memoryProfile.averageRetrievability).toBeGreaterThanOrEqual(
       0,
