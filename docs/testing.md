@@ -37,6 +37,8 @@ npm run build
 
 The extension requests the Chrome `notifications` permission for local
 due-review reminders. It does not add notification-related host permissions.
+Due reminder smoke should use local queue `dueToday` semantics, not a separate
+notification-specific count.
 
 ## Smoke Flows
 
@@ -103,8 +105,31 @@ dialog button changes to a success state labeled Backup exported.
 6. Confirm the UI shows key presence without revealing the key value.
 
 Expected: provider keys are stored locally in trusted extension secret storage.
-AI recommendations remain unavailable until provider host permissions are
-explicitly approved.
+Configured AI assessment can call the approved BYOK provider from trusted
+background code without revealing the key value. Backup exports, sync payloads,
+logs, and status payloads must not include raw provider keys.
+
+### Dashboard Dev Smoke
+
+1. Open the dashboard.
+2. Navigate directly to `chrome-extension://<extension-id>/dashboard.html#/dev/smoke`
+   or open the hash-equivalent `/dev/smoke` route after loading the extension
+   dashboard.
+3. Confirm the hidden route renders even though it is absent from primary
+   dashboard navigation.
+4. Confirm the default smoke report includes background health, Analytics
+   summary with memory profile, today's queue aliases, notification dry run,
+   GenAI config, and skipped live GenAI checks.
+5. Leave Run live GenAI provider smoke unchecked for normal smoke testing.
+6. To intentionally test a live provider, first configure AI assessment with a
+   provider, model, and local BYOK secret, then check Run live GenAI provider
+   smoke.
+7. Confirm the live check reports pass, warn, fail, or skip without showing raw
+   provider keys or unredacted secret-bearing errors.
+
+Expected: dev smoke is a local extension development tool only. The live GenAI
+checkbox is opt-in because it may call the configured provider; it relies on
+stored BYOK secret presence and must not expose secret values.
 
 ### GitHub Gist Sync
 
@@ -185,8 +210,11 @@ review is saved.
 1. Open the dashboard.
 2. Navigate to Analytics.
 3. Confirm metric tiles render for review days, total reviews, and retention.
-4. Confirm the 14-day due forecast renders.
-5. Confirm the weak-problems section renders an empty state or local problem
+4. Confirm the memory profile renders tracked-card counts, due today/overdue/new
+   or review composition, average retrievability, and low-sample messaging when
+   local data is sparse.
+5. Confirm the 14-day due forecast renders.
+6. Confirm the weak-problems section renders an empty state or local problem
    rows.
 
 Expected: Analytics loads through the extension runtime without the failed-load
@@ -276,7 +304,7 @@ Include:
 Docs-only formatting:
 
 ```sh
-npx prettier --check docs/product.md docs/architecture.md docs/testing.md docs/superpowers/README.md
+npx prettier --check README.md docs/product.md docs/architecture.md docs/testing.md docs/superpowers/README.md
 ```
 
 Focused tests:

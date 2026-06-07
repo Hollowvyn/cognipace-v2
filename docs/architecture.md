@@ -109,7 +109,10 @@ Not every feature needs every folder. Add only the folder needed for the change.
 - `sync`: GitHub Gist configuration, sync metadata, directional pull/push
   rules, Settings/header sync UI, and background orchestration.
 - `genai`: AI provider settings contracts, trusted provider key storage,
-  provider network adapters, and gated assistant availability.
+  provider network adapters, and background-owned BYOK provider calls.
+- `dev-smoke`: hidden dashboard-only extension development smoke checks for
+  background health, Analytics, queue, notifications, GenAI config, and opt-in
+  live GenAI provider validation.
 - `assessment`: assessment domain rules.
 - `leetcode-capture`: LeetCode metadata, content, and submission result reads
   through the content-script/background bridge.
@@ -130,6 +133,9 @@ background work.
   `src/extension/background/register-handlers.ts`.
 - Feature service functions live in `src/features/*/server`.
 - Feature repositories and persistence adapters live in `src/features/*/data`.
+- The hidden dashboard smoke route at `/dev/smoke` calls dashboard-only
+  `devSmoke.run` for local extension development checks; it is not part of
+  primary dashboard navigation.
 
 The normal request path is:
 
@@ -186,11 +192,17 @@ Background mutations are serialized through the mutation queue in
 `src/platform/db/instance.ts`, which restores a matching stored snapshot or
 creates a fresh migrated and seeded database.
 
+Analytics read models include a memory profile derived from tracked local FSRS
+cards, with due today, overdue, new, review, and retrievability fields plus
+low-sample messaging. Queue summaries expose `dueToday`, `newAvailable`,
+`queueLoad`, and `recommendationReason` aliases while preserving legacy queue
+fields for existing consumers.
+
 Due-review notifications are local background work. The extension declares the
 Chrome `notifications` permission so `src/extension/background/due-notification.ts`
 can create one due-review reminder per day when enabled. Notification scheduling
-uses Chrome alarms and local dedup state; React components must not call
-`chrome.notifications` directly.
+uses Chrome alarms, local dedup state, and the queue summary `dueToday`
+semantics; React components must not call `chrome.notifications` directly.
 
 Automatic Gist sync is orchestrated in the background layer. After a local
 mutation commits, sync metadata is marked dirty, the database snapshot is
@@ -221,6 +233,8 @@ Current integrations:
 - `src/lib/github/api`: GitHub Gist REST requests for sync.
 - `src/lib/leetcode/api`: LeetCode GraphQL and submission REST requests used by
   LeetCode capture readers.
+- `src/features/genai/server/providers`: approved BYOK GenAI provider calls from
+  trusted background code.
 
 BYOK secrets use `src/platform/secrets`, backed by `chrome.storage.local` with
 trusted-context access. UI surfaces may save or delete secrets through runtime
@@ -233,9 +247,17 @@ receiving or echoing the secret value.
 GenAI provider keys use `src/platform/secrets` with provider ids
 `genai:openai`, `genai:anthropic`, and `genai:google`. UI and runtime status
 payloads may expose provider key presence only. Raw keys must not be written to
-the app database, backup exports, sync envelopes, logs, or query cache. AI
-provider network calls remain gated until provider host permissions are
-explicitly approved.
+the app database, backup exports, sync envelopes, logs, or query cache. Approved
+provider host permissions are exactly:
+
+- `https://api.openai.com/*`
+- `https://api.anthropic.com/*`
+- `https://generativelanguage.googleapis.com/*`
+
+Provider calls run from trusted background code after settings and BYOK secret
+presence checks. Development smoke may optionally call the configured provider,
+and smoke output must redact any provider error details that could contain a
+secret.
 
 ## Database And Persistence
 

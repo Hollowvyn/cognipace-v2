@@ -52,13 +52,13 @@ Implemented or meaningfully wired:
 - Analytics dashboard route for local review-health reporting
 - Optional GitHub Gist pseudo-sync from Settings > Data Management
 - FSRS-backed practice scheduling
+- AI assessment settings and trusted local provider key storage for approved
+  BYOK providers
 - Runtime messaging, cache invalidation, local database, migrations, and seed data
 
 Currently incomplete or intentionally light:
 
 - Overview is a dashboard route with a planned guided-practice home.
-- AI assessment settings and provider key storage are present, but AI provider
-  calls are gated until provider host permissions receive explicit approval.
 
 ## Product Surfaces
 
@@ -110,8 +110,9 @@ Current behavior:
 - The dashboard header shows compact pull and push shortcuts after GitHub Gist
   sync is configured.
 - Analytics shows local review-day totals, all-time review counts, current
-  streak, a low-sample-aware retention proxy, a 14-day due forecast, and weak
-  problems derived from local practice state.
+  streak, a low-sample-aware retention proxy, tracked-card memory profile, due
+  today/overdue/new/review counts, average retrievability, a 14-day due
+  forecast, and weak problems derived from local practice state.
 - Overview currently reserves route ownership for a future guided-practice home.
 
 ### Background Service Worker
@@ -170,15 +171,21 @@ invalidate affected query families.
 
 AI assessment settings can store provider preference and model configuration.
 Provider API keys are stored in trusted local extension secret storage, never in
-backup exports or sync payloads. AI provider calls are currently gated until
-provider host permissions receive explicit approval.
+backup exports, sync payloads, logs, or unmasked UI payloads. When configured,
+trusted background code can call the approved BYOK provider hosts for OpenAI,
+Anthropic, and Google Gemini. Development smoke testing can optionally run a
+live provider check, but that hidden dashboard smoke route is not normal product
+navigation and never reveals stored secret values.
 
 ### Analytics
 
 Analytics owns the lightweight local dashboard route for review health,
-retention proxy, due forecast, and weak-problem inspection. It is a read-only
-surface derived from local practice state and does not introduce hosted
-reporting or account behavior.
+retention proxy, memory profile, due forecast, and weak-problem inspection. The
+memory profile is based on tracked local FSRS cards and includes due
+today/overdue/new/review counts, average retrievability, and low-sample
+messaging when local data is sparse. Analytics is a read-only surface derived
+from local practice state and does not introduce hosted reporting or account
+behavior.
 
 ### Sync
 
