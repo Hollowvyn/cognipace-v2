@@ -46,6 +46,9 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
         retrievability: 0.28,
       },
     ],
+    targetRetention: 0.9,
+    retentionScatter: [],
+    retentionScatterCurve: [],
   }
 }
 
