@@ -10,6 +10,7 @@ import {
   connectGithubGistViaRuntime,
   pullLatestViaRuntime,
   pushLocalViaRuntime,
+  requestOpenCheckViaRuntime,
   saveGithubTokenViaRuntime,
   validateStoredGithubTokenViaRuntime,
   usePullLatest,
@@ -103,6 +104,16 @@ describe('sync API', () => {
 
     expect(sendMessage).toHaveBeenCalledWith('sync.checkRemoteOnOpen', {
       surface: 'popup',
+    })
+  })
+
+  it('requests a background open check through the claimed surface', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(null)
+
+    await requestOpenCheckViaRuntime('content-script')
+
+    expect(sendMessage).toHaveBeenCalledWith('sync.requestOpenCheck', {
+      surface: 'content-script',
     })
   })
 

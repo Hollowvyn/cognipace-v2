@@ -81,6 +81,10 @@ export function checkRemoteOnOpenViaRuntime(surface: UiSurface) {
   return sendMessage('sync.checkRemoteOnOpen', { surface })
 }
 
+export function requestOpenCheckViaRuntime(surface: UiSurface) {
+  return sendMessage('sync.requestOpenCheck', { surface })
+}
+
 export function useSyncStatus(surface: UiSurface = 'dashboard') {
   return useQuery({
     queryKey: syncQueryKeys.status(surface),
