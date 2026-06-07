@@ -9,6 +9,7 @@ import {
   getRecentRatings,
   getUpcomingCards,
   getWeakProblemCandidates,
+  getRetentionScatterCandidates,
 } from './analytics-repository'
 
 const BASE_TS = new Date('2026-01-15T12:00:00.000Z').getTime()
@@ -245,5 +246,84 @@ describe('getWeakProblemCandidates', () => {
 
     const result = await getWeakProblemCandidates(db)
     expect(result.map((r) => r.slug)).toEqual(['valid-parentheses', 'two-sum'])
+  })
+})
+
+// ---------------------------------------------------------------------------
+
+describe('getRetentionScatterCandidates', () => {
+  it('returns empty when no practiced problems exist', async () => {
+    const { db } = await createTestDb()
+
+    const result = await getRetentionScatterCandidates(db)
+
+    expect(result).toEqual([])
+  })
+
+  it('excludes cards in new state (lastReviewAt is null)', async () => {
+    const { db } = await createTestDb()
+    await insertPractice(db, 'two-sum')
+    await db.insert(fsrsCards).values({
+      id: 'two-sum:default',
+      problemSlug: 'two-sum',
+      cardKind: 'default',
+      dueAt: BASE_TS,
+      stability: 10,
+      difficulty: 5,
+      elapsedDays: 0,
+      scheduledDays: 0,
+      learningSteps: 0,
+      reps: 0,
+      lapses: 0,
+      state: 'new',
+      lastReviewAt: null,
+      createdAt: BASE_TS,
+      updatedAt: BASE_TS,
+    })
+
+    const result = await getRetentionScatterCandidates(db)
+
+    expect(result).toEqual([])
+  })
+
+  it('excludes suspended problems', async () => {
+    const { db } = await createTestDb()
+    await insertPractice(db, 'two-sum', { isSuspended: true })
+    await insertCard(db, 'two-sum')
+
+    const result = await getRetentionScatterCandidates(db)
+
+    expect(result).toEqual([])
+  })
+
+  it('returns slug, title, stability, difficulty, lapseCount, lastReviewAt for a reviewed problem', async () => {
+    const { db } = await createTestDb()
+    await insertPractice(db, 'two-sum')
+    await insertCard(db, 'two-sum', { stability: 12, difficulty: 6.5, lapses: 1 })
+
+    const result = await getRetentionScatterCandidates(db)
+
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      slug: 'two-sum',
+      title: 'Two Sum',
+      stability: 12,
+      difficulty: 6.5,
+      lapseCount: 1,
+    })
+    expect(result[0]?.lastReviewAt).toBeInstanceOf(Date)
+    expect(result[0]?.lastReviewAt.getTime()).toBe(BASE_TS)
+  })
+
+  it('returns all non-new, non-suspended problems regardless of lapse count', async () => {
+    const { db } = await createTestDb()
+    await insertPractice(db, 'two-sum')
+    await insertPractice(db, 'valid-parentheses')
+    await insertCard(db, 'two-sum', { lapses: 0 })
+    await insertCard(db, 'valid-parentheses', { lapses: 3 })
+
+    const result = await getRetentionScatterCandidates(db)
+
+    expect(result).toHaveLength(2)
   })
 })
