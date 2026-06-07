@@ -58,6 +58,7 @@ const backgroundMocks = vi.hoisted(() => {
   const syncAutoSync = {
     clearPendingAutomaticSync: vi.fn(),
     registerJobs: vi.fn(),
+    requestOpenCheckAfterSurfaceOpen: vi.fn(),
     repairStartupAlarms: vi.fn(),
     runAutoPush: vi.fn(),
     runCleanPullCheck: vi.fn(),
@@ -436,6 +437,9 @@ describe('background handler registration', () => {
     )
     backgroundMocks.syncAutoSync.runAutoPush.mockResolvedValue(undefined)
     backgroundMocks.syncAutoSync.runCleanPullCheck.mockResolvedValue(undefined)
+    backgroundMocks.syncAutoSync.requestOpenCheckAfterSurfaceOpen.mockResolvedValue(
+      undefined,
+    )
     backgroundMocks.syncAutoSync.scheduleAutoPushAfterMutation.mockResolvedValue(
       undefined,
     )
@@ -758,6 +762,56 @@ describe('background handler registration', () => {
       1,
     )
     expect(response).toEqual(syncActionResultSchema.parse(syncOpenCheckResult))
+  })
+
+  it('registers lightweight sync open-check requests without service access', async () => {
+    const contentScriptSender = {
+      tab: { id: 7 },
+      url: 'https://leetcode.com/problems/two-sum/',
+    }
+
+    const response = await sendRuntimeMessage(
+      'sync.requestOpenCheck',
+      {
+        surface: 'content-script',
+      },
+      contentScriptSender,
+    )
+
+    expectRuntimePolicy(
+      'sync.requestOpenCheck',
+      'content-script',
+      contentScriptSender,
+    )
+    expect(
+      backgroundMocks.syncAutoSync.requestOpenCheckAfterSurfaceOpen,
+    ).toHaveBeenCalledTimes(1)
+    expect(response).toBeNull()
+    expect(backgroundMocks.getAppDb).not.toHaveBeenCalled()
+    expect(backgroundMocks.createBackgroundSyncService).not.toHaveBeenCalled()
+    expect(backgroundMocks.syncService.checkRemoteOnOpen).not.toHaveBeenCalled()
+    expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
+  })
+
+  it('rejects malformed lightweight sync open-check requests before scheduling', () => {
+    expect(() =>
+      sendRuntimeMessage('sync.requestOpenCheck', {
+        surface: 'popup',
+        confirmLocalOverwrite: true,
+      }),
+    ).toThrow()
+
+    expect(
+      backgroundMocks.assertCanSenderCallExtensionMethod,
+    ).not.toHaveBeenCalledWith(
+      'sync.requestOpenCheck',
+      expect.anything(),
+      expect.anything(),
+    )
+    expect(
+      backgroundMocks.syncAutoSync.requestOpenCheckAfterSurfaceOpen,
+    ).not.toHaveBeenCalled()
+    expect(backgroundMocks.getAppDb).not.toHaveBeenCalled()
   })
 
   it('rejects malformed sync open check requests before service access', () => {

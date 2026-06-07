@@ -445,6 +445,22 @@ export function registerBackgroundHandlers() {
     )
   })
 
+  onMessage('sync.requestOpenCheck', ({ data, sender }) => {
+    const request = syncRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'sync.requestOpenCheck',
+      request.surface,
+      sender,
+    )
+
+    void syncAutoSync.requestOpenCheckAfterSurfaceOpen().catch(() => {
+      // Opening a UI surface must not fail when automatic sync scheduling fails.
+    })
+
+    return null
+  })
+
   onMessage('sync.pullLatest', ({ data, sender }) => {
     const request = syncPullLatestRequestSchema.parse(data)
 
