@@ -16,6 +16,9 @@ export {
 } from './domain'
 
 export {
+  recommendLeetCodeAssessmentViaRuntime,
+} from './api'
+export {
   recommendLeetCodeAssessmentRequestSchema,
   recommendLeetCodeAssessmentResponseSchema,
   type RecommendLeetCodeAssessmentErrorCode,

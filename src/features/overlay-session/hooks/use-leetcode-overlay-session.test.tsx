@@ -6,6 +6,8 @@ import {
   getOverlayAppShellDataViaRuntime,
   openDashboardViaRuntime,
 } from '@/features/app-shell'
+import { recommendLeetCodeAssessmentViaRuntime } from '@/features/leetcode-review-assistant'
+import { makeValidRecommendation } from '@/features/leetcode-review-assistant/testing'
 import {
   overrideLastReviewResultViaRuntime,
   saveReviewResultViaRuntime,
@@ -76,6 +78,16 @@ vi.mock('@/features/leetcode-capture', () => ({
 vi.mock('@/features/problems', () => ({
   upsertProblemFromPageViaRuntime: vi.fn(),
 }))
+
+vi.mock('@/features/leetcode-review-assistant', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/features/leetcode-review-assistant')>()
+
+  return {
+    ...actual,
+    recommendLeetCodeAssessmentViaRuntime: vi.fn(),
+  }
+})
 
 vi.mock('@/features/practice', () => ({
   overrideLastReviewResultViaRuntime: vi.fn(),
@@ -169,6 +181,11 @@ describe('useLeetCodeOverlaySession', () => {
     vi.mocked(getOverlayAppShellDataViaRuntime).mockResolvedValue(
       createOverlayData(),
     )
+    vi.mocked(recommendLeetCodeAssessmentViaRuntime).mockResolvedValue({
+      status: 'unavailable',
+      message: 'AI assessment is not configured.',
+      submissionFingerprint: 'fallback',
+    })
   })
 
   it('quick submits from collapsed using the assessment policy', async () => {
@@ -249,6 +266,65 @@ describe('useLeetCodeOverlaySession', () => {
       },
     })
     expect(result.current.overlay.reviewStatus).toBe('submitted-clean')
+  })
+
+  it('asks GenAI for an assessment recommendation before saving when configured', async () => {
+    vi.mocked(recommendLeetCodeAssessmentViaRuntime).mockResolvedValueOnce({
+      status: 'ready',
+      recommendation: makeValidRecommendation({
+        recommendedRating: 'hard',
+        shouldUpdateRating: true,
+      }),
+      providerMetadata: {
+        provider: 'openai',
+        model: 'gpt-test',
+        durationMs: 123,
+      },
+      submissionFingerprint: 'two-sum:quick-submit:good:null',
+    })
+    const { result } = await renderReadySession({
+      aiAssessmentAvailable: true,
+    })
+
+    await runOverlayAction(result.current.actions.prepareQuickSubmit)
+
+    const recommendationRequest = latestAssessmentRecommendationRequest()
+    expect(recommendationRequest.surface).toBe('content-script')
+    expect(recommendationRequest.problemSlug).toBe('two-sum')
+    expect(recommendationRequest.deterministicDecision).toMatchObject({
+      rating: 'good',
+    })
+    expect(recommendationRequest.problem).toMatchObject({
+      slug: 'two-sum',
+      title: 'Two Sum',
+      difficulty: 'easy',
+    })
+    expect(recommendationRequest.submission).toEqual({
+      status: 'no-submission',
+    })
+    expect(latestSavedReviewRequest()).toMatchObject({
+      rating: 'hard',
+      isCorrect: true,
+    })
+  })
+
+  it('falls back to deterministic assessment when GenAI is unavailable', async () => {
+    vi.mocked(recommendLeetCodeAssessmentViaRuntime).mockResolvedValueOnce({
+      status: 'unavailable',
+      message: 'AI assessment is not configured.',
+      submissionFingerprint: 'two-sum:quick-submit:good:null',
+    })
+    const { result } = await renderReadySession({
+      aiAssessmentAvailable: true,
+    })
+
+    await runOverlayAction(result.current.actions.prepareQuickSubmit)
+
+    expect(recommendLeetCodeAssessmentViaRuntime).toHaveBeenCalledOnce()
+    expect(latestSavedReviewRequest()).toMatchObject({
+      rating: 'good',
+      isCorrect: true,
+    })
   })
 
   it('hydrates submitted review state from saved practice details', async () => {
@@ -641,12 +717,24 @@ type DeferredPracticeDetails = ReturnType<
 >
 
 async function renderReadySession(options?: {
+  aiAssessmentAvailable?: boolean
   autoDetectSolved?: boolean
   timing?: Partial<OverlayAppShellData['overlay']['timing']>
   practice?: OverlayAppShellData['overlay']['practice']
 }): Promise<RenderedOverlaySession> {
-  if (options?.autoDetectSolved || options?.timing || options?.practice !== undefined) {
+  if (
+    options?.aiAssessmentAvailable !== undefined ||
+    options?.autoDetectSolved ||
+    options?.timing ||
+    options?.practice !== undefined
+  ) {
     const overlayDataOptions: Parameters<typeof createOverlayData>[0] = {}
+
+    if (options.aiAssessmentAvailable !== undefined) {
+      overlayDataOptions.overlay = {
+        aiAssessmentAvailable: options.aiAssessmentAvailable,
+      }
+    }
 
     if (options.autoDetectSolved !== undefined) {
       overlayDataOptions.autoDetectSolved = options.autoDetectSolved
@@ -697,6 +785,20 @@ function latestSavedReviewRequest() {
 
   if (!request) {
     throw new Error('Expected a saved review request.')
+  }
+
+  return request
+}
+
+function latestAssessmentRecommendationRequest() {
+  expect(recommendLeetCodeAssessmentViaRuntime).toHaveBeenCalled()
+
+  const request = vi
+    .mocked(recommendLeetCodeAssessmentViaRuntime)
+    .mock.calls.at(-1)?.[0]
+
+  if (!request) {
+    throw new Error('Expected an assessment recommendation request.')
   }
 
   return request
@@ -785,6 +887,7 @@ function emitSubmissionResult(result = createSubmissionResult()) {
 
 function createOverlayData(options?: {
   autoDetectSolved?: boolean
+  overlay?: Partial<OverlayAppShellData['overlay']>
   practice?: OverlayAppShellData['overlay']['practice']
   timing?: Partial<OverlayAppShellData['overlay']['timing']>
 }): OverlayAppShellData {
@@ -806,6 +909,7 @@ function createOverlayData(options?: {
       },
       nextStep,
       aiAssessmentAvailable: false,
+      ...options?.overlay,
     },
   }
 }
