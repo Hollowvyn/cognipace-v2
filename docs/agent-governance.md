@@ -174,15 +174,17 @@ Choose validation by risk area, not only by file extension.
 6. In the handoff, list exact commands run, exact commands skipped, why each
    skipped command was skipped, and remaining validation risk.
 
-| Changed area                                                                                       | Validation category                                    | Notes                                                                                                                                      |
-| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Agent docs, governance docs, planning docs, Markdown-only contribution docs                        | Docs or governance only                                | Run Prettier on every touched Markdown file.                                                                                               |
-| Feature domain, hooks, services, repositories, or utilities without extension-surface behavior     | Normal code change                                     | Run focused tests when feasible, then lint and check.                                                                                      |
-| Any visible React UI                                                                               | UI change                                              | Add focused component, hook, or route tests and visual proof or a skipped-visual reason; combine with matching rows below.                 |
-| Popup, dashboard, or overlay behavior                                                              | Popup, dashboard, or overlay behavior                  | Add build and affected surface smoke notes when feasible; if visible, also use the UI change row.                                          |
-| Runtime messaging, background handlers, sync, GenAI, secrets, notifications, or cache invalidation | Runtime messaging, background, sync, GenAI, or secrets | Add build, focused contract/service tests, and notes on touched auth, Zod parsing, secret redaction, cache invalidation, and side effects. |
-| Database schema, migrations, repositories, backup, restore, or persisted shape                     | Database or schema change                              | Add DB checks, migration generation for schema changes, focused persistence tests, and backup/sync compatibility notes where relevant.     |
-| Release, CI, package scripts, build artifacts, extension zip, or workflow files                    | Release, CI, package, or extension build workflow      | Add build, zip when artifact behavior is touched, and whether workflow proof was local, dry-run PR, or static review.                      |
+Visible popup/dashboard/overlay changes use both the UI and surface rows.
+
+| Changed area                          | Validation category                                    | Notes                                              |
+| ------------------------------------- | ------------------------------------------------------ | -------------------------------------------------- |
+| Docs/governance/planning Markdown     | Docs or governance only                                | Run Prettier on touched Markdown.                  |
+| Feature code without surface effects  | Normal code change                                     | Run focused tests when feasible, then lint/check.  |
+| Visible React UI                      | UI change                                              | Add focused tests and visual proof/skipped reason. |
+| Popup/dashboard/overlay behavior      | Popup, dashboard, or overlay behavior                  | Add build/smoke; if visible, combine UI.           |
+| Runtime/background/sync/GenAI/secrets | Runtime messaging, background, sync, GenAI, or secrets | Include notifications and cache effects.           |
+| Database/schema/persisted shape       | Database or schema change                              | Add DB checks, migrations, and persistence tests.  |
+| Release/CI/package/extension build    | Release, CI, package, or extension build workflow      | Add build/zip proof or static-review reason.       |
 
 ## Validation Matrix
 
