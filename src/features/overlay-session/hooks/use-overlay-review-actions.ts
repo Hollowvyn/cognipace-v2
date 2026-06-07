@@ -510,34 +510,44 @@ export function useOverlayReviewActions({
     const currentContext = contextRef.current
     const problem = currentContext?.problem
 
-    if (!currentContext?.aiAssessmentAvailable || !problem) {
+    if (
+      !currentContext?.aiAssessmentAvailable ||
+      !problem ||
+      !decision.isCorrect ||
+      decision.lockReason !== null
+    ) {
       return decision
     }
 
-    const response = await recommendLeetCodeAssessmentViaRuntime({
-      surface: 'content-script',
-      problemSlug: problem.problemSlug,
-      submissionFingerprint: createSubmissionFingerprint({
+    let response: Awaited<ReturnType<typeof recommendLeetCodeAssessmentViaRuntime>>
+    try {
+      response = await recommendLeetCodeAssessmentViaRuntime({
+        surface: 'content-script',
         problemSlug: problem.problemSlug,
-        decision,
-        session,
+        submissionFingerprint: createSubmissionFingerprint({
+          problemSlug: problem.problemSlug,
+          decision,
+          session,
+          submission,
+        }),
+        problem: {
+          slug: problem.problemSlug,
+          title: problem.title,
+          difficulty: problem.difficulty,
+          topics: [],
+        },
         submission,
-      }),
-      problem: {
-        slug: problem.problemSlug,
-        title: problem.title,
-        difficulty: problem.difficulty,
-        topics: [],
-      },
-      submission,
-      timing: {
-        elapsedSeconds: decision.elapsedSeconds,
-        targetSeconds: decision.targetSeconds,
-        timerUsed: session.timerUsed,
-      },
-      deterministicDecision: decision,
-      sessionContext: session,
-    })
+        timing: {
+          elapsedSeconds: decision.elapsedSeconds,
+          targetSeconds: decision.targetSeconds,
+          timerUsed: session.timerUsed,
+        },
+        deterministicDecision: decision,
+        sessionContext: session,
+      })
+    } catch {
+      return decision
+    }
 
     if (
       response.status !== 'ready' ||

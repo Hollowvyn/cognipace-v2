@@ -327,6 +327,24 @@ describe('useLeetCodeOverlaySession', () => {
     })
   })
 
+  it('falls back to deterministic assessment when GenAI recommendation throws', async () => {
+    vi.mocked(recommendLeetCodeAssessmentViaRuntime).mockRejectedValueOnce(
+      new Error('Provider unavailable.'),
+    )
+    const { result } = await renderReadySession({
+      aiAssessmentAvailable: true,
+    })
+
+    await runOverlayAction(result.current.actions.prepareQuickSubmit)
+
+    expect(recommendLeetCodeAssessmentViaRuntime).toHaveBeenCalledOnce()
+    expect(latestSavedReviewRequest()).toMatchObject({
+      rating: 'good',
+      isCorrect: true,
+    })
+    expect(result.current.overlay.reviewStatus).toBe('submitted-clean')
+  })
+
   it('hydrates submitted review state from saved practice details', async () => {
     vi.mocked(saveReviewResultViaRuntime).mockResolvedValueOnce(
       createSavedPracticeDetails({
