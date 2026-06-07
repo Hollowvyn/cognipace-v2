@@ -7,8 +7,11 @@ import type { AlarmScheduler } from './scheduler/alarm-scheduler'
 export const syncAutoPushAlarmName = 'sync:auto-push'
 export const syncRetryAlarmName = 'sync:retry'
 export const syncPollAlarmName = 'sync:poll'
+export const syncOpenCheckAlarmName = 'sync:open-check'
 export const syncAutoPushDelayMinutes = 0.5
 export const syncPollPeriodMinutes = 10
+export const syncOpenCheckDelayMs = 2000
+export const syncOpenCheckFallbackDelayMinutes = 0.5
 
 export type SyncAutoSyncDependencies = {
   hasPendingDirtyMarkRetry?: (() => boolean) | undefined
@@ -27,6 +30,8 @@ export type SyncAutoSyncDependencies = {
 
 export function createSyncAutoSync(deps: SyncAutoSyncDependencies) {
   let jobsRegistered = false
+  let openCheckPending = false
+  let openCheckTimer: ReturnType<typeof globalThis.setTimeout> | null = null
 
   async function scheduleAutoPushAfterMutation() {
     const metadata = await deps.readMetadata()
@@ -106,6 +111,37 @@ export function createSyncAutoSync(deps: SyncAutoSyncDependencies) {
     await deps.scheduler.clear(syncRetryAlarmName)
   }
 
+  async function requestOpenCheckAfterSurfaceOpen() {
+    if (openCheckPending) {
+      return
+    }
+
+    openCheckPending = true
+    await deps.scheduler.schedule(syncOpenCheckAlarmName, {
+      delayInMinutes: syncOpenCheckFallbackDelayMinutes,
+    })
+
+    openCheckTimer = globalThis.setTimeout(() => {
+      openCheckTimer = null
+      void runRequestedOpenCheck()
+    }, syncOpenCheckDelayMs)
+  }
+
+  async function runRequestedOpenCheck() {
+    if (openCheckTimer !== null) {
+      globalThis.clearTimeout(openCheckTimer)
+      openCheckTimer = null
+    }
+
+    openCheckPending = false
+
+    try {
+      await runCleanPullCheck()
+    } finally {
+      await deps.scheduler.clear(syncOpenCheckAlarmName)
+    }
+  }
+
   async function clearPendingAutomaticSync() {
     try {
       await deps.writeMetadata({
@@ -149,6 +185,10 @@ export function createSyncAutoSync(deps: SyncAutoSyncDependencies) {
       run: runAutoPush,
     })
     deps.scheduler.register({
+      name: syncOpenCheckAlarmName,
+      run: runRequestedOpenCheck,
+    })
+    deps.scheduler.register({
       name: syncPollAlarmName,
       run: runCleanPullCheck,
       startup: {
@@ -163,8 +203,10 @@ export function createSyncAutoSync(deps: SyncAutoSyncDependencies) {
     clearPendingAutomaticSync,
     registerJobs,
     repairStartupAlarms: deps.scheduler.repairStartupAlarms,
+    requestOpenCheckAfterSurfaceOpen,
     runAutoPush,
     runCleanPullCheck,
+    runRequestedOpenCheck,
     scheduleAutoPushAfterMutation,
   }
 }
