@@ -12,6 +12,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
+- [`specs/2026-06-07-agent-governance-phase-c-validation-smoke-design.md`](./specs/2026-06-07-agent-governance-phase-c-validation-smoke-design.md): Phase C design for making validation selection and smoke reporting easier to apply from the canonical agent governance doc without duplicating validation authority into root agent guides.
 - [`specs/2026-06-07-cognipace-agent-workflow-skill-design.md`](./specs/2026-06-07-cognipace-agent-workflow-skill-design.md): Phase B design for adding a concise CogniPace workflow skill that routes agents through governance, skill selection, validation, and PR-ready handoffs without duplicating the canonical governance doc.
 - [`specs/2026-06-07-cognipace-agent-governance-design.md`](./specs/2026-06-07-cognipace-agent-governance-design.md): companion design for strict CogniPace AI-agent workflow across Codex, Claude, and future agents, including required skills, validation matrix, PR/issue standards, and enforcement path.
 - [`specs/2026-06-07-repo-hardening-governance-design.md`](./specs/2026-06-07-repo-hardening-governance-design.md): master design for strict repository-hardening governance, including phased CI, branch protection, PR hygiene, release, dependency, and security automation.
@@ -30,6 +31,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Plans
 
+- [`plans/2026-06-07-agent-governance-phase-c-validation-smoke.md`](./plans/2026-06-07-agent-governance-phase-c-validation-smoke.md): implementation plan for adding the Phase C validation-selection guide and smoke-reporting clarification to the canonical agent governance doc.
 - [`plans/2026-06-07-cognipace-agent-workflow-skill.md`](./plans/2026-06-07-cognipace-agent-workflow-skill.md): implementation plan for adding the concise CogniPace workflow skill, writing-skills RED/GREEN/REFACTOR checks, and minimal root doc references.
 - [`plans/2026-06-07-nonblocking-leetcode-open-sync.md`](./plans/2026-06-07-nonblocking-leetcode-open-sync.md): implementation plan for moving surface-open GitHub Gist checks out of the LeetCode, popup, and dashboard startup request path.
 - [`plans/2026-06-07-closed-issue-rescue-and-smoke-lab.md`](./plans/2026-06-07-closed-issue-rescue-and-smoke-lab.md): implementation plan for the closed-issue rescue and hidden smoke lab work.
