@@ -31,10 +31,8 @@ import {
   makeAcceptedDecision,
   makeAcceptedSubmission,
   makeProblem,
-  makeProviderMetadata,
   makeRecallSessionContext,
   makeTiming,
-  makeValidRecommendation,
 } from '../testing/recommendation-fixtures'
 
 const loadActiveProviderConfigMock = vi.mocked(loadActiveProviderConfig)
@@ -74,48 +72,23 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('recommendLeetCodeAssessmentInBackground — ready', () => {
-  it('returns status:"ready" with recommendation, providerMetadata, fingerprint echoed', async () => {
+describe('recommendLeetCodeAssessmentInBackground — gated', () => {
+  it('returns unavailable while AI provider host permissions are not approved', async () => {
     loadActiveProviderConfigMock.mockResolvedValue(providerConfig)
-    recommendAssessmentMock.mockResolvedValue({
-      status: 'ai',
-      recommendation: makeValidRecommendation(),
-      providerMetadata: makeProviderMetadata(),
-    })
 
     const result = await recommendLeetCodeAssessmentInBackground(
       fakeDb,
       makeRequest(),
     )
 
-    expect(result.status).toBe('ready')
-    if (result.status === 'ready') {
-      expect(result.recommendation.recommendedRating).toBe('good')
-      expect(result.providerMetadata.provider).toBe('openai')
+    expect(result.status).toBe('unavailable')
+    if (result.status === 'unavailable') {
+      expect(result.message).toBe(
+        'AI recommendations are disabled until provider host permissions are approved.',
+      )
       expect(result.submissionFingerprint).toBe('fp-abc-123')
     }
-  })
-
-  it('passes the request payload through to recommendAssessment with the providerConfig attached', async () => {
-    loadActiveProviderConfigMock.mockResolvedValue(providerConfig)
-    recommendAssessmentMock.mockResolvedValue({
-      status: 'ai',
-      recommendation: makeValidRecommendation(),
-      providerMetadata: makeProviderMetadata(),
-    })
-
-    const request = makeRequest()
-    await recommendLeetCodeAssessmentInBackground(fakeDb, request)
-
-    expect(recommendAssessmentMock).toHaveBeenCalledOnce()
-    expect(recommendAssessmentMock).toHaveBeenCalledWith({
-      problem: request.problem,
-      submission: request.submission,
-      timing: request.timing,
-      deterministicDecision: request.deterministicDecision,
-      sessionContext: request.sessionContext,
-      providerConfig,
-    })
+    expect(recommendAssessmentMock).not.toHaveBeenCalled()
   })
 })
 
@@ -136,69 +109,6 @@ describe('recommendLeetCodeAssessmentInBackground — unavailable', () => {
     expect(recommendAssessmentMock).not.toHaveBeenCalled()
   })
 
-  it('returns status:"unavailable" when recommendAssessment defensively returns not-configured', async () => {
-    loadActiveProviderConfigMock.mockResolvedValue(providerConfig)
-    recommendAssessmentMock.mockResolvedValue({
-      status: 'fallback',
-      recommendation: makeValidRecommendation(),
-      error: { code: 'not-configured', message: 'unused' },
-    })
-
-    const result = await recommendLeetCodeAssessmentInBackground(
-      fakeDb,
-      makeRequest(),
-    )
-
-    expect(result.status).toBe('unavailable')
-    if (result.status === 'unavailable') {
-      expect(result.message).toMatch(/not configured/i)
-      expect(result.submissionFingerprint).toBe('fp-abc-123')
-    }
-  })
-})
-
-describe('recommendLeetCodeAssessmentInBackground — error', () => {
-  const errorCodes = [
-    'auth',
-    'rate-limit',
-    'network',
-    'timeout',
-    'invalid-output',
-    'unknown',
-  ] as const
-
-  const expectedMessages: Record<(typeof errorCodes)[number], RegExp> = {
-    auth: /authentication failed/i,
-    'rate-limit': /rate-limited/i,
-    network: /could not reach/i,
-    timeout: /timed out/i,
-    'invalid-output': /unexpected response/i,
-    unknown: /request failed/i,
-  }
-
-  it.each(errorCodes)(
-    'returns status:"error" with the user-facing message for code %s',
-    async (code) => {
-      loadActiveProviderConfigMock.mockResolvedValue(providerConfig)
-      recommendAssessmentMock.mockResolvedValue({
-        status: 'fallback',
-        recommendation: makeValidRecommendation(),
-        error: { code, message: 'provider said no' },
-      })
-
-      const result = await recommendLeetCodeAssessmentInBackground(
-        fakeDb,
-        makeRequest(),
-      )
-
-      expect(result.status).toBe('error')
-      if (result.status === 'error') {
-        expect(result.code).toBe(code)
-        expect(result.message).toMatch(expectedMessages[code])
-        expect(result.submissionFingerprint).toBe('fp-abc-123')
-      }
-    },
-  )
 })
 
 describe('recommendLeetCodeAssessmentInBackground — internal consistency', () => {
@@ -236,18 +146,13 @@ describe('recommendLeetCodeAssessmentInBackground — internal consistency', () 
 describe('recommendLeetCodeAssessmentInBackground — secrets redaction', () => {
   it('returns no apiKey literal in any response branch', async () => {
     loadActiveProviderConfigMock.mockResolvedValue(providerConfig)
-    recommendAssessmentMock.mockResolvedValue({
-      status: 'ai',
-      recommendation: makeValidRecommendation(),
-      providerMetadata: makeProviderMetadata(),
-    })
 
-    const ready = await recommendLeetCodeAssessmentInBackground(
+    const gated = await recommendLeetCodeAssessmentInBackground(
       fakeDb,
       makeRequest(),
     )
-    expect(JSON.stringify(ready)).not.toMatch(/apiKey/i)
-    expect(JSON.stringify(ready)).not.toContain('sk-test-fixture')
+    expect(JSON.stringify(gated)).not.toMatch(/apiKey/i)
+    expect(JSON.stringify(gated)).not.toContain('sk-test-fixture')
 
     loadActiveProviderConfigMock.mockResolvedValue(null)
     const unavailable = await recommendLeetCodeAssessmentInBackground(
@@ -258,17 +163,12 @@ describe('recommendLeetCodeAssessmentInBackground — secrets redaction', () => 
     expect(JSON.stringify(unavailable)).not.toContain('sk-test-fixture')
 
     loadActiveProviderConfigMock.mockResolvedValue(providerConfig)
-    recommendAssessmentMock.mockResolvedValue({
-      status: 'fallback',
-      recommendation: makeValidRecommendation(),
-      error: { code: 'network', message: 'down' },
-    })
-    const error = await recommendLeetCodeAssessmentInBackground(
+    const gatedAgain = await recommendLeetCodeAssessmentInBackground(
       fakeDb,
       makeRequest(),
     )
-    expect(JSON.stringify(error)).not.toMatch(/apiKey/i)
-    expect(JSON.stringify(error)).not.toContain('sk-test-fixture')
+    expect(JSON.stringify(gatedAgain)).not.toMatch(/apiKey/i)
+    expect(JSON.stringify(gatedAgain)).not.toContain('sk-test-fixture')
   })
 })
 

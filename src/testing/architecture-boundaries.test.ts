@@ -117,6 +117,20 @@ describe('architecture boundaries', () => {
 
     expect(offenders.map(toRepoPath)).toEqual([])
   })
+
+  it('keeps AI provider host permissions absent while recommendation calls are gated', () => {
+    const config = readFileSync(join(repoRoot, 'wxt.config.ts'), 'utf8')
+
+    expect(config).not.toContain('https://api.openai.com/*')
+    expect(config).not.toContain('https://api.anthropic.com/*')
+    expect(config).not.toContain('https://generativelanguage.googleapis.com/*')
+  })
+
+  it('keeps the notifications permission documented for due reminders', () => {
+    const config = readFileSync(join(repoRoot, 'wxt.config.ts'), 'utf8')
+
+    expect(config).toContain("'notifications'")
+  })
 })
 
 function sourceFiles(directories: string[]) {
