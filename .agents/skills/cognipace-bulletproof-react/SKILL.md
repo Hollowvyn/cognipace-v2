@@ -10,6 +10,8 @@ architecture, not a generic SPA template.
 
 Treat these as primary authority before making structural recommendations:
 - `docs/architecture.md`
+- `docs/product.md` when surface behavior, scope, or read-only ownership matters
+- `docs/testing.md` when recommending validation scope, smoke checks, or proof
 - `CONTRIBUTING.md`
 - `src/testing/architecture-boundaries.test.ts`
 - `eslint.config.js`
@@ -27,6 +29,7 @@ boundaries.
 - `src/extension` is the trusted runtime boundary for background work, sender authorization, and handler registration.
 - `src/platform` and `src/lib` own infrastructure and integrations.
 - `src/components` stays generic; feature UI lives inside the owning feature.
+- Check `docs/product.md` before assigning new behavior to a surface; some surfaces are intentionally read-only or intentionally compact.
 - Runtime payloads are validated with Zod at the extension boundary.
 - Compose features at the app layer instead of deep cross-feature imports.
 
