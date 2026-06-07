@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify'
 import { createLeetCodeProblemContentFingerprint } from './content-fingerprint'
 import {
   escapeRegExp,
@@ -230,7 +231,7 @@ function createContentDocumentOrNull(
   }
 
   const contentDocument = hostDocument.implementation.createHTMLDocument('')
-  contentDocument.body.innerHTML = contentHtml
+  contentDocument.body.innerHTML = DOMPurify.sanitize(contentHtml)
 
   return contentDocument
 }
