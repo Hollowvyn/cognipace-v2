@@ -49,6 +49,7 @@ const backgroundMocks = vi.hoisted(() => {
     (message: { data: unknown; sender: unknown }) => unknown
   >()
   const db = { kind: 'test-db' }
+  let syncAutoSyncDeps: unknown
   const alarmScheduler = {
     clear: vi.fn(),
     register: vi.fn(),
@@ -128,7 +129,12 @@ const backgroundMocks = vi.hoisted(() => {
     updateSettings: vi.fn(),
     createBackgroundSyncService: vi.fn(),
     createAlarmScheduler: vi.fn(() => alarmScheduler),
-    createSyncAutoSync: vi.fn(() => syncAutoSync),
+    createSyncAutoSync: vi.fn((deps: unknown) => {
+      syncAutoSyncDeps = deps
+
+      return syncAutoSync
+    }),
+    readLatestSyncAutoSyncDeps: () => syncAutoSyncDeps,
     createDueNotification: vi.fn(() => dueNotification),
     readDueNotificationState: vi.fn(),
     writeDueNotificationState: vi.fn(),
@@ -791,6 +797,36 @@ describe('background handler registration', () => {
     expect(backgroundMocks.createBackgroundSyncService).not.toHaveBeenCalled()
     expect(backgroundMocks.syncService.checkRemoteOnOpen).not.toHaveBeenCalled()
     expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
+  })
+
+  it('broadcasts sync invalidation after background clean open-check dependency settles', async () => {
+    const syncAutoSyncDeps = readLatestSyncAutoSyncDeps()
+    backgroundMocks.syncService.checkRemoteOnOpen.mockResolvedValueOnce({
+      ...syncOpenCheckResult,
+      outcome: 'no-change',
+      reason: null,
+      retryable: false,
+    })
+
+    const response = await syncAutoSyncDeps.runCleanPullCheck()
+
+    expect(backgroundMocks.getAppDb).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.syncService.checkRemoteOnOpen).toHaveBeenCalledTimes(
+      1,
+    )
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      reason: 'sync-updated',
+      source: 'dashboard',
+      tags: ['sync'],
+    })
+    expect(response).toEqual(
+      syncActionResultSchema.parse({
+        ...syncOpenCheckResult,
+        outcome: 'no-change',
+        reason: null,
+        retryable: false,
+      }),
+    )
   })
 
   it('rejects malformed lightweight sync open-check requests before scheduling', () => {
@@ -1991,6 +2027,29 @@ function expectSyncFactoryForDb() {
   expect(call[0]).toBe(backgroundMocks.db)
   expect(typeof call[1]).toBe('function')
   expect(isSyncFactoryOptions(call[2])).toBe(true)
+}
+
+type SyncAutoSyncDeps = {
+  runCleanPullCheck: () => Promise<unknown>
+}
+
+function readLatestSyncAutoSyncDeps(): SyncAutoSyncDeps {
+  const deps = backgroundMocks.readLatestSyncAutoSyncDeps()
+
+  if (!isSyncAutoSyncDeps(deps)) {
+    throw new Error('Expected sync auto-sync dependencies to be captured.')
+  }
+
+  return deps
+}
+
+function isSyncAutoSyncDeps(value: unknown): value is SyncAutoSyncDeps {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { runCleanPullCheck?: unknown }).runCleanPullCheck ===
+      'function'
+  )
 }
 
 type SyncFactoryOptions = {

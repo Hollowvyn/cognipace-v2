@@ -202,6 +202,7 @@ export const cacheInvalidationReasonSchema = z.enum([
   'practice-updated',
   'problem-catalog-updated',
   'settings-updated',
+  'sync-updated',
   'tracks-updated',
 ])
 

@@ -118,14 +118,24 @@ export function createSyncAutoSync(deps: SyncAutoSyncDependencies) {
     }
 
     openCheckPending = true
-    await deps.scheduler.schedule(syncOpenCheckAlarmName, {
-      delayInMinutes: syncOpenCheckFallbackDelayMinutes,
-    })
+    try {
+      await deps.scheduler.schedule(syncOpenCheckAlarmName, {
+        delayInMinutes: syncOpenCheckFallbackDelayMinutes,
+      })
 
-    openCheckTimer = globalThis.setTimeout(() => {
-      openCheckTimer = null
-      void runRequestedOpenCheck()
-    }, syncOpenCheckDelayMs)
+      openCheckTimer = globalThis.setTimeout(() => {
+        openCheckTimer = null
+        void runRequestedOpenCheck()
+      }, syncOpenCheckDelayMs)
+    } catch (error) {
+      if (openCheckTimer !== null) {
+        globalThis.clearTimeout(openCheckTimer)
+        openCheckTimer = null
+      }
+      openCheckPending = false
+      openCheckRunning = false
+      throw error
+    }
   }
 
   async function runRequestedOpenCheck() {

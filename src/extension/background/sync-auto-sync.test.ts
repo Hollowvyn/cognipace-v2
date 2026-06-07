@@ -249,6 +249,35 @@ describe('sync auto-sync orchestrator', () => {
     expect(deps.runCleanPullCheck).toHaveBeenCalledTimes(1)
   })
 
+  it('does not wedge requested open checks when fallback scheduling fails', async () => {
+    vi.useFakeTimers()
+    const scheduleError = new Error('Alarms unavailable.')
+    vi.mocked(deps.scheduler.schedule).mockRejectedValueOnce(scheduleError)
+    const syncAutoSync = createSyncAutoSync(deps)
+
+    await expect(
+      syncAutoSync.requestOpenCheckAfterSurfaceOpen(),
+    ).rejects.toThrow(scheduleError)
+
+    expect(deps.scheduler.schedule).toHaveBeenCalledTimes(1)
+
+    vi.mocked(deps.scheduler.schedule).mockResolvedValueOnce(undefined)
+
+    await syncAutoSync.requestOpenCheckAfterSurfaceOpen()
+
+    expect(deps.scheduler.schedule).toHaveBeenCalledTimes(2)
+    expect(deps.scheduler.schedule).toHaveBeenLastCalledWith(
+      syncOpenCheckAlarmName,
+      {
+        delayInMinutes: syncOpenCheckFallbackDelayMinutes,
+      },
+    )
+
+    await vi.advanceTimersByTimeAsync(syncOpenCheckDelayMs)
+
+    expect(deps.runCleanPullCheck).toHaveBeenCalledTimes(1)
+  })
+
   it('runs requested open checks through the existing clean pull path and clears the fallback alarm', async () => {
     const syncAutoSync = createSyncAutoSync(deps)
 
