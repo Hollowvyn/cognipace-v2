@@ -388,6 +388,73 @@ export interface ProtocolMap {
   ): SerializedLeetCodeSubmissionResultRemoteResponse
 }
 
+export const protocolMethodNames = [
+  'analytics.getSummary',
+  'cache.invalidate',
+  'runtime.ping',
+  'app.getShellData',
+  'app.openDashboard',
+  'backup.exportFullBackup',
+  'backup.validateFullBackup',
+  'backup.restoreFullBackup',
+  'backup.resetLocalData',
+  'genai.getAiProviderSecretPresence',
+  'genai.setAiProviderSecret',
+  'genai.clearAiProviderSecret',
+  'genai.recommendLeetCodeAssessment',
+  'sync.getStatus',
+  'sync.validateGithubToken',
+  'sync.validateStoredGithubToken',
+  'sync.saveGithubToken',
+  'sync.deleteGithubToken',
+  'sync.createGithubGist',
+  'sync.connectGithubGist',
+  'sync.setEnabled',
+  'sync.checkRemoteOnOpen',
+  'sync.pullLatest',
+  'sync.pushLocal',
+  'problems.upsertFromPage',
+  'problems.getLibrary',
+  'problems.getProblemForEdit',
+  'problems.createProblem',
+  'problems.updateProblem',
+  'problems.deleteProblem',
+  'problems.bulkUpdateProblems',
+  'problems.bulkDelete',
+  'practice.saveReviewResult',
+  'practice.getDetails',
+  'practice.overrideLastReviewResult',
+  'practice.setSuspended',
+  'practice.resetSchedule',
+  'practice.updateCurrentLog',
+  'queue.getTodayQueue',
+  'tracks.getActiveTrack',
+  'tracks.getWorkspace',
+  'tracks.getTrackForEdit',
+  'tracks.setActiveTrack',
+  'tracks.clearActiveTrack',
+  'tracks.setActiveGroup',
+  'tracks.createTrack',
+  'tracks.updateTrack',
+  'tracks.deleteTrack',
+  'tracks.resetTrackProgress',
+  'settings.getSettings',
+  'settings.updateSettings',
+  'settings.toggleStudyMode',
+  'settings.cycleThemeMode',
+  'leetcode.readProblemMetadata',
+  'leetcode.readProblemContent',
+  'leetcode.readSubmissionResult',
+] as const satisfies readonly (keyof ProtocolMap)[]
+
+type MissingProtocolMethod = Exclude<
+  keyof ProtocolMap,
+  (typeof protocolMethodNames)[number]
+>
+
+const protocolMethodCoverageCheck: Record<MissingProtocolMethod, never> = {}
+void protocolMethodCoverageCheck
+
 const extensionMessenger = defineExtensionMessaging<ProtocolMap>()
 
 export const onMessage = extensionMessenger.onMessage.bind(extensionMessenger)

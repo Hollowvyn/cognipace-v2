@@ -1,6 +1,8 @@
 import type { ExtensionSurface } from '@/extension/messaging'
 
 const methodSurfaceAccess = {
+  'analytics.getSummary': ['dashboard'],
+  'cache.invalidate': ['background'],
   'runtime.ping': ['background', 'popup', 'dashboard', 'content-script'],
   'app.getShellData': ['popup', 'dashboard', 'content-script'],
   'app.openDashboard': ['content-script'],
@@ -56,6 +58,10 @@ const methodSurfaceAccess = {
   'leetcode.readProblemContent': ['content-script'],
   'leetcode.readSubmissionResult': ['content-script'],
 } as const satisfies Record<string, readonly ExtensionSurface[]>
+
+export const extensionMethodNames = Object.keys(
+  methodSurfaceAccess,
+) as Array<keyof typeof methodSurfaceAccess>
 
 export type ExtensionMethod = keyof typeof methodSurfaceAccess
 

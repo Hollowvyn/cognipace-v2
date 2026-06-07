@@ -1,17 +1,36 @@
 import { describe, expect, it } from 'vitest'
 
+import { protocolMethodNames } from '@/extension/messaging'
+
 import {
   assertCanCallExtensionMethod,
   assertCanSenderCallExtensionMethod,
   canCallExtensionMethod,
+  extensionMethodNames,
   getMessageSenderSurface,
   isExtensionMethod,
 } from './runtime-policy'
 import { getAppShellRuntimeSurface } from './register-handlers'
 
 describe('runtime-policy', () => {
+  it('keeps protocol methods covered by runtime sender policy', () => {
+    expect([...extensionMethodNames].sort()).toEqual(
+      [...protocolMethodNames].sort(),
+    )
+  })
+
   it('allows popup shell data reads', () => {
     expect(canCallExtensionMethod('app.getShellData', 'popup')).toBe(true)
+  })
+
+  it('allows dashboard senders to read analytics summary', () => {
+    expect(canCallExtensionMethod('analytics.getSummary', 'dashboard')).toBe(
+      true,
+    )
+    expect(canCallExtensionMethod('analytics.getSummary', 'popup')).toBe(false)
+    expect(
+      canCallExtensionMethod('analytics.getSummary', 'content-script'),
+    ).toBe(false)
   })
 
   it('allows content scripts to read overlay app-shell data', () => {
