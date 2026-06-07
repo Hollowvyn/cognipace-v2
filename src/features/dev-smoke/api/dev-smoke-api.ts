@@ -12,5 +12,7 @@ export function useDevSmokeReport(runLiveGenAi: boolean) {
         surface: 'dashboard',
         runLiveGenAi,
       }),
+    refetchOnMount: 'always',
+    staleTime: 0,
   })
 }

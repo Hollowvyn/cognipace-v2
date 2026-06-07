@@ -1,5 +1,7 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
@@ -103,6 +105,48 @@ describe('DevSmokeScreen', () => {
       await screen.findByText('Provider smoke returned a non-secret warning.'),
     ).toBeVisible()
   })
+
+  it('runs fresh smoke checks when remounted with a fresh cached report', async () => {
+    vi.mocked(sendMessage)
+      .mockResolvedValueOnce(
+        createDevSmokeReport({
+          generatedAt: '2026-06-07T12:00:00.000Z',
+        }),
+      )
+      .mockResolvedValueOnce(
+        createDevSmokeReport({
+          generatedAt: '2026-06-07T12:00:30.000Z',
+          checks: [
+            {
+              id: 'health',
+              label: 'Background runtime',
+              status: 'pass',
+              detail: 'Fresh smoke result after remount.',
+            },
+          ],
+        }),
+      )
+
+    const harness = createFreshCacheHarness()
+    const firstRender = render(<DevSmokeScreen />, { wrapper: harness.wrapper })
+
+    expect(
+      await screen.findByText('Generated 2026-06-07T12:00:00.000Z'),
+    ).toBeVisible()
+    firstRender.unmount()
+
+    render(<DevSmokeScreen />, { wrapper: harness.wrapper })
+
+    await waitFor(() => {
+      expect(sendMessage).toHaveBeenCalledTimes(2)
+    })
+    expect(
+      await screen.findByText('Fresh smoke result after remount.'),
+    ).toBeVisible()
+    expect(
+      await screen.findByText('Generated 2026-06-07T12:00:30.000Z'),
+    ).toBeVisible()
+  })
 })
 
 function renderDevSmokeScreen() {
@@ -125,5 +169,21 @@ function createDevSmokeReport(
       },
     ],
     ...overrides,
+  }
+}
+
+function createFreshCacheHarness() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      mutations: { retry: false },
+      queries: { retry: false, staleTime: 30_000 },
+    },
+  })
+
+  return {
+    queryClient,
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
   }
 }
