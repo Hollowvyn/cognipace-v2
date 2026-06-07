@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import { genAiProviderIds, type GenAiProviderId } from './genai-types'
 
-const aiProviderSecretSchema = z
+export const aiProviderSecretSchema = z
   .object({
     apiKey: z.string().min(1, 'Required'),
     baseUrl: z.string().url().optional(),

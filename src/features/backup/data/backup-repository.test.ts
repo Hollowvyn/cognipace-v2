@@ -260,10 +260,10 @@ describe('backup repository', () => {
     const { db } = await createTestDb({ now })
     await insertCustomState(db)
 
-    // Store a real AI provider secret so genai-secrets row exists in settingsKv
+    // Store a real AI provider secret so backup export covers secret exclusion.
     await setAiProviderSecret(db, 'openai', { apiKey: 'sk-test' })
 
-    // Export must not throw a ZodError even though genai-secrets row is present
+    // Export must not throw and must never include trusted secret material.
     const backupData = await createBackupRepository(db).readBackupData()
 
     // The payload must not contain the secret value or the genai-secrets key

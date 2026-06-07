@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { settingsKv } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
 import { updateSettings } from '@/features/settings/server/settings-service'
 
@@ -47,6 +48,16 @@ describe('setAiProviderSecret / clearAiProviderSecret', () => {
     await setAiProviderSecret(handle.db, 'gemini', { apiKey: 'g-x' })
     const presence = await clearAiProviderSecret(handle.db, 'openai')
     expect(presence).toEqual({ openai: false, anthropic: false, gemini: true })
+  })
+
+  it('does not write GenAI API keys into settings_kv', async () => {
+    const handle = await createTestDb({ seed: false })
+
+    await setAiProviderSecret(handle.db, 'openai', { apiKey: 'sk-test' })
+
+    const rows = await handle.db.select().from(settingsKv)
+    expect(rows.some((row) => row.key === 'genai-secrets')).toBe(false)
+    expect(JSON.stringify(rows)).not.toContain('sk-test')
   })
 })
 
