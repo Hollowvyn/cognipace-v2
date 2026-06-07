@@ -24,7 +24,9 @@ describe('analytics runtime API', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', { surface: 'dashboard' })
+    expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
+      surface: 'dashboard',
+    })
     expect(result.current.data).toBe(payload)
   })
 })

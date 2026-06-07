@@ -19,6 +19,55 @@ small, local-first, and easy to reason about.
   class of bugs.
 - If a change increases LOC or indirection, explain what complexity it removes.
 
+## Pull Requests And Releases
+
+CogniPace uses squash merge. Pull request titles must follow Conventional Commit
+format because the squash commit title drives Release Please versioning and
+changelog generation.
+
+Use this format:
+
+```text
+<type>(optional-scope): short summary
+```
+
+Release-triggering title types:
+
+- `feat`: minor version
+- `fix`: patch version
+- `deps`: patch version
+- any allowed type with `!`: major version
+
+Allowed maintenance types:
+
+- `chore`
+- `test`
+- `ci`
+- `build`
+- `style`
+- `docs`
+- `perf`
+- `refactor`
+
+Examples:
+
+```text
+feat(tracks): add active group recovery
+fix(sync): prevent dirty local data from auto-pulling
+fix(docs): clarify Chrome Web Store release handoff
+ci(release): upload extension zip to GitHub releases
+```
+
+Release Please maintains the release pull request on `main`. Merging that
+release pull request creates the GitHub Release and triggers the extension zip
+artifact upload. Chrome Web Store submission remains a manual maintainer step
+using the zip attached to the GitHub Release.
+
+The Release Please workflow uses the `RELEASE_PLEASE_TOKEN` repository secret so
+generated release pull requests still trigger normal pull request checks.
+
+See `docs/release.md` for the complete release process.
+
 ## Architecture
 
 CogniPace follows a small-app version of Bulletproof React:

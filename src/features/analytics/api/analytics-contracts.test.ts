@@ -42,6 +42,12 @@ const validSummary: SerializedAnalyticsSummary = {
   retentionScatterCurve: [],
 }
 
+function withoutSummaryField(field: keyof SerializedAnalyticsSummary) {
+  const summary: Partial<SerializedAnalyticsSummary> = { ...validSummary }
+  delete summary[field]
+  return summary
+}
+
 describe('analyticsSummaryRequestSchema', () => {
   it('requires the dashboard surface', () => {
     expect(() => analyticsSummaryRequestSchema.parse({})).toThrow()
@@ -253,36 +259,41 @@ describe('retentionScatterEntrySchema', () => {
 describe('referenceCurvePointSchema', () => {
   it('accepts a valid curve point', () => {
     expect(
-      referenceCurvePointSchema.safeParse({ days: 7, retrievability: 0.9 }).success,
+      referenceCurvePointSchema.safeParse({ days: 7, retrievability: 0.9 })
+        .success,
     ).toBe(true)
   })
 
   it('rejects negative days', () => {
     expect(
-      referenceCurvePointSchema.safeParse({ days: -1, retrievability: 0.9 }).success,
+      referenceCurvePointSchema.safeParse({ days: -1, retrievability: 0.9 })
+        .success,
     ).toBe(false)
   })
 })
 
 describe('analyticsSummarySchema — new scatter fields', () => {
   it('rejects a summary missing targetRetention', () => {
-    const { targetRetention: _, ...withoutField } = validSummary
+    const withoutField = withoutSummaryField('targetRetention')
     expect(analyticsSummarySchema.safeParse(withoutField).success).toBe(false)
   })
 
   it('rejects a summary missing retentionScatter', () => {
-    const { retentionScatter: _, ...withoutField } = validSummary
+    const withoutField = withoutSummaryField('retentionScatter')
     expect(analyticsSummarySchema.safeParse(withoutField).success).toBe(false)
   })
 
   it('rejects a summary missing retentionScatterCurve', () => {
-    const { retentionScatterCurve: _, ...withoutField } = validSummary
+    const withoutField = withoutSummaryField('retentionScatterCurve')
     expect(analyticsSummarySchema.safeParse(withoutField).success).toBe(false)
   })
 
   it('rejects targetRetention outside 0–1', () => {
     expect(
-      analyticsSummarySchema.safeParse({ ...validSummary, targetRetention: 1.5 }).success,
+      analyticsSummarySchema.safeParse({
+        ...validSummary,
+        targetRetention: 1.5,
+      }).success,
     ).toBe(false)
   })
 })
