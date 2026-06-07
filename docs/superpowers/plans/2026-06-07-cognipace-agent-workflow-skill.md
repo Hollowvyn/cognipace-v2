@@ -521,6 +521,35 @@ git commit -m "docs(agent-governance): verify workflow skill scenarios"
 
 Expected: commit only if verification produced plan notes or skill refinements.
 
+### GREEN Verification Findings
+
+All three Task 5 pressure scenarios passed with the new workflow skill present.
+No skill refactor was needed.
+
+- Scenario 1, non-trivial popup runtime messaging change: passed. The agent
+  used `.agents/skills/cognipace-agent-workflow/SKILL.md` first, then
+  `docs/agent-governance.md`, authority docs, `superpowers:brainstorming`,
+  `superpowers:writing-plans`, and `cognipace-bulletproof-react` for
+  popup/runtime boundaries. It named hard gates and required proof including
+  `npm run lint`, `npm run check`, `npm run build`, focused runtime/popup
+  tests, popup smoke, sender authorization, Zod parsing, cache invalidation,
+  sync side effects, release impact, rollback/recovery, and visual proof or a
+  reason visual proof was not applicable.
+- Scenario 2, quick docs/governance tweak: passed. The agent distinguished
+  trivial docs-only work from substantial governance work, allowed a short
+  stated design instead of a full spec/plan for the trivial case, skipped
+  runtime/smoke checks with reasons, and required exact
+  `npx prettier --check <touched markdown files>` validation or
+  skipped-command disclosure.
+- Scenario 3, new repo-local skill: passed. The agent started with
+  `cognipace-agent-workflow`, routed to `superpowers:writing-skills`, included
+  `superpowers:test-driven-development` background, required RED baseline
+  pressure scenarios before drafting skill text, minimal skill drafting, GREEN
+  verification, targeted REFACTOR, and formatting/validation before deployment.
+
+Task 5 used plan notes only and did not change
+`.agents/skills/cognipace-agent-workflow/SKILL.md`.
+
 ## Task 6: Final Handoff Check
 
 **Files:**
