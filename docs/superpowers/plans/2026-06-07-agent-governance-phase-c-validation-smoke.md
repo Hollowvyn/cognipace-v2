@@ -11,7 +11,9 @@ apply from the canonical agent governance doc.
 **Architecture:** Keep `docs/agent-governance.md` as the single validation
 authority. Add one compact validation-selection section before the existing
 matrix, then tighten smoke reporting language without duplicating concrete
-manual smoke steps from `docs/testing.md`.
+manual smoke steps from `docs/testing.md`. Manual smoke belongs in the PR
+description as a checklist for the engineer to run before squash and merge, not
+as agent-owned browser testing.
 
 **Tech Stack:** Markdown documentation, Prettier, CogniPace agent governance
 docs.
@@ -23,8 +25,8 @@ docs.
 - Modify: `docs/agent-governance.md`
   - Add a `Validation Selection` section between `Handoff With PR-Ready
 Context` and `Validation Matrix`.
-  - Tighten `Smoke Expectations` so skipped smoke must name the skipped flow and
-    the reason.
+  - Tighten manual smoke expectations so agents include the affected checklist
+    in PR descriptions, or explain why no checklist applies.
 - Verify: `docs/superpowers/README.md`
   - Keep the existing plan index entry formatted.
 - Do not modify: `AGENTS.md`, `CLAUDE.md`, `docs/testing.md`, package scripts,
@@ -60,8 +62,8 @@ Choose validation by risk area, not only by file extension.
 2. Select every matching validation category in the matrix below.
 3. When categories overlap, use the strictest required command set.
 4. Add focused tests for touched behavior when feasible.
-5. Add affected smoke notes when extension surfaces or background workflows are
-   touched.
+5. Add the affected manual smoke checklist when extension surfaces or background
+   workflows are touched.
 6. In the handoff, list exact commands run, exact commands skipped, why each
    skipped command was skipped, and remaining validation risk.
 
@@ -70,7 +72,7 @@ Choose validation by risk area, not only by file extension.
 | Agent docs, governance docs, planning docs, Markdown-only contribution docs                        | Docs or governance only                                | Run Prettier on every touched Markdown file.                                                                                                                     |
 | Feature domain, hooks, services, repositories, or utilities without extension-surface behavior     | Normal code change                                     | Run focused tests when feasible, then lint and check.                                                                                                            |
 | Visible React UI without popup/dashboard/overlay workflow semantics                                | UI change                                              | Include focused component, hook, or route tests and visual proof or a skipped-visual reason.                                                                     |
-| Popup, dashboard, or overlay behavior                                                              | Popup, dashboard, or overlay behavior                  | Include build and affected surface smoke notes when feasible.                                                                                                    |
+| Popup, dashboard, or overlay behavior                                                              | Popup, dashboard, or overlay behavior                  | Include build and the affected manual smoke checklist.                                                                                                           |
 | Runtime messaging, background handlers, sync, GenAI, secrets, notifications, or cache invalidation | Runtime messaging, background, sync, GenAI, or secrets | Include build, focused contract or service tests, and notes on authorization, Zod parsing, secret redaction, cache invalidation, and side effects where touched. |
 | Database schema, migrations, repositories, backup, restore, or persisted shape                     | Database or schema change                              | Include DB checks, migration generation when schema changes, focused persistence tests, and backup/sync compatibility notes where relevant.                      |
 | Release, CI, package scripts, build artifacts, extension zip, or workflow files                    | Release, CI, package, or extension build workflow      | Include build, zip when artifact behavior is touched, and whether workflow proof was local, dry-run PR, or static review.                                        |
@@ -118,7 +120,7 @@ rtk git commit -m "docs(agent-governance): add validation selection guide"
 
 Expected: commit succeeds with only `docs/agent-governance.md` staged.
 
-## Task 2: Tighten Smoke Reporting Language
+## Task 2: Tighten Manual Smoke Checklist Language
 
 **Files:**
 
@@ -132,36 +134,42 @@ Run:
 rtk sed -n '/## Smoke Expectations/,/## Commit And PR Rules/p' docs/agent-governance.md
 ```
 
-Expected: output shows the current smoke bullets and the final sentence,
-`If a smoke flow is relevant but not performed, state the reason.`
+Expected: output shows the current smoke section if it has not already been
+renamed. If the heading is already `## Manual Smoke Checklist`, inspect that
+section instead:
+
+```sh
+rtk sed -n '/## Manual Smoke Checklist/,/## Commit And PR Rules/p' docs/agent-governance.md
+```
 
 - [ ] **Step 2: Replace the smoke section**
 
-Replace the entire `## Smoke Expectations` section with:
+Replace the entire smoke expectations section with:
 
 ```markdown
-## Smoke Expectations
+## Manual Smoke Checklist
 
-Use `docs/testing.md` for exact manual smoke flows.
+Use `docs/testing.md` for exact manual smoke flows. Agents do not own manual
+browser smoke testing by default. For feature, surface, runtime, sync, GenAI,
+release, package, or extension-build changes, agents should add the relevant
+manual testing checklist to the PR description so the engineer can complete it
+before squash and merge.
 
-- Popup changes should report whether the extension popup smoke flow was
-  performed.
-- Dashboard route or dashboard workflow changes should report the affected
-  dashboard smoke flow.
-- Overlay changes should report whether a LeetCode problem page was smoked.
+- Popup changes should include the extension popup smoke checklist.
+- Dashboard route or dashboard workflow changes should include the affected
+  dashboard smoke checklist.
+- Overlay changes should include the LeetCode problem-page smoke checklist.
 - Background, sync, GenAI, notification, secret, or runtime changes should
-  report the relevant hidden `/dev/smoke` route, service-worker check, or
-  focused manual flow when feasible.
-- Release, CI, package, or extension build changes should state whether the
-  workflow was validated locally, through a dry-run PR, or by static review
-  only.
+  include the relevant hidden `/dev/smoke`, service-worker, or focused manual
+  flow checklist.
+- Release, CI, package, or extension build changes should include any relevant
+  release or artifact manual checks, plus whether automated workflow validation
+  was local, dry-run PR, or static review only.
 
-If a relevant smoke flow is skipped, name the skipped flow and explain why.
-Acceptable reasons include no browser access in the current environment,
-docs-only change, static-only CI workflow review, missing external credentials
-for an optional live provider, or a pre-existing local build failure that blocks
-loading the extension. Vague claims such as "not tested" or "should work" are
-not sufficient.
+If a relevant manual smoke checklist is not included, explain why. Acceptable
+reasons include docs-only changes, static-only CI workflow review with no
+runtime surface, or no affected user-facing/manual flow. Vague claims such as
+"not tested" or "should work" are not sufficient.
 ```
 
 - [ ] **Step 3: Run formatting check for the changed governance doc**
@@ -185,15 +193,15 @@ rtk proxy npx prettier --write docs/agent-governance.md
 
 Expected: Prettier rewrites only `docs/agent-governance.md`.
 
-- [ ] **Step 5: Verify smoke skipped-reporting wording**
+- [ ] **Step 5: Verify manual smoke checklist wording**
 
 Run:
 
 ```sh
-rtk rg -n "name the skipped flow|Acceptable reasons|not sufficient" docs/agent-governance.md
+rtk rg -n "Manual Smoke Checklist|manual testing checklist|before squash and merge|not sufficient" docs/agent-governance.md
 ```
 
-Expected: output includes all three phrases inside `docs/agent-governance.md`.
+Expected: output includes all four phrases inside `docs/agent-governance.md`.
 
 - [ ] **Step 6: Commit Task 2**
 
@@ -201,7 +209,7 @@ Run:
 
 ```sh
 rtk git add docs/agent-governance.md
-rtk git commit -m "docs(agent-governance): clarify smoke reporting"
+rtk git commit -m "docs(agent-governance): clarify manual smoke checklist"
 ```
 
 Expected: commit succeeds with only `docs/agent-governance.md` staged.
@@ -262,7 +270,7 @@ Why:
 What changed:
 
 - Added `Validation Selection` to `docs/agent-governance.md`.
-- Clarified smoke reporting and skipped-smoke requirements in
+- Clarified manual smoke checklist requirements in
   `docs/agent-governance.md`.
 
 Validation run:
