@@ -485,6 +485,60 @@ describe('useSettingsDraft', () => {
     expect(result.current.draft?.aiAssessment.model).toBe('gpt-test')
   })
 
+  it('sets reminders.daily.enabled via setRemindersEnabled', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
+    const { wrapper } = createQueryTestHarness()
+    const { result } = renderHook(() => useSettingsDraft(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.draft).toEqual(defaultUserSettings)
+    })
+
+    act(() => {
+      result.current.actions.setRemindersEnabled(true)
+    })
+
+    expect(result.current.draft?.reminders.daily.enabled).toBe(true)
+    expect(result.current.hasChanges).toBe(true)
+  })
+
+  it('sets reminders.daily.time via setRemindersTime', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
+    const { wrapper } = createQueryTestHarness()
+    const { result } = renderHook(() => useSettingsDraft(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.draft).toEqual(defaultUserSettings)
+    })
+
+    act(() => {
+      result.current.actions.setRemindersTime('14:30')
+    })
+
+    expect(result.current.draft?.reminders.daily.time).toBe('14:30')
+  })
+
+  it('treats an empty reminder time as a validation error that blocks save', async () => {
+    const currentSettings = {
+      ...defaultUserSettings,
+      reminders: { daily: { enabled: true, time: '09:00' } },
+    }
+    vi.mocked(sendMessage).mockResolvedValue(currentSettings)
+    const { wrapper } = createQueryTestHarness()
+    const { result } = renderHook(() => useSettingsDraft(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.draft).toEqual(currentSettings)
+    })
+
+    act(() => {
+      result.current.actions.setRemindersTime('')
+    })
+
+    expect(result.current.hasValidationErrors).toBe(true)
+    expect(result.current.canSave).toBe(false)
+  })
+
   it('switching provider does not auto-disable enabled', async () => {
     const currentSettings = {
       ...defaultUserSettings,

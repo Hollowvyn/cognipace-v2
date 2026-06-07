@@ -344,6 +344,16 @@ describe('SettingsScreen', () => {
     })
   })
 
+  it('renders the Reminders settings section', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
+    const { wrapper } = createQueryTestHarness()
+    render(<SettingsScreen />, { wrapper })
+    expect(await screen.findByRole('heading', { name: 'Reminders' })).toBeVisible()
+    expect(
+      screen.getByRole('switch', { name: 'Daily reminder' }),
+    ).toBeInTheDocument()
+  })
+
   it('blocks invalid numeric saves with inline validation', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
