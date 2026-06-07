@@ -71,6 +71,60 @@ Explanation: Because nums[0] + nums[1] == 9, we return [0, 1].
     })
   })
 
+  it('sanitizes malicious markup while extracting valid problem content', async () => {
+    const fetcher = vi.fn(() =>
+      Promise.resolve(
+        Response.json({
+          data: {
+            question: {
+              content: `
+                <p>Given an array <script>alert("xss")</script>of integers <code>nums</code>.</p>
+                <p>You <img src="x" onerror="alert(1)">may assume that each input would have exactly one solution.</p>
+                <p><a href="javascript:alert(1)"><strong>Example 1:</strong></a></p>
+                <pre>
+Input: nums = [2,7,11,15], target = 9
+Output: [0,1]
+                </pre>
+                <p><strong>Constraints:</strong></p>
+                <ul>
+                  <li><code>2 <= nums.length <= 10^4</code></li>
+                </ul>
+              `,
+              hints: ['Use a hash map <script>alert(1)</script>.'],
+            },
+          },
+        }),
+      ),
+    )
+
+    await expect(
+      fetchLeetCodeProblemContent(location, {
+        fetch: fetcher,
+        document,
+        now: () => 1000,
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      content: {
+        location,
+        statement:
+          'Given an array of integers nums. You may assume that each input would have exactly one solution.',
+        examples: [
+          {
+            label: 'Example 1',
+            input: 'nums = [2,7,11,15], target = 9',
+            output: '[0,1]',
+          },
+        ],
+        constraints: ['2 <= nums.length <= 10^4'],
+        hints: ['Use a hash map .'], // <script> tag is removed
+        source: 'graphql',
+        confidence: 'high',
+        capturedAt: 1000,
+      },
+    })
+  })
+
   it('preserves chained comparison constraints from LeetCode markup', async () => {
     const fetcher = vi.fn(() =>
       Promise.resolve(
