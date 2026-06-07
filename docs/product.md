@@ -111,7 +111,7 @@ Current behavior:
   sync is configured.
 - Analytics shows local review-day totals, all-time review counts, current
   streak, a low-sample-aware retention proxy, tracked-card memory profile, due
-  today/overdue/new/review counts, average retrievability, a 14-day due
+  today/overdue/learning/review counts, average retrievability, a 14-day due
   forecast, and weak problems derived from local practice state.
 - Overview currently reserves route ownership for a future guided-practice home.
 
@@ -182,7 +182,7 @@ navigation and never reveals stored secret values.
 Analytics owns the lightweight local dashboard route for review health,
 retention proxy, memory profile, due forecast, and weak-problem inspection. The
 memory profile is based on tracked local FSRS cards and includes due
-today/overdue/new/review counts, average retrievability, and low-sample
+today/overdue/learning/review counts, average retrievability, and low-sample
 messaging when local data is sparse. Analytics is a read-only surface derived
 from local practice state and does not introduce hosted reporting or account
 behavior.

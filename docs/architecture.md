@@ -193,7 +193,7 @@ Background mutations are serialized through the mutation queue in
 creates a fresh migrated and seeded database.
 
 Analytics read models include a memory profile derived from tracked local FSRS
-cards, with due today, overdue, new, review, and retrievability fields plus
+cards, with due today, overdue, learning, review, and retrievability fields plus
 low-sample messaging. Queue summaries expose `dueToday`, `newAvailable`,
 `queueLoad`, and `recommendationReason` aliases while preserving legacy queue
 fields for existing consumers.

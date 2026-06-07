@@ -210,9 +210,9 @@ review is saved.
 1. Open the dashboard.
 2. Navigate to Analytics.
 3. Confirm metric tiles render for review days, total reviews, and retention.
-4. Confirm the memory profile renders tracked-card counts, due today/overdue/new
-   or review composition, average retrievability, and low-sample messaging when
-   local data is sparse.
+4. Confirm the memory profile renders tracked-card counts, due
+   today/overdue/learning or review composition, average retrievability, and
+   low-sample messaging when local data is sparse.
 5. Confirm the 14-day due forecast renders.
 6. Confirm the weak-problems section renders an empty state or local problem
    rows.
