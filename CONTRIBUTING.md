@@ -19,6 +19,21 @@ small, local-first, and easy to reason about.
   class of bugs.
 - If a change increases LOC or indirection, explain what complexity it removes.
 
+## Agent-Authored Changes
+
+Agent-authored changes must follow
+[`docs/agent-governance.md`](./docs/agent-governance.md). That document owns the
+full agent lifecycle, skill rules, validation matrix, skipped-validation policy,
+PR and issue expectations, release-impact notes, and smoke expectations.
+
+For agent work, handoffs and PR summaries must include exact validation commands
+run, commands skipped with reasons, risk areas, release impact, issue context or
+a documented exception, and rollback or recovery notes when relevant.
+
+Do not duplicate the full validation matrix here. Keep detailed validation rules
+in `docs/agent-governance.md` so Codex, Claude, future agents, and human
+reviewers use one canonical source.
+
 ## Pull Requests And Releases
 
 CogniPace uses squash merge. Pull request titles must follow Conventional Commit
