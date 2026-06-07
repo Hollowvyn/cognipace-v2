@@ -56,21 +56,44 @@ Expected baseline failures to confirm:
 
 RED findings:
 
-- [ ] Missing runtime-boundary guidance
-- [ ] Missing write-ownership guidance
-- [ ] Missing architecture-test / eslint evidence
+- Prompt 1 (`overlay timer runtime message`): the generic skill only offers
+  generic feature-folder guidance (`api`, `components`, `hooks`, `stores`,
+  `types`) plus a broad "API Layer" category around a centralized client and
+  server cache. It does not describe CogniPace's runtime-message path from
+  `docs/architecture.md`: feature contract in
+  `src/features/*/api/*-contracts.ts` -> `src/extension/messaging.ts` ->
+  `src/extension/background/runtime-policy.ts` ->
+  `src/extension/background/register-handlers.ts` -> feature `server` service,
+  with Zod request/response parsing and sender authorization at the boundary.
+  This confirmed missing runtime-boundary guidance.
+- Prompt 2 (`popup DB write ownership`): the generic skill does not say that UI
+  surfaces must not write to the DB directly. `CONTRIBUTING.md` states that UI
+  and content scripts should not call the database directly, and
+  `docs/architecture.md` says `src/app` composes surfaces while writes stay
+  behind the owning feature's `server` service or repository. This confirmed
+  missing write-ownership guidance for popup work.
+- Prompt 3 (`analytics mutation and invalidation flow`): the generic skill
+  mentions server cache and centralized API concerns, but it does not capture
+  CogniPace's mutation path in `docs/architecture.md`: runtime command -> DB
+  write -> dirty mark for local mutations -> snapshot flush -> invalidation
+  broadcast -> safe automatic push scheduling -> query refetch. It also misses
+  that `analytics` is described as local read models in the architecture docs,
+  so a new mutation should live with the owning write feature rather than the
+  dashboard read surface. This confirmed missing ownership and invalidation-flow
+  guidance.
+- Enforcement evidence missing from the generic skill: it does not reference
+  `src/testing/architecture-boundaries.test.ts` or `eslint.config.js`, even
+  though those files act as repo authority for import direction and write
+  ownership. The architecture test enforces public feature-surface imports and
+  keeps review scheduling writes behind
+  `src/features/practice/data/practice-repository.ts`; `eslint.config.js`
+  blocks shared code from importing `@/app/*`, `@/features/*`, or
+  `@/entrypoints/*`, and blocks feature/extension code from depending on app
+  composition. This confirmed missing architecture-test / eslint evidence.
 
 - [x] **Step 3: Record the RED findings inline in this plan before writing the new skill**
 
-Add a short note under this task after running the prompts:
-
-```markdown
-RED findings:
-
-- [ ] Missing runtime-boundary guidance
-- [ ] Missing write-ownership guidance
-- [ ] Missing architecture-test / eslint evidence
-```
+Recorded above as the Task 1 failure baseline.
 
 - [x] **Step 4: Commit the RED baseline notes if they changed this plan**
 
