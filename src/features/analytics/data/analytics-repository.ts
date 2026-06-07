@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, gte, lte, ne, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gt, gte, isNotNull, lte, ne, sql } from 'drizzle-orm'
 
 import { defaultFsrsCardKind } from '@/lib/fsrs'
 
@@ -182,5 +182,56 @@ export async function getWeakProblemCandidates(
     difficulty: row.difficulty,
     stability: row.stability,
     lastReviewAt: row.lastReviewAt === null ? null : new Date(row.lastReviewAt),
+  }))
+}
+
+export interface RetentionScatterCandidate {
+  slug: string
+  title: string
+  stability: number
+  difficulty: number
+  lapseCount: number
+  lastReviewAt: Date
+}
+
+export async function getRetentionScatterCandidates(
+  db: Db,
+): Promise<RetentionScatterCandidate[]> {
+  const rows = await db
+    .select({
+      slug: problems.slug,
+      title: problems.title,
+      stability: fsrsCards.stability,
+      difficulty: fsrsCards.difficulty,
+      lapseCount: fsrsCards.lapses,
+      lastReviewAt: fsrsCards.lastReviewAt,
+    })
+    .from(problems)
+    .innerJoin(
+      fsrsCards,
+      and(
+        eq(fsrsCards.problemSlug, problems.slug),
+        eq(fsrsCards.cardKind, defaultFsrsCardKind),
+      ),
+    )
+    .innerJoin(
+      problemPractice,
+      eq(problemPractice.problemSlug, problems.slug),
+    )
+    .where(
+      and(
+        ne(fsrsCards.state, 'new'),
+        eq(problemPractice.isSuspended, false),
+        isNotNull(fsrsCards.lastReviewAt),
+      ),
+    )
+
+  return rows.map((row) => ({
+    slug: row.slug,
+    title: row.title,
+    stability: row.stability,
+    difficulty: row.difficulty,
+    lapseCount: row.lapseCount,
+    lastReviewAt: new Date(row.lastReviewAt as number),
   }))
 }

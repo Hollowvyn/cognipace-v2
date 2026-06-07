@@ -4,6 +4,8 @@ import {
   analyticsSummaryRequestSchema,
   analyticsSummarySchema,
   forecastEntrySchema,
+  retentionScatterEntrySchema,
+  referenceCurvePointSchema,
   weakProblemSchema,
   type SerializedAnalyticsSummary,
 } from './analytics-contracts'
@@ -35,6 +37,9 @@ const validSummary: SerializedAnalyticsSummary = {
     averageRetrievability: 0.8,
     lowSample: true,
   },
+  targetRetention: 0.9,
+  retentionScatter: [],
+  retentionScatterCurve: [],
 }
 
 describe('analyticsSummaryRequestSchema', () => {
@@ -194,6 +199,90 @@ describe('weakProblemSchema', () => {
         difficulty: 7.5,
         retrievability: 0.4,
       }).success,
+    ).toBe(false)
+  })
+})
+
+describe('retentionScatterEntrySchema', () => {
+  it('accepts a valid scatter entry', () => {
+    expect(
+      retentionScatterEntrySchema.safeParse({
+        slug: 'two-sum',
+        title: 'Two Sum',
+        retrievability: 0.85,
+        daysSinceReview: 5,
+        difficulty: 4.5,
+        stability: 20,
+        lapseCount: 1,
+        lastReviewAt: '2026-01-10T12:00:00.000Z',
+      }).success,
+    ).toBe(true)
+  })
+
+  it('rejects negative daysSinceReview', () => {
+    expect(
+      retentionScatterEntrySchema.safeParse({
+        slug: 'two-sum',
+        title: 'Two Sum',
+        retrievability: 0.85,
+        daysSinceReview: -1,
+        difficulty: 4.5,
+        stability: 20,
+        lapseCount: 1,
+        lastReviewAt: '2026-01-10T12:00:00.000Z',
+      }).success,
+    ).toBe(false)
+  })
+
+  it('rejects retrievability outside 0–1 range', () => {
+    expect(
+      retentionScatterEntrySchema.safeParse({
+        slug: 'two-sum',
+        title: 'Two Sum',
+        retrievability: 1.5,
+        daysSinceReview: 5,
+        difficulty: 4.5,
+        stability: 20,
+        lapseCount: 1,
+        lastReviewAt: '2026-01-10T12:00:00.000Z',
+      }).success,
+    ).toBe(false)
+  })
+})
+
+describe('referenceCurvePointSchema', () => {
+  it('accepts a valid curve point', () => {
+    expect(
+      referenceCurvePointSchema.safeParse({ days: 7, retrievability: 0.9 }).success,
+    ).toBe(true)
+  })
+
+  it('rejects negative days', () => {
+    expect(
+      referenceCurvePointSchema.safeParse({ days: -1, retrievability: 0.9 }).success,
+    ).toBe(false)
+  })
+})
+
+describe('analyticsSummarySchema — new scatter fields', () => {
+  it('rejects a summary missing targetRetention', () => {
+    const { targetRetention: _, ...withoutField } = validSummary
+    expect(analyticsSummarySchema.safeParse(withoutField).success).toBe(false)
+  })
+
+  it('rejects a summary missing retentionScatter', () => {
+    const { retentionScatter: _, ...withoutField } = validSummary
+    expect(analyticsSummarySchema.safeParse(withoutField).success).toBe(false)
+  })
+
+  it('rejects a summary missing retentionScatterCurve', () => {
+    const { retentionScatterCurve: _, ...withoutField } = validSummary
+    expect(analyticsSummarySchema.safeParse(withoutField).success).toBe(false)
+  })
+
+  it('rejects targetRetention outside 0–1', () => {
+    expect(
+      analyticsSummarySchema.safeParse({ ...validSummary, targetRetention: 1.5 }).success,
     ).toBe(false)
   })
 })

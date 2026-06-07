@@ -344,6 +344,9 @@ describe('background handler registration', () => {
         averageRetrievability: 0.8,
         lowSample: false,
       },
+      targetRetention: 0.9,
+      retentionScatter: [],
+      retentionScatterCurve: [],
     })
     backgroundMocks.backupExportFullBackup.mockResolvedValue(validBackup)
     backgroundMocks.backupResetLocalData.mockResolvedValue(null)

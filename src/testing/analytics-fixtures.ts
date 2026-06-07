@@ -46,6 +46,9 @@ export function createSerializedAnalyticsSummary(
       averageRetrievability: 0.74,
       lowSample: false,
     },
+    targetRetention: 0.9,
+    retentionScatter: [],
+    retentionScatterCurve: [],
     ...overrides,
   }
 }

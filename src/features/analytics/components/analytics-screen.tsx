@@ -8,6 +8,7 @@ import { useAnalyticsSummary } from '../api/analytics-api'
 import { AnalyticsForecast } from './analytics-forecast'
 import { AnalyticsMemoryProfile } from './analytics-memory-profile'
 import { AnalyticsMetricRow } from './analytics-metric-row'
+import { AnalyticsRetentionScatter } from './analytics-retention-scatter'
 import { AnalyticsWeakProblems } from './analytics-weak-problems'
 
 export function AnalyticsScreen() {
@@ -50,6 +51,11 @@ export function AnalyticsScreen() {
       <AnalyticsMetricRow summary={data} />
       <AnalyticsMemoryProfile profile={data.memoryProfile} />
       <AnalyticsForecast forecast={data.dueForecast14Days} />
+      <AnalyticsRetentionScatter
+        scatter={data.retentionScatter}
+        referenceCurve={data.retentionScatterCurve}
+        targetRetention={data.targetRetention}
+      />
       <AnalyticsWeakProblems problems={data.weakProblems} />
     </div>
   )
