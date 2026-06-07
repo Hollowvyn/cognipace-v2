@@ -30,7 +30,7 @@ export const memoryProfileSchema = z.object({
   review: z.number().int().nonnegative(),
   mastered: z.number().int().nonnegative(),
   suspended: z.number().int().nonnegative(),
-  averageRetrievability: z.number().nullable(),
+  averageRetrievability: z.number().min(0).max(1).nullable(),
   lowSample: z.boolean(),
 })
 
