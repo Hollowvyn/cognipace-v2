@@ -170,8 +170,8 @@ Choose validation by risk area, not only by file extension.
 2. Select every matching validation category in the matrix below.
 3. When categories overlap, use the strictest required command set.
 4. Add focused tests for touched behavior when feasible.
-5. Add the affected manual smoke checklist when extension surfaces or background
-   workflows are touched.
+5. Add the affected manual smoke checklist when feature work, extension
+   surfaces, or background workflows touch a manual flow.
 6. In the handoff, list exact commands run, exact commands skipped, why each
    skipped command was skipped, and remaining validation risk.
 
@@ -180,7 +180,7 @@ Visible popup/dashboard/overlay changes use both the UI and surface rows.
 | Changed area                          | Validation category                                    | Notes                                              |
 | ------------------------------------- | ------------------------------------------------------ | -------------------------------------------------- |
 | Docs/governance/planning Markdown     | Docs or governance only                                | Run Prettier on touched Markdown.                  |
-| Feature code without surface effects  | Normal code change                                     | Run focused tests when feasible, then lint/check.  |
+| Feature code without surface effects  | Normal code change                                     | Add checklist if it affects a manual flow.         |
 | Visible React UI                      | UI change                                              | Add focused tests and visual proof/skipped reason. |
 | Popup/dashboard/overlay behavior      | Popup, dashboard, or overlay behavior                  | Add build and manual smoke checklist.              |
 | Runtime/background/sync/GenAI/secrets | Runtime messaging, background, sync, GenAI, or secrets | Include notifications and cache effects.           |
@@ -212,6 +212,8 @@ Also required:
 
 - focused tests for the touched behavior before the full check when feasible
 - exact test paths or test names in the handoff
+- manual testing checklist when the feature change affects a user-facing or
+  manual smoke flow
 
 ### UI Change
 
@@ -260,6 +262,8 @@ npm run build
 Also required:
 
 - focused contract, runtime-policy, handler, service, repository, or API tests
+- manual testing checklist for affected background, sync, GenAI, notification,
+  secret, runtime, or service-worker flows
 - explicit note about sender authorization, Zod parsing, secret redaction,
   cache invalidation, and sync side effects when touched
 - release impact and rollback or recovery notes when shipped behavior changes

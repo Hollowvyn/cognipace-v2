@@ -21,9 +21,9 @@ commands, smoke expectations, and skipped-validation reporting.
 - Give agents a compact decision aid for changed area, risk area, required
   commands, focused tests, and manual smoke checklist needs.
 - Clarify that overlapping categories use the stricter validation set.
-- Require a relevant manual testing checklist in PR descriptions for popup,
-  dashboard, overlay, background, sync, GenAI, release, and extension packaging
-  changes.
+- Require a relevant manual testing checklist in PR descriptions for feature
+  changes that affect manual flows, plus popup, dashboard, overlay, background,
+  sync, GenAI, release, and extension packaging changes.
 - Keep concrete manual smoke steps in `docs/testing.md`.
 
 ## Non-Goals
@@ -62,8 +62,8 @@ Add a short section such as `Validation Selection` that explains the flow:
 2. Select every matching validation category.
 3. Use the strictest required command set when categories overlap.
 4. Add focused tests for touched behavior when feasible.
-5. Add the affected manual smoke checklist when extension surfaces or background
-   workflows are touched.
+5. Add the affected manual smoke checklist when feature work, extension
+   surfaces, or background workflows touch a manual flow.
 6. In the handoff, list exact commands run, exact commands skipped, why each
    skipped command was skipped, and remaining validation risk.
 
@@ -72,7 +72,7 @@ The decision aid should cover these categories:
 | Changed area                                                                                       | Validation category                               | Notes                                                                                                                                                      |
 | -------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Agent docs, governance docs, planning docs, Markdown-only contribution docs                        | Docs or governance only                           | Run Prettier on every touched Markdown file.                                                                                                               |
-| Feature domain, hooks, services, repositories, or utilities without extension-surface behavior     | Normal code change                                | Run focused tests when feasible, then lint and check.                                                                                                      |
+| Feature domain, hooks, services, repositories, or utilities without extension-surface behavior     | Normal code change                                | Run focused tests when feasible; include a checklist if it affects a manual flow.                                                                          |
 | Visible React UI without popup/dashboard/overlay workflow semantics                                | UI change                                         | Include focused component, hook, or route tests and visual proof or a skipped-visual reason.                                                               |
 | Popup, dashboard, or overlay behavior                                                              | Popup, dashboard, or overlay behavior             | Include build and the affected manual smoke checklist.                                                                                                     |
 | Runtime messaging, background handlers, sync, GenAI, secrets, notifications, or cache invalidation | Runtime/background/sync/GenAI/secrets             | Include build, focused contract or service tests, and notes on authorization, Zod parsing, secret redaction, invalidation, and side effects where touched. |
@@ -86,6 +86,8 @@ detailed command authority.
 
 `docs/agent-governance.md` should make manual smoke expectations concrete:
 
+- If feature behavior affects a manual flow, include the relevant manual
+  checklist in the PR description.
 - If a popup change is made, include the popup smoke checklist from
   `docs/testing.md` in the PR description.
 - If a dashboard route or dashboard workflow changes, include the affected

@@ -62,15 +62,15 @@ Choose validation by risk area, not only by file extension.
 2. Select every matching validation category in the matrix below.
 3. When categories overlap, use the strictest required command set.
 4. Add focused tests for touched behavior when feasible.
-5. Add the affected manual smoke checklist when extension surfaces or background
-   workflows are touched.
+5. Add the affected manual smoke checklist when feature work, extension
+   surfaces, or background workflows touch a manual flow.
 6. In the handoff, list exact commands run, exact commands skipped, why each
    skipped command was skipped, and remaining validation risk.
 
 | Changed area                                                                                       | Validation category                                    | Notes                                                                                                                                                            |
 | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Agent docs, governance docs, planning docs, Markdown-only contribution docs                        | Docs or governance only                                | Run Prettier on every touched Markdown file.                                                                                                                     |
-| Feature domain, hooks, services, repositories, or utilities without extension-surface behavior     | Normal code change                                     | Run focused tests when feasible, then lint and check.                                                                                                            |
+| Feature domain, hooks, services, repositories, or utilities without extension-surface behavior     | Normal code change                                     | Run focused tests when feasible; include a checklist if it affects a manual flow.                                                                                |
 | Visible React UI without popup/dashboard/overlay workflow semantics                                | UI change                                              | Include focused component, hook, or route tests and visual proof or a skipped-visual reason.                                                                     |
 | Popup, dashboard, or overlay behavior                                                              | Popup, dashboard, or overlay behavior                  | Include build and the affected manual smoke checklist.                                                                                                           |
 | Runtime messaging, background handlers, sync, GenAI, secrets, notifications, or cache invalidation | Runtime messaging, background, sync, GenAI, or secrets | Include build, focused contract or service tests, and notes on authorization, Zod parsing, secret redaction, cache invalidation, and side effects where touched. |
