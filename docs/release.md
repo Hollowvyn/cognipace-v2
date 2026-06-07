@@ -49,7 +49,8 @@ local-first data handling`.
 
 ## Normal Release Flow
 
-1. Merge feature and fix pull requests with semantic titles.
+1. Merge release-triggering pull requests (`feat`, `fix`, `deps`, or breaking
+   changes) with semantic titles.
 2. Release Please opens or updates a release pull request on `main`.
 3. Review the release pull request version and changelog.
 4. Merge the release pull request when ready to ship.
