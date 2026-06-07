@@ -82,6 +82,62 @@ describe('createDevSmokeService', () => {
       detail: expect.stringContaining('[redacted-secret]'),
     })
   })
+
+  it('fails analytics when memoryProfile is missing', async () => {
+    const deps = createDeps()
+    vi.mocked(deps.readAnalyticsSummary).mockResolvedValue(
+      {} as Awaited<ReturnType<DevSmokeDeps['readAnalyticsSummary']>>,
+    )
+
+    const report = await createDevSmokeService(deps).run({})
+
+    expect(
+      report.checks.find((check) => check.id === 'analytics'),
+    ).toMatchObject({
+      status: 'fail',
+      detail: 'Analytics summary is missing memoryProfile.',
+    })
+  })
+
+  it('warns when GenAI config is disabled', async () => {
+    const deps = createDeps()
+    vi.mocked(deps.readGenAiConfig).mockResolvedValue({
+      enabled: false,
+      provider: 'openai',
+      model: 'not-configured',
+      hasSecret: false,
+    })
+
+    const report = await createDevSmokeService(deps).run({})
+
+    expect(
+      report.checks.find((check) => check.id === 'genai.config'),
+    ).toMatchObject({
+      status: 'warn',
+      detail:
+        'Provider openai is not configured; model not-configured; secret present: no.',
+    })
+  })
+
+  it('warns when GenAI config has no stored secret', async () => {
+    const deps = createDeps()
+    vi.mocked(deps.readGenAiConfig).mockResolvedValue({
+      enabled: true,
+      provider: 'openai',
+      model: 'gpt-4.1-mini',
+      hasSecret: false,
+    })
+
+    const report = await createDevSmokeService(deps).run({})
+
+    expect(
+      report.checks.find((check) => check.id === 'genai.config'),
+    ).toMatchObject({
+      status: 'warn',
+      detail:
+        'Provider openai is configured with model gpt-4.1-mini; secret present: no.',
+    })
+  })
 })
 
 describe('computeNotificationDryRun', () => {

@@ -4,7 +4,7 @@ export type SmokeStatus = DevSmokeReport['checks'][number]['status']
 
 export interface DevSmokeDeps {
   now: () => Date
-  readAnalyticsSummary: () => Promise<{ memoryProfile?: unknown }>
+  readAnalyticsSummary: () => Promise<{ memoryProfile: unknown }>
   readQueueSummary: () => Promise<{
     dueToday: number
     newAvailable: number
@@ -103,14 +103,20 @@ export function computeNotificationDryRun(input: NotificationDryRunInput): {
 async function runAnalyticsCheck(deps: DevSmokeDeps): Promise<SmokeCheck> {
   try {
     const summary = await deps.readAnalyticsSummary()
+    if (summary.memoryProfile === undefined) {
+      return createCheck({
+        id: 'analytics',
+        label: 'Analytics summary',
+        status: 'fail',
+        detail: 'Analytics summary is missing memoryProfile.',
+      })
+    }
+
     return createCheck({
       id: 'analytics',
       label: 'Analytics summary',
       status: 'pass',
-      detail:
-        summary.memoryProfile === undefined
-          ? 'Analytics summary loaded without a memory profile.'
-          : 'Analytics summary loaded with a memory profile.',
+      detail: 'Analytics summary loaded with a memory profile.',
     })
   } catch (error) {
     return createFailureCheck('analytics', 'Analytics summary', error)
@@ -151,7 +157,7 @@ async function runGenAiConfigCheck(deps: DevSmokeDeps): Promise<SmokeCheck> {
     return createCheck({
       id: 'genai.config',
       label: 'GenAI config',
-      status: 'pass',
+      status: config.enabled && config.hasSecret ? 'pass' : 'warn',
       detail: config.enabled
         ? `Provider ${config.provider} is configured with model ${config.model}; secret present: ${config.hasSecret ? 'yes' : 'no'}.`
         : `Provider ${config.provider} is not configured; model ${config.model}; secret present: no.`,

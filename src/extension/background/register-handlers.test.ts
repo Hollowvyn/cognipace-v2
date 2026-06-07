@@ -109,6 +109,7 @@ const backgroundMocks = vi.hoisted(() => {
     setAiProviderSecret: vi.fn(),
     clearAiProviderSecret: vi.fn(),
     loadActiveProviderConfig: vi.fn(),
+    generateJson: vi.fn(),
     cycleThemeMode: vi.fn(),
     toggleStudyMode: vi.fn(),
     tabsCreate: vi.fn(),
@@ -191,6 +192,10 @@ vi.mock('@/features/genai/server/genai-settings-service', () => ({
   setAiProviderSecret: backgroundMocks.setAiProviderSecret,
   clearAiProviderSecret: backgroundMocks.clearAiProviderSecret,
   loadActiveProviderConfig: backgroundMocks.loadActiveProviderConfig,
+}))
+
+vi.mock('@/features/genai/server', () => ({
+  generateJson: backgroundMocks.generateJson,
 }))
 
 vi.mock('@/features/backup/server/backup-service', () => ({
@@ -392,6 +397,15 @@ describe('background handler registration', () => {
       gemini: { configured: false, updatedAt: null, fingerprint: null },
     })
     backgroundMocks.loadActiveProviderConfig.mockResolvedValue(null)
+    backgroundMocks.generateJson.mockResolvedValue({
+      status: 'success',
+      data: { ok: true },
+      providerMetadata: {
+        provider: 'openai',
+        model: 'gpt-4.1-mini',
+        durationMs: 25,
+      },
+    })
     backgroundMocks.cycleThemeMode.mockResolvedValue(defaultUserSettings)
     backgroundMocks.toggleStudyMode.mockResolvedValue(defaultUserSettings)
     backgroundMocks.tabsCreate.mockResolvedValue({})
@@ -574,6 +588,49 @@ describe('background handler registration', () => {
     ).toMatchObject({
       status: 'pass',
       detail: 'Would send a 09:00 reminder for 1 due review.',
+    })
+  })
+
+  it('runs live GenAI smoke when requested and redacts provider errors', async () => {
+    backgroundMocks.loadActiveProviderConfig.mockResolvedValue({
+      provider: 'openai',
+      model: 'gpt-4.1-mini',
+      apiKey: 'sk-test-secret',
+    })
+    backgroundMocks.generateJson.mockResolvedValue({
+      status: 'error',
+      code: 'auth',
+      message: 'Provider rejected sk-test-secret.',
+      providerMetadata: {
+        provider: 'openai',
+        model: 'gpt-4.1-mini',
+        durationMs: 31,
+      },
+    })
+
+    const response = await sendRuntimeMessage('devSmoke.run', {
+      surface: 'dashboard',
+      runLiveGenAi: true,
+    })
+    const report = devSmokeReportSchema.parse(response)
+
+    expectRuntimePolicy('devSmoke.run', 'dashboard')
+    expect(backgroundMocks.generateJson).toHaveBeenCalledTimes(1)
+    expect(JSON.stringify(report)).not.toContain('sk-test-secret')
+    expect(
+      report.checks.find((check) => check.id === 'genai.config'),
+    ).toMatchObject({
+      status: 'pass',
+      detail:
+        'Provider openai is configured with model gpt-4.1-mini; secret present: yes.',
+    })
+    expect(
+      report.checks.find((check) => check.id === 'genai.live'),
+    ).toMatchObject({
+      status: 'fail',
+      detail:
+        'Provider openai returned auth: Provider rejected [redacted-secret].',
+      latencyMs: 31,
     })
   })
 
