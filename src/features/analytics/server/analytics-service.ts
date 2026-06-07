@@ -16,6 +16,7 @@ import {
   buildRetentionProxy,
   buildDueForecast,
   buildWeakProblems,
+  buildMemoryProfile,
   buildAnalyticsSummary,
   type AnalyticsSummary,
 } from '../domain/summary'
@@ -52,7 +53,12 @@ export async function getAnalyticsSummary(
         lapseCount: candidate.lapseCount,
         difficulty: candidate.difficulty,
         retrievability: getRetrievability(
-          buildMinimalCard(candidate.stability, candidate.difficulty, candidate.lapseCount, candidate.lastReviewAt),
+          buildMinimalCard(
+            candidate.stability,
+            candidate.difficulty,
+            candidate.lapseCount,
+            candidate.lastReviewAt,
+          ),
           now,
         ),
       },
@@ -63,6 +69,18 @@ export async function getAnalyticsSummary(
   const retention = buildRetentionProxy(recentRatings, now)
   const forecast = buildDueForecast(upcomingCards, now)
   const weakProblems = buildWeakProblems(enrichedCandidates)
+  const memoryProfile = buildMemoryProfile({
+    totalTracked: enrichedCandidates.length,
+    dueToday: forecast[0]?.dueCount ?? 0,
+    overdue: upcomingCards.filter((card) => card.dueAt < now).length,
+    learning: 0,
+    review: enrichedCandidates.length,
+    mastered: 0,
+    suspended: 0,
+    retrievabilities: enrichedCandidates.map(
+      (candidate) => candidate.retrievability,
+    ),
+  })
 
   // Step 5: assemble
   return buildAnalyticsSummary({
@@ -73,6 +91,7 @@ export async function getAnalyticsSummary(
     retention,
     forecast,
     weakProblems,
+    memoryProfile,
   })
 }
 

@@ -9,6 +9,7 @@ export const analyticsQueryKeys = queryKeys.analytics
 export function useAnalyticsSummary() {
   return useQuery({
     queryKey: analyticsQueryKeys.summary(),
-    queryFn: () => sendMessage('analytics.getSummary', {}),
+    queryFn: () =>
+      sendMessage('analytics.getSummary', { surface: 'dashboard' }),
   })
 }

@@ -311,6 +311,17 @@ describe('background handler registration', () => {
         dueCount: index,
       })),
       weakProblems: [],
+      memoryProfile: {
+        totalTracked: 12,
+        dueToday: 4,
+        overdue: 2,
+        learning: 0,
+        review: 12,
+        mastered: 0,
+        suspended: 0,
+        averageRetrievability: 0.8,
+        lowSample: false,
+      },
     })
     backgroundMocks.backupExportFullBackup.mockResolvedValue(validBackup)
     backgroundMocks.backupResetLocalData.mockResolvedValue(null)
@@ -454,12 +465,16 @@ describe('background handler registration', () => {
   })
 
   it('registers analytics summary handling with dashboard policy and response parsing', async () => {
-    const response = await sendRuntimeMessage('analytics.getSummary', {})
+    const response = await sendRuntimeMessage('analytics.getSummary', {
+      surface: 'dashboard',
+      at: '2026-01-15T12:00:00.000Z',
+    })
 
     expectRuntimePolicy('analytics.getSummary', 'dashboard')
     expect(backgroundMocks.getAppDb).toHaveBeenCalledTimes(1)
     expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
       backgroundMocks.db,
+      new Date('2026-01-15T12:00:00.000Z'),
     )
     expect(response).toMatchObject({
       generatedAt: '2026-01-15T12:00:00.000Z',
@@ -468,6 +483,9 @@ describe('background handler registration', () => {
       currentStreak: 2,
       retentionProxyLabel: '75%',
       weakProblems: [],
+      memoryProfile: {
+        averageRetrievability: 0.8,
+      },
     })
   })
 

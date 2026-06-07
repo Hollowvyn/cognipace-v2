@@ -35,6 +35,17 @@ export function createSerializedAnalyticsSummary(
         retrievability: 0.72,
       },
     ],
+    memoryProfile: {
+      totalTracked: 12,
+      dueToday: 4,
+      overdue: 2,
+      learning: 0,
+      review: 12,
+      mastered: 0,
+      suspended: 0,
+      averageRetrievability: 0.8,
+      lowSample: false,
+    },
     ...overrides,
   }
 }

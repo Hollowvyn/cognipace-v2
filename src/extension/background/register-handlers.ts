@@ -847,14 +847,17 @@ export function registerBackgroundHandlers() {
 
     assertCanSenderCallExtensionMethod(
       'analytics.getSummary',
-      'dashboard',
+      request.surface,
       sender,
     )
 
-    void request
-
     return getAppDb().then(async ({ db }) =>
-      analyticsSummarySchema.parse(await getAnalyticsSummary(db)),
+      analyticsSummarySchema.parse(
+        await getAnalyticsSummary(
+          db,
+          request.at ? new Date(request.at) : undefined,
+        ),
+      ),
     )
   })
 
