@@ -63,22 +63,30 @@ Pull request titles should follow:
 <type>(optional-scope): short summary
 ```
 
-Release-relevant types:
+Release-triggering types:
 
 - `feat`: minor version.
 - `fix`: patch version.
-- `perf`: patch version.
-- `docs`: patch version when user-facing, store-facing, or release-facing.
-- `refactor`: patch version only when the change has user-visible behavior or
-  release risk.
+- `deps`: patch version when dependency changes are shipped as release notes.
+- Any allowed type with `!`: major version.
 
-Maintenance types:
+Allowed non-release or maintenance types:
 
 - `chore`
 - `test`
 - `ci`
 - `build`
 - `style`
+- `docs`
+- `perf`
+- `refactor`
+
+Release Please does not generally create a release pull request from `docs`,
+`chore`, `ci`, `build`, or `refactor` commits unless they include a breaking
+change marker. If a documentation, store-listing, refactor, or CI change should
+produce a user-visible patch release, use a release-triggering title such as
+`fix(docs): clarify local-first data handling`, or use the documented
+`Release-As` footer when forcing a specific version.
 
 Breaking changes use `!`:
 
@@ -91,7 +99,7 @@ Examples:
 ```text
 feat(sync): add safe Gist conflict recovery
 fix(overlay): preserve timer state after LeetCode navigation
-docs(store): clarify local-first data handling
+fix(docs): clarify local-first data handling
 ci(release): upload extension zip to GitHub releases
 chore: update dependencies
 ```
