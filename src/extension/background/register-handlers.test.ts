@@ -409,6 +409,13 @@ describe('background handler registration', () => {
     ).toHaveBeenCalledTimes(1)
   })
 
+  it('registers due-notification jobs and fires startup handler on startup', () => {
+    registerBackgroundHandlers()
+
+    expect(backgroundMocks.dueNotification.registerJobs).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.dueNotification.handleStartup).toHaveBeenCalledTimes(1)
+  })
+
   it('registers app-shell payload handling with policy and schema parsing', async () => {
     const popupData = createPopupShellData()
     backgroundMocks.getAppShellData.mockResolvedValue(popupData)
