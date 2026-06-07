@@ -27,6 +27,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Plans
 
+- [`plans/2026-06-07-nonblocking-leetcode-open-sync.md`](./plans/2026-06-07-nonblocking-leetcode-open-sync.md): implementation plan for moving surface-open GitHub Gist checks out of the LeetCode, popup, and dashboard startup request path.
 - [`plans/2026-06-07-closed-issue-rescue-and-smoke-lab.md`](./plans/2026-06-07-closed-issue-rescue-and-smoke-lab.md): implementation plan for the closed-issue rescue and hidden smoke lab work.
 - [`plans/2026-06-07-post-analytics-stabilization.md`](./plans/2026-06-07-post-analytics-stabilization.md): implementation plan for the post-Analytics stabilization pass.
 - [`plans/2026-05-31-github-sync-settings-ux.md`](./plans/2026-05-31-github-sync-settings-ux.md): implementation plan for simplifying GitHub Sync Settings into a connection summary plus connect/manage dialog, with connected versus auto-sync paused semantics.
