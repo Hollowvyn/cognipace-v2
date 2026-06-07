@@ -226,14 +226,12 @@ export async function getRetentionScatterCandidates(
       ),
     )
 
-  return rows
-    .filter((row): row is typeof row & { lastReviewAt: number } => row.lastReviewAt !== null)
-    .map((row) => ({
-      slug: row.slug,
-      title: row.title,
-      stability: row.stability,
-      difficulty: row.difficulty,
-      lapseCount: row.lapseCount,
-      lastReviewAt: new Date(row.lastReviewAt),
-    }))
+  return rows.map((row) => ({
+    slug: row.slug,
+    title: row.title,
+    stability: row.stability,
+    difficulty: row.difficulty,
+    lapseCount: row.lapseCount,
+    lastReviewAt: new Date(row.lastReviewAt as number),
+  }))
 }
