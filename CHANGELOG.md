@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/Hollowvyn/cognipace-v2/compare/v1.0.0...v1.0.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* **sync:** make LeetCode open sync non-blocking ([#63](https://github.com/Hollowvyn/cognipace-v2/issues/63)) ([6650e6b](https://github.com/Hollowvyn/cognipace-v2/commit/6650e6b51c7a75eabb5963d0149e013e6fd00d8d))
+
 ## 1.0.0 (2026-06-07)
 
 
