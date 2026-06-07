@@ -315,16 +315,24 @@ Also required:
 
 Use `docs/testing.md` for exact manual smoke flows.
 
-- Popup changes should smoke the extension popup when feasible.
-- Dashboard changes should smoke the affected route when feasible.
-- Overlay changes should smoke a LeetCode problem page when feasible.
-- Background, sync, GenAI, notification, or runtime changes should include the
-  relevant hidden smoke route or service-worker checks when feasible.
+- Popup changes should report whether the extension popup smoke flow was
+  performed.
+- Dashboard route or dashboard workflow changes should report the affected
+  dashboard smoke flow.
+- Overlay changes should report whether a LeetCode problem page was smoked.
+- Background, sync, GenAI, notification, secret, or runtime changes should
+  report the relevant hidden `/dev/smoke` route, service-worker check, or
+  focused manual flow when feasible.
 - Release, CI, package, or extension build changes should state whether the
   workflow was validated locally, through a dry-run PR, or by static review
   only.
 
-If a smoke flow is relevant but not performed, state the reason.
+If a relevant smoke flow is skipped, name the skipped flow and explain why.
+Acceptable reasons include no browser access in the current environment,
+docs-only change, static-only CI workflow review, missing external credentials
+for an optional live provider, or a pre-existing local build failure that blocks
+loading the extension. Vague claims such as "not tested" or "should work" are
+not sufficient.
 
 ## Commit And PR Rules
 
