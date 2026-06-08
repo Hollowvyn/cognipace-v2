@@ -1,6 +1,6 @@
 ---
 name: cognipace-agent-workflow
-description: Use when doing non-trivial CogniPace work involving product behavior, feature changes, runtime, database, UI surfaces, sync, GenAI, CI, release, governance, PR or issue workflow, validation, or agent process changes.
+description: Use when CogniPace work touches product behavior, architecture/runtime/data/UI/sync/GenAI, CI/release/governance, validation, PR/issue workflow, or local agent skills.
 ---
 
 # CogniPace Agent Workflow
@@ -11,18 +11,14 @@ router and checklist.
 
 ## Start Here
 
-1. Read `docs/agent-governance.md`.
-2. Read the authority docs relevant to the change:
-   - `README.md`
-   - `docs/product.md`
-   - `docs/architecture.md`
-   - `docs/testing.md`
-   - `design.md`
-   - `CONTRIBUTING.md`
-   - `docs/superpowers/README.md` for planning history
-3. Classify the work as design, planning, implementation, review, or a trivial
-   docs fix.
-4. Load only the additional skills that match the affected boundary.
+1. Read the relevant sections of `docs/agent-governance.md`.
+2. Before brainstorming or writing specs/plans, follow the governance
+   branch/worktree guard.
+3. For broad work, read the authority docs listed in governance. For focused
+   work, read only matching authority sections.
+4. Classify the request: audit, design, planning, implementation, review, or
+   trivial docs fix.
+5. Load only skills that match the affected boundary.
 
 ## Hard Gates
 
@@ -41,8 +37,9 @@ router and checklist.
   architecture, governance, CI, release, or workflow work.
 - Use `superpowers:writing-plans` after an approved design when implementation
   needs a phase-sized plan.
-- Use `superpowers:writing-skills` when creating, editing, or verifying a skill.
-  That workflow requires baseline pressure scenarios before drafting skill text.
+- Use `superpowers:writing-skills` when creating, editing, or formally
+  verifying skill behavior. For read-only audits, apply its skill-quality
+  principles without pressure scenarios unless requested.
 - Use `cognipace-bulletproof-react` for ownership, runtime boundaries, React
   architecture, feature placement, import direction, popup responsibilities,
   dashboard responsibilities, or overlay responsibilities.
@@ -54,35 +51,16 @@ router and checklist.
 
 ## Validation Router
 
-Use the validation matrix in `docs/agent-governance.md`. Final handoffs must
-name:
-
-- exact validation commands run
-- exact validation commands skipped
-- why each skipped command was skipped
-- remaining validation risk
-- relevant manual smoke flow status when popup, dashboard, overlay, background,
-  sync, GenAI, release, or extension packaging behavior is touched
+Use `docs/agent-governance.md#validation-selection`. Handoffs for edits must
+list exact commands run, exact commands skipped, skipped-command reasons, and
+remaining validation risk.
 
 ## Handoff Checklist
 
-Agent-authored handoffs and PR summaries must follow
-`.github/PULL_REQUEST_TEMPLATE.md`; bug and task issues must follow
-`.github/ISSUE_TEMPLATE/bug.yml` or `.github/ISSUE_TEMPLATE/task.yml`.
-
-Do not duplicate template text here. Fill the current templates with:
-
-- why the change exists
-- what changed
-- issue link or documented exception
-- validation commands run
-- validation commands skipped and why
-- remaining validation risk
-- risk areas touched
-- release impact
-- rollback or recovery notes when relevant
-- screenshots or recordings for visible UI changes, or why visual proof is not
-  applicable
+Use the current PR and issue templates as source of truth. Do not duplicate
+template text here. For agent-authored changes, fill the template with
+validation, risk, release impact, rollback notes, and visual/manual proof when
+relevant.
 
 ## Common Mistakes
 

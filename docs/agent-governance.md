@@ -46,6 +46,14 @@ For code ownership, runtime, database, routing, popup, dashboard, overlay, sync,
 GenAI, release, CI, governance, or agent-workflow changes, read the directly
 relevant sections before proposing edits.
 
+Before starting `superpowers:brainstorming` for substantial work, run
+`git status --short --branch`. If the work will create specs, plans, commits,
+or implementation changes, fetch first when network is available and work on a
+task branch from the latest `origin/main` when possible. If unrelated
+uncommitted changes are present, do not overwrite, stash, or carry them into the
+task without explicit user approval; ask whether to continue on the dirty
+worktree, branch with the changes, or let the user stash or commit them first.
+
 ### 2. Select Skills
 
 Use explicit skills that match the affected boundary.
