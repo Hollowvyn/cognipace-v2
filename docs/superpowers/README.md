@@ -32,6 +32,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Plans
 
+- [`plans/2026-06-08-github-governance-templates.md`](./plans/2026-06-08-github-governance-templates.md): implementation plan for concise GitHub PR and Bug/Task issue templates, labels, Project auto-add, PR hygiene, stale PR handling, and path-based area labeling.
 - [`plans/2026-06-07-agent-governance-phase-c-validation-smoke.md`](./plans/2026-06-07-agent-governance-phase-c-validation-smoke.md): implementation plan for adding the Phase C validation-selection guide and smoke-reporting clarification to the canonical agent governance doc.
 - [`plans/2026-06-07-cognipace-agent-workflow-skill.md`](./plans/2026-06-07-cognipace-agent-workflow-skill.md): implementation plan for adding the concise CogniPace workflow skill, writing-skills RED/GREEN/REFACTOR checks, and minimal root doc references.
 - [`plans/2026-06-07-nonblocking-leetcode-open-sync.md`](./plans/2026-06-07-nonblocking-leetcode-open-sync.md): implementation plan for moving surface-open GitHub Gist checks out of the LeetCode, popup, and dashboard startup request path.
