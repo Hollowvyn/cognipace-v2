@@ -544,7 +544,7 @@ Done when:
 
 ### Phase F: Drift Audit
 
-Status: missing.
+Status: implemented in `docs/agent-governance.md`.
 
 Goals:
 
