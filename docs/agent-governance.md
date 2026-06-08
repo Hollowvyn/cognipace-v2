@@ -402,3 +402,47 @@ Issue content should satisfy the relevant form and include:
 
 Issues do not approve new product scope. Product behavior still comes from
 explicit human approval and current product docs.
+
+## Drift Audit
+
+Use this checklist to keep agent governance, local skills, GitHub templates, CI,
+and repository settings aligned as CogniPace changes. The first audit should
+happen after the first release cycle using the hardened governance model. After
+that, review this checklist on a recurring release-cycle cadence and whenever
+governance, CI, templates, release behavior, or local agent skills change.
+
+Audit these source-of-truth files and settings:
+
+- `AGENTS.md`
+- `CLAUDE.md`
+- `.agents/skills/cognipace-agent-workflow/SKILL.md`
+- `.agents/skills/cognipace-bulletproof-react/SKILL.md`
+- `.github/PULL_REQUEST_TEMPLATE.md`
+- `.github/ISSUE_TEMPLATE/bug.yml`
+- `.github/ISSUE_TEMPLATE/task.yml`
+- `.github/ISSUE_TEMPLATE/config.yml`
+- `.github/workflows/ci.yml`
+- `.github/workflows/pr-title.yml`
+- `.github/workflows/pr-hygiene.yml`
+- `.github/workflows/labeler.yml`
+- `.github/workflows/stale-prs.yml`
+- `.github/workflows/release-please.yml`
+- `.github/labeler.yml`
+- GitHub branch protection settings for `main`
+
+Confirm:
+
+- Root agent guides still delegate to `docs/agent-governance.md`.
+- Codex and Claude root instructions remain equivalent in requirements.
+- Local skills route agents to this canonical governance doc instead of
+  duplicating changing rules.
+- PR and issue template expectations still match PR hygiene automation.
+- Workflow names and required checks match branch protection.
+- Labeler paths still cover sensitive areas accurately.
+- Release, package, and validation rules still match actual npm scripts and CI.
+- Noisy rules are simplified or removed before new rules are added.
+- New mechanical checks are proposed only after repeated human-review misses.
+
+Branch protection is configured in GitHub, not in repository files. Repository
+docs and workflows should document the expected checks; GitHub settings must
+block failed required checks on `main`.

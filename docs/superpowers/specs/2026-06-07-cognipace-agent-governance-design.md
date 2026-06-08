@@ -429,7 +429,8 @@ Agents should treat docs as the operating contract and CI as the merge gate.
 
 ### Phase A: Agent Authority Docs
 
-Status: missing.
+Status: implemented in `AGENTS.md`, `CLAUDE.md`, and
+`docs/agent-governance.md`.
 
 Goals:
 
@@ -450,7 +451,7 @@ Done when:
 
 ### Phase B: CogniPace Agent Workflow Skill
 
-Status: missing.
+Status: implemented in `.agents/skills/cognipace-agent-workflow/SKILL.md`.
 
 Goals:
 
@@ -475,7 +476,7 @@ Done when:
 
 ### Phase C: Validation And Smoke Documentation
 
-Status: partially complete.
+Status: implemented in `docs/agent-governance.md`.
 
 Goals:
 
@@ -500,7 +501,8 @@ Done when:
 
 ### Phase D: PR And Issue Governance Integration
 
-Status: missing.
+Status: implemented in `.github/PULL_REQUEST_TEMPLATE.md` and
+`.github/ISSUE_TEMPLATE/*`.
 
 Goals:
 
@@ -521,7 +523,9 @@ Done when:
 
 ### Phase E: Mechanical Enforcement
 
-Status: missing.
+Status: implemented for repository-owned checks in `.github/workflows/*` and
+`.github/labeler.yml`; branch protection remains a GitHub settings
+responsibility.
 
 Goals:
 
@@ -544,7 +548,7 @@ Done when:
 
 ### Phase F: Drift Audit
 
-Status: missing.
+Status: implemented in `docs/agent-governance.md`.
 
 Goals:
 
