@@ -81,7 +81,14 @@ jobs:
             failures.push('Testing must mention npm run check.');
           }
 
-          if (/\[[^\]]+\]/.test(testing)) {
+          const testingPromptPlaceholders = [
+            '[reason]',
+            '[unit, runtime/integration, UI/component, or N/A]',
+            '[flow, or N/A]',
+            '[commands/flows skipped and reason, or None]',
+          ];
+
+          if (testingPromptPlaceholders.some((placeholder) => testing.includes(placeholder))) {
             failures.push('Testing must replace template prompt text with validation results or N/A reasons.');
           }
 
