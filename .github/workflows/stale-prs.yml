@@ -1,0 +1,28 @@
+name: Close Stale PRs
+
+on:
+  schedule:
+    - cron: '0 14 * * 3'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    name: Mark and close stale pull requests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run stale policy
+        uses: actions/stale@v10
+        with:
+          days-before-pr-stale: 60
+          days-before-pr-close: 7
+          stale-pr-label: 'status: stale'
+          exempt-pr-labels: 'keep-open'
+          stale-pr-message: 'This pull request has been inactive for 60 days. Add the `keep-open` label or push an update if it should stay open.'
+          close-pr-message: 'Closing this pull request after 67 days of inactivity. Reopen it when the work is ready to continue.'
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
