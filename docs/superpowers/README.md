@@ -12,6 +12,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
+- [`specs/2026-06-08-github-governance-templates-design.md`](./specs/2026-06-08-github-governance-templates-design.md): approved design for reinstating concise GitHub PR and issue templates, direct Story/Bug/Task type labels, Project auto-add expectations, PR hygiene checks, stale PR handling, and workflow hardening before agent-specific enforcement.
 - [`specs/2026-06-07-agent-governance-phase-c-validation-smoke-design.md`](./specs/2026-06-07-agent-governance-phase-c-validation-smoke-design.md): Phase C design for making validation selection and smoke reporting easier to apply from the canonical agent governance doc without duplicating validation authority into root agent guides.
 - [`specs/2026-06-07-cognipace-agent-workflow-skill-design.md`](./specs/2026-06-07-cognipace-agent-workflow-skill-design.md): Phase B design for adding a concise CogniPace workflow skill that routes agents through governance, skill selection, validation, and PR-ready handoffs without duplicating the canonical governance doc.
 - [`specs/2026-06-07-cognipace-agent-governance-design.md`](./specs/2026-06-07-cognipace-agent-governance-design.md): companion design for strict CogniPace AI-agent workflow across Codex, Claude, and future agents, including required skills, validation matrix, PR/issue standards, and enforcement path.
