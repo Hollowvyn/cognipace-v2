@@ -52,8 +52,13 @@ jobs:
             return afterHeading.slice(0, nextHeading).trim();
           }
 
+          function stripHtmlComments(value) {
+            return value.replace(/<!--[\s\S]*?-->/g, '').trim();
+          }
+
           const details = sectionAfter('## Details');
           const issue = sectionAfter('## Issue');
+          const issueWithoutComments = stripHtmlComments(issue);
           const testing = sectionAfter('## Testing');
           const screenshots = sectionAfter('## Screenshots');
 
@@ -64,11 +69,11 @@ jobs:
           const closingKeyword = /\b(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+#\d+|#\d+)/i;
           const noIssue = /\bNo issue\s*-\s*\S.{2,}/i;
 
-          if (!closingKeyword.test(issue) && !noIssue.test(issue)) {
+          if (!closingKeyword.test(issueWithoutComments) && !noIssue.test(issueWithoutComments)) {
             failures.push('Issue must include a closing keyword such as "Closes #123" or "No issue - <reason>".');
           }
 
-          if (/Closes\s*#\s*$/i.test(issue.trim())) {
+          if (/\bCloses\s*#(?:\s|$)/i.test(issueWithoutComments)) {
             failures.push('Issue still contains an empty "Closes #" prompt.');
           }
 
@@ -76,7 +81,7 @@ jobs:
             failures.push('Testing must mention npm run check.');
           }
 
-          if (testing.includes('[reason]') || testing.includes('[flow') || testing.includes('[commands/flows')) {
+          if (/\[[^\]]+\]/.test(testing)) {
             failures.push('Testing must replace template prompt text with validation results or N/A reasons.');
           }
 
