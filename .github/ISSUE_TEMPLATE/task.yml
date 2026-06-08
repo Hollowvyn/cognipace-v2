@@ -1,0 +1,36 @@
+name: Task
+description: Request planned product, engineering, docs, tests, CI, cleanup, or maintenance work.
+title: '[Task]: '
+labels:
+  - 'type: task'
+body:
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What needs doing and why?
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: What outcome or evidence makes this complete?
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Popup
+        - Dashboard
+        - Overlay
+        - Background/runtime
+        - Database
+        - Sync/backup/restore
+        - Settings
+        - Build/test/release
+        - Docs/process
+        - Not sure
