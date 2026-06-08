@@ -1,0 +1,35 @@
+name: Bug
+description: Report broken or incorrect CogniPace behavior.
+title: '[Bug]: '
+labels:
+  - 'type: bug'
+body:
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What happened? Include expected vs actual behavior if useful.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduce
+      description: Steps, screenshot, log, or N/A.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Popup
+        - Dashboard
+        - Overlay
+        - Background/runtime
+        - Sync/backup/restore
+        - Settings
+        - Build/test/release
+        - Docs/process
+        - Not sure

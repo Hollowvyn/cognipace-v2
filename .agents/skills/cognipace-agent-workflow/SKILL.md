@@ -66,7 +66,11 @@ name:
 
 ## Handoff Checklist
 
-Agent-authored handoffs and PR summaries must include:
+Agent-authored handoffs and PR summaries must follow
+`.github/PULL_REQUEST_TEMPLATE.md`; bug and task issues must follow
+`.github/ISSUE_TEMPLATE/bug.yml` or `.github/ISSUE_TEMPLATE/task.yml`.
+
+Do not duplicate template text here. Fill the current templates with:
 
 - why the change exists
 - what changed

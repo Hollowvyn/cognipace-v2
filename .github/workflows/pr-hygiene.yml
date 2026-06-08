@@ -1,0 +1,112 @@
+name: PR Hygiene
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - edited
+      - synchronize
+      - ready_for_review
+
+permissions:
+  pull-requests: read
+
+jobs:
+  validate:
+    name: Validate PR body
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check PR template fields
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+          const body = event.pull_request?.body || '';
+          const failures = [];
+
+          const requiredHeadings = ['## Details', '## Issue', '## Testing', '## Screenshots'];
+
+          for (const heading of requiredHeadings) {
+            if (!body.includes(heading)) {
+              failures.push(`Missing required heading: ${heading}`);
+            }
+          }
+
+          function sectionAfter(heading) {
+            const start = body.indexOf(heading);
+            if (start === -1) {
+              return '';
+            }
+
+            const afterHeading = body.slice(start + heading.length);
+            const nextHeading = afterHeading.search(/\n##\s+/);
+
+            if (nextHeading === -1) {
+              return afterHeading.trim();
+            }
+
+            return afterHeading.slice(0, nextHeading).trim();
+          }
+
+          function stripHtmlComments(value) {
+            return value.replace(/<!--[\s\S]*?-->/g, '').trim();
+          }
+
+          const details = sectionAfter('## Details');
+          const issue = sectionAfter('## Issue');
+          const issueWithoutComments = stripHtmlComments(issue);
+          const testing = sectionAfter('## Testing');
+          const screenshots = sectionAfter('## Screenshots');
+
+          if (!details || details.includes('[What changed')) {
+            failures.push('Details must describe the change and cannot keep template prompt text.');
+          }
+
+          const closingKeyword = /\b(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+#\d+|#\d+)/i;
+          const noIssue = /\bNo issue\s*-\s*\S.{2,}/i;
+
+          if (!closingKeyword.test(issueWithoutComments) && !noIssue.test(issueWithoutComments)) {
+            failures.push('Issue must include a closing keyword such as "Closes #123" or "No issue - <reason>".');
+          }
+
+          if (/\bCloses\s*#(?:\s|$)/i.test(issueWithoutComments)) {
+            failures.push('Issue still contains an empty "Closes #" prompt.');
+          }
+
+          if (!testing.includes('npm run check')) {
+            failures.push('Testing must mention npm run check.');
+          }
+
+          const testingPromptPlaceholders = [
+            '[reason]',
+            '[unit, runtime/integration, UI/component, or N/A]',
+            '[flow, or N/A]',
+            '[commands/flows skipped and reason, or None]',
+          ];
+
+          if (testingPromptPlaceholders.some((placeholder) => testing.includes(placeholder))) {
+            failures.push('Testing must replace template prompt text with validation results or N/A reasons.');
+          }
+
+          if (!/Skipped validation:\s*(None|N\/A|.+)/i.test(testing)) {
+            failures.push('Testing must state skipped validation, even when the answer is None.');
+          }
+
+          if (!screenshots || screenshots.includes('[Required for visible')) {
+            failures.push('Screenshots must include evidence or N/A.');
+          }
+
+          if (failures.length > 0) {
+            console.error('PR hygiene check failed:');
+            for (const failure of failures) {
+              console.error(`- ${failure}`);
+            }
+            process.exit(1);
+          }
+
+          console.log('PR hygiene check passed.');
+          NODE
