@@ -1,4 +1,7 @@
-# CogniPace Ownership Map
+# CogniPace Routing Quick Reference
+
+Use `docs/architecture.md` as the canonical ownership map. This file is a
+compact routing aid, not a complete source of truth.
 
 - Popup, dashboard, overlay, and background are separate runtime surfaces.
 - Popup is the compact review-now and study-next command surface.
@@ -9,6 +12,16 @@
 - `src/app` is composition-only: routes, shells, providers, and surface wiring.
 - `src/features/app-shell` owns surface read models and popup controller/view mapping.
 - `src/features/analytics` owns read-only review-health models.
+- `src/features/assessment` owns assessment domain rules.
+- `src/features/backup` owns backup import/export support; verify current
+  routing in product, architecture, testing docs, and source.
+- `src/features/dev-smoke` owns hidden dashboard-only extension smoke checks.
+- `src/features/genai` owns BYOK GenAI provider contracts, trusted key storage,
+  and provider calls.
+- `src/features/leetcode-capture` owns LeetCode metadata, content, and
+  submission reads through the content-script/background bridge.
+- `src/features/leetcode-review-assistant` exists as assistant UI support;
+  verify current ownership in product, architecture, testing docs, and source.
 - `src/features/overlay-session` owns overlay workflow state, timer, draft fields, and review orchestration.
 - `src/features/practice` owns FSRS-backed review scheduling writes.
 - `src/features/settings` owns persisted preferences, defaults, validation, and settings form behavior.

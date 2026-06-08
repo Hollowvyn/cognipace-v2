@@ -1,4 +1,7 @@
-# CogniPace Boundary Rules
+# CogniPace Boundary Tripwires
+
+Use `src/testing/architecture-boundaries.test.ts` and `eslint.config.js` for
+the exact enforced allowlists. This file is only a quick scan for common risks.
 
 - Shared code must not import `@/app/*`, `@/features/*`, or `@/entrypoints/*`.
 - Feature code must not depend on `@/app/*` or `@/entrypoints/*`.
@@ -6,7 +9,8 @@
 - App and cross-feature imports must use public feature surfaces, not deep private internals.
 - Allowed cross-feature surfaces are root feature barrels or narrow public paths such as `domain/*`, `api/*contracts`, `api/*serializers`, and `server/*service`.
 - Root feature barrels must not re-export `data/*` or `server/*` internals.
-- Review scheduling writes stay behind `features/practice/data/practice-repository.ts`.
+- Review scheduling writes stay behind the repositories allowed by
+  `src/testing/architecture-boundaries.test.ts`.
 - The `apiKey` literal stays isolated to `features/genai`.
 - Approved AI host permissions are exactly:
   - `https://api.openai.com/*`

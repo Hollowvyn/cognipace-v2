@@ -9,8 +9,11 @@ Apply Bulletproof React principles through CogniPace's actual extension
 architecture, not a generic SPA template.
 
 Treat these as primary authority before making structural recommendations:
+- `docs/agent-governance.md` when lifecycle, validation, handoff, or skill
+  routing matters
 - `docs/architecture.md`
 - `docs/product.md` when surface behavior, scope, or read-only ownership matters
+- `design.md` when popup, dashboard, overlay, or visible UI decisions matter
 - `docs/testing.md` when recommending validation scope, smoke checks, or proof
 - `CONTRIBUTING.md`
 - `src/testing/architecture-boundaries.test.ts`
@@ -21,6 +24,13 @@ Core direction:
 
 Upstream Bulletproof React guidance is secondary to repo docs and enforced
 boundaries.
+
+Decision sequence:
+1. Read the relevant authority sections.
+2. Classify the surface, feature, and runtime boundary.
+3. Apply the dependency direction.
+4. Check enforced boundaries.
+5. Route validation through governance and testing docs.
 
 ## Ownership And Boundaries
 
@@ -46,7 +56,9 @@ Load other skills only when the task actually reaches those boundaries:
 ## References
 
 Read these references as needed:
-- `references/cognipace-ownership-map.md`
-- `references/cognipace-boundary-rules.md`
-- `references/bulletproof-react-deltas.md`
-- `references/bulletproof-react-upstream-map.md`
+- `references/cognipace-ownership-map.md` for a routing quick reference
+- `references/cognipace-boundary-rules.md` for common boundary tripwires
+- `references/bulletproof-react-deltas.md` for CogniPace-specific deltas from a
+  generic SPA
+- `references/bulletproof-react-upstream-map.md` only after repo authority docs
+  and tests when generic Bulletproof React framing is useful
