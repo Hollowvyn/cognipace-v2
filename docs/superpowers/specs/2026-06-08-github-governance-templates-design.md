@@ -19,7 +19,7 @@ agent-specific tightening.
 - Add concise PR and issue templates that engineers will actually fill out.
 - Make PRs link to GitHub issues through the PR body, so GitHub Development
   links and auto-close behavior work.
-- Use separate Story, Bug, and Task issue templates with direct type labels.
+- Use separate Bug and Task issue templates with direct type labels.
 - Prefer GitHub Project built-in automation for adding issues and PRs to the
   CogniPace Project.
 - Add GitHub Actions checks for objective PR hygiene, stale PR handling, and
@@ -83,23 +83,8 @@ for choosing validation by risk area.
 
 ## Issue Templates
 
-Create three issue templates. Each template should apply one type label by
+Create two issue templates. Each template should apply one type label by
 default. Keep fields simple.
-
-### Story
-
-Use for user-facing feature or behavior requests.
-
-Default label:
-
-- `type: story`
-
-Fields:
-
-- `Details`: what should change and why.
-- `Done when`: what outcome makes this complete.
-- `Area`: Popup, Dashboard, Overlay, Background/runtime,
-  Sync/backup/restore, Settings, Build/test/release, Docs/process, or Not sure.
 
 ### Bug
 
@@ -119,7 +104,8 @@ Fields:
 
 ### Task
 
-Use for engineering, docs, tests, CI, cleanup, and maintenance work.
+Use for planned product work, feature work, engineering, docs, tests, CI,
+cleanup, and maintenance work.
 
 Default label:
 
@@ -141,11 +127,10 @@ are not reported publicly.
 
 Add the type labels before relying on the issue templates:
 
-| Label         | Purpose                                            | Suggested color   |
-| ------------- | -------------------------------------------------- | ----------------- |
-| `type: story` | User-facing feature or behavior request            | Green or blue     |
-| `type: bug`   | Broken or incorrect behavior                       | Red               |
-| `type: task`  | Engineering, docs, tests, CI, cleanup, maintenance | Purple or neutral |
+| Label        | Purpose                                               | Suggested color   |
+| ------------ | ----------------------------------------------------- | ----------------- |
+| `type: bug`  | Broken or incorrect behavior                          | Red               |
+| `type: task` | Planned product, engineering, docs, tests, or CI work | Purple or neutral |
 
 Area labels can be added by a later labeler workflow. Type labels should come
 directly from the issue templates, so issues are categorized immediately.
@@ -176,7 +161,7 @@ an explicit project write token.
 ### Add Now
 
 - `.github/PULL_REQUEST_TEMPLATE.md` using the concise template above.
-- `.github/ISSUE_TEMPLATE/story.yml`, `bug.yml`, `task.yml`, and `config.yml`.
+- `.github/ISSUE_TEMPLATE/bug.yml`, `task.yml`, and `config.yml`.
 - `.github/workflows/pr-hygiene.yml` as a blocking PR body check.
   - Require `Details`, `Issue`, `Testing`, and `Screenshots` headings.
   - Require either a closing keyword reference or `No issue - <reason>`.
@@ -221,7 +206,7 @@ governance validation matrix:
 - CogniPace has a concise PR template with Details, Issue, Testing, and
   Screenshots sections.
 - PR bodies link issues through closing keywords or document a no-issue reason.
-- Story, Bug, and Task issue templates exist and apply `type:*` labels directly.
+- Bug and Task issue templates exist and apply `type:*` labels directly.
 - Blank issues are disabled and a private security contact is present.
 - New issues and PRs are added to the CogniPace Project through built-in Project
   automation or a documented fallback plan.
