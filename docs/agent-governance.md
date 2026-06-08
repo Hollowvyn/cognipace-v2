@@ -147,7 +147,17 @@ These phrases are not sufficient on their own:
 
 ### 7. Handoff With PR-Ready Context
 
-Handoffs and agent-authored PR summaries must include:
+Handoffs and agent-authored PR descriptions must use the current repository
+template as the source of truth:
+
+- `.github/PULL_REQUEST_TEMPLATE.md` owns the required PR body sections and
+  prompt wording.
+- `.github/ISSUE_TEMPLATE/bug.yml`, `.github/ISSUE_TEMPLATE/task.yml`, and
+  `.github/ISSUE_TEMPLATE/config.yml` own issue intake fields and issue type
+  labels.
+
+Do not duplicate those templates into agent instructions. Fill the current
+template sections with PR-ready context, including:
 
 - why the change exists
 - what changed
@@ -374,7 +384,13 @@ Allowed maintenance types:
 
 Create or propose issues only when the request needs tracked work.
 
-Issue content should include:
+Use the current issue forms as the source of truth:
+
+- `.github/ISSUE_TEMPLATE/bug.yml` for broken or incorrect behavior.
+- `.github/ISSUE_TEMPLATE/task.yml` for planned product, engineering, docs,
+  tests, CI, cleanup, or maintenance work.
+
+Issue content should satisfy the relevant form and include:
 
 - problem or request
 - why it matters
