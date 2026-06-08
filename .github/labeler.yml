@@ -1,0 +1,72 @@
+'area: github':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**/*'
+
+'area: docs':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - 'docs/**/*'
+          - 'design.md'
+          - 'AGENTS.md'
+          - 'CLAUDE.md'
+
+'area: popup':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/entrypoints/popup/**/*'
+          - 'src/app/popup/**/*'
+          - 'src/features/app-shell/**/*'
+
+'area: dashboard':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/entrypoints/dashboard/**/*'
+          - 'src/app/dashboard/**/*'
+
+'area: overlay':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/entrypoints/leetcode.content.tsx'
+          - 'src/app/overlay/**/*'
+          - 'src/features/overlay-session/**/*'
+          - 'src/features/leetcode-capture/**/*'
+
+'area: runtime':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/entrypoints/background.ts'
+          - 'src/extension/**/*'
+
+'area: database':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'drizzle.config.ts'
+          - 'src/platform/db/**/*'
+          - 'src/features/*/data/**/*'
+
+'area: sync':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/features/sync/**/*'
+          - 'src/features/settings/**/*backup*'
+          - 'src/lib/github/**/*'
+          - 'src/platform/secrets/**/*'
+
+'area: tests':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/**/*.test.ts'
+          - 'src/**/*.test.tsx'
+          - 'src/testing/**/*'
+
+'area: release':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/workflows/release-please.yml'
+          - 'release-please-config.json'
+          - '.release-please-manifest.json'
+          - 'package.json'
+          - 'package-lock.json'
+          - 'wxt.config.ts'
