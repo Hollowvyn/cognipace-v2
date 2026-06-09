@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 import type { LeetCodeSubmissionResult } from '@/lib/leetcode'
 
 import type { OverlayReviewStatus, OverlaySubmittedSession } from '../domain'
+import { createSubmissionResultKey } from './submission-result-key'
 
 type UseLeetCodeSubmissionAutomationOptions = {
   activeProblemSlug: string | null
@@ -117,29 +118,4 @@ export function useLeetCodeSubmissionAutomation({
 
 function isReviewMutating(reviewStatus: OverlayReviewStatus) {
   return reviewStatus === 'saving' || reviewStatus === 'updating'
-}
-
-function createSubmissionResultKey(result: LeetCodeSubmissionResult) {
-  return [
-    result.location.slug,
-    result.source,
-    result.submissionId,
-    result.status,
-    result.statusText,
-    result.runtime,
-    result.memory,
-    result.passedTestCount,
-    result.totalTestCount,
-    result.failingTestcase,
-    result.errorMessage,
-    result.compileError,
-    result.runtimeError,
-    result.lastTestcase,
-    result.codeOutput,
-    result.expectedOutput,
-    result.stdOutput,
-    result.resultCodeSnapshot.language,
-    result.resultCodeSnapshot.source,
-    result.resultCodeSnapshot.code,
-  ].join('|')
 }
