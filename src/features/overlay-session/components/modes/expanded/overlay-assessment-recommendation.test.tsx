@@ -135,4 +135,21 @@ describe('OverlayAssessmentRecommendation', () => {
       screen.getByText(/Solved within target time using a hash-map\./),
     ).toBeInTheDocument()
   })
+
+  it('hides Use recommendation while a mutation is in flight', () => {
+    renderRecommendation({
+      state: {
+        status: 'ready',
+        fingerprint: 'fp-1',
+        recommendation: makeRecommendation({ recommendedRating: 'hard' }),
+        providerMetadata: makeProviderMetadata(),
+      },
+      selectedRating: 'good',
+      isMutating: true,
+    })
+
+    expect(
+      screen.queryByRole('button', { name: 'Use recommendation' }),
+    ).not.toBeInTheDocument()
+  })
 })
