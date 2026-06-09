@@ -152,4 +152,36 @@ describe('OverlayAssessmentRecommendation', () => {
       screen.queryByRole('button', { name: 'Use recommendation' }),
     ).not.toBeInTheDocument()
   })
+
+  it('expands and collapses the details disclosure', async () => {
+    const user = userEvent.setup()
+    renderRecommendation({
+      state: {
+        status: 'ready',
+        fingerprint: 'fp-1',
+        recommendation: makeRecommendation({
+          evidence: ['Status: accepted', 'Elapsed 600s vs 2100s target'],
+          improvementPoints: ['Consider edge case for empty array.'],
+        }),
+        providerMetadata: makeProviderMetadata(),
+      },
+    })
+
+    const toggle = screen.getByRole('button', { name: /Show details/i })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Elapsed 600s vs 2100s target')).toBeNull()
+
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(
+      screen.getByText('Elapsed 600s vs 2100s target'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Consider edge case for empty array.'),
+    ).toBeInTheDocument()
+
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Elapsed 600s vs 2100s target')).toBeNull()
+  })
 })

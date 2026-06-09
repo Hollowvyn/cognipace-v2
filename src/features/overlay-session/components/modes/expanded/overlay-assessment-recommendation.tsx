@@ -1,4 +1,6 @@
-import { useId, type CSSProperties } from 'react'
+import { useId, useState, type CSSProperties } from 'react'
+
+import { ChevronDown } from 'lucide-react'
 
 import { cn } from '@/utils/cn'
 import type { ReviewRating } from '@/lib/fsrs'
@@ -59,6 +61,9 @@ export function OverlayAssessmentRecommendation({
   onUseRecommendation,
 }: OverlayAssessmentRecommendationProps) {
   const headingId = `${LABEL_ID_PREFIX}-${useId()}`
+  const detailsId = `${LABEL_ID_PREFIX}-details-${useId()}`
+
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
   if (state.status === 'idle') {
     return null
@@ -146,8 +151,90 @@ export function OverlayAssessmentRecommendation({
           >
             {state.recommendation.primaryReason}
           </p>
+          <div className="mt-1 flex justify-end">
+            <button
+              aria-controls={detailsId}
+              aria-expanded={isDetailsOpen}
+              className={cn(
+                'inline-flex items-center gap-1 rounded text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground',
+                'hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              )}
+              onClick={() => setIsDetailsOpen((open) => !open)}
+              type="button"
+            >
+              {isDetailsOpen ? 'Hide details' : 'Show details'}
+              <ChevronDown
+                aria-hidden="true"
+                className={cn(
+                  'h-3 w-3 transition-transform',
+                  isDetailsOpen ? 'rotate-180' : '',
+                )}
+              />
+            </button>
+          </div>
+          {isDetailsOpen ? (
+            <div className="mt-2 grid gap-3 text-[0.78rem] leading-snug" id={detailsId}>
+              {state.recommendation.evidence.length > 0 ? (
+                <DetailList
+                  heading="Evidence"
+                  items={state.recommendation.evidence}
+                />
+              ) : null}
+              {state.recommendation.complexity ? (
+                <div>
+                  <DetailHeading>Complexity</DetailHeading>
+                  <p className="text-foreground">
+                    {state.recommendation.complexity.time} ·{' '}
+                    {state.recommendation.complexity.space} ·{' '}
+                    {CONFIDENCE_LABEL[state.recommendation.complexity.confidence]} confidence
+                  </p>
+                </div>
+              ) : null}
+              {state.recommendation.improvementPoints.length > 0 ? (
+                <DetailList
+                  heading="Improvement points"
+                  items={state.recommendation.improvementPoints}
+                />
+              ) : null}
+              {state.recommendation.edgeCaseNotes.length > 0 ? (
+                <DetailList
+                  heading="Edge case notes"
+                  items={state.recommendation.edgeCaseNotes}
+                />
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>
+  )
+}
+
+function DetailHeading({ children }: { children: string }) {
+  return (
+    <div className="mb-1 font-mono text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+      {children}
+    </div>
+  )
+}
+
+function DetailList({
+  heading,
+  items,
+}: {
+  heading: string
+  items: readonly string[]
+}) {
+  return (
+    <div>
+      <DetailHeading>{heading}</DetailHeading>
+      <ul className="grid gap-1 text-foreground">
+        {items.map((item, index) => (
+          <li className="list-inside list-disc" key={index}>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
