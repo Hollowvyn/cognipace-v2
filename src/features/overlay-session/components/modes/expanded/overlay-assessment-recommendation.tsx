@@ -3,6 +3,7 @@ import { useId, type CSSProperties } from 'react'
 import { cn } from '@/utils/cn'
 import type { ReviewRating } from '@/lib/fsrs'
 import { Badge } from '@/components/ui/badge'
+import type { Tone } from '@/components/ui/types'
 import type { AssessmentRecommendationConfidence } from '@/features/leetcode-review-assistant'
 
 import type { AssessmentRecommendationState } from '../../..'
@@ -24,6 +25,13 @@ const RATING_LABEL_BY_RATING: Record<ReviewRating, string> = {
   easy: 'Easy',
 }
 
+const RATING_TONE_BY_RATING: Record<ReviewRating, Tone> = {
+  again: 'review-again',
+  hard: 'review-hard',
+  good: 'review-good',
+  easy: 'review-easy',
+}
+
 const CONFIDENCE_LABEL: Record<AssessmentRecommendationConfidence, string> = {
   high: 'High',
   medium: 'Medium',
@@ -38,6 +46,7 @@ const CONFIDENCE_DOT_CLASS: Record<AssessmentRecommendationConfidence, string> =
 
 function ratingAccentStyle(rating: ReviewRating): CSSProperties {
   return {
+    '--overlay-rating-bg': `var(--cp-tone-review-${rating}-bg)`,
     '--overlay-rating-fg': `var(--cp-tone-review-${rating}-fg)`,
   } as CSSProperties
 }
@@ -87,7 +96,7 @@ export function OverlayAssessmentRecommendation({
       {state.status === 'ready' ? (
         <div className="grid gap-2">
           <div className="flex items-center justify-between gap-2">
-            <Badge tone={`review-${state.recommendation.recommendedRating}`}>
+            <Badge tone={RATING_TONE_BY_RATING[state.recommendation.recommendedRating]}>
               {RATING_LABEL_BY_RATING[state.recommendation.recommendedRating]}
             </Badge>
             <span className="inline-flex items-center gap-1.5 font-mono text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
