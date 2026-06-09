@@ -105,6 +105,38 @@ describe('ExpandedOverlay', () => {
     expect(screen.getByLabelText('Notes')).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Update' })).toBeDisabled()
   })
+
+  it('renders the AI recommendation section when state is non-idle', () => {
+    renderExpanded({
+      view: {
+        aiRecommendation: {
+          status: 'ready',
+          fingerprint: 'fp-smoke',
+          recommendation: {
+            recommendedRating: 'good',
+            confidence: 'medium',
+            summary: 'Solved cleanly.',
+            primaryReason: 'Solved cleanly.',
+            evidence: [],
+            complexity: { time: 'O(n)', space: 'O(n)', confidence: 'medium' },
+            improvementPoints: [],
+            edgeCaseNotes: [],
+            shouldUpdateRating: false,
+            promptVersion: 'leetcode-assessment-v1',
+          },
+          providerMetadata: {
+            provider: 'openai',
+            model: 'gpt-test',
+            durationMs: 100,
+          },
+        },
+      },
+    })
+
+    expect(
+      screen.getByRole('region', { name: 'AI recommendation' }),
+    ).toBeInTheDocument()
+  })
 })
 
 function renderExpanded(overrides?: Parameters<typeof createProps>[0]) {
