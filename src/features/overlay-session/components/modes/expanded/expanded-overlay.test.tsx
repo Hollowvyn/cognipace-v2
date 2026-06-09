@@ -134,6 +134,7 @@ function createProps(
     },
     themeMode: 'system',
     view: {
+      aiRecommendation: { status: 'idle' },
       context: createOverlayContext(),
       draft: {
         clearField: vi.fn(),

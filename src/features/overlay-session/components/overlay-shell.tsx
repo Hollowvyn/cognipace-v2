@@ -9,6 +9,7 @@ type OverlayShellProps = LeetCodeOverlaySession
 
 export function OverlayShell({
   actions,
+  aiRecommendation,
   context,
   draft,
   feedback,
@@ -47,6 +48,7 @@ export function OverlayShell({
           onUpdate: () => void actions.updateReview(),
         }}
         view={{
+          aiRecommendation,
           context,
           draft,
           elapsedSeconds: timer.elapsedSeconds,

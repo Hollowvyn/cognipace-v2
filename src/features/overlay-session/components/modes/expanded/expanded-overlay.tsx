@@ -6,6 +6,8 @@ import type { OverlayAppShellData } from '@/features/app-shell'
 import type { ThemeMode } from '@/features/settings'
 import type { ReviewRating } from '@/lib/fsrs'
 
+import type { AssessmentRecommendationState } from '../../..'
+
 import type { OverlayDraftField } from '../../../domain'
 import {
   hasSubmittedSessionChanges,
@@ -13,6 +15,7 @@ import {
 } from '../../../domain'
 import type { OverlayTimerStatus } from '../../../hooks/use-overlay-timer'
 import { OverlayActions } from './overlay-actions'
+import { OverlayAssessmentRecommendation } from './overlay-assessment-recommendation'
 import { OverlayAssessmentRail } from './overlay-assessment-rail'
 import {
   OverlayContextStrip,
@@ -24,6 +27,7 @@ import { OverlayNextCard } from './overlay-next-card'
 import { OverlayTimerCard } from './overlay-timer-card'
 
 type ExpandedOverlayViewModel = {
+  aiRecommendation: AssessmentRecommendationState
   context: OverlayAppShellData['overlay'] | null
   draft: {
     clearField: (field: OverlayDraftField) => void
@@ -66,6 +70,7 @@ export function ExpandedOverlay({
   view,
 }: ExpandedOverlayProps) {
   const {
+    aiRecommendation,
     context,
     draft,
     elapsedSeconds,
@@ -143,6 +148,14 @@ export function ExpandedOverlay({
               lockReason={overlay.ratingLockReason}
               onSelectRating={onSelectRating}
               selectedRating={overlay.selectedRating}
+            />
+
+            <OverlayAssessmentRecommendation
+              isMutating={isMutating}
+              isRatingLocked={Boolean(overlay.ratingLockReason)}
+              onUseRecommendation={onSelectRating}
+              selectedRating={overlay.selectedRating}
+              state={aiRecommendation}
             />
 
             {showUntimedWarning ? (
