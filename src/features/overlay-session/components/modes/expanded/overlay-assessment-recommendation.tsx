@@ -172,36 +172,44 @@ export function OverlayAssessmentRecommendation({
               />
             </button>
           </div>
-          {isDetailsOpen ? (
-            <div className="mt-2 grid gap-3 text-[0.78rem] leading-snug" id={detailsId}>
-              {state.recommendation.evidence.length > 0 ? (
-                <DetailList
-                  heading="Evidence"
-                  items={state.recommendation.evidence}
-                />
-              ) : null}
-              <div>
-                <DetailHeading>Complexity</DetailHeading>
-                <p className="text-foreground">
-                  {state.recommendation.complexity.time} ·{' '}
-                  {state.recommendation.complexity.space} ·{' '}
-                  {CONFIDENCE_LABEL[state.recommendation.complexity.confidence]} confidence
-                </p>
-              </div>
-              {state.recommendation.improvementPoints.length > 0 ? (
-                <DetailList
-                  heading="Improvement points"
-                  items={state.recommendation.improvementPoints}
-                />
-              ) : null}
-              {state.recommendation.edgeCaseNotes.length > 0 ? (
-                <DetailList
-                  heading="Edge case notes"
-                  items={state.recommendation.edgeCaseNotes}
-                />
-              ) : null}
-            </div>
-          ) : null}
+          <div
+            className={cn(
+              'mt-2 grid gap-3 text-[0.78rem] leading-snug',
+              isDetailsOpen ? '' : 'hidden',
+            )}
+            id={detailsId}
+          >
+            {isDetailsOpen ? (
+              <>
+                {state.recommendation.evidence.length > 0 ? (
+                  <DetailList
+                    heading="Evidence"
+                    items={state.recommendation.evidence}
+                  />
+                ) : null}
+                <div>
+                  <DetailHeading>Complexity</DetailHeading>
+                  <p className="text-foreground">
+                    {state.recommendation.complexity.time} ·{' '}
+                    {state.recommendation.complexity.space} ·{' '}
+                    {CONFIDENCE_LABEL[state.recommendation.complexity.confidence]} confidence
+                  </p>
+                </div>
+                {state.recommendation.improvementPoints.length > 0 ? (
+                  <DetailList
+                    heading="Improvement points"
+                    items={state.recommendation.improvementPoints}
+                  />
+                ) : null}
+                {state.recommendation.edgeCaseNotes.length > 0 ? (
+                  <DetailList
+                    heading="Edge case notes"
+                    items={state.recommendation.edgeCaseNotes}
+                  />
+                ) : null}
+              </>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
