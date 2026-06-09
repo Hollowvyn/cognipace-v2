@@ -13,6 +13,7 @@ export {
   type OverlayFeedback,
   type OverlayNextStepState,
   type OverlayReviewStatus,
+  type OverlaySessionAction,
   type OverlaySessionState,
   type OverlaySubmittedSession,
 } from './overlay-session-state'

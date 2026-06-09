@@ -121,6 +121,7 @@ function createSession(
       status: 'idle',
       targetSeconds: 20 * 60,
     },
+    aiRecommendation: { status: 'idle' },
     ...overrides,
   }
 }

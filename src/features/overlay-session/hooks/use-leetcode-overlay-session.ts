@@ -14,6 +14,10 @@ import {
   type OverlaySessionState,
 } from '../domain'
 import {
+  useLeetCodeAssessmentRecommendation,
+  type AssessmentRecommendationState,
+} from './use-leetcode-assessment-recommendation'
+import {
   useLeetCodePageSync,
   type LeetCodeOverlayContext,
   type OverlaySyncStatus,
@@ -44,6 +48,7 @@ export type LeetCodeOverlaySession = {
     status: OverlayTimerStatus
   }
   actions: OverlayReviewActions
+  aiRecommendation: AssessmentRecommendationState
 }
 
 export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
@@ -122,6 +127,12 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
     onProblemContextRefreshed: handleProblemContextRefreshed,
     onProblemLoaded: handleProblemLoaded,
   })
+
+  const recommendationResetRef = useRef<() => void>(() => undefined)
+  const handleRestart = useCallback(() => {
+    recommendationResetRef.current()
+  }, [])
+
   const actions = useOverlayReviewActions({
     contextRef: pageSync.latestContextRef,
     dispatch,
@@ -129,6 +140,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
     refreshContext: pageSync.refreshContext,
     syncTokenRef: pageSync.syncTokenRef,
     timer,
+    onRestart: handleRestart,
   })
 
   useLeetCodeSubmissionAutomation({
@@ -145,6 +157,26 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
   const targetSeconds = getTargetSeconds(pageSync.context)
   const elapsedSeconds = timer.elapsedSeconds
 
+  const recommendation = useLeetCodeAssessmentRecommendation({
+    activeProblemSlug: overlay.activeProblemSlug,
+    metadata: pageSync.metadata,
+    submissionResult: pageSync.submission.result,
+    submittedSession: overlay.submittedSession,
+    overlayState: overlay,
+    context: pageSync.context,
+    timing: {
+      elapsedSeconds,
+      targetSeconds,
+      timerUsed: timer.status !== 'idle',
+    },
+    aiEnabled: pageSync.context?.aiAssessmentAvailable ?? false,
+    dispatch,
+  })
+
+  useEffect(() => {
+    recommendationResetRef.current = recommendation.reset
+  }, [recommendation.reset])
+
   return {
     location: pageSync.location,
     metadata: pageSync.metadata,
@@ -160,6 +192,7 @@ export function useLeetCodeOverlaySession(): LeetCodeOverlaySession {
       status: timer.status,
     },
     actions,
+    aiRecommendation: recommendation.state,
   }
 }
 

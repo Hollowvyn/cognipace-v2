@@ -47,6 +47,7 @@ type UseOverlayReviewActionsOptions = {
   ) => Promise<LeetCodeOverlayContext | null>
   syncTokenRef: LatestRef<number>
   timer: OverlayTimerController
+  onRestart?: () => void
 }
 
 export type OverlayReviewActions = {
@@ -76,6 +77,7 @@ export function useOverlayReviewActions({
   refreshContext,
   syncTokenRef,
   timer,
+  onRestart,
 }: UseOverlayReviewActionsOptions): OverlayReviewActions {
   async function refreshNextStep(problemSlug: string, saveToken: number) {
     dispatch({ type: 'next-step-loading' })
@@ -445,6 +447,7 @@ export function useOverlayReviewActions({
       draft: nextDraft,
       selectedRating,
     })
+    onRestart?.()
   }
 
   function selectRating(rating: ReviewRating) {
