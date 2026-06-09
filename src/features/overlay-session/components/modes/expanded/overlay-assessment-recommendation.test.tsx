@@ -3,9 +3,6 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { AssessmentRecommendation } from '@/features/leetcode-review-assistant'
 import type { GenAiProviderMetadata } from '@/features/genai'
-import type { ReviewRating } from '@/lib/fsrs'
-
-import type { AssessmentRecommendationState } from '../../..'
 
 import { OverlayAssessmentRecommendation } from './overlay-assessment-recommendation'
 
