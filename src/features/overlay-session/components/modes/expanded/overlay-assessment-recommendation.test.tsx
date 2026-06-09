@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { AssessmentRecommendation } from '@/features/leetcode-review-assistant'
@@ -52,5 +52,13 @@ describe('OverlayAssessmentRecommendation', () => {
   it('renders nothing when status is idle', () => {
     const { container } = renderRecommendation()
     expect(container.firstChild).toBeNull()
+  })
+
+  it('renders a busy labeled region in the pending state', () => {
+    renderRecommendation({ state: { status: 'pending', fingerprint: 'fp-1' } })
+
+    const region = screen.getByRole('region', { name: 'AI recommendation' })
+    expect(region).toHaveAttribute('aria-busy', 'true')
+    expect(region).toHaveAttribute('aria-live', 'polite')
   })
 })
