@@ -53,6 +53,10 @@ function ratingAccentStyle(rating: ReviewRating): CSSProperties {
 
 export function OverlayAssessmentRecommendation({
   state,
+  selectedRating,
+  isRatingLocked,
+  isMutating,
+  onUseRecommendation,
 }: OverlayAssessmentRecommendationProps) {
   const headingId = `${LABEL_ID_PREFIX}-${useId()}`
 
@@ -61,6 +65,12 @@ export function OverlayAssessmentRecommendation({
   }
 
   const isPending = state.status === 'pending'
+  const isReady = state.status === 'ready'
+  const showUseButton =
+    isReady &&
+    !isRatingLocked &&
+    !isMutating &&
+    state.recommendation.recommendedRating !== selectedRating
 
   return (
     <section
@@ -96,9 +106,26 @@ export function OverlayAssessmentRecommendation({
       {state.status === 'ready' ? (
         <div className="grid gap-2">
           <div className="flex items-center justify-between gap-2">
-            <Badge tone={RATING_TONE_BY_RATING[state.recommendation.recommendedRating]}>
-              {RATING_LABEL_BY_RATING[state.recommendation.recommendedRating]}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge tone={RATING_TONE_BY_RATING[state.recommendation.recommendedRating]}>
+                {RATING_LABEL_BY_RATING[state.recommendation.recommendedRating]}
+              </Badge>
+              {showUseButton ? (
+                <button
+                  className={cn(
+                    'rounded-md border border-primary px-2 py-1 text-[0.72rem] font-semibold text-primary',
+                    'transition-colors hover:bg-primary/10',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  )}
+                  onClick={() =>
+                    onUseRecommendation(state.recommendation.recommendedRating)
+                  }
+                  type="button"
+                >
+                  Use recommendation
+                </button>
+              ) : null}
+            </div>
             <span className="inline-flex items-center gap-1.5 font-mono text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               <span
                 aria-hidden="true"

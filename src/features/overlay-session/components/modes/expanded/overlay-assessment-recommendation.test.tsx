@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { AssessmentRecommendation } from '@/features/leetcode-review-assistant'
@@ -77,6 +78,61 @@ describe('OverlayAssessmentRecommendation', () => {
     expect(screen.getByText(/Medium/)).toBeInTheDocument()
     expect(
       screen.getByText('Solved within target time using a hash-map.'),
+    ).toBeInTheDocument()
+  })
+
+  it('shows Use recommendation when the AI rating differs from the selected rating', async () => {
+    const onUseRecommendation = vi.fn()
+    renderRecommendation({
+      state: {
+        status: 'ready',
+        fingerprint: 'fp-1',
+        recommendation: makeRecommendation({ recommendedRating: 'hard' }),
+        providerMetadata: makeProviderMetadata(),
+      },
+      selectedRating: 'good',
+      onUseRecommendation,
+    })
+
+    const button = screen.getByRole('button', { name: 'Use recommendation' })
+    await userEvent.click(button)
+
+    expect(onUseRecommendation).toHaveBeenCalledWith('hard')
+  })
+
+  it('hides Use recommendation when the AI rating equals the selected rating', () => {
+    renderRecommendation({
+      state: {
+        status: 'ready',
+        fingerprint: 'fp-1',
+        recommendation: makeRecommendation({ recommendedRating: 'hard' }),
+        providerMetadata: makeProviderMetadata(),
+      },
+      selectedRating: 'hard',
+    })
+
+    expect(
+      screen.queryByRole('button', { name: 'Use recommendation' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('hides Use recommendation when the rating is locked', () => {
+    renderRecommendation({
+      state: {
+        status: 'ready',
+        fingerprint: 'fp-1',
+        recommendation: makeRecommendation({ recommendedRating: 'good' }),
+        providerMetadata: makeProviderMetadata(),
+      },
+      selectedRating: 'again',
+      isRatingLocked: true,
+    })
+
+    expect(
+      screen.queryByRole('button', { name: 'Use recommendation' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText(/Solved within target time using a hash-map\./),
     ).toBeInTheDocument()
   })
 })
