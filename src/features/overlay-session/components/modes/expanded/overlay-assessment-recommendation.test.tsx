@@ -61,4 +61,25 @@ describe('OverlayAssessmentRecommendation', () => {
     expect(region).toHaveAttribute('aria-busy', 'true')
     expect(region).toHaveAttribute('aria-live', 'polite')
   })
+
+  it('renders rating, confidence, and primary reason in the ready state', () => {
+    renderRecommendation({
+      state: {
+        status: 'ready',
+        fingerprint: 'fp-1',
+        recommendation: makeRecommendation({
+          recommendedRating: 'hard',
+          confidence: 'medium',
+          primaryReason: 'Solved within target time using a hash-map.',
+        }),
+        providerMetadata: makeProviderMetadata(),
+      },
+    })
+
+    expect(screen.getByText('Hard')).toBeInTheDocument()
+    expect(screen.getByText(/Medium/)).toBeInTheDocument()
+    expect(
+      screen.getByText('Solved within target time using a hash-map.'),
+    ).toBeInTheDocument()
+  })
 })
