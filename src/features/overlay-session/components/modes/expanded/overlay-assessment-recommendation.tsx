@@ -180,16 +180,14 @@ export function OverlayAssessmentRecommendation({
                   items={state.recommendation.evidence}
                 />
               ) : null}
-              {state.recommendation.complexity ? (
-                <div>
-                  <DetailHeading>Complexity</DetailHeading>
-                  <p className="text-foreground">
-                    {state.recommendation.complexity.time} ·{' '}
-                    {state.recommendation.complexity.space} ·{' '}
-                    {CONFIDENCE_LABEL[state.recommendation.complexity.confidence]} confidence
-                  </p>
-                </div>
-              ) : null}
+              <div>
+                <DetailHeading>Complexity</DetailHeading>
+                <p className="text-foreground">
+                  {state.recommendation.complexity.time} ·{' '}
+                  {state.recommendation.complexity.space} ·{' '}
+                  {CONFIDENCE_LABEL[state.recommendation.complexity.confidence]} confidence
+                </p>
+              </div>
               {state.recommendation.improvementPoints.length > 0 ? (
                 <DetailList
                   heading="Improvement points"
