@@ -153,6 +153,39 @@ describe('OverlayAssessmentRecommendation', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('renders an error message in the error state without a commit button', () => {
+    renderRecommendation({
+      state: {
+        status: 'error',
+        fingerprint: 'fp-1',
+        code: 'rate-limit',
+        message: 'AI is rate-limited.',
+      },
+    })
+
+    expect(screen.getByText('AI is rate-limited.')).toBeInTheDocument()
+    expect(screen.getByText(/Error/i)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Use recommendation' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('renders the unavailable message without a commit button', () => {
+    renderRecommendation({
+      state: {
+        status: 'unavailable',
+        fingerprint: 'fp-1',
+        message: 'AI is not configured.',
+      },
+    })
+
+    expect(screen.getByText('AI is not configured.')).toBeInTheDocument()
+    expect(screen.getByText(/Unavailable/i)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Use recommendation' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('expands and collapses the details disclosure', async () => {
     const user = userEvent.setup()
     renderRecommendation({

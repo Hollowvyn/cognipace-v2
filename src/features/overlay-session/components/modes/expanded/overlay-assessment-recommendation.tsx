@@ -204,6 +204,35 @@ export function OverlayAssessmentRecommendation({
           ) : null}
         </div>
       ) : null}
+
+      {state.status === 'unavailable' || state.status === 'error' ? (
+        <div className="grid gap-1">
+          <div className="flex justify-end">
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 font-mono text-[0.7rem] font-semibold uppercase tracking-[0.12em]',
+                state.status === 'error'
+                  ? 'text-[color:var(--cp-tone-danger-fg)]'
+                  : 'text-muted-foreground',
+              )}
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'inline-block h-1.5 w-1.5 rounded-full',
+                  state.status === 'error'
+                    ? 'bg-[color:var(--cp-tone-danger-fg)]'
+                    : 'bg-muted-foreground',
+                )}
+              />
+              {state.status === 'error' ? 'Error' : 'Unavailable'}
+            </span>
+          </div>
+          <p className="text-[0.78rem] leading-snug text-muted-foreground">
+            {state.message}
+          </p>
+        </div>
+      ) : null}
     </section>
   )
 }
