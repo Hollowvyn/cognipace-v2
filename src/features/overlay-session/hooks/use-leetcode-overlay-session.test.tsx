@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { sendMessage } from '@/extension/messaging'
 import type { OverlayAppShellData } from '@/features/app-shell'
 import {
   getOverlayAppShellDataViaRuntime,
@@ -48,6 +49,10 @@ vi.mock('wxt/browser', () => ({
   browser: {
     runtime: { getURL: browserMocks.getURL },
   },
+}))
+
+vi.mock('@/extension/messaging', () => ({
+  sendMessage: vi.fn(),
 }))
 
 vi.mock('@/lib/leetcode', async (importOriginal) => {
@@ -163,6 +168,19 @@ const nextStep = {
   title: 'Valid Parentheses',
 } satisfies NonNullable<OverlayAppShellData['overlay']['nextStep']>
 
+const AI_PROBE_SUMMARY = '__AI_PROBE_summary__'
+const AI_PROBE_PRIMARY_REASON = '__AI_PROBE_primary_reason__'
+const AI_PROBE_EVIDENCE = '__AI_PROBE_evidence_item__'
+const AI_PROBE_IMPROVEMENT = '__AI_PROBE_improvement_point__'
+const AI_PROBE_EDGE_CASE = '__AI_PROBE_edge_case_note__'
+const AI_PROBES = [
+  AI_PROBE_SUMMARY,
+  AI_PROBE_PRIMARY_REASON,
+  AI_PROBE_EVIDENCE,
+  AI_PROBE_IMPROVEMENT,
+  AI_PROBE_EDGE_CASE,
+] as const
+
 describe('useLeetCodeOverlaySession', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
@@ -184,6 +202,11 @@ describe('useLeetCodeOverlaySession', () => {
     vi.mocked(recommendLeetCodeAssessmentViaRuntime).mockResolvedValue({
       status: 'unavailable',
       message: 'AI assessment is not configured.',
+      submissionFingerprint: 'fallback',
+    })
+    vi.mocked(sendMessage).mockResolvedValue({
+      status: 'unavailable',
+      message: 'AI assessment is not configured (test default).',
       submissionFingerprint: 'fallback',
     })
   })
@@ -1082,3 +1105,69 @@ const emptyPracticeLog = {
   languages: null,
   notes: null,
 } satisfies SerializedPracticeDetails['currentLog']
+
+function buildReadyAssessmentResponse(fingerprint: string) {
+  return {
+    status: 'ready' as const,
+    submissionFingerprint: fingerprint,
+    recommendation: {
+      recommendedRating: 'hard' as const,
+      confidence: 'medium' as const,
+      summary: AI_PROBE_SUMMARY,
+      primaryReason: AI_PROBE_PRIMARY_REASON,
+      evidence: [AI_PROBE_EVIDENCE] as const,
+      complexity: {
+        time: 'O(n)',
+        space: 'O(n)',
+        confidence: 'medium' as const,
+      },
+      improvementPoints: [AI_PROBE_IMPROVEMENT] as const,
+      edgeCaseNotes: [AI_PROBE_EDGE_CASE] as const,
+      shouldUpdateRating: true,
+      promptVersion: 'leetcode-assessment-v1' as const,
+    },
+    providerMetadata: {
+      provider: 'openai' as const,
+      model: 'gpt-test',
+      durationMs: 100,
+    },
+  }
+}
+
+function setSendMessageRecommendationReady(): void {
+  vi.mocked(sendMessage).mockImplementation((name: string, request?: unknown) => {
+    if (name === 'genai.recommendLeetCodeAssessment') {
+      const fingerprint =
+        (request as { submissionFingerprint?: string } | undefined)
+          ?.submissionFingerprint ?? 'unknown'
+      return Promise.resolve(buildReadyAssessmentResponse(fingerprint))
+    }
+    return Promise.reject(
+      new Error(`Unexpected sendMessage call in test: ${name}`),
+    )
+  })
+}
+
+function expectNoAiLeak(payload: unknown): void {
+  const serialized = JSON.stringify(payload)
+  for (const probe of AI_PROBES) {
+    expect(serialized).not.toContain(probe)
+  }
+}
+
+function expectLogKeysAreOverlayDraft(payload: { log?: unknown }): void {
+  if (payload.log == null) {
+    return
+  }
+  const allowedKeys = [
+    'interviewPattern',
+    'timeComplexity',
+    'spaceComplexity',
+    'languages',
+    'notes',
+  ]
+  const logKeys = Object.keys(payload.log as Record<string, unknown>)
+  for (const key of logKeys) {
+    expect(allowedKeys).toContain(key)
+  }
+}
