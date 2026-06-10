@@ -273,8 +273,23 @@ All three commands required by issue #10 pass on this branch.
 
 ## 5. Non-goals reconfirmed
 
-*(populated in Task 5)*
+Issue #10 lists explicit non-goals. Each is upheld by the current implementation:
+
+| Non-goal | How it is upheld |
+|---|---|
+| No AI chat surface | The overlay's only AI surface is `OverlayAssessmentRecommendation` (PR #75), which renders a single recommendation card. No conversation thread, no input field. |
+| No drill generation | The implementation generates no problems. The recommendation only suggests a rating for the just-attempted problem. |
+| No persisted AI history | Section 3 item 5 + PR #77's five guardrail tests pin this down. |
+| No local/on-device provider implementation yet | `src/features/genai/server/` calls remote providers only; no on-device runtime exists. |
+| No AI-generated code fixes | The recommendation schema (`AssessmentRecommendation` in `src/features/leetcode-review-assistant/domain/recommendation-types.ts`) has no field that would carry code; the prompt template instructs against it. |
+| No changes to `lib/leetcode` unless a missing context field is proven necessary | Confirmed via `git diff main -- src/lib/leetcode` showing no AI-driven modifications. |
 
 ## 6. Gaps closed in this PR
 
-*(populated in Task 5)*
+One gap was surfaced by Section 3 and closed in this PR:
+
+| Gap | Remediation |
+|---|---|
+| `src/extension/background/runtime-policy.test.ts` did not include a case for `genai.recommendLeetCodeAssessment`, even though the policy table at `runtime-policy.ts:16` registers it as `['content-script']`. | Added `it('allows only content-script to call genai.recommendLeetCodeAssessment', …)` covering all four sender surfaces. |
+
+No other gaps were surfaced.
