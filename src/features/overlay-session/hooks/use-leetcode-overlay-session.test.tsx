@@ -788,6 +788,28 @@ describe('useLeetCodeOverlaySession', () => {
 
     expect(result.current.aiRecommendation.status).toBe('idle')
   })
+
+  it('excludes AI-authored text from the save review payload', async () => {
+    setSendMessageRecommendationReady()
+    const { result } = await renderReadySession({
+      aiAssessmentAvailable: true,
+      autoDetectSolved: true,
+    })
+
+    emitSubmissionResult()
+
+    await waitFor(() => {
+      expect(result.current.aiRecommendation.status).toBe('ready')
+    })
+
+    await waitFor(() => {
+      expect(saveReviewResultViaRuntime).toHaveBeenCalled()
+    })
+
+    const payload = latestSavedReviewRequest()
+    expectNoAiLeak(payload)
+    expectLogKeysAreOverlayDraft(payload)
+  })
 })
 
 type RenderedOverlaySession = ReturnType<typeof renderOverlaySession>
