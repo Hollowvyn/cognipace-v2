@@ -764,7 +764,7 @@ describe('useLeetCodeOverlaySession', () => {
       expect(result.current.aiRecommendation.status).toBe('ready')
     })
 
-    await runOverlayAction(async () => {
+    act(() => {
       result.current.actions.restartLocalSession()
     })
 
