@@ -786,9 +786,7 @@ describe('useLeetCodeOverlaySession', () => {
 
     emitNextPage()
 
-    await waitFor(() => {
-      expect(result.current.aiRecommendation.status).toBe('idle')
-    })
+    expect(result.current.aiRecommendation.status).toBe('idle')
   })
 })
 
