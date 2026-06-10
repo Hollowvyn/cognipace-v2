@@ -222,7 +222,54 @@ grep -n "genai\." src/extension/background/runtime-policy.test.ts
 
 ## 4. Verification artifact
 
-*(populated in Task 4)*
+All three commands required by issue #10 pass on this branch.
+
+### `npm run test -- src/features/assessment src/features/genai src/features/leetcode-review-assistant src/features/overlay-session src/extension`
+
+```
+ RUN  v4.1.6 /Users/ernest-opara/Development/AI Bombing/cognipace/cognipace-v2
+
+
+ Test Files  43 passed (43)
+      Tests  503 passed (503)
+   Start at  00:37:06
+   Duration  4.68s (transform 5.52s, setup 4.27s, import 11.93s, tests 4.33s, environment 21.94s)
+```
+
+### `npm run check`
+
+```
+ Test Files  132 passed (132)
+      Tests  1336 passed (1336)
+   Start at  00:37:31
+   Duration  16.02s (transform 8.69s, setup 10.37s, import 45.07s, tests 36.11s, environment 66.88s)
+```
+
+(`npm run check` covers db check, typecheck, lint, and tests; the tail shown is the vitest summary at the end.)
+
+### `npm run build`
+
+```
+✔ Built extension in 815 ms
+  ├─ .output/chrome-mv3/manifest.json                                947 B
+  ├─ .output/chrome-mv3/dashboard.html                               587 B
+  ├─ .output/chrome-mv3/popup.html                                   573 B
+  ├─ .output/chrome-mv3/assets/sqlite3-opfs-async-proxy-D_xnb1D8.js  32.29 kB
+  ├─ .output/chrome-mv3/assets/sqlite3-worker1-XraMBjGf.js           210.88 kB
+  ├─ .output/chrome-mv3/background.js                                469.35 kB
+  ├─ .output/chrome-mv3/chunks/_virtual_wxt-plugins-z_fdKYxl.js      435.59 kB
+  ├─ .output/chrome-mv3/chunks/app-providers-Ckt-u2ak.js             268.21 kB
+  ├─ .output/chrome-mv3/chunks/dashboard-DhWiSLG3.js                 167.71 kB
+  ├─ .output/chrome-mv3/chunks/popup-CAZxeZP-.js                     8.56 kB
+  ├─ .output/chrome-mv3/content-scripts/leetcode.js                  557.13 kB
+  ├─ .output/chrome-mv3/assets/app-providers-DcEHEFoX.css            72.1 kB
+  ├─ .output/chrome-mv3/content-scripts/leetcode.css                 72.11 kB
+  ├─ .output/chrome-mv3/assets/sqlite3-BVKGSWc-.wasm                 864.75 kB
+  ├─ .output/chrome-mv3/favicon.svg                                  9.52 kB
+  └─ .output/chrome-mv3/icons.svg                                    5.03 kB
+Σ Total size: 3.18 MB
+✔ Finished in 884 ms
+```
 
 ## 5. Non-goals reconfirmed
 
