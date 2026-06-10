@@ -30,6 +30,10 @@ router and checklist.
 - Do not treat historical `docs/superpowers/*` artifacts as current authority
   when current docs disagree.
 - Do not duplicate or override the canonical validation matrix.
+- Do not mark manual smoke testing or visual proof as N/A for behavior-changing
+  code. Agents must prepare the checklist, and the human engineer must run
+  happy-path and edge-case realtime smoke tests with screenshot or screen
+  recording proof before PR review or merge.
 
 ## Skill Routing
 
@@ -60,7 +64,8 @@ remaining validation risk.
 Use the current PR and issue templates as source of truth. Do not duplicate
 template text here. For agent-authored changes, fill the template with
 validation, risk, release impact, rollback notes, and visual/manual proof when
-relevant.
+relevant. For behavior-changing code, visual/manual proof is required; N/A is
+only acceptable for docs/governance-only work that does not touch app behavior.
 
 ## Common Mistakes
 

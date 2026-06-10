@@ -10,6 +10,7 @@ on:
       - ready_for_review
 
 permissions:
+  contents: read
   pull-requests: read
 
 jobs:
@@ -20,6 +21,8 @@ jobs:
     steps:
       - name: Check PR template fields
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -56,11 +59,69 @@ jobs:
             return value.replace(/<!--[\s\S]*?-->/g, '').trim();
           }
 
+          function isBehaviorFile(filename) {
+            return (
+              filename.startsWith('src/') ||
+              filename.startsWith('drizzle/') ||
+              filename.startsWith('public/') ||
+              [
+                'package.json',
+                'package-lock.json',
+                'wxt.config.ts',
+                'vite.config.ts',
+                'vitest.config.ts',
+                'eslint.config.js',
+                'tsconfig.json',
+                'drizzle.config.ts',
+              ].includes(filename)
+            );
+          }
+
+          async function changedFiles() {
+            const repo = event.repository?.full_name;
+            const pullNumber = event.pull_request?.number;
+            const token = process.env.GITHUB_TOKEN;
+
+            if (!repo || !pullNumber || !token) {
+              return [];
+            }
+
+            const files = [];
+
+            for (let page = 1; page <= 10; page += 1) {
+              const response = await fetch(
+                `https://api.github.com/repos/${repo}/pulls/${pullNumber}/files?per_page=100&page=${page}`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/vnd.github+json',
+                    'X-GitHub-Api-Version': '2022-11-28',
+                  },
+                },
+              );
+
+              if (!response.ok) {
+                failures.push(`Could not read changed files for behavior proof check: ${response.status}`);
+                return [];
+              }
+
+              const pageFiles = await response.json();
+              files.push(...pageFiles.map((file) => file.filename));
+
+              if (pageFiles.length < 100) {
+                break;
+              }
+            }
+
+            return files;
+          }
+
+          (async function main() {
           const details = sectionAfter('## Details');
           const issue = sectionAfter('## Issue');
           const issueWithoutComments = stripHtmlComments(issue);
           const testing = sectionAfter('## Testing');
-          const screenshots = sectionAfter('## Screenshots');
+          const screenshots = stripHtmlComments(sectionAfter('## Screenshots'));
 
           if (!details || details.includes('[What changed')) {
             failures.push('Details must describe the change and cannot keep template prompt text.');
@@ -84,7 +145,7 @@ jobs:
           const testingPromptPlaceholders = [
             '[reason]',
             '[unit, runtime/integration, UI/component, or N/A]',
-            '[flow, or N/A]',
+            '[happy path + edge case flows; N/A only for docs/governance-only]',
             '[commands/flows skipped and reason, or None]',
           ];
 
@@ -96,8 +157,34 @@ jobs:
             failures.push('Testing must state skipped validation, even when the answer is None.');
           }
 
-          if (!screenshots || screenshots.includes('[Required for visible')) {
+          if (!screenshots || screenshots.includes('[Attach screenshot')) {
             failures.push('Screenshots must include evidence or N/A.');
+          }
+
+          const files = await changedFiles();
+          const behaviorFiles = files.filter(isBehaviorFile);
+
+          if (behaviorFiles.length > 0) {
+            const manualSmokeLine = testing
+              .split('\n')
+              .find((line) => /Manual smoke tested:/i.test(line)) || '';
+            const saysNotApplicable = /\bN\/A\b|not applicable|not needed/i;
+
+            if (!manualSmokeLine) {
+              failures.push('Testing must include a Manual smoke tested line for behavior-changing files.');
+            }
+
+            if (saysNotApplicable.test(manualSmokeLine)) {
+              failures.push('Manual smoke tested cannot be N/A for behavior-changing files.');
+            }
+
+            if (!/happy/i.test(manualSmokeLine) || !/edge/i.test(manualSmokeLine)) {
+              failures.push('Manual smoke tested must name happy-path and edge-case smoke flows for behavior-changing files.');
+            }
+
+            if (!screenshots || saysNotApplicable.test(screenshots)) {
+              failures.push('Screenshots must include screenshot or screen recording proof for behavior-changing files.');
+            }
           }
 
           if (failures.length > 0) {
@@ -109,4 +196,8 @@ jobs:
           }
 
           console.log('PR hygiene check passed.');
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
           NODE

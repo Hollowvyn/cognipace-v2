@@ -31,6 +31,14 @@ run, commands skipped with reasons, remaining validation risk, risk areas,
 release impact, issue context or a documented exception, and rollback or
 recovery notes when relevant.
 
+Agent output does not replace human smoke testing. For every code change that
+touches product behavior, runtime behavior, persistence, release/package
+behavior, or user experience, the human engineer must run real-time happy-path
+and edge-case smoke tests before PR review or merge. The PR must name the flows
+tested and attach a screenshot or screen recording that shows the changed UI or
+UX behavior. Do not mark manual smoke testing or visual proof as N/A for
+behavior-changing code.
+
 Do not duplicate the full validation matrix here. Keep detailed validation rules
 in `docs/agent-governance.md` so Codex, Claude, future agents, and human
 reviewers use one canonical source.
@@ -244,6 +252,11 @@ npm run format
 For docs-only changes, run Prettier on the changed markdown files. Do not claim
 runtime validation unless `npm run check` or focused runtime tests were actually
 run.
+
+For any behavior-changing code, run and document real-time happy-path and
+edge-case manual smoke tests before PR review or merge. Attach a screenshot or
+screen recording for UI and UX proof. Manual smoke testing and visual proof may
+be N/A only for docs/governance-only changes that do not touch app behavior.
 
 If an existing branch is already failing, state the exact failing command and
 test instead of hiding it.

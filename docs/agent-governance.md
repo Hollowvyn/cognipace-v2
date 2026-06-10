@@ -174,11 +174,12 @@ template sections with PR-ready context, including:
 - validation commands skipped and why
 - remaining validation risk
 - risk areas touched
-- manual testing checklist for affected smoke flows when relevant
+- manual testing checklist for affected smoke flows when relevant, including
+  human-run happy-path and edge-case smoke for behavior-changing code
 - release impact
 - rollback or recovery notes when relevant
-- screenshots or recordings for visible UI changes, or why visual proof is not
-  applicable
+- screenshots or recordings for behavior-changing code, including UI and UX
+  proof
 
 ## Validation Selection
 
@@ -189,21 +190,22 @@ Choose validation by risk area, not only by file extension.
 3. When categories overlap, use the strictest required command set.
 4. Add focused tests for touched behavior when feasible.
 5. Add the affected manual smoke checklist when feature work, extension
-   surfaces, or background workflows touch a manual flow.
+   surfaces, or background workflows touch a manual flow. For behavior-changing
+   code, the checklist must include human-run happy-path and edge-case smoke.
 6. In the handoff, list exact commands run, exact commands skipped, why each
    skipped command was skipped, and remaining validation risk.
 
 Visible popup/dashboard/overlay changes use both the UI and surface rows.
 
-| Changed area                          | Validation category                                    | Notes                                              |
-| ------------------------------------- | ------------------------------------------------------ | -------------------------------------------------- |
-| Docs/governance/planning Markdown     | Docs or governance only                                | Run Prettier on touched Markdown.                  |
-| Feature code without surface effects  | Normal code change                                     | Add checklist if it affects a manual flow.         |
-| Visible React UI                      | UI change                                              | Add focused tests and visual proof/skipped reason. |
-| Popup/dashboard/overlay behavior      | Popup, dashboard, or overlay behavior                  | Add build and manual smoke checklist.              |
-| Runtime/background/sync/GenAI/secrets | Runtime messaging, background, sync, GenAI, or secrets | Include notifications and cache effects.           |
-| Database/schema/persisted shape       | Database or schema change                              | Add DB checks, migrations, and persistence tests.  |
-| Release/CI/package/extension build    | Release, CI, package, or extension build workflow      | Add build/zip proof or static-review reason.       |
+| Changed area                          | Validation category                                    | Notes                                             |
+| ------------------------------------- | ------------------------------------------------------ | ------------------------------------------------- |
+| Docs/governance/planning Markdown     | Docs or governance only                                | Run Prettier on touched Markdown.                 |
+| Feature code without surface effects  | Normal code change                                     | Add happy-path and edge-case smoke proof.         |
+| Visible React UI                      | UI change                                              | Add focused tests and screenshot/recording proof. |
+| Popup/dashboard/overlay behavior      | Popup, dashboard, or overlay behavior                  | Add build and manual smoke checklist.             |
+| Runtime/background/sync/GenAI/secrets | Runtime messaging, background, sync, GenAI, or secrets | Include notifications and cache effects.          |
+| Database/schema/persisted shape       | Database or schema change                              | Add DB checks, migrations, and persistence tests. |
+| Release/CI/package/extension build    | Release, CI, package, or extension build workflow      | Add build/zip proof or static-review reason.      |
 
 ## Validation Matrix
 
@@ -230,8 +232,7 @@ Also required:
 
 - focused tests for the touched behavior before the full check when feasible
 - exact test paths or test names in the handoff
-- manual testing checklist when the feature change affects a user-facing or
-  manual smoke flow
+- human-run happy-path and edge-case smoke proof for behavior-changing code
 
 ### UI Change
 
@@ -245,9 +246,9 @@ npm run check
 Also required:
 
 - focused component, hook, or route tests for the affected behavior
-- screenshot, recording, or explicit reason visual proof was not possible
-- manual testing checklist for the affected popup, dashboard, or overlay smoke
-  flow when relevant
+- screenshot or screen recording proof for the changed UI and UX behavior
+- human-run happy-path and edge-case smoke checklist for the affected popup,
+  dashboard, or overlay flow
 
 ### Popup, Dashboard, Or Overlay Behavior
 
@@ -263,9 +264,9 @@ Also required:
 
 - focused tests for the affected controller, route, component, hook, or feature
   service
-- manual testing checklist for the affected extension surface smoke flow
-- state if the manual smoke checklist is not relevant, such as for docs-only
-  changes
+- human-run happy-path and edge-case smoke checklist for the affected extension
+  surface flow
+- screenshot or screen recording proof for the changed UI and UX behavior
 
 ### Runtime Messaging, Background, Sync, GenAI, Or Secrets
 
@@ -280,8 +281,10 @@ npm run build
 Also required:
 
 - focused contract, runtime-policy, handler, service, repository, or API tests
-- manual testing checklist for affected background, sync, GenAI, notification,
-  secret, runtime, or service-worker flows
+- human-run happy-path and edge-case smoke checklist for affected background,
+  sync, GenAI, notification, secret, runtime, or service-worker flows
+- screenshot or screen recording proof when the runtime behavior changes a user
+  visible or UX-observable flow
 - explicit note about sender authorization, Zod parsing, secret redaction,
   cache invalidation, and sync side effects when touched
 - release impact and rollback or recovery notes when shipped behavior changes
@@ -337,11 +340,12 @@ Also required:
 
 ## Manual Smoke Checklist
 
-Use `docs/testing.md` for exact manual smoke flows. Agents do not own manual
-browser smoke testing by default. For feature, surface, runtime, sync, GenAI,
-release, package, or extension-build changes, agents should add the relevant
-manual testing checklist to the PR description so the engineer can complete it
-before squash and merge.
+Use `docs/testing.md` for exact manual smoke flows. Agents do not replace human
+browser smoke testing. For feature, surface, runtime, sync, GenAI, release,
+package, extension-build, or other behavior-changing code, agents must add the
+relevant manual testing checklist to the PR description, and the human engineer
+must complete real-time happy-path and edge-case smoke testing before PR review
+or merge.
 
 - Popup changes should include the extension popup smoke checklist.
 - Dashboard route or dashboard workflow changes should include the affected
@@ -354,10 +358,11 @@ before squash and merge.
   release or artifact manual checks, plus whether automated workflow validation
   was local, dry-run PR, or static review only.
 
-If a relevant manual smoke checklist is not included, explain why. Acceptable
-reasons include docs-only changes, static-only CI workflow review with no
-runtime surface, or no affected user-facing/manual flow. Vague claims such as
-"not tested" or "should work" are not sufficient.
+Behavior-changing code must not mark manual smoke testing or visual proof as
+N/A. The PR must name the happy-path and edge-case flows tested and attach a
+screenshot or screen recording for UI and UX proof. N/A is acceptable only for
+docs/governance-only changes that do not touch app behavior. Vague claims such
+as "not tested" or "should work" are not sufficient.
 
 ## Commit And PR Rules
 
