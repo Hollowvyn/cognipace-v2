@@ -812,6 +812,11 @@ describe('useLeetCodeOverlaySession', () => {
   })
 
   it('excludes AI-authored text from the update review payload', async () => {
+    // The update path (overrideLastReviewResultViaRuntime) intentionally
+    // does not consult the AI runtime — unlike saveAcceptedReview, which
+    // calls maybeApplyAiRecommendation. This test pins that down: even
+    // with AI fully wired and ready, the override payload carries only
+    // the user-typed draft.
     setSendMessageRecommendationReady()
     const { result } = await renderReadySession({
       aiAssessmentAvailable: true,
