@@ -836,6 +836,42 @@ describe('useLeetCodeOverlaySession', () => {
     expectNoAiLeak(payload)
     expectLogKeysAreOverlayDraft(payload)
   })
+
+  it('excludes AI-authored text from the draft persistence payload', async () => {
+    setSendMessageRecommendationReady()
+    const { result } = await renderReadySession({
+      aiAssessmentAvailable: true,
+      autoDetectSolved: true,
+    })
+
+    emitSubmissionResult()
+
+    await waitFor(() => {
+      expect(result.current.aiRecommendation.status).toBe('ready')
+    })
+
+    // Restart the session so we're back in draft mode (auto-save already
+    // submitted the result; persistDraftIfNeeded only fires when there's no
+    // submittedSession AND the draft has unpersisted changes).
+    act(() => {
+      result.current.actions.restartLocalSession()
+    })
+
+    act(() => {
+      result.current.draft.setField('notes', 'Carry this draft.')
+    })
+    act(() => {
+      result.current.actions.collapse()
+    })
+
+    await waitFor(() => {
+      expect(updateCurrentPracticeLogViaRuntime).toHaveBeenCalled()
+    })
+
+    const payload = latestPracticeLogUpdateRequest()
+    expectNoAiLeak(payload)
+    expectLogKeysAreOverlayDraft(payload)
+  })
 })
 
 type RenderedOverlaySession = ReturnType<typeof renderOverlaySession>
