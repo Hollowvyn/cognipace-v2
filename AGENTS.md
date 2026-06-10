@@ -32,6 +32,10 @@ before proposing edits.
   `docs/agent-governance.md` requires them.
 - Do not hide skipped validation or failed validation.
 - List exact validation commands run and exact commands skipped with reasons.
+- For behavior-changing code, do not mark manual smoke testing or visual proof
+  as N/A. The human engineer must run happy-path and edge-case realtime smoke
+  tests and attach screenshot or screen recording proof before PR review or
+  merge.
 - Use Conventional Commit titles and PR-ready summaries for agent-authored
   changes.
 
