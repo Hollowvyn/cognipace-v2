@@ -770,6 +770,26 @@ describe('useLeetCodeOverlaySession', () => {
 
     expect(result.current.aiRecommendation.status).toBe('idle')
   })
+
+  it('clears the AI recommendation when the LeetCode page changes', async () => {
+    setSendMessageRecommendationReady()
+    const { result } = await renderReadySession({
+      aiAssessmentAvailable: true,
+      autoDetectSolved: true,
+    })
+
+    emitSubmissionResult()
+
+    await waitFor(() => {
+      expect(result.current.aiRecommendation.status).toBe('ready')
+    })
+
+    emitNextPage()
+
+    await waitFor(() => {
+      expect(result.current.aiRecommendation.status).toBe('idle')
+    })
+  })
 })
 
 type RenderedOverlaySession = ReturnType<typeof renderOverlaySession>
