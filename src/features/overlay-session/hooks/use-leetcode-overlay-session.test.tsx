@@ -750,6 +750,26 @@ describe('useLeetCodeOverlaySession', () => {
       expect(getOverlayAppShellDataViaRuntime).toHaveBeenCalledTimes(1)
     },
   )
+
+  it('clears the AI recommendation when the overlay restart action runs', async () => {
+    setSendMessageRecommendationReady()
+    const { result } = await renderReadySession({
+      aiAssessmentAvailable: true,
+      autoDetectSolved: true,
+    })
+
+    emitSubmissionResult()
+
+    await waitFor(() => {
+      expect(result.current.aiRecommendation.status).toBe('ready')
+    })
+
+    await runOverlayAction(async () => {
+      result.current.actions.restartLocalSession()
+    })
+
+    expect(result.current.aiRecommendation.status).toBe('idle')
+  })
 })
 
 type RenderedOverlaySession = ReturnType<typeof renderOverlaySession>
