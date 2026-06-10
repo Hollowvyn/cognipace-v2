@@ -1291,7 +1291,7 @@ function expectLogKeysAreOverlayDraft(payload: { log?: unknown }): void {
     'languages',
     'notes',
   ]
-  const logKeys = Object.keys(payload.log as Record<string, unknown>)
+  const logKeys = Object.keys(payload.log)
   for (const key of logKeys) {
     expect(allowedKeys).toContain(key)
   }
