@@ -810,6 +810,32 @@ describe('useLeetCodeOverlaySession', () => {
     expectNoAiLeak(payload)
     expectLogKeysAreOverlayDraft(payload)
   })
+
+  it('excludes AI-authored text from the update review payload', async () => {
+    setSendMessageRecommendationReady()
+    const { result } = await renderReadySession({
+      aiAssessmentAvailable: true,
+    })
+
+    await runOverlayAction(result.current.actions.submitReview)
+    act(() => {
+      result.current.actions.selectRating('hard')
+    })
+    act(() => {
+      result.current.draft.setField('notes', 'User-typed note.')
+    })
+    await runOverlayAction(result.current.actions.updateReview)
+
+    expect(overrideLastReviewResultViaRuntime).toHaveBeenCalled()
+    const payload = vi.mocked(overrideLastReviewResultViaRuntime).mock.calls.at(
+      -1,
+    )?.[0]
+    if (!payload) {
+      throw new Error('Expected an override review request.')
+    }
+    expectNoAiLeak(payload)
+    expectLogKeysAreOverlayDraft(payload)
+  })
 })
 
 type RenderedOverlaySession = ReturnType<typeof renderOverlaySession>
