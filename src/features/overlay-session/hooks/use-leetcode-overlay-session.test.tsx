@@ -7,7 +7,10 @@ import {
   getOverlayAppShellDataViaRuntime,
   openDashboardViaRuntime,
 } from '@/features/app-shell'
-import { recommendLeetCodeAssessmentViaRuntime } from '@/features/leetcode-review-assistant'
+import {
+  recommendLeetCodeAssessmentViaRuntime,
+  type RecommendLeetCodeAssessmentRequest,
+} from '@/features/leetcode-review-assistant'
 import { makeValidRecommendation } from '@/features/leetcode-review-assistant/testing'
 import {
   overrideLastReviewResultViaRuntime,
@@ -1138,7 +1141,7 @@ function setSendMessageRecommendationReady(): void {
   vi.mocked(sendMessage).mockImplementation((name: string, request?: unknown) => {
     if (name === 'genai.recommendLeetCodeAssessment') {
       const fingerprint =
-        (request as { submissionFingerprint?: string } | undefined)
+        (request as RecommendLeetCodeAssessmentRequest | undefined)
           ?.submissionFingerprint ?? 'unknown'
       return Promise.resolve(buildReadyAssessmentResponse(fingerprint))
     }
