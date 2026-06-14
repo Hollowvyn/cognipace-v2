@@ -338,6 +338,42 @@ describe('getGenAiProviderStatus and provider setup mutations', () => {
     )
   })
 
+  it('does not reset verification when a provider key is blank after trimming', async () => {
+    const handle = await createTestDb({ seed: false })
+    await updateProviderVerification('gemini', {
+      state: 'valid',
+      verifiedAt: '2026-06-14T09:00:00.000Z',
+      checkedModel: 'gemini-2.5-flash',
+      errorCode: null,
+      message: null,
+    })
+    await saveSecret(
+      'genai:google',
+      JSON.stringify({ apiKey: 'AIza-old-key' }),
+    )
+
+    await expect(
+      saveGenAiProviderSecret(handle.db, 'gemini', {
+        apiKey: '   ',
+      }),
+    ).rejects.toThrow()
+    await expect(
+      setAiProviderSecret(handle.db, 'gemini', {
+        apiKey: '   ',
+      }),
+    ).rejects.toThrow()
+
+    await expect(readSecret('genai:google')).resolves.toContain(
+      'AIza-old-key',
+    )
+    expect(
+      (await readGenAiConnectionMetadata()).providers.gemini.verification,
+    ).toMatchObject({
+      state: 'valid',
+      checkedModel: 'gemini-2.5-flash',
+    })
+  })
+
   it('rejects secret-looking model ids before storing connection metadata', async () => {
     const handle = await createTestDb({ seed: false })
 

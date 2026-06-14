@@ -51,8 +51,9 @@ export async function setAiProviderSecret(
 ): Promise<AiProviderSecretPresence> {
   void db
 
+  const parsedSecret = parseAiProviderSecret(secret)
   await resetProviderVerification(provider)
-  await saveAiProviderSecretToTrustedStorage(provider, secret)
+  await saveAiProviderSecretToTrustedStorage(provider, parsedSecret)
   return getAiProviderSecretPresenceFromTrustedStorage()
 }
 
@@ -117,8 +118,9 @@ export async function saveGenAiProviderSecret(
   provider: GenAiProviderId,
   secret: AiProviderSecret,
 ): Promise<GenAiProviderActionResult> {
+  const parsedSecret = parseAiProviderSecret(secret)
   await resetProviderVerification(provider)
-  await saveAiProviderSecretToTrustedStorage(provider, secret)
+  await saveAiProviderSecretToTrustedStorage(provider, parsedSecret)
 
   return createActionResult(db, 'save-secret', 'Provider key saved.')
 }
@@ -148,10 +150,7 @@ export async function testGenAiProviderDraft(
   model: string,
   secret: AiProviderSecret,
 ): Promise<GenAiProviderActionResult> {
-  const parsedSecret = aiProviderSecretSchema.parse({
-    ...secret,
-    apiKey: secret.apiKey.trim(),
-  })
+  const parsedSecret = parseAiProviderSecret(secret)
   const result = await verifyProviderConnection({
     provider,
     model,
@@ -258,4 +257,11 @@ function isVerifiedForModel(
   return (
     verification.state === 'valid' && verification.checkedModel === model
   )
+}
+
+function parseAiProviderSecret(secret: AiProviderSecret): AiProviderSecret {
+  return aiProviderSecretSchema.parse({
+    ...secret,
+    apiKey: secret.apiKey.trim(),
+  })
 }
