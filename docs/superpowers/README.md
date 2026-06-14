@@ -34,6 +34,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Plans
 
+- [`plans/2026-06-14-genai-byok-sdk-rebuild.md`](./plans/2026-06-14-genai-byok-sdk-rebuild.md): implementation plan for rebuilding GenAI BYOK setup as a Data Management provider connection workflow, separating Auto assessment and AI assessment, fixing dev-smoke configuration visibility, and moving provider calls behind Vercel AI SDK Core.
 - [`plans/2026-06-08-agent-governance-drift-audit.md`](./plans/2026-06-08-agent-governance-drift-audit.md): implementation plan for adding the Phase F drift audit checklist to the canonical agent governance doc and marking the historical Phase F status implemented.
 - [`plans/2026-06-08-github-governance-templates.md`](./plans/2026-06-08-github-governance-templates.md): implementation plan for concise GitHub PR and Bug/Task issue templates, labels, Project auto-add, PR hygiene, stale PR handling, and path-based area labeling.
 - [`plans/2026-06-07-agent-governance-phase-c-validation-smoke.md`](./plans/2026-06-07-agent-governance-phase-c-validation-smoke.md): implementation plan for adding the Phase C validation-selection guide and smoke-reporting clarification to the canonical agent governance doc.
