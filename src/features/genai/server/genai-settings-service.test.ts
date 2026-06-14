@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { settingsKv } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
 import { updateSettings } from '@/features/settings/server/settings-service'
-import { saveSecret } from '@/platform/secrets'
+import { readSecret, saveSecret } from '@/platform/secrets'
 import {
+  defaultGenAiConnectionMetadata,
   readGenAiConnectionMetadata,
   selectGenAiProvider as selectStoredGenAiProvider,
   updateGenAiProviderModel,
@@ -21,7 +22,15 @@ import {
   saveGenAiProviderModel,
   saveGenAiProviderSecret,
   setAiProviderSecret,
+  testGenAiProviderDraft,
 } from './genai-settings-service'
+import { generateJson } from './genai-service'
+
+vi.mock('./genai-service', () => ({
+  generateJson: vi.fn(),
+}))
+
+const generateJsonMock = vi.mocked(generateJson)
 
 describe('getAiProviderSecretPresence', () => {
   it('returns all-false on empty store', async () => {
@@ -292,6 +301,78 @@ describe('getGenAiProviderStatus and provider setup mutations', () => {
     expect(
       (await readGenAiConnectionMetadata()).providers.gemini.verification.state,
     ).toBe('unverified')
+  })
+
+  it('does not replace a provider key if verification reset fails first', async () => {
+    const handle = await createTestDb({ seed: false })
+    await updateProviderVerification('gemini', {
+      state: 'valid',
+      verifiedAt: '2026-06-14T09:00:00.000Z',
+      checkedModel: 'gemini-2.5-flash',
+      errorCode: null,
+      message: null,
+    })
+    await saveSecret(
+      'genai:google',
+      JSON.stringify({ apiKey: 'AIza-old-key' }),
+    )
+
+    const originalSet = chrome.storage.local.set.bind(chrome.storage.local)
+    vi.spyOn(chrome.storage.local, 'set').mockImplementation(
+      async (values: Record<string, unknown>) => {
+        if ('cognipace_genai_connection_metadata_v1' in values) {
+          throw new Error('metadata write failed')
+        }
+
+        return originalSet(values)
+      },
+    )
+
+    await expect(
+      saveGenAiProviderSecret(handle.db, 'gemini', {
+        apiKey: 'AIza-new-key',
+      }),
+    ).rejects.toThrow('metadata write failed')
+    await expect(readSecret('genai:google')).resolves.toContain(
+      'AIza-old-key',
+    )
+  })
+
+  it('rejects secret-looking model ids before storing connection metadata', async () => {
+    const handle = await createTestDb({ seed: false })
+
+    await expect(
+      saveGenAiProviderModel(handle.db, 'openai', 'sk-pasted-key'),
+    ).rejects.toThrow()
+
+    await expect(readGenAiConnectionMetadata()).resolves.toMatchObject({
+      providers: {
+        openai: {
+          model: defaultGenAiConnectionMetadata.providers.openai.model,
+        },
+      },
+    })
+  })
+
+  it('trims draft provider keys before verification', async () => {
+    const handle = await createTestDb({ seed: false })
+    generateJsonMock.mockResolvedValue({
+      status: 'success',
+      data: { ok: true },
+      providerMetadata: {
+        provider: 'gemini',
+        model: 'gemini-2.5-flash',
+        durationMs: 10,
+      },
+    })
+
+    await testGenAiProviderDraft(handle.db, 'gemini', 'gemini-2.5-flash', {
+      apiKey: '  AIza-draft-key  ',
+    })
+
+    expect(generateJsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({ apiKey: 'AIza-draft-key' }),
+    )
   })
 })
 

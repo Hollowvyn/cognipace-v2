@@ -89,6 +89,7 @@ import {
   testGenAiProviderDraft,
   verifyGenAiProvider,
 } from '@/features/genai/server/genai-settings-service'
+import type { AiProviderSecretPresence } from '@/features/genai'
 import { generateJson } from '@/features/genai/server'
 import {
   exportFullBackup,
@@ -1239,7 +1240,7 @@ export function registerBackgroundHandlers() {
       request.surface,
       sender,
     )
-    return getAppDb().then(({ db }) =>
+    return runLegacyGenAiProviderSecretMutation((db) =>
       setAiProviderSecret(db, request.provider, request.secret),
     )
   })
@@ -1252,7 +1253,7 @@ export function registerBackgroundHandlers() {
       request.surface,
       sender,
     )
-    return getAppDb().then(({ db }) =>
+    return runLegacyGenAiProviderSecretMutation((db) =>
       clearAiProviderSecret(db, request.provider),
     )
   })
@@ -1497,6 +1498,16 @@ async function runGenAiProviderMutation(
 ) {
   return runDbMutation(
     async (db) => genAiProviderActionResultSchema.parse(await write(db)),
+    () => broadcastGenAiInvalidation('dashboard'),
+    { syncMode: 'none' },
+  )
+}
+
+async function runLegacyGenAiProviderSecretMutation(
+  write: (db: Db) => Promise<AiProviderSecretPresence>,
+) {
+  return runDbMutation(
+    (db) => write(db),
     () => broadcastGenAiInvalidation('dashboard'),
     { syncMode: 'none' },
   )

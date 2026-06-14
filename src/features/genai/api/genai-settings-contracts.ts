@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import {
+  genAiProviderModelSchema,
   genAiVerificationErrorCodes,
   genAiVerificationStates,
 } from '../domain/genai-connection-types'
@@ -85,7 +86,7 @@ export const getGenAiProviderStatusRequestSchema = z.strictObject({
 export const saveGenAiProviderModelRequestSchema = z.strictObject({
   surface: genAiSetupSurfaceSchema,
   provider: z.enum(genAiProviderIds),
-  model: z.string().trim().min(1).max(120),
+  model: genAiProviderModelSchema,
 })
 
 export const saveGenAiProviderSecretRequestSchema = z.strictObject({
@@ -97,7 +98,7 @@ export const saveGenAiProviderSecretRequestSchema = z.strictObject({
 export const testGenAiProviderDraftRequestSchema = z.strictObject({
   surface: genAiSetupSurfaceSchema,
   provider: z.enum(genAiProviderIds),
-  model: z.string().trim().min(1).max(120),
+  model: genAiProviderModelSchema,
   secret: aiProviderSecretBodySchema,
 })
 

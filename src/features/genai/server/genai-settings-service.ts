@@ -8,9 +8,10 @@ import {
   updateGenAiProviderModel,
   updateProviderVerification,
 } from '../data/genai-connection-metadata-store'
-import type {
-  AiProviderSecret,
-  AiProviderSecretPresence,
+import {
+  aiProviderSecretSchema,
+  type AiProviderSecret,
+  type AiProviderSecretPresence,
 } from '../domain/genai-secrets-types'
 import {
   genAiProviderLabels,
@@ -50,8 +51,8 @@ export async function setAiProviderSecret(
 ): Promise<AiProviderSecretPresence> {
   void db
 
-  await saveAiProviderSecretToTrustedStorage(provider, secret)
   await resetProviderVerification(provider)
+  await saveAiProviderSecretToTrustedStorage(provider, secret)
   return getAiProviderSecretPresenceFromTrustedStorage()
 }
 
@@ -61,8 +62,8 @@ export async function clearAiProviderSecret(
 ): Promise<AiProviderSecretPresence> {
   void db
 
-  await clearAiProviderSecretFromTrustedStorage(provider)
   await resetProviderVerification(provider)
+  await clearAiProviderSecretFromTrustedStorage(provider)
   return getAiProviderSecretPresenceFromTrustedStorage()
 }
 
@@ -116,8 +117,8 @@ export async function saveGenAiProviderSecret(
   provider: GenAiProviderId,
   secret: AiProviderSecret,
 ): Promise<GenAiProviderActionResult> {
-  await saveAiProviderSecretToTrustedStorage(provider, secret)
   await resetProviderVerification(provider)
+  await saveAiProviderSecretToTrustedStorage(provider, secret)
 
   return createActionResult(db, 'save-secret', 'Provider key saved.')
 }
@@ -126,8 +127,8 @@ export async function clearGenAiProviderSecret(
   db: Db,
   provider: GenAiProviderId,
 ): Promise<GenAiProviderActionResult> {
-  await clearAiProviderSecretFromTrustedStorage(provider)
   await resetProviderVerification(provider)
+  await clearAiProviderSecretFromTrustedStorage(provider)
 
   return createActionResult(db, 'clear-secret', 'Provider key cleared.')
 }
@@ -147,10 +148,14 @@ export async function testGenAiProviderDraft(
   model: string,
   secret: AiProviderSecret,
 ): Promise<GenAiProviderActionResult> {
+  const parsedSecret = aiProviderSecretSchema.parse({
+    ...secret,
+    apiKey: secret.apiKey.trim(),
+  })
   const result = await verifyProviderConnection({
     provider,
     model,
-    apiKey: secret.apiKey,
+    apiKey: parsedSecret.apiKey,
   })
 
   return createActionResult(

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   genAiProviderActionResultSchema,
   genAiProviderStatusSchema,
+  saveGenAiProviderModelRequestSchema,
   saveGenAiProviderSecretRequestSchema,
   setAiProviderSecretRequestSchema,
   testGenAiProviderDraftRequestSchema,
@@ -55,6 +56,16 @@ describe('genai settings contracts', () => {
             model: 'sk-test',
           },
         ],
+      }),
+    ).toThrow()
+  })
+
+  it('rejects secret-like provider model setup requests', () => {
+    expect(() =>
+      saveGenAiProviderModelRequestSchema.parse({
+        surface: 'dashboard',
+        provider: 'openai',
+        model: 'sk-pasted-key',
       }),
     ).toThrow()
   })

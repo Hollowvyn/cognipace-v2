@@ -1336,6 +1336,64 @@ describe('background handler registration', () => {
     expect(JSON.stringify(response)).not.toMatch(/apiKey|AIza|sk-/)
   })
 
+  it('legacy genai secret writes flush and invalidate because they reset provider verification', async () => {
+    resetRuntimeMutationMocks()
+
+    const setResponse = await sendRuntimeMessage('genai.setAiProviderSecret', {
+      surface: 'dashboard',
+      provider: 'openai',
+      secret: { apiKey: 'sk-test' },
+    })
+
+    expectRuntimePolicy('genai.setAiProviderSecret', 'dashboard')
+    expect(backgroundMocks.setAiProviderSecret).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      'openai',
+      { apiKey: 'sk-test' },
+    )
+    expect(setResponse).toEqual({
+      openai: true,
+      anthropic: false,
+      gemini: false,
+    })
+    expect(backgroundMocks.markSyncLocalDataChanged).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      reason: 'genai-updated',
+      source: 'dashboard',
+      tags: ['genai', 'app-shell'],
+    })
+    expectFlushBeforeBroadcast()
+
+    vi.clearAllMocks()
+    resetRuntimeMutationMocks()
+
+    const clearResponse = await sendRuntimeMessage(
+      'genai.clearAiProviderSecret',
+      {
+        surface: 'dashboard',
+        provider: 'openai',
+      },
+    )
+
+    expectRuntimePolicy('genai.clearAiProviderSecret', 'dashboard')
+    expect(backgroundMocks.clearAiProviderSecret).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      'openai',
+    )
+    expect(clearResponse).toEqual({
+      openai: false,
+      anthropic: false,
+      gemini: false,
+    })
+    expect(backgroundMocks.markSyncLocalDataChanged).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      reason: 'genai-updated',
+      source: 'dashboard',
+      tags: ['genai', 'app-shell'],
+    })
+    expectFlushBeforeBroadcast()
+  })
+
   it('genai.saveProviderModel changes model and invalidates GenAI without marking sync dirty', async () => {
     resetRuntimeMutationMocks()
     backgroundMocks.saveGenAiProviderModel.mockResolvedValue(
