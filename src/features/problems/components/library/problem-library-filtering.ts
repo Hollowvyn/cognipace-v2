@@ -182,8 +182,14 @@ function pushArrayColumnFilter(
   }
 }
 
+// ⚡ Bolt: Cache generated search text per row instance to avoid repetitive array mapping, string joining, and normalization on every keystroke during library filtering.
+const searchCache = new WeakMap<ProblemLibraryRow, string>()
+
 function createProblemSearchText(row: ProblemLibraryRow) {
-  return normalizeSearch(
+  const cached = searchCache.get(row)
+  if (cached !== undefined) return cached
+
+  const result = normalizeSearch(
     [
       row.problem.title,
       row.problem.slug,
@@ -194,6 +200,9 @@ function createProblemSearchText(row: ProblemLibraryRow) {
       ...row.trackMemberships.map((membership) => membership.groupTitle),
     ].join(' '),
   )
+
+  searchCache.set(row, result)
+  return result
 }
 
 function normalizeSearch(value: string) {
