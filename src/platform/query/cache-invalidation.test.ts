@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { queryKeys } from './query-keys'
 import { readQueryKeysForInvalidation } from './cache-invalidation'
 
 describe('cache invalidation query-key mapping', () => {
@@ -41,6 +42,13 @@ describe('cache invalidation query-key mapping', () => {
       ['today-queue'],
       ['tracks'],
       ['problems'],
+    ])
+  })
+
+  it('maps genai invalidation to genai and app-shell query families once', () => {
+    expect(readQueryKeysForInvalidation(['genai'])).toEqual([
+      queryKeys.genai.all,
+      queryKeys.appShell.all,
     ])
   })
 

@@ -7,6 +7,7 @@ vi.mock('@/extension/messaging', () => ({
 }))
 
 import { sendMessage } from '@/extension/messaging'
+import { queryKeys } from '@/platform/query/query-keys'
 
 import type {
   GenAiProviderActionResult,
@@ -14,12 +15,15 @@ import type {
 } from '../domain/genai-connection-types'
 import {
   useClearAiProviderSecretMutation,
+  useClearGenAiProviderSecretMutation,
   useGenAiProviderStatusQuery,
   useGenAiSecretPresenceQuery,
   useSaveGenAiProviderModelMutation,
   useSaveGenAiProviderSecretMutation,
+  useSelectGenAiProviderMutation,
   useSetAiProviderSecretMutation,
   useTestGenAiProviderDraftMutation,
+  useVerifyGenAiProviderMutation,
 } from './genai-settings-hooks'
 
 let queryClient: QueryClient
@@ -144,6 +148,77 @@ describe('provider setup mutations', () => {
       provider: 'gemini',
       model: 'gemini-2.5-flash',
       secret: { apiKey: 'AIza-test' },
+    })
+  })
+
+  it('verifies providers through the dashboard runtime method', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(providerActionResult)
+
+    const { result } = renderHook(() => useVerifyGenAiProviderMutation(), {
+      wrapper,
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({ provider: 'openai' })
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('genai.verifyProvider', {
+      surface: 'dashboard',
+      provider: 'openai',
+    })
+  })
+
+  it('selects providers through the dashboard runtime method', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(providerActionResult)
+
+    const { result } = renderHook(() => useSelectGenAiProviderMutation(), {
+      wrapper,
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({ provider: 'anthropic' })
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('genai.selectProvider', {
+      surface: 'dashboard',
+      provider: 'anthropic',
+    })
+  })
+
+  it('clears provider secrets through the dashboard runtime method', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(providerActionResult)
+
+    const { result } = renderHook(() => useClearGenAiProviderSecretMutation(), {
+      wrapper,
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({ provider: 'gemini' })
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('genai.clearProviderSecret', {
+      surface: 'dashboard',
+      provider: 'gemini',
+    })
+  })
+
+  it('invalidates genai and app-shell query families when setup mutations settle', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(providerActionResult)
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useVerifyGenAiProviderMutation(), {
+      wrapper,
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({ provider: 'gemini' })
+    })
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.genai.all,
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: queryKeys.appShell.all,
     })
   })
 })

@@ -8,6 +8,23 @@ import {
   testGenAiProviderDraftRequestSchema,
 } from './genai-settings-contracts'
 
+const redactedProviderStatus = {
+  selectedProvider: 'gemini',
+  selectedReady: false,
+  providers: [
+    {
+      provider: 'gemini',
+      label: 'Gemini',
+      model: 'gemini-2.5-flash',
+      secretConfigured: true,
+      verificationState: 'unverified',
+      verifiedAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+    },
+  ],
+}
+
 describe('genai settings contracts', () => {
   it('rejects baseUrl in provider secret requests via .strict()', () => {
     expect(() =>
@@ -23,24 +40,51 @@ describe('genai settings contracts', () => {
   })
 
   it('accepts redacted provider status without secret values', () => {
-    const status = genAiProviderStatusSchema.parse({
-      selectedProvider: 'gemini',
-      selectedReady: false,
-      providers: [
-        {
-          provider: 'gemini',
-          label: 'Gemini',
-          model: 'gemini-2.5-flash',
-          secretConfigured: true,
-          verificationState: 'unverified',
-          verifiedAt: null,
-          lastErrorCode: null,
-          lastErrorMessage: null,
-        },
-      ],
-    })
+    const status = genAiProviderStatusSchema.parse(redactedProviderStatus)
 
     expect(JSON.stringify(status)).not.toMatch(/apiKey|AIza|sk-/)
+  })
+
+  it('rejects secret-like provider status model values', () => {
+    expect(() =>
+      genAiProviderStatusSchema.parse({
+        ...redactedProviderStatus,
+        providers: [
+          {
+            ...redactedProviderStatus.providers[0],
+            model: 'sk-test',
+          },
+        ],
+      }),
+    ).toThrow()
+  })
+
+  it('rejects secret-like provider status error messages', () => {
+    expect(() =>
+      genAiProviderStatusSchema.parse({
+        ...redactedProviderStatus,
+        providers: [
+          {
+            ...redactedProviderStatus.providers[0],
+            lastErrorMessage: 'AIza-test',
+          },
+        ],
+      }),
+    ).toThrow()
+  })
+
+  it('rejects extra apiKey fields in provider status objects', () => {
+    expect(() =>
+      genAiProviderStatusSchema.parse({
+        ...redactedProviderStatus,
+        providers: [
+          {
+            ...redactedProviderStatus.providers[0],
+            apiKey: 'sk-test',
+          },
+        ],
+      }),
+    ).toThrow()
   })
 
   it('allows raw keys only in provider setup request payloads', () => {
@@ -85,5 +129,21 @@ describe('genai settings contracts', () => {
     })
 
     expect(JSON.stringify(result)).not.toMatch(/apiKey|AIza|sk-/)
+  })
+
+  it('rejects secret-like action result messages', () => {
+    expect(() =>
+      genAiProviderActionResultSchema.parse({
+        action: 'verify-provider',
+        outcome: 'error',
+        message: 'Provider failed with sk-test',
+        occurredAt: '2026-06-14T10:00:00.000Z',
+        status: {
+          selectedProvider: 'gemini',
+          selectedReady: false,
+          providers: [],
+        },
+      }),
+    ).toThrow()
   })
 })
