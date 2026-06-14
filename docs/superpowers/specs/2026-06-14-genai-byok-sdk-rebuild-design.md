@@ -8,9 +8,14 @@ and development smoke testing
 ## Context
 
 The current GenAI setup puts provider, model, enablement, key presence, and key
-editing inside Settings > AI assessment. That has made the feature brittle:
+editing inside Settings > AI assessment. It also blurs three separate
+assessment concepts: normal/manual assessment rules, automatic deterministic
+assessment, and AI-assisted automatic assessment. That has made the feature
+brittle:
 
-- Assessment enablement is coupled to provider/model validation.
+- Assessment behavior is coupled to provider/model validation.
+- Auto assessment and AI assessment are treated as one setting even though a
+  user may want deterministic auto assessment without AI.
 - Provider keys are saved through a separate trusted-secret path, while
   provider/model live in the Settings draft form.
 - The hidden dashboard smoke route has to reconstruct configuration from split
@@ -30,8 +35,12 @@ AI SDK Core.
   tied to Assessment.
 - Move BYOK provider setup into Data Management beside GitHub Sync.
 - Rename the visible `AI assessment` settings section to `Assessment`.
-- Keep the Assessment toggle independent: it can be saved on or off without
-  clearing provider/model state.
+- Separate normal Assessment settings, Auto assessment, and AI assessment.
+- Let Auto assessment work without AI by using the deterministic assessment
+  policy.
+- Treat AI assessment as an optional enhancement to Auto assessment: turning AI
+  assessment on also turns Auto assessment on, and turning Auto assessment off
+  turns AI assessment off.
 - Default provider setup to Gemini, with `gemini-2.5-flash` as the initial
   default model because Google's current Gemini API docs list it as a stable,
   structured-output capable model with free-tier pricing.
@@ -62,9 +71,11 @@ connection metadata from trusted secrets:
   verification, and provider runtime calls.
 - `platform/secrets` continues to own raw provider key storage in
   `chrome.storage.local`.
-- Assessment settings only own whether AI assistance is used during assessment.
-- The trusted background runtime composes Assessment enablement plus the selected
-  verified provider plus the saved secret into the active provider config.
+- Assessment settings own normal assessment rules, Auto assessment, and whether
+  AI may refine automatic assessment.
+- The trusted background runtime composes Auto assessment enablement, AI
+  assessment enablement, the selected verified provider, and the saved secret
+  into the active provider config.
 
 Vercel AI SDK Core is used as a library dependency, not as a product boundary.
 CogniPace still exposes its own narrow GenAI service API, so overlay,
@@ -117,14 +128,24 @@ verified status for that provider.
 
 Rename the visible section from `AI assessment` to `Assessment`.
 
-The section keeps normal assessment settings and adds one AI-assistance toggle:
+The section keeps normal/manual assessment settings and adds two related but
+separate toggles:
 
-- `Use AI recommendations`
+- `Auto assessment`
+- `AI assessment`
 
-The toggle is always saveable. It is not disabled because provider setup is
-missing. When enabled without a selected verified provider, the section shows an
-amber warning status and a `Manage AI Provider` action. The warning is status,
-not validation: it does not mutate the setting and does not block saving.
+`Auto assessment` is the standalone setting. When enabled, CogniPace can
+preselect or save an assessment using the deterministic assessment policy.
+
+`AI assessment` is a secondary setting. It is available only as part of Auto
+assessment. Turning `AI assessment` on also turns `Auto assessment` on in the
+settings draft. Turning `Auto assessment` off also turns `AI assessment` off.
+
+Both toggles are saveable even when provider setup is missing. When
+`AI assessment` is enabled without a selected verified provider, the section
+shows an amber warning status and a `Manage AI Provider` action. The warning is
+status, not validation: it does not mutate the saved setting and does not block
+saving. In that state Auto assessment still uses the deterministic policy.
 
 Provider, model, saved keys, and key editing are removed from this settings
 section.
@@ -197,9 +218,20 @@ removing a provider secret also sets that provider back to `unverified`.
 
 ### Assessment Settings Migration
 
-Keep the existing persisted `aiAssessment.enabled` field for the first phase to
-avoid broad settings migration churn. Stop using `aiAssessment.provider` and
-`aiAssessment.model` in UI and active-provider resolution.
+Add an Assessment-owned persisted setting for Auto assessment, defaulting to
+off. This is a Settings JSON shape change, not a Drizzle schema change.
+
+Keep the existing persisted `aiAssessment.enabled` field for the first phase,
+but reinterpret it as "AI may refine Auto assessment." Stop using
+`aiAssessment.provider` and `aiAssessment.model` in UI and active-provider
+resolution.
+
+Settings draft actions enforce the invariant:
+
+```ts
+aiAssessment.enabled === true => assessment.autoAssessmentEnabled === true
+assessment.autoAssessmentEnabled === false => aiAssessment.enabled === false
+```
 
 In a later cleanup phase, rename the persisted field to something like
 `assessment.aiRecommendationsEnabled` and remove the unused provider/model
@@ -251,16 +283,18 @@ read both queries.
 Replace the current active-config logic with:
 
 1. Load settings.
-2. If `aiAssessment.enabled` is false, return `null`.
-3. Load GenAI connection metadata.
-4. Read the selected provider.
-5. Require a non-empty selected provider model.
-6. Require selected provider verification state `valid` for the same model.
-7. Load the selected provider secret from trusted storage.
-8. Return `{ provider, model, apiKey }`.
+2. If Auto assessment is disabled, return `null`.
+3. If `aiAssessment.enabled` is false, return `null`.
+4. Load GenAI connection metadata.
+5. Read the selected provider.
+6. Require a non-empty selected provider model.
+7. Require selected provider verification state `valid` for the same model.
+8. Load the selected provider secret from trusted storage.
+9. Return `{ provider, model, apiKey }`.
 
-This makes provider setup reusable and keeps Assessment's toggle independent of
-provider/model persistence.
+This makes provider setup reusable and keeps Auto assessment independent of
+provider/model persistence. AI assessment can only run when Auto assessment is
+on, but Auto assessment does not require AI.
 
 ## Vercel AI SDK Runtime
 
@@ -318,7 +352,8 @@ Dev smoke should report:
 - selected model
 - secret presence
 - verification state
-- whether Assessment AI is enabled
+- whether Auto assessment is enabled
+- whether AI assessment is enabled
 - why active config is unavailable
 - live provider result when the opt-in checkbox is enabled
 
@@ -348,13 +383,18 @@ Focused tests:
 - Provider status contract rejects secret-shaped fields.
 - Runtime policy allows dashboard setup calls and rejects content-script setup
   calls.
-- `loadActiveProviderConfig` uses Assessment enablement plus selected verified
-  provider metadata plus trusted secret presence.
+- `loadActiveProviderConfig` requires Auto assessment, AI assessment, selected
+  verified provider metadata, and trusted secret presence.
 - Assessment settings draft no longer mutates provider/model.
+- Assessment settings draft turns Auto assessment on when AI assessment is
+  turned on.
+- Assessment settings draft turns AI assessment off when Auto assessment is
+  turned off.
 - AI Provider card and dialog show configured, unverified, verified, invalid,
   and no-secret states.
 - Dev smoke explains missing model, missing secret, unverified provider,
-  disabled Assessment, and successful configured provider separately.
+  disabled Auto assessment, disabled AI assessment, and successful configured
+  provider separately.
 - SDK runtime wrapper maps auth, rate-limit, network, timeout, invalid-output,
   and unknown failures to safe GenAI errors.
 
@@ -377,7 +417,8 @@ Manual smoke before PR review or merge:
 
 - Configure Gemini with a test key and default model.
 - Verify the provider in the AI Provider dialog.
-- Enable Assessment AI recommendations and save Settings.
+- Enable Auto assessment without AI assessment and save Settings.
+- Enable AI assessment and confirm Auto assessment is also on.
 - Reload dashboard and confirm AI Provider and Assessment states persist.
 - Open `/dev/smoke` with live smoke off and confirm GenAI config reports ready.
 - Open `/dev/smoke` with live smoke on and confirm the provider call succeeds or
@@ -393,8 +434,8 @@ Phase 1: Provider setup and status
 - Add GenAI metadata store and status contracts.
 - Add dashboard-authorized provider model, key, selection, draft-test, and
   stored-verification runtime methods.
-- Update active-provider resolution to use Assessment enablement plus selected
-  verified provider metadata plus trusted secret presence.
+- Update active-provider resolution to require Auto assessment, AI assessment,
+  selected verified provider metadata, and trusted secret presence.
 - Keep existing provider secrets and migrate no raw secret data.
 
 Phase 2: Dashboard provider UI and Assessment cleanup
@@ -402,7 +443,10 @@ Phase 2: Dashboard provider UI and Assessment cleanup
 - Add dashboard AI Provider card/dialog.
 - Move provider/model/key UI out of Assessment settings.
 - Rename visible AI assessment section to Assessment.
-- Keep Assessment toggle independent and warning-based.
+- Add Auto assessment as the standalone deterministic automation setting.
+- Add AI assessment as a dependent enhancement that turns Auto assessment on
+  when enabled.
+- Keep provider readiness warning-based instead of blocking Assessment saves.
 - Add focused settings draft regression tests for the previously reported model
   clearing behavior.
 
