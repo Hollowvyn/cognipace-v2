@@ -7,8 +7,10 @@ import { zodToProviderJsonSchema } from '../json-schema'
 import {
   GenAiTimeoutError,
   fetchWithTimeout,
+  logProviderHttpFailure,
   mapHttpStatusToGenAiError,
   redactErrorMessage,
+  readRedactedProviderResponseBody,
 } from './shared'
 
 const DEFAULT_BASE_URL = 'https://api.openai.com/v1'
@@ -51,7 +53,9 @@ export async function requestJson<T>(
       },
       {
         timeoutMs: request.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-        ...(request.signal !== undefined ? { externalSignal: request.signal } : {}),
+        ...(request.signal !== undefined
+          ? { externalSignal: request.signal }
+          : {}),
       },
     )
   } catch (error) {
@@ -68,6 +72,16 @@ async function handleResponse<T>(
 ): Promise<GenAiGenerateJsonResult<T>> {
   const httpError = mapHttpStatusToGenAiError(response.status)
   if (httpError) {
+    const responseBody = await readRedactedProviderResponseBody(response, [
+      request.apiKey,
+    ])
+    logProviderHttpFailure({
+      provider: 'openai',
+      model: request.model,
+      status: response.status,
+      responseBody,
+    })
+
     return {
       status: 'error',
       code: httpError,
@@ -132,7 +146,11 @@ function extractText(envelope: unknown): string | null {
       continue
     }
     for (const part of content) {
-      if (isObject(part) && part.type === 'output_text' && typeof part.text === 'string') {
+      if (
+        isObject(part) &&
+        part.type === 'output_text' &&
+        typeof part.text === 'string'
+      ) {
         return part.text
       }
     }
@@ -169,7 +187,10 @@ function invalidOutput<T>(
   return {
     status: 'error',
     code: 'invalid-output',
-    message: redactErrorMessage({ provider: 'openai', cause: 'invalid-output' }),
+    message: redactErrorMessage({
+      provider: 'openai',
+      cause: 'invalid-output',
+    }),
     providerMetadata: {
       provider: 'openai',
       model: request.model,

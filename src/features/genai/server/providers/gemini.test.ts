@@ -213,9 +213,15 @@ describe('gemini requestJson', () => {
     expect(body.contents).toEqual([
       { role: 'user', parts: [{ text: 'user' }] },
     ])
-    expect(body.generationConfig).toMatchObject({
+    const generationConfig = body.generationConfig as {
+      responseMimeType?: unknown
+      responseSchema?: unknown
+      responseFormat?: unknown
+    }
+    expect(generationConfig).toMatchObject({
       responseMimeType: 'application/json',
     })
-    expect((body.generationConfig as { responseSchema?: unknown }).responseSchema).toBeDefined()
+    expect(generationConfig.responseSchema).toBeDefined()
+    expect(generationConfig.responseFormat).toBeUndefined()
   })
 })

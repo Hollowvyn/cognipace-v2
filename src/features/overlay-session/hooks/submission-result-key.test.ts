@@ -33,6 +33,23 @@ describe('createSubmissionResultKey', () => {
       createSubmissionResultKey(differentCode),
     )
   })
+
+  it('keeps the key bounded when captured code is long', () => {
+    const longCode = `function solution() { ${'return 1;'.repeat(100)} }`
+    const result = createResult({
+      resultCodeSnapshot: {
+        code: longCode,
+        language: 'typescript',
+        source: 'api',
+        capturedAt: 999,
+      },
+    })
+
+    const key = createSubmissionResultKey(result)
+
+    expect(key.length).toBeLessThanOrEqual(200)
+    expect(key).not.toContain(longCode)
+  })
 })
 
 function createResult(

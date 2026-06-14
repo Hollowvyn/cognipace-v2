@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
+import { recommendLeetCodeAssessmentRequestSchema } from '@/features/leetcode-review-assistant'
 import type {
   AssessmentRecommendation,
   RecommendLeetCodeAssessmentResponse,
@@ -17,6 +18,7 @@ import {
   type OverlaySessionState,
 } from '../domain'
 import type { LeetCodeOverlayContext } from './use-leetcode-page-sync'
+import { createSubmissionResultKey } from './submission-result-key'
 import {
   useLeetCodeAssessmentRecommendation,
   type UseLeetCodeAssessmentRecommendationOptions,
@@ -153,35 +155,17 @@ function makeReadyResponse(
 }
 
 function expectedFingerprint(result: LeetCodeSubmissionResult): string {
-  return [
-    result.location.slug,
-    result.source,
-    result.submissionId,
-    result.status,
-    result.statusText,
-    result.runtime,
-    result.memory,
-    result.passedTestCount,
-    result.totalTestCount,
-    result.failingTestcase,
-    result.errorMessage,
-    result.compileError,
-    result.runtimeError,
-    result.lastTestcase,
-    result.codeOutput,
-    result.expectedOutput,
-    result.stdOutput,
-    result.resultCodeSnapshot.language,
-    result.resultCodeSnapshot.source,
-    result.resultCodeSnapshot.code,
-  ].join('|')
+  return createSubmissionResultKey(result)
 }
 
 type RecordedAction = OverlaySessionAction
 
 function makeOptions(
   overrides: Partial<UseLeetCodeAssessmentRecommendationOptions> = {},
-): { options: UseLeetCodeAssessmentRecommendationOptions; actions: RecordedAction[] } {
+): {
+  options: UseLeetCodeAssessmentRecommendationOptions
+  actions: RecordedAction[]
+} {
   const actions: RecordedAction[] = []
   const dispatch = (action: OverlaySessionAction) => {
     actions.push(action)
@@ -227,6 +211,29 @@ describe('useLeetCodeAssessmentRecommendation', () => {
       problem: { slug: 'two-sum', topics: ['array', 'hash-table'] },
       submission: { status: 'accepted' },
     })
+  })
+
+  it('sends a schema-valid bounded fingerprint when submitted code is long', () => {
+    const deferred = createDeferred<RecommendLeetCodeAssessmentResponse>()
+    sendMessageMock.mockReturnValueOnce(deferred.promise)
+    const baseline = makeSubmissionResult()
+    const longCode = `function solution() { ${'return nums[0];'.repeat(100)} }`
+    const submissionResult = makeSubmissionResult({
+      resultCodeSnapshot: {
+        ...baseline.resultCodeSnapshot,
+        code: longCode,
+      },
+    })
+
+    const { options } = makeOptions({ submissionResult })
+    renderHook((props) => useLeetCodeAssessmentRecommendation(props), {
+      initialProps: options,
+    })
+
+    const [, payload] = sendMessageMock.mock.calls[0]!
+    const request = recommendLeetCodeAssessmentRequestSchema.parse(payload)
+    expect(request.submissionFingerprint.length).toBeLessThanOrEqual(200)
+    expect(request.submissionFingerprint).not.toContain(longCode)
   })
 
   it('2. fires sendMessage for a failed submission', () => {

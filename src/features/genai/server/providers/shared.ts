@@ -1,5 +1,8 @@
 import type { GenAiError, GenAiProviderId } from '../../domain'
 
+const PROVIDER_FAILURE_LOG_PREFIX = '[CogniPace GenAI provider failure]'
+const MAX_LOGGED_RESPONSE_BODY_CHARS = 2_000
+
 export class GenAiTimeoutError extends Error {
   readonly tag = 'GenAiTimeoutError' as const
 
@@ -34,7 +37,9 @@ export async function fetchWithTimeout(
   } catch (error) {
     if (timeoutController.signal.aborted) {
       const reason: unknown = timeoutController.signal.reason
-      throw reason instanceof GenAiTimeoutError ? reason : new GenAiTimeoutError()
+      throw reason instanceof GenAiTimeoutError
+        ? reason
+        : new GenAiTimeoutError()
     }
     throw error
   } finally {
@@ -101,4 +106,54 @@ export function redactErrorMessage(input: RedactErrorMessageInput): string {
         ? `${input.provider} request failed: ${input.detail}`
         : `${input.provider} request failed`
   }
+}
+
+export async function readRedactedProviderResponseBody(
+  response: Response,
+  secrets: readonly string[] = [],
+): Promise<string | null> {
+  let body: string
+  try {
+    body = await response.clone().text()
+  } catch {
+    return null
+  }
+
+  const trimmedBody = body.trim()
+  if (trimmedBody === '') {
+    return null
+  }
+
+  const redactedBody = redactKnownSecrets(trimmedBody, secrets)
+  return redactedBody.length > MAX_LOGGED_RESPONSE_BODY_CHARS
+    ? `${redactedBody.slice(0, MAX_LOGGED_RESPONSE_BODY_CHARS)}...`
+    : redactedBody
+}
+
+export function logProviderHttpFailure(input: {
+  provider: GenAiProviderId
+  model: string
+  status: number
+  responseBody: string | null
+}): void {
+  console.error(PROVIDER_FAILURE_LOG_PREFIX, {
+    provider: input.provider,
+    model: input.model,
+    status: input.status,
+    responseBody: input.responseBody,
+  })
+}
+
+function redactKnownSecrets(value: string, secrets: readonly string[]): string {
+  let redacted = value
+
+  for (const secret of secrets) {
+    const normalizedSecret = secret.trim()
+    if (normalizedSecret.length < 4) {
+      continue
+    }
+    redacted = redacted.split(normalizedSecret).join('[redacted-secret]')
+  }
+
+  return redacted
 }
