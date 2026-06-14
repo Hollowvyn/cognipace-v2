@@ -5,6 +5,7 @@ import { queryKeys } from './query-keys'
 export const cacheInvalidationTags = [
   'analytics',
   'app-shell',
+  'genai',
   'practice',
   'problems',
   'queue',
@@ -18,6 +19,7 @@ export type CacheInvalidationTag = (typeof cacheInvalidationTags)[number]
 const queryKeysByInvalidationTag = {
   analytics: [queryKeys.analytics.all],
   'app-shell': [queryKeys.appShell.all],
+  genai: [queryKeys.genai.all, queryKeys.appShell.all],
   practice: [
     queryKeys.practice.all,
     queryKeys.analytics.all,

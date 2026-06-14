@@ -27,15 +27,50 @@ export {
 } from '@/features/backup/api/backup-contracts'
 import type {
   ClearAiProviderSecretRequest,
+  ClearGenAiProviderSecretRequest,
   GetAiProviderSecretPresenceRequest,
+  GetGenAiProviderStatusRequest,
+  SaveGenAiProviderModelRequest,
+  SaveGenAiProviderSecretRequest,
+  SelectGenAiProviderRequest,
   SetAiProviderSecretRequest,
+  TestGenAiProviderDraftRequest,
+  VerifyGenAiProviderRequest,
 } from '@/features/genai/api'
 export {
   clearAiProviderSecretRequestSchema,
+  clearGenAiProviderSecretRequestSchema,
+  genAiProviderActionResultSchema,
+  genAiProviderStatusSchema,
+  genAiProviderVerificationStateSchema,
+  genAiSetupSurfaceSchema,
   getAiProviderSecretPresenceRequestSchema,
+  getGenAiProviderStatusRequestSchema,
+  saveGenAiProviderModelRequestSchema,
+  saveGenAiProviderSecretRequestSchema,
+  selectGenAiProviderRequestSchema,
   setAiProviderSecretRequestSchema,
+  testGenAiProviderDraftRequestSchema,
+  verifyGenAiProviderRequestSchema,
 } from '@/features/genai/api'
-import type { AiProviderSecretPresence } from '@/features/genai'
+export type {
+  ClearGenAiProviderSecretRequest,
+  GetGenAiProviderStatusRequest,
+  SaveGenAiProviderModelRequest,
+  SaveGenAiProviderSecretRequest,
+  SelectGenAiProviderRequest,
+  TestGenAiProviderDraftRequest,
+  VerifyGenAiProviderRequest,
+} from '@/features/genai/api'
+import type {
+  AiProviderSecretPresence,
+  GenAiProviderActionResult,
+  GenAiProviderStatus,
+} from '@/features/genai'
+export type {
+  GenAiProviderActionResult,
+  GenAiProviderStatus,
+} from '@/features/genai'
 import type { DevSmokeReport, DevSmokeRequest } from '@/features/dev-smoke'
 export {
   devSmokeReportSchema,
@@ -315,6 +350,27 @@ export interface ProtocolMap {
   'genai.clearAiProviderSecret'(
     request: ClearAiProviderSecretRequest,
   ): AiProviderSecretPresence
+  'genai.getProviderStatus'(
+    request: GetGenAiProviderStatusRequest,
+  ): GenAiProviderStatus
+  'genai.saveProviderModel'(
+    request: SaveGenAiProviderModelRequest,
+  ): GenAiProviderActionResult
+  'genai.saveProviderSecret'(
+    request: SaveGenAiProviderSecretRequest,
+  ): GenAiProviderActionResult
+  'genai.testProviderDraft'(
+    request: TestGenAiProviderDraftRequest,
+  ): GenAiProviderActionResult
+  'genai.verifyProvider'(
+    request: VerifyGenAiProviderRequest,
+  ): GenAiProviderActionResult
+  'genai.selectProvider'(
+    request: SelectGenAiProviderRequest,
+  ): GenAiProviderActionResult
+  'genai.clearProviderSecret'(
+    request: ClearGenAiProviderSecretRequest,
+  ): GenAiProviderActionResult
   'genai.recommendLeetCodeAssessment'(
     request: RecommendLeetCodeAssessmentRequest,
   ): RecommendLeetCodeAssessmentResponse
@@ -418,6 +474,13 @@ export const protocolMethodNames = [
   'genai.getAiProviderSecretPresence',
   'genai.setAiProviderSecret',
   'genai.clearAiProviderSecret',
+  'genai.getProviderStatus',
+  'genai.saveProviderModel',
+  'genai.saveProviderSecret',
+  'genai.testProviderDraft',
+  'genai.verifyProvider',
+  'genai.selectProvider',
+  'genai.clearProviderSecret',
   'genai.recommendLeetCodeAssessment',
   'devSmoke.run',
   'sync.getStatus',

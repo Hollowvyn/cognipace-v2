@@ -12,6 +12,7 @@ export const queryKeys = {
   },
   genai: {
     all: ['genai'] as const,
+    status: () => [...queryKeys.genai.all, 'status'] as const,
     secretPresence: () => [...queryKeys.genai.all, 'secret-presence'] as const,
   },
   practice: {

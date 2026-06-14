@@ -8,10 +8,18 @@ vi.mock('@/extension/messaging', () => ({
 
 import { sendMessage } from '@/extension/messaging'
 
+import type {
+  GenAiProviderActionResult,
+  GenAiProviderStatus,
+} from '../domain/genai-connection-types'
 import {
   useClearAiProviderSecretMutation,
+  useGenAiProviderStatusQuery,
   useGenAiSecretPresenceQuery,
+  useSaveGenAiProviderModelMutation,
+  useSaveGenAiProviderSecretMutation,
   useSetAiProviderSecretMutation,
+  useTestGenAiProviderDraftMutation,
 } from './genai-settings-hooks'
 
 let queryClient: QueryClient
@@ -30,6 +38,114 @@ beforeEach(() => {
 
 afterEach(() => {
   queryClient.clear()
+})
+
+const providerStatus: GenAiProviderStatus = {
+  selectedProvider: 'gemini',
+  selectedReady: false,
+  providers: [
+    {
+      provider: 'gemini',
+      label: 'Gemini',
+      model: 'gemini-2.5-flash',
+      secretConfigured: false,
+      verificationState: 'unverified',
+      verifiedAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+    },
+  ],
+}
+
+const providerActionResult: GenAiProviderActionResult = {
+  action: 'save-model',
+  outcome: 'success',
+  message: 'Saved provider model.',
+  status: providerStatus,
+  occurredAt: '2026-06-14T10:00:00.000Z',
+}
+
+describe('useGenAiProviderStatusQuery', () => {
+  it('fetches provider status via the dashboard runtime method', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(providerStatus)
+
+    const { result } = renderHook(() => useGenAiProviderStatusQuery(), {
+      wrapper,
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toEqual(providerStatus)
+    expect(sendMessage).toHaveBeenCalledWith('genai.getProviderStatus', {
+      surface: 'dashboard',
+    })
+  })
+})
+
+describe('provider setup mutations', () => {
+  it('saves provider models through the dashboard runtime method', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(providerActionResult)
+
+    const { result } = renderHook(() => useSaveGenAiProviderModelMutation(), {
+      wrapper,
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        provider: 'gemini',
+        model: 'gemini-2.5-flash',
+      })
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('genai.saveProviderModel', {
+      surface: 'dashboard',
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+    })
+  })
+
+  it('saves provider secrets through the dashboard runtime method', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(providerActionResult)
+
+    const { result } = renderHook(() => useSaveGenAiProviderSecretMutation(), {
+      wrapper,
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        provider: 'gemini',
+        secret: { apiKey: 'AIza-test' },
+      })
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('genai.saveProviderSecret', {
+      surface: 'dashboard',
+      provider: 'gemini',
+      secret: { apiKey: 'AIza-test' },
+    })
+  })
+
+  it('tests provider drafts through the dashboard runtime method', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(providerActionResult)
+
+    const { result } = renderHook(() => useTestGenAiProviderDraftMutation(), {
+      wrapper,
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        provider: 'gemini',
+        model: 'gemini-2.5-flash',
+        secret: { apiKey: 'AIza-test' },
+      })
+    })
+
+    expect(sendMessage).toHaveBeenCalledWith('genai.testProviderDraft', {
+      surface: 'dashboard',
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      secret: { apiKey: 'AIza-test' },
+    })
+  })
 })
 
 describe('useGenAiSecretPresenceQuery', () => {

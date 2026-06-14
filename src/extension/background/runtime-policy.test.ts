@@ -278,6 +278,16 @@ describe('runtime-policy', () => {
   })
 
   describe('genai method surface enforcement', () => {
+    const providerSetupMethods = [
+      'genai.getProviderStatus',
+      'genai.saveProviderModel',
+      'genai.saveProviderSecret',
+      'genai.testProviderDraft',
+      'genai.verifyProvider',
+      'genai.selectProvider',
+      'genai.clearProviderSecret',
+    ] as const
+
     it('allows popup and dashboard to call genai secret methods', () => {
       for (const method of [
         'genai.getAiProviderSecretPresence',
@@ -295,6 +305,15 @@ describe('runtime-policy', () => {
         'genai.setAiProviderSecret',
         'genai.clearAiProviderSecret',
       ] as const) {
+        expect(canCallExtensionMethod(method, 'content-script')).toBe(false)
+        expect(canCallExtensionMethod(method, 'background')).toBe(false)
+      }
+    })
+
+    it('allows only dashboard to call provider setup methods', () => {
+      for (const method of providerSetupMethods) {
+        expect(canCallExtensionMethod(method, 'dashboard')).toBe(true)
+        expect(canCallExtensionMethod(method, 'popup')).toBe(false)
         expect(canCallExtensionMethod(method, 'content-script')).toBe(false)
         expect(canCallExtensionMethod(method, 'background')).toBe(false)
       }
