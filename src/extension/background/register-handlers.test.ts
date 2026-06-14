@@ -622,9 +622,10 @@ describe('background handler registration', () => {
       expect.any(Date),
     )
     expect(backgroundMocks.getSettings).toHaveBeenCalledWith(backgroundMocks.db)
-    expect(backgroundMocks.getAiProviderSecretPresence).toHaveBeenCalledWith(
+    expect(backgroundMocks.getGenAiProviderStatus).toHaveBeenCalledWith(
       backgroundMocks.db,
     )
+    expect(backgroundMocks.getAiProviderSecretPresence).not.toHaveBeenCalled()
     expect(backgroundMocks.loadActiveProviderConfig).not.toHaveBeenCalled()
     expect(backgroundMocks.readDueNotificationState).toHaveBeenCalledTimes(1)
     expect(backgroundMocks.writeDueNotificationState).not.toHaveBeenCalled()
@@ -644,50 +645,81 @@ describe('background handler registration', () => {
     })
   })
 
-  it('reports the selected GenAI provider and model when the secret is missing', async () => {
+  it('reports the selected GenAI provider status instead of legacy settings provider and model', async () => {
     backgroundMocks.getSettings.mockResolvedValue({
       ...defaultUserSettings,
+      assessment: {
+        ...defaultUserSettings.assessment,
+        autoAssessmentEnabled: true,
+      },
       aiAssessment: {
         enabled: true,
         provider: 'anthropic',
         model: 'claude-3-5-sonnet-latest',
       },
     })
-    backgroundMocks.getAiProviderSecretPresence.mockResolvedValue({
-      openai: false,
-      anthropic: false,
-      gemini: false,
-    })
+    backgroundMocks.getGenAiProviderStatus.mockResolvedValue(
+      redactedGenAiStatus({
+        selectedProvider: 'gemini',
+        selectedReady: false,
+        providers: [
+          redactedProviderStatus({
+            provider: 'gemini',
+            model: 'gemini-2.5-flash',
+            secretConfigured: false,
+            verificationState: 'valid',
+          }),
+        ],
+      }),
+    )
 
     const response = await sendRuntimeMessage('devSmoke.run', {
       surface: 'dashboard',
     })
     const report = devSmokeReportSchema.parse(response)
 
+    expect(backgroundMocks.getGenAiProviderStatus).toHaveBeenCalledWith(
+      backgroundMocks.db,
+    )
+    expect(backgroundMocks.getAiProviderSecretPresence).not.toHaveBeenCalled()
     expect(backgroundMocks.loadActiveProviderConfig).not.toHaveBeenCalled()
     expect(
       report.checks.find((check) => check.id === 'genai.config'),
     ).toMatchObject({
       status: 'warn',
       detail:
-        'Provider anthropic is configured with model claude-3-5-sonnet-latest; secret present: no.',
+        'Provider gemini is selected with model gemini-2.5-flash; verification valid; secret present: no.',
     })
   })
 
   it('runs live GenAI smoke when requested and redacts provider errors', async () => {
     backgroundMocks.getSettings.mockResolvedValue({
       ...defaultUserSettings,
+      assessment: {
+        ...defaultUserSettings.assessment,
+        autoAssessmentEnabled: true,
+      },
       aiAssessment: {
         enabled: true,
         provider: 'openai',
         model: 'gpt-4.1-mini',
       },
     })
-    backgroundMocks.getAiProviderSecretPresence.mockResolvedValue({
-      openai: true,
-      anthropic: false,
-      gemini: false,
-    })
+    backgroundMocks.getGenAiProviderStatus.mockResolvedValue(
+      redactedGenAiStatus({
+        selectedProvider: 'openai',
+        selectedReady: true,
+        providers: [
+          redactedProviderStatus({
+            provider: 'openai',
+            label: 'OpenAI',
+            model: 'gpt-4.1-mini',
+            secretConfigured: true,
+            verificationState: 'valid',
+          }),
+        ],
+      }),
+    )
     backgroundMocks.loadActiveProviderConfig.mockResolvedValue({
       provider: 'openai',
       model: 'gpt-4.1-mini',
@@ -718,7 +750,7 @@ describe('background handler registration', () => {
     ).toMatchObject({
       status: 'pass',
       detail:
-        'Provider openai is configured with model gpt-4.1-mini; secret present: yes.',
+        'Provider openai is ready with model gpt-4.1-mini; secret present: yes.',
     })
     expect(
       report.checks.find((check) => check.id === 'genai.live'),
@@ -2307,6 +2339,20 @@ function redactedGenAiStatus(overrides: Record<string, unknown> = {}) {
         lastErrorMessage: null,
       },
     ],
+    ...overrides,
+  }
+}
+
+function redactedProviderStatus(overrides: Record<string, unknown> = {}) {
+  return {
+    provider: 'gemini',
+    label: 'Gemini',
+    model: 'gemini-2.5-flash',
+    secretConfigured: false,
+    verificationState: 'unverified',
+    verifiedAt: null,
+    lastErrorCode: null,
+    lastErrorMessage: null,
     ...overrides,
   }
 }

@@ -506,6 +506,34 @@ describe('AI assessment exposure', () => {
     expect(payload.overlay.aiAssessmentAvailable).toBe(false)
   })
 
+  it('overlay payload reports aiAssessmentAvailable=false when auto assessment is off and AI assessment is on', async () => {
+    const handle = await createTestDb({ seed: false })
+    await updateSettings(handle.db, {
+      assessment: { autoAssessmentEnabled: false },
+      aiAssessment: { enabled: true, provider: 'openai', model: 'legacy-model' },
+    })
+    await setAiProviderSecret(handle.db, 'gemini', { apiKey: 'AIza-must-not-leak' })
+    await configureVerifiedGenAiProvider('gemini', 'gemini-2.5-flash')
+
+    const payload = await getOverlayPayload(handle)
+
+    expect(payload.overlay.aiAssessmentAvailable).toBe(false)
+  })
+
+  it('overlay payload reports aiAssessmentAvailable=false when auto assessment is on and AI assessment is off', async () => {
+    const handle = await createTestDb({ seed: false })
+    await updateSettings(handle.db, {
+      assessment: { autoAssessmentEnabled: true },
+      aiAssessment: { enabled: false, provider: 'openai', model: 'legacy-model' },
+    })
+    await setAiProviderSecret(handle.db, 'gemini', { apiKey: 'AIza-must-not-leak' })
+    await configureVerifiedGenAiProvider('gemini', 'gemini-2.5-flash')
+
+    const payload = await getOverlayPayload(handle)
+
+    expect(payload.overlay.aiAssessmentAvailable).toBe(false)
+  })
+
   it('overlay payload reports aiAssessmentAvailable=false when enabled but key missing', async () => {
     const handle = await createTestDb({ seed: false })
     await updateSettings(handle.db, {
@@ -527,6 +555,24 @@ describe('AI assessment exposure', () => {
     await setAiProviderSecret(handle.db, 'openai', { apiKey: 'sk-must-not-leak' })
     await configureVerifiedGenAiProvider('openai', 'gpt-test')
     const payload = await getOverlayPayload(handle)
+    expect(payload.overlay.aiAssessmentAvailable).toBe(true)
+  })
+
+  it('overlay payload reports aiAssessmentAvailable=true from selected provider metadata instead of legacy aiAssessment provider/model', async () => {
+    const handle = await createTestDb({ seed: false })
+    await updateSettings(handle.db, {
+      assessment: { autoAssessmentEnabled: true },
+      aiAssessment: {
+        enabled: true,
+        provider: 'openai',
+        model: 'legacy-openai-model',
+      },
+    })
+    await setAiProviderSecret(handle.db, 'gemini', { apiKey: 'AIza-must-not-leak' })
+    await configureVerifiedGenAiProvider('gemini', 'gemini-2.5-flash')
+
+    const payload = await getOverlayPayload(handle)
+
     expect(payload.overlay.aiAssessmentAvailable).toBe(true)
   })
 

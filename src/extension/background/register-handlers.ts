@@ -89,6 +89,7 @@ import {
   testGenAiProviderDraft,
   verifyGenAiProvider,
 } from '@/features/genai/server/genai-settings-service'
+import type { GenAiProviderStatus } from '@/features/genai/domain/genai-connection-types'
 import type { AiProviderSecretPresence } from '@/features/genai'
 import { generateJson } from '@/features/genai/server'
 import {
@@ -931,26 +932,17 @@ export function registerBackgroundHandlers() {
           }
         },
         readGenAiConfig: async () => {
-          const settings = await getSettings(db)
-          const ai = settings.aiAssessment
-          const secretPresence = await getAiProviderSecretPresence(db)
-          const hasConfiguredModel = ai.model.trim() !== ''
+          const [settings, status] = await Promise.all([
+            getSettings(db),
+            getGenAiProviderStatus(db),
+          ])
 
-          if (!ai.enabled || !hasConfiguredModel) {
-            return {
-              enabled: false,
-              provider: ai.provider,
-              model: hasConfiguredModel ? ai.model : 'not-configured',
-              hasSecret: secretPresence[ai.provider],
-            }
-          }
-
-          return {
-            enabled: true,
-            provider: ai.provider,
-            model: ai.model,
-            hasSecret: secretPresence[ai.provider],
-          }
+          return buildGenAiSmokeConfig({
+            autoAssessmentEnabled:
+              settings.assessment.autoAssessmentEnabled === true,
+            aiAssessmentEnabled: settings.aiAssessment.enabled === true,
+            status,
+          })
         },
         runNotificationDryRun: () => runNotificationSmokeDryRun(db),
         runLiveGenAi: () => runLiveGenAiSmoke(db),
@@ -1407,6 +1399,100 @@ export function registerBackgroundHandlers() {
 const genAiLiveSmokeSchema = z.object({
   ok: z.literal(true),
 })
+
+type GenAiSmokeConfig = {
+  autoAssessmentEnabled: boolean
+  aiAssessmentEnabled: boolean
+  provider: string
+  model: string
+  secretPresent: boolean
+  verificationState: 'unverified' | 'valid' | 'invalid'
+  ready: boolean
+  reason:
+    | 'auto-assessment-disabled'
+    | 'ai-assessment-disabled'
+    | 'model-missing'
+    | 'secret-missing'
+    | 'provider-unverified'
+    | 'provider-invalid'
+    | null
+}
+
+function buildGenAiSmokeConfig(input: {
+  autoAssessmentEnabled: boolean
+  aiAssessmentEnabled: boolean
+  status: GenAiProviderStatus
+}): GenAiSmokeConfig {
+  const selected = input.status.providers.find(
+    (provider) => provider.provider === input.status.selectedProvider,
+  )
+  const model = selected?.model.trim() ?? ''
+  const secretPresent = selected?.secretConfigured ?? false
+  const verificationState = selected?.verificationState ?? 'unverified'
+
+  const base = {
+    autoAssessmentEnabled: input.autoAssessmentEnabled,
+    aiAssessmentEnabled: input.aiAssessmentEnabled,
+    provider: input.status.selectedProvider,
+    model,
+    secretPresent,
+    verificationState,
+  }
+
+  if (!input.autoAssessmentEnabled) {
+    return {
+      ...base,
+      ready: false,
+      reason: 'auto-assessment-disabled',
+    }
+  }
+
+  if (!input.aiAssessmentEnabled) {
+    return {
+      ...base,
+      ready: false,
+      reason: 'ai-assessment-disabled',
+    }
+  }
+
+  if (model === '') {
+    return {
+      ...base,
+      ready: false,
+      reason: 'model-missing',
+    }
+  }
+
+  if (!secretPresent) {
+    return {
+      ...base,
+      ready: false,
+      reason: 'secret-missing',
+    }
+  }
+
+  if (verificationState === 'invalid') {
+    return {
+      ...base,
+      ready: false,
+      reason: 'provider-invalid',
+    }
+  }
+
+  if (verificationState === 'unverified') {
+    return {
+      ...base,
+      ready: false,
+      reason: 'provider-unverified',
+    }
+  }
+
+  return {
+    ...base,
+    ready: input.status.selectedReady,
+    reason: input.status.selectedReady ? null : 'provider-unverified',
+  }
+}
 
 async function runNotificationSmokeDryRun(db: Db) {
   const now = new Date()

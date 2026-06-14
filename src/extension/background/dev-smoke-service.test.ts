@@ -102,43 +102,107 @@ describe('createDevSmokeService', () => {
     })
   })
 
-  it('warns when GenAI config is disabled', async () => {
+  it.each([
+    {
+      name: 'auto assessment is disabled',
+      config: {
+        autoAssessmentEnabled: false,
+        aiAssessmentEnabled: true,
+        provider: 'gemini',
+        model: 'gemini-2.5-flash',
+        secretPresent: true,
+        verificationState: 'valid' as const,
+        ready: false,
+        reason: 'auto-assessment-disabled',
+      },
+      detail: 'Auto assessment is disabled.',
+    },
+    {
+      name: 'AI assessment is disabled',
+      config: {
+        autoAssessmentEnabled: true,
+        aiAssessmentEnabled: false,
+        provider: 'gemini',
+        model: 'gemini-2.5-flash',
+        secretPresent: true,
+        verificationState: 'valid' as const,
+        ready: false,
+        reason: 'ai-assessment-disabled',
+      },
+      detail: 'AI assessment is disabled.',
+    },
+    {
+      name: 'selected provider is unverified with a secret',
+      config: {
+        autoAssessmentEnabled: true,
+        aiAssessmentEnabled: true,
+        provider: 'gemini',
+        model: 'gemini-2.5-flash',
+        secretPresent: true,
+        verificationState: 'unverified',
+        ready: false,
+        reason: 'provider-unverified',
+      },
+      detail:
+        'Provider gemini is selected with model gemini-2.5-flash; verification unverified; secret present: yes.',
+    },
+    {
+      name: 'selected provider is invalid with a secret',
+      config: {
+        autoAssessmentEnabled: true,
+        aiAssessmentEnabled: true,
+        provider: 'gemini',
+        model: 'gemini-2.5-flash',
+        secretPresent: true,
+        verificationState: 'invalid',
+        ready: false,
+        reason: 'provider-invalid',
+      },
+      detail:
+        'Provider gemini is selected with model gemini-2.5-flash; verification invalid; secret present: yes.',
+    },
+    {
+      name: 'selected provider is missing a secret',
+      config: {
+        autoAssessmentEnabled: true,
+        aiAssessmentEnabled: true,
+        provider: 'gemini',
+        model: 'gemini-2.5-flash',
+        secretPresent: false,
+        verificationState: 'valid' as const,
+        ready: false,
+        reason: 'secret-missing',
+      },
+      detail:
+        'Provider gemini is selected with model gemini-2.5-flash; verification valid; secret present: no.',
+    },
+    {
+      name: 'selected provider is ready',
+      config: {
+        autoAssessmentEnabled: true,
+        aiAssessmentEnabled: true,
+        provider: 'gemini',
+        model: 'gemini-2.5-flash',
+        secretPresent: true,
+        verificationState: 'valid',
+        ready: true,
+        reason: null,
+      },
+      status: 'pass',
+      detail:
+        'Provider gemini is ready with model gemini-2.5-flash; secret present: yes.',
+    },
+  ] as const)('reports GenAI config when $name', async (scenario) => {
     const deps = createDeps()
-    vi.mocked(deps.readGenAiConfig).mockResolvedValue({
-      enabled: false,
-      provider: 'openai',
-      model: 'not-configured',
-      hasSecret: false,
-    })
+    vi.mocked(deps.readGenAiConfig).mockResolvedValue(scenario.config)
 
     const report = await createDevSmokeService(deps).run({})
 
     expect(
       report.checks.find((check) => check.id === 'genai.config'),
     ).toMatchObject({
-      status: 'warn',
-      detail:
-        'Provider openai is not configured; model not-configured; secret present: no.',
-    })
-  })
-
-  it('warns when GenAI config has no stored secret', async () => {
-    const deps = createDeps()
-    vi.mocked(deps.readGenAiConfig).mockResolvedValue({
-      enabled: true,
-      provider: 'openai',
-      model: 'gpt-4.1-mini',
-      hasSecret: false,
-    })
-
-    const report = await createDevSmokeService(deps).run({})
-
-    expect(
-      report.checks.find((check) => check.id === 'genai.config'),
-    ).toMatchObject({
-      status: 'warn',
-      detail:
-        'Provider openai is configured with model gpt-4.1-mini; secret present: no.',
+      status: scenario.status ?? 'warn',
+      detail: scenario.detail,
     })
   })
 })
@@ -219,10 +283,14 @@ function createDeps(): DevSmokeDeps {
     ),
     readGenAiConfig: vi.fn(() =>
       Promise.resolve({
-        enabled: true,
+        autoAssessmentEnabled: true,
+        aiAssessmentEnabled: true,
         provider: 'openai',
         model: 'gpt-4.1-mini',
-        hasSecret: true,
+        secretPresent: true,
+        verificationState: 'valid' as const,
+        ready: true,
+        reason: null,
       }),
     ),
     runNotificationDryRun: vi.fn(() =>

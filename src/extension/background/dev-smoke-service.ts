@@ -12,10 +12,21 @@ export interface DevSmokeDeps {
     recommendationReason: string | null
   }>
   readGenAiConfig: () => Promise<{
-    enabled: boolean
+    autoAssessmentEnabled: boolean
+    aiAssessmentEnabled: boolean
     provider: string
     model: string
-    hasSecret: boolean
+    secretPresent: boolean
+    verificationState: 'unverified' | 'valid' | 'invalid'
+    ready: boolean
+    reason:
+      | 'auto-assessment-disabled'
+      | 'ai-assessment-disabled'
+      | 'model-missing'
+      | 'secret-missing'
+      | 'provider-unverified'
+      | 'provider-invalid'
+      | null
   }>
   runNotificationDryRun: () => Promise<{ status: SmokeStatus; detail: string }>
   runLiveGenAi: () => Promise<{
@@ -157,14 +168,37 @@ async function runGenAiConfigCheck(deps: DevSmokeDeps): Promise<SmokeCheck> {
     return createCheck({
       id: 'genai.config',
       label: 'GenAI config',
-      status: config.enabled && config.hasSecret ? 'pass' : 'warn',
-      detail: config.enabled
-        ? `Provider ${config.provider} is configured with model ${config.model}; secret present: ${config.hasSecret ? 'yes' : 'no'}.`
-        : `Provider ${config.provider} is not configured; model ${config.model}; secret present: no.`,
+      status: config.ready ? 'pass' : 'warn',
+      detail: formatGenAiConfigDetail(config),
     })
   } catch (error) {
     return createFailureCheck('genai.config', 'GenAI config', error)
   }
+}
+
+function formatGenAiConfigDetail(
+  config: Awaited<ReturnType<DevSmokeDeps['readGenAiConfig']>>,
+) {
+  switch (config.reason) {
+    case 'auto-assessment-disabled':
+      return 'Auto assessment is disabled.'
+    case 'ai-assessment-disabled':
+      return 'AI assessment is disabled.'
+    case 'model-missing':
+      return `Provider ${config.provider} is selected but model is missing; secret present: ${formatSecretPresence(config.secretPresent)}.`
+    case 'secret-missing':
+    case 'provider-invalid':
+    case 'provider-unverified':
+      return `Provider ${config.provider} is selected with model ${config.model}; verification ${config.verificationState}; secret present: ${formatSecretPresence(config.secretPresent)}.`
+    case null:
+      return `Provider ${config.provider} is ready with model ${config.model}; secret present: ${formatSecretPresence(config.secretPresent)}.`
+    default:
+      return assertNever(config.reason)
+  }
+}
+
+function formatSecretPresence(secretPresent: boolean) {
+  return secretPresent ? 'yes' : 'no'
 }
 
 async function runLiveGenAiCheck(deps: DevSmokeDeps): Promise<SmokeCheck> {
@@ -210,6 +244,10 @@ function readErrorMessage(error: unknown) {
   }
 
   return String(error)
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unexpected smoke config reason: ${String(value)}`)
 }
 
 function redactSecrets(value: string) {

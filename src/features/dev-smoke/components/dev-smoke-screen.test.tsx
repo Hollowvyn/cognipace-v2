@@ -69,6 +69,33 @@ describe('DevSmokeScreen', () => {
     ).toBeVisible()
   })
 
+  it('redacts secret-like strings from rendered smoke details', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      createDevSmokeReport({
+        checks: [
+          {
+            id: 'genai.config',
+            label: 'GenAI config',
+            status: 'warn',
+            detail:
+              'Provider rejected apiKey=sk-test-secret-value and Bearer AIzaVerySecretValue.',
+          },
+        ],
+      }),
+    )
+
+    renderDevSmokeScreen()
+
+    const genAi = await screen.findByRole('listitem', {
+      name: /GenAI config/i,
+    })
+
+    expect(within(genAi).getByText(/apiKey=\[redacted\]/)).toBeVisible()
+    expect(within(genAi).getByText(/Bearer \[redacted\]/)).toBeVisible()
+    expect(screen.queryByText(/sk-test-secret-value/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/AIzaVerySecretValue/)).not.toBeInTheDocument()
+  })
+
   it('reruns smoke with live GenAI enabled when the checkbox is toggled', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage)
