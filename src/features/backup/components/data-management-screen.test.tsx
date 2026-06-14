@@ -22,6 +22,17 @@ vi.mock('@/features/sync', () => ({
   ),
 }))
 
+vi.mock('@/features/genai', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/genai')>()
+
+  return {
+    ...actual,
+    AiProviderSettingsSection: () => (
+      <section aria-label="AI provider settings">AI Provider</section>
+    ),
+  }
+})
+
 describe('DataManagementScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -51,12 +62,15 @@ describe('DataManagementScreen', () => {
     expect(within(backupPanel).queryByText('Backup exported.')).toBeNull()
   })
 
-  it('renders GitHub sync settings between full backup and selective import', () => {
+  it('renders AI provider and GitHub sync settings between full backup and selective import', () => {
     const { wrapper } = createQueryTestHarness()
 
     render(<DataManagementScreen />, { wrapper })
 
     const backup = screen.getByRole('region', { name: 'Export backup' })
+    const aiProvider = screen.getByRole('region', {
+      name: 'AI provider settings',
+    })
     const sync = screen.getByRole('region', { name: 'GitHub sync settings' })
     const selectiveImport = screen.getByRole('region', {
       name: 'Selective import',
@@ -66,7 +80,11 @@ describe('DataManagementScreen', () => {
       backup.compareDocumentPosition(sync) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
-      sync.compareDocumentPosition(selectiveImport) &
+      sync.compareDocumentPosition(aiProvider) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      aiProvider.compareDocumentPosition(selectiveImport) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
