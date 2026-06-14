@@ -69,6 +69,10 @@ describe('dashboard routes', () => {
         return Promise.resolve(notConfiguredSyncStatus)
       }
 
+      if (method === 'genai.getProviderStatus') {
+        return Promise.resolve(defaultGenAiProviderStatus)
+      }
+
       if (method === 'tracks.getWorkspace') {
         return Promise.resolve(createTrackWorkspaceResponse())
       }
@@ -192,6 +196,10 @@ describe('dashboard routes', () => {
 
       if (method === 'sync.getStatus') {
         return Promise.resolve(notConfiguredSyncStatus)
+      }
+
+      if (method === 'genai.getProviderStatus') {
+        return Promise.resolve(defaultGenAiProviderStatus)
       }
 
       return Promise.resolve(defaultUserSettings)
@@ -817,6 +825,43 @@ const configuredSyncStatus = {
   lastSyncAt: '2026-05-26T12:00:00.000Z',
   lastSyncDirection: 'push',
   lastPushAt: '2026-05-26T12:00:00.000Z',
+} as const
+
+const defaultGenAiProviderStatus = {
+  selectedProvider: 'gemini',
+  selectedReady: false,
+  providers: [
+    {
+      provider: 'gemini',
+      label: 'Gemini',
+      model: 'gemini-2.5-flash',
+      secretConfigured: false,
+      verificationState: 'unverified',
+      verifiedAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+    },
+    {
+      provider: 'openai',
+      label: 'OpenAI',
+      model: 'gpt-4o-mini',
+      secretConfigured: false,
+      verificationState: 'unverified',
+      verifiedAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+    },
+    {
+      provider: 'anthropic',
+      label: 'Anthropic',
+      model: 'claude-haiku-4-5',
+      secretConfigured: false,
+      verificationState: 'unverified',
+      verifiedAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+    },
+  ],
 } as const
 
 function syncActionResult(

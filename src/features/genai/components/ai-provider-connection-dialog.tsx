@@ -45,10 +45,11 @@ export function AiProviderConnectionDialog({
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useRef<HTMLElement>(null)
   const [feedback, setFeedback] = useState<ConnectionFeedback | null>(null)
+  const [effectiveStatus, setEffectiveStatus] = useState(status)
   const [provider, setProvider] = useState<GenAiProviderId>(
     status.selectedProvider,
   )
-  const providerStatus = useProviderStatus(status, provider)
+  const providerStatus = useProviderStatus(effectiveStatus, provider)
   const [model, setModel] = useState(providerStatus.model)
   const [replacingKey, setReplacingKey] = useState(
     !providerStatus.secretConfigured,
@@ -73,6 +74,10 @@ export function AiProviderConnectionDialog({
     }
   }, [])
 
+  useEffect(() => {
+    setEffectiveStatus(status)
+  }, [status])
+
   async function runAction(
     action: () => AiProviderActionResult,
     fallbackMessage: string,
@@ -80,6 +85,10 @@ export function AiProviderConnectionDialog({
   ) {
     try {
       const result = await Promise.resolve(action())
+
+      if (isProviderActionResult(result)) {
+        setEffectiveStatus(result.status)
+      }
 
       if (!result || result.outcome === 'success') {
         options.afterSuccess?.()
@@ -191,11 +200,12 @@ export function AiProviderConnectionDialog({
             </label>
             <select
               className="rounded-[var(--cp-control-radius)] border border-border bg-background px-3 py-2 text-[length:var(--cp-copy-font-size)]"
+              disabled={isPending}
               id="ai-provider-dialog-provider"
               onChange={(event) => {
                 const nextProvider = event.currentTarget.value as GenAiProviderId
                 const nextProviderStatus = readProviderStatusValue(
-                  status,
+                  effectiveStatus,
                   nextProvider,
                 )
                 setProvider(nextProvider)
@@ -223,6 +233,7 @@ export function AiProviderConnectionDialog({
             </label>
             <input
               className="rounded-[var(--cp-control-radius)] border border-border bg-background px-3 py-2 text-[length:var(--cp-copy-font-size)]"
+              disabled={isPending}
               id="ai-provider-dialog-model"
               onChange={(event) => {
                 setModel(event.currentTarget.value)
@@ -243,6 +254,7 @@ export function AiProviderConnectionDialog({
               <input
                 autoComplete="off"
                 className="min-w-[16rem] flex-1 rounded-[var(--cp-control-radius)] border border-border bg-background px-3 py-2 text-[length:var(--cp-copy-font-size)]"
+                disabled={isPending}
                 id="ai-provider-dialog-key"
                 onChange={(event) => {
                   setKey(event.currentTarget.value)
@@ -291,7 +303,7 @@ export function AiProviderConnectionDialog({
               onClick={() => {
                 void runAction(
                   async () => {
-                    if (provider !== status.selectedProvider) {
+                    if (provider !== effectiveStatus.selectedProvider) {
                       const selectResult =
                         await actions.onSelectProvider(provider)
 
@@ -440,6 +452,12 @@ function isActionError(
   result: GenAiProviderActionResult | null | undefined | void,
 ) {
   return result?.outcome === 'error'
+}
+
+function isProviderActionResult(
+  result: GenAiProviderActionResult | null | undefined | void,
+): result is GenAiProviderActionResult {
+  return Boolean(result && 'status' in result)
 }
 
 function getFocusableElements(root: HTMLElement) {
