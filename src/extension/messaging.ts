@@ -234,6 +234,7 @@ export const uiSurfaceSchema = z.enum(['popup', 'dashboard', 'content-script'])
 export type UiSurface = z.infer<typeof uiSurfaceSchema>
 
 export const cacheInvalidationReasonSchema = z.enum([
+  'genai-updated',
   'practice-updated',
   'problem-catalog-updated',
   'settings-updated',

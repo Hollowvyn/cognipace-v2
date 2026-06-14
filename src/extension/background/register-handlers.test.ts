@@ -110,6 +110,13 @@ const backgroundMocks = vi.hoisted(() => {
     getAiProviderSecretPresence: vi.fn(),
     setAiProviderSecret: vi.fn(),
     clearAiProviderSecret: vi.fn(),
+    getGenAiProviderStatus: vi.fn(),
+    saveGenAiProviderModel: vi.fn(),
+    saveGenAiProviderSecret: vi.fn(),
+    testGenAiProviderDraft: vi.fn(),
+    verifyGenAiProvider: vi.fn(),
+    selectGenAiProvider: vi.fn(),
+    clearGenAiProviderSecret: vi.fn(),
     loadActiveProviderConfig: vi.fn(),
     generateJson: vi.fn(),
     cycleThemeMode: vi.fn(),
@@ -198,6 +205,13 @@ vi.mock('@/features/genai/server/genai-settings-service', () => ({
   getAiProviderSecretPresence: backgroundMocks.getAiProviderSecretPresence,
   setAiProviderSecret: backgroundMocks.setAiProviderSecret,
   clearAiProviderSecret: backgroundMocks.clearAiProviderSecret,
+  getGenAiProviderStatus: backgroundMocks.getGenAiProviderStatus,
+  saveGenAiProviderModel: backgroundMocks.saveGenAiProviderModel,
+  saveGenAiProviderSecret: backgroundMocks.saveGenAiProviderSecret,
+  testGenAiProviderDraft: backgroundMocks.testGenAiProviderDraft,
+  verifyGenAiProvider: backgroundMocks.verifyGenAiProvider,
+  selectGenAiProvider: backgroundMocks.selectGenAiProvider,
+  clearGenAiProviderSecret: backgroundMocks.clearGenAiProviderSecret,
   loadActiveProviderConfig: backgroundMocks.loadActiveProviderConfig,
 }))
 
@@ -402,6 +416,27 @@ describe('background handler registration', () => {
       anthropic: false,
       gemini: false,
     })
+    backgroundMocks.getGenAiProviderStatus.mockResolvedValue(
+      redactedGenAiStatus(),
+    )
+    backgroundMocks.saveGenAiProviderModel.mockResolvedValue(
+      genAiActionResult('save-model'),
+    )
+    backgroundMocks.saveGenAiProviderSecret.mockResolvedValue(
+      genAiActionResult('save-secret'),
+    )
+    backgroundMocks.testGenAiProviderDraft.mockResolvedValue(
+      genAiActionResult('test-draft'),
+    )
+    backgroundMocks.verifyGenAiProvider.mockResolvedValue(
+      genAiActionResult('verify-provider'),
+    )
+    backgroundMocks.selectGenAiProvider.mockResolvedValue(
+      genAiActionResult('select-provider'),
+    )
+    backgroundMocks.clearGenAiProviderSecret.mockResolvedValue(
+      genAiActionResult('clear-secret'),
+    )
     backgroundMocks.loadActiveProviderConfig.mockResolvedValue(null)
     backgroundMocks.generateJson.mockResolvedValue({
       status: 'success',
@@ -1285,6 +1320,201 @@ describe('background handler registration', () => {
     expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
   })
 
+  it('genai.getProviderStatus returns Gemini default and no secret fields', async () => {
+    const response = await sendRuntimeMessage('genai.getProviderStatus', {
+      surface: 'dashboard',
+    })
+
+    expectRuntimePolicy('genai.getProviderStatus', 'dashboard')
+    expect(backgroundMocks.getGenAiProviderStatus).toHaveBeenCalledWith(
+      backgroundMocks.db,
+    )
+    expect(response).toMatchObject({
+      selectedProvider: 'gemini',
+      selectedReady: false,
+    })
+    expect(JSON.stringify(response)).not.toMatch(/apiKey|AIza|sk-/)
+  })
+
+  it('genai.saveProviderModel changes model and invalidates GenAI without marking sync dirty', async () => {
+    resetRuntimeMutationMocks()
+    backgroundMocks.saveGenAiProviderModel.mockResolvedValue(
+      genAiActionResult('save-model', {
+        status: {
+          ...redactedGenAiStatus(),
+          providers: [
+            {
+              ...redactedGenAiStatus().providers[0],
+              model: 'gemini-3.0-flash',
+            },
+          ],
+        },
+      }),
+    )
+
+    const response = await sendRuntimeMessage('genai.saveProviderModel', {
+      surface: 'dashboard',
+      provider: 'gemini',
+      model: 'gemini-3.0-flash',
+    })
+
+    expectRuntimePolicy('genai.saveProviderModel', 'dashboard')
+    expect(backgroundMocks.saveGenAiProviderModel).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      'gemini',
+      'gemini-3.0-flash',
+    )
+    expect(response).toMatchObject({
+      action: 'save-model',
+      outcome: 'success',
+    })
+    expect(backgroundMocks.markSyncLocalDataChanged).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      reason: 'genai-updated',
+      source: 'dashboard',
+      tags: ['genai', 'app-shell'],
+    })
+    expectFlushBeforeBroadcast()
+  })
+
+  it('genai.verifyProvider calls service, parses schema, authorizes, and invalidates after flush', async () => {
+    resetRuntimeMutationMocks()
+    backgroundMocks.verifyGenAiProvider.mockResolvedValue(
+      genAiActionResult('verify-provider'),
+    )
+
+    const response = await sendRuntimeMessage('genai.verifyProvider', {
+      surface: 'dashboard',
+      provider: 'gemini',
+    })
+
+    expectRuntimePolicy('genai.verifyProvider', 'dashboard')
+    expect(backgroundMocks.verifyGenAiProvider).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      'gemini',
+    )
+    expect(response).toMatchObject({
+      action: 'verify-provider',
+      outcome: 'success',
+    })
+    expect(backgroundMocks.markSyncLocalDataChanged).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      reason: 'genai-updated',
+      source: 'dashboard',
+      tags: ['genai', 'app-shell'],
+    })
+    expectFlushBeforeBroadcast()
+  })
+
+  it('genai.saveProviderSecret stores key through service and returns redacted status', async () => {
+    resetRuntimeMutationMocks()
+    backgroundMocks.saveGenAiProviderSecret.mockResolvedValue(
+      genAiActionResult('save-secret', {
+        status: {
+          ...redactedGenAiStatus(),
+          providers: [
+            {
+              ...redactedGenAiStatus().providers[0],
+              secretConfigured: true,
+            },
+          ],
+        },
+      }),
+    )
+
+    const response = await sendRuntimeMessage('genai.saveProviderSecret', {
+      surface: 'dashboard',
+      provider: 'gemini',
+      secret: { apiKey: 'AIza-test-secret' },
+    })
+
+    expectRuntimePolicy('genai.saveProviderSecret', 'dashboard')
+    expect(backgroundMocks.saveGenAiProviderSecret).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      'gemini',
+      { apiKey: 'AIza-test-secret' },
+    )
+    expect(JSON.stringify(response)).not.toMatch(/AIza-test-secret|apiKey/)
+    expect(backgroundMocks.markSyncLocalDataChanged).not.toHaveBeenCalled()
+  })
+
+  it('genai.clearProviderSecret clears key through service and returns redacted status', async () => {
+    resetRuntimeMutationMocks()
+
+    const response = await sendRuntimeMessage('genai.clearProviderSecret', {
+      surface: 'dashboard',
+      provider: 'gemini',
+    })
+
+    expectRuntimePolicy('genai.clearProviderSecret', 'dashboard')
+    expect(backgroundMocks.clearGenAiProviderSecret).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      'gemini',
+    )
+    expect(response).toMatchObject({
+      action: 'clear-secret',
+      outcome: 'success',
+    })
+    expect(JSON.stringify(response)).not.toMatch(/apiKey|AIza|sk-/)
+    expect(backgroundMocks.markSyncLocalDataChanged).not.toHaveBeenCalled()
+  })
+
+  it('genai.testProviderDraft does not persist or broadcast', async () => {
+    const response = await sendRuntimeMessage('genai.testProviderDraft', {
+      surface: 'dashboard',
+      provider: 'gemini',
+      model: 'gemini-test',
+      secret: { apiKey: 'AIza-test-secret' },
+    })
+
+    expectRuntimePolicy('genai.testProviderDraft', 'dashboard')
+    expect(backgroundMocks.testGenAiProviderDraft).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      'gemini',
+      'gemini-test',
+      { apiKey: 'AIza-test-secret' },
+    )
+    expect(response).toMatchObject({
+      action: 'test-draft',
+      outcome: 'success',
+    })
+    expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
+  })
+
+  it('content-script sender cannot call setup methods after schema parsing', () => {
+    backgroundMocks.assertCanSenderCallExtensionMethod.mockImplementation(
+      (method: string, surface: string) => {
+        if (method === 'genai.saveProviderModel' && surface === 'dashboard') {
+          throw new Error(
+            'Sender surface "content-script" cannot claim "dashboard".',
+          )
+        }
+      },
+    )
+
+    expect(() =>
+      sendRuntimeMessage(
+        'genai.saveProviderModel',
+        {
+          surface: 'dashboard',
+          provider: 'gemini',
+          model: 'gemini-test',
+        },
+        { tab: { id: 1 } },
+      ),
+    ).toThrow(/cannot claim/i)
+
+    expect(
+      backgroundMocks.assertCanSenderCallExtensionMethod,
+    ).toHaveBeenCalledWith(
+      'genai.saveProviderModel',
+      'dashboard',
+      { tab: { id: 1 } },
+    )
+    expect(backgroundMocks.saveGenAiProviderModel).not.toHaveBeenCalled()
+  })
+
   it('reads the Library without flushing or broadcasting invalidation', async () => {
     const response = await sendRuntimeMessage('problems.getLibrary', {
       surface: 'dashboard',
@@ -2001,6 +2231,46 @@ function readRegisteredHandler(method: string) {
   expect(handler).toBeDefined()
 
   return handler!
+}
+
+function redactedGenAiStatus(overrides: Record<string, unknown> = {}) {
+  return {
+    selectedProvider: 'gemini',
+    selectedReady: false,
+    providers: [
+      {
+        provider: 'gemini',
+        label: 'Gemini',
+        model: 'gemini-2.5-flash',
+        secretConfigured: false,
+        verificationState: 'unverified',
+        verifiedAt: null,
+        lastErrorCode: null,
+        lastErrorMessage: null,
+      },
+    ],
+    ...overrides,
+  }
+}
+
+function genAiActionResult(
+  action:
+    | 'save-model'
+    | 'save-secret'
+    | 'clear-secret'
+    | 'select-provider'
+    | 'test-draft'
+    | 'verify-provider',
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    action,
+    outcome: 'success',
+    message: 'Provider setup updated.',
+    status: redactedGenAiStatus(),
+    occurredAt: '2026-06-14T10:00:00.000Z',
+    ...overrides,
+  }
 }
 
 function sendRuntimeMessage(

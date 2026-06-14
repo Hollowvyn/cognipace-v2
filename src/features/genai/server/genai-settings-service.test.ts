@@ -4,12 +4,22 @@ import { settingsKv } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
 import { updateSettings } from '@/features/settings/server/settings-service'
 import { saveSecret } from '@/platform/secrets'
+import {
+  readGenAiConnectionMetadata,
+  selectGenAiProvider as selectStoredGenAiProvider,
+  updateGenAiProviderModel,
+  updateProviderVerification,
+} from '@/features/genai/data/genai-connection-metadata-store'
 
 import {
   clearAiProviderSecret,
+  clearGenAiProviderSecret,
+  getGenAiProviderStatus,
   getAiProviderSecretPresence,
   isAiAssessmentAvailable,
   loadActiveProviderConfig,
+  saveGenAiProviderModel,
+  saveGenAiProviderSecret,
   setAiProviderSecret,
 } from './genai-settings-service'
 
@@ -63,50 +73,138 @@ describe('setAiProviderSecret / clearAiProviderSecret', () => {
 })
 
 describe('loadActiveProviderConfig', () => {
-  it('returns null when aiAssessment.enabled is false', async () => {
+  it('returns null when Auto assessment is disabled even with AI, provider, and secret configured', async () => {
     const handle = await createTestDb({ seed: false })
     await updateSettings(handle.db, {
+      assessment: { autoAssessmentEnabled: false },
+      aiAssessment: { enabled: true, provider: 'openai', model: 'legacy' },
+    })
+    await selectStoredGenAiProvider('openai')
+    await updateGenAiProviderModel('openai', 'gpt-test')
+    await updateProviderVerification('openai', {
+      state: 'valid',
+      verifiedAt: '2026-06-14T09:00:00.000Z',
+      checkedModel: 'gpt-test',
+      errorCode: null,
+      message: null,
+    })
+    await setAiProviderSecret(handle.db, 'openai', { apiKey: 'sk-test' })
+
+    expect(await loadActiveProviderConfig(handle.db)).toBeNull()
+  })
+
+  it('returns null when AI assessment is disabled but Auto is enabled', async () => {
+    const handle = await createTestDb({ seed: false })
+    await updateSettings(handle.db, {
+      assessment: { autoAssessmentEnabled: true },
       aiAssessment: { enabled: false, provider: 'openai', model: 'gpt-test' },
     })
-    await setAiProviderSecret(handle.db, 'openai', { apiKey: 'sk-test' })
-    expect(await loadActiveProviderConfig(handle.db)).toBeNull()
-  })
-
-  it('returns null when model is empty', async () => {
-    const handle = await createTestDb({ seed: false })
-    await updateSettings(handle.db, {
-      aiAssessment: { enabled: true, provider: 'openai', model: '' },
+    await selectStoredGenAiProvider('openai')
+    await updateProviderVerification('openai', {
+      state: 'valid',
+      verifiedAt: '2026-06-14T09:00:00.000Z',
+      checkedModel: 'gpt-4o-mini',
+      errorCode: null,
+      message: null,
     })
     await setAiProviderSecret(handle.db, 'openai', { apiKey: 'sk-test' })
     expect(await loadActiveProviderConfig(handle.db)).toBeNull()
   })
 
-  it('returns null when the active provider has no secret', async () => {
+  it('returns null when selected provider verification does not match the model', async () => {
     const handle = await createTestDb({ seed: false })
     await updateSettings(handle.db, {
-      aiAssessment: { enabled: true, provider: 'anthropic', model: 'claude' },
+      assessment: { autoAssessmentEnabled: true },
+      aiAssessment: { enabled: true, provider: 'openai', model: 'legacy' },
+    })
+    await selectStoredGenAiProvider('openai')
+    await updateGenAiProviderModel('openai', 'gpt-test')
+    await updateProviderVerification('openai', {
+      state: 'valid',
+      verifiedAt: '2026-06-14T09:00:00.000Z',
+      checkedModel: 'gpt-old',
+      errorCode: null,
+      message: null,
     })
     await setAiProviderSecret(handle.db, 'openai', { apiKey: 'sk-test' })
+
     expect(await loadActiveProviderConfig(handle.db)).toBeNull()
   })
 
-  it('returns a full config when all conditions are met', async () => {
+  it('returns null when selected provider is unverified', async () => {
     const handle = await createTestDb({ seed: false })
     await updateSettings(handle.db, {
-      aiAssessment: { enabled: true, provider: 'openai', model: 'gpt-test' },
+      assessment: { autoAssessmentEnabled: true },
+      aiAssessment: { enabled: true, provider: 'openai', model: 'legacy' },
+    })
+    await selectStoredGenAiProvider('anthropic')
+    await setAiProviderSecret(handle.db, 'anthropic', { apiKey: 'sk-test' })
+
+    expect(await loadActiveProviderConfig(handle.db)).toBeNull()
+  })
+
+  it('returns null when selected verified provider has no secret', async () => {
+    const handle = await createTestDb({ seed: false })
+    await updateSettings(handle.db, {
+      assessment: { autoAssessmentEnabled: true },
+      aiAssessment: { enabled: true, provider: 'openai', model: 'legacy' },
+    })
+    await selectStoredGenAiProvider('anthropic')
+    await updateProviderVerification('anthropic', {
+      state: 'valid',
+      verifiedAt: '2026-06-14T09:00:00.000Z',
+      checkedModel: 'claude-haiku-4-5',
+      errorCode: null,
+      message: null,
     })
     await setAiProviderSecret(handle.db, 'openai', { apiKey: 'sk-test' })
+
+    expect(await loadActiveProviderConfig(handle.db)).toBeNull()
+  })
+
+  it('returns selected verified provider config from metadata and trusted secret without leaking key in status', async () => {
+    const handle = await createTestDb({ seed: false })
+    await updateSettings(handle.db, {
+      assessment: { autoAssessmentEnabled: true },
+      aiAssessment: { enabled: true, provider: 'gemini', model: 'legacy' },
+    })
+    await selectStoredGenAiProvider('openai')
+    await updateGenAiProviderModel('openai', 'gpt-test')
+    await setAiProviderSecret(handle.db, 'openai', { apiKey: 'sk-test' })
+    await updateProviderVerification('openai', {
+      state: 'valid',
+      verifiedAt: '2026-06-14T09:00:00.000Z',
+      checkedModel: 'gpt-test',
+      errorCode: null,
+      message: null,
+    })
+
     expect(await loadActiveProviderConfig(handle.db)).toEqual({
       provider: 'openai',
       model: 'gpt-test',
       apiKey: 'sk-test',
     })
+
+    const status = await getGenAiProviderStatus(handle.db)
+    expect(status.selectedProvider).toBe('openai')
+    expect(status.selectedReady).toBe(true)
+    expect(JSON.stringify(status)).not.toMatch(/sk-test|apiKey/)
   })
 
   it('does not include baseUrl even when a stale saved secret has one', async () => {
     const handle = await createTestDb({ seed: false })
     await updateSettings(handle.db, {
+      assessment: { autoAssessmentEnabled: true },
       aiAssessment: { enabled: true, provider: 'gemini', model: 'gemini-test' },
+    })
+    await selectStoredGenAiProvider('gemini')
+    await updateGenAiProviderModel('gemini', 'gemini-test')
+    await updateProviderVerification('gemini', {
+      state: 'valid',
+      verifiedAt: '2026-06-14T09:00:00.000Z',
+      checkedModel: 'gemini-test',
+      errorCode: null,
+      message: null,
     })
     await saveSecret(
       'genai:google',
@@ -121,14 +219,79 @@ describe('loadActiveProviderConfig', () => {
       apiKey: 'g-test',
     })
   })
+})
 
-  it('treats whitespace-only model as empty', async () => {
+describe('getGenAiProviderStatus and provider setup mutations', () => {
+  it('defaults to Gemini and selectedReady false', async () => {
     const handle = await createTestDb({ seed: false })
-    await updateSettings(handle.db, {
-      aiAssessment: { enabled: true, provider: 'openai', model: '   ' },
+
+    const status = await getGenAiProviderStatus(handle.db)
+    const gemini = status.providers.find(
+      (provider) => provider.provider === 'gemini',
+    )
+
+    expect(status.selectedProvider).toBe('gemini')
+    expect(status.selectedReady).toBe(false)
+    expect(gemini).toMatchObject({
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      secretConfigured: false,
+      verificationState: 'unverified',
     })
-    await setAiProviderSecret(handle.db, 'openai', { apiKey: 'sk-test' })
-    expect(await loadActiveProviderConfig(handle.db)).toBeNull()
+  })
+
+  it('model change, secret save, and secret clear reset verification', async () => {
+    const handle = await createTestDb({ seed: false })
+    await updateProviderVerification('gemini', {
+      state: 'valid',
+      verifiedAt: '2026-06-14T09:00:00.000Z',
+      checkedModel: 'gemini-2.5-flash',
+      errorCode: null,
+      message: null,
+    })
+
+    const modelResult = await saveGenAiProviderModel(
+      handle.db,
+      'gemini',
+      'gemini-3.0-flash',
+    )
+    expect(modelResult.status).toMatchObject({
+      selectedProvider: 'gemini',
+      selectedReady: false,
+    })
+    expect(
+      (await readGenAiConnectionMetadata()).providers.gemini.verification.state,
+    ).toBe('unverified')
+
+    await updateProviderVerification('gemini', {
+      state: 'valid',
+      verifiedAt: '2026-06-14T09:01:00.000Z',
+      checkedModel: 'gemini-3.0-flash',
+      errorCode: null,
+      message: null,
+    })
+    const secretResult = await saveGenAiProviderSecret(
+      handle.db,
+      'gemini',
+      { apiKey: 'AIza-test' },
+    )
+    expect(secretResult.status.selectedReady).toBe(false)
+    expect(
+      (await readGenAiConnectionMetadata()).providers.gemini.verification.state,
+    ).toBe('unverified')
+
+    await updateProviderVerification('gemini', {
+      state: 'valid',
+      verifiedAt: '2026-06-14T09:02:00.000Z',
+      checkedModel: 'gemini-3.0-flash',
+      errorCode: null,
+      message: null,
+    })
+    const clearResult = await clearGenAiProviderSecret(handle.db, 'gemini')
+    expect(clearResult.status.selectedReady).toBe(false)
+    expect(
+      (await readGenAiConnectionMetadata()).providers.gemini.verification.state,
+    ).toBe('unverified')
   })
 })
 
@@ -141,9 +304,19 @@ describe('isAiAssessmentAvailable', () => {
   it('returns true when a full config can be resolved', async () => {
     const handle = await createTestDb({ seed: false })
     await updateSettings(handle.db, {
+      assessment: { autoAssessmentEnabled: true },
       aiAssessment: { enabled: true, provider: 'openai', model: 'gpt-test' },
     })
+    await selectStoredGenAiProvider('openai')
+    await updateGenAiProviderModel('openai', 'gpt-test')
     await setAiProviderSecret(handle.db, 'openai', { apiKey: 'sk-test' })
+    await updateProviderVerification('openai', {
+      state: 'valid',
+      verifiedAt: '2026-06-14T09:00:00.000Z',
+      checkedModel: 'gpt-test',
+      errorCode: null,
+      message: null,
+    })
     expect(await isAiAssessmentAvailable(handle.db)).toBe(true)
   })
 })

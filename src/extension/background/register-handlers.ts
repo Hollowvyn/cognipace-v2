@@ -6,9 +6,13 @@ import {
   backupRequestSchema,
   backupSummarySchema,
   clearAiProviderSecretRequestSchema,
+  clearGenAiProviderSecretRequestSchema,
   devSmokeReportSchema,
   devSmokeRequestSchema,
+  genAiProviderActionResultSchema,
+  genAiProviderStatusSchema,
   getAiProviderSecretPresenceRequestSchema,
+  getGenAiProviderStatusRequestSchema,
   leetcodeProblemRemoteRuntimeRequestSchema,
   leetcodeSubmissionResultRemoteRuntimeRequestSchema,
   onMessage,
@@ -28,6 +32,9 @@ import {
   problemsUpsertFromPageRequestSchema,
   queueRequestSchema,
   recommendLeetCodeAssessmentRequestSchema,
+  saveGenAiProviderModelRequestSchema,
+  saveGenAiProviderSecretRequestSchema,
+  selectGenAiProviderRequestSchema,
   setAiProviderSecretRequestSchema,
   settingsCycleThemeModeRequestSchema,
   settingsRequestSchema,
@@ -41,6 +48,7 @@ import {
   syncRequestSchema,
   syncSetEnabledRequestSchema,
   syncStatusSchema,
+  testGenAiProviderDraftRequestSchema,
   todayQueueSchema,
   trackForEditResponseSchema,
   tracksClearActiveTrackRequestSchema,
@@ -55,6 +63,7 @@ import {
   tracksSetActiveTrackRequestSchema,
   tracksUpdateTrackRequestSchema,
   trackWorkspaceResponseSchema,
+  verifyGenAiProviderRequestSchema,
   type SerializedActiveTrack,
   type SerializedTodayQueue,
   type UiSurface,
@@ -69,9 +78,16 @@ import { getAppShellData } from '@/features/app-shell/server/app-shell-service'
 import { getAnalyticsSummary } from '@/features/analytics/server/analytics-service'
 import {
   clearAiProviderSecret,
+  clearGenAiProviderSecret,
+  getGenAiProviderStatus,
   getAiProviderSecretPresence,
   loadActiveProviderConfig,
+  saveGenAiProviderModel,
+  saveGenAiProviderSecret,
+  selectGenAiProvider,
   setAiProviderSecret,
+  testGenAiProviderDraft,
+  verifyGenAiProvider,
 } from '@/features/genai/server/genai-settings-service'
 import { generateJson } from '@/features/genai/server'
 import {
@@ -1241,6 +1257,104 @@ export function registerBackgroundHandlers() {
     )
   })
 
+  onMessage('genai.getProviderStatus', ({ data, sender }) => {
+    const request = getGenAiProviderStatusRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'genai.getProviderStatus',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      genAiProviderStatusSchema.parse(await getGenAiProviderStatus(db)),
+    )
+  })
+
+  onMessage('genai.saveProviderModel', ({ data, sender }) => {
+    const request = saveGenAiProviderModelRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'genai.saveProviderModel',
+      request.surface,
+      sender,
+    )
+    return runGenAiProviderMutation((db) =>
+      saveGenAiProviderModel(db, request.provider, request.model),
+    )
+  })
+
+  onMessage('genai.saveProviderSecret', ({ data, sender }) => {
+    const request = saveGenAiProviderSecretRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'genai.saveProviderSecret',
+      request.surface,
+      sender,
+    )
+    return runGenAiProviderMutation((db) =>
+      saveGenAiProviderSecret(db, request.provider, request.secret),
+    )
+  })
+
+  onMessage('genai.testProviderDraft', ({ data, sender }) => {
+    const request = testGenAiProviderDraftRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'genai.testProviderDraft',
+      request.surface,
+      sender,
+    )
+    return getAppDb().then(async ({ db }) =>
+      genAiProviderActionResultSchema.parse(
+        await testGenAiProviderDraft(
+          db,
+          request.provider,
+          request.model,
+          request.secret,
+        ),
+      ),
+    )
+  })
+
+  onMessage('genai.verifyProvider', ({ data, sender }) => {
+    const request = verifyGenAiProviderRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'genai.verifyProvider',
+      request.surface,
+      sender,
+    )
+    return runGenAiProviderMutation((db) =>
+      verifyGenAiProvider(db, request.provider),
+    )
+  })
+
+  onMessage('genai.selectProvider', ({ data, sender }) => {
+    const request = selectGenAiProviderRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'genai.selectProvider',
+      request.surface,
+      sender,
+    )
+    return runGenAiProviderMutation((db) =>
+      selectGenAiProvider(db, request.provider),
+    )
+  })
+
+  onMessage('genai.clearProviderSecret', ({ data, sender }) => {
+    const request = clearGenAiProviderSecretRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'genai.clearProviderSecret',
+      request.surface,
+      sender,
+    )
+    return runGenAiProviderMutation((db) =>
+      clearGenAiProviderSecret(db, request.provider),
+    )
+  })
+
   onMessage('genai.recommendLeetCodeAssessment', ({ data, sender }) => {
     const request = recommendLeetCodeAssessmentRequestSchema.parse(data)
 
@@ -1375,6 +1489,16 @@ async function runSettingsMutation(
         }
       }
     },
+  )
+}
+
+async function runGenAiProviderMutation(
+  write: (db: Db) => Promise<unknown>,
+) {
+  return runDbMutation(
+    async (db) => genAiProviderActionResultSchema.parse(await write(db)),
+    () => broadcastGenAiInvalidation('dashboard'),
+    { syncMode: 'none' },
   )
 }
 
@@ -1593,6 +1717,14 @@ function broadcastSyncInvalidation(source: 'dashboard') {
     reason: 'sync-updated',
     source,
     tags: ['sync'],
+  })
+}
+
+function broadcastGenAiInvalidation(source: 'dashboard') {
+  return broadcastCacheInvalidation({
+    reason: 'genai-updated',
+    source,
+    tags: ['genai', 'app-shell'],
   })
 }
 

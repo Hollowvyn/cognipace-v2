@@ -1,6 +1,11 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
+import {
+  selectGenAiProvider,
+  updateGenAiProviderModel,
+  updateProviderVerification,
+} from '@/features/genai/data/genai-connection-metadata-store'
 import { setAiProviderSecret } from '@/features/genai/server/genai-settings-service'
 import { createPracticeRepository } from '@/features/practice/data/practice-repository'
 import { createSettingsRepository } from '@/features/settings/data/settings-repository'
@@ -504,8 +509,10 @@ describe('AI assessment exposure', () => {
   it('overlay payload reports aiAssessmentAvailable=false when enabled but key missing', async () => {
     const handle = await createTestDb({ seed: false })
     await updateSettings(handle.db, {
+      assessment: { autoAssessmentEnabled: true },
       aiAssessment: { enabled: true, provider: 'openai', model: 'gpt-test' },
     })
+    await configureVerifiedGenAiProvider('openai', 'gpt-test')
     // no setAiProviderSecret call
     const payload = await getOverlayPayload(handle)
     expect(payload.overlay.aiAssessmentAvailable).toBe(false)
@@ -514,9 +521,11 @@ describe('AI assessment exposure', () => {
   it('overlay payload reports aiAssessmentAvailable=true when fully configured', async () => {
     const handle = await createTestDb({ seed: false })
     await updateSettings(handle.db, {
+      assessment: { autoAssessmentEnabled: true },
       aiAssessment: { enabled: true, provider: 'openai', model: 'gpt-test' },
     })
     await setAiProviderSecret(handle.db, 'openai', { apiKey: 'sk-must-not-leak' })
+    await configureVerifiedGenAiProvider('openai', 'gpt-test')
     const payload = await getOverlayPayload(handle)
     expect(payload.overlay.aiAssessmentAvailable).toBe(true)
   })
@@ -524,9 +533,11 @@ describe('AI assessment exposure', () => {
   it('overlay payload never contains apiKey or the literal key string', async () => {
     const handle = await createTestDb({ seed: false })
     await updateSettings(handle.db, {
+      assessment: { autoAssessmentEnabled: true },
       aiAssessment: { enabled: true, provider: 'openai', model: 'gpt-test' },
     })
     await setAiProviderSecret(handle.db, 'openai', { apiKey: 'sk-must-not-leak' })
+    await configureVerifiedGenAiProvider('openai', 'gpt-test')
     const payload = await getOverlayPayload(handle)
     const serialized = JSON.stringify(payload)
     expect(serialized).not.toContain('apiKey')
@@ -567,3 +578,18 @@ describe('AI assessment exposure', () => {
     expect(serialized).not.toContain('g-must-not-leak')
   })
 })
+
+async function configureVerifiedGenAiProvider(
+  provider: 'openai' | 'anthropic' | 'gemini',
+  model: string,
+) {
+  await selectGenAiProvider(provider)
+  await updateGenAiProviderModel(provider, model)
+  await updateProviderVerification(provider, {
+    state: 'valid',
+    verifiedAt: '2026-06-14T09:00:00.000Z',
+    checkedModel: model,
+    errorCode: null,
+    message: null,
+  })
+}
