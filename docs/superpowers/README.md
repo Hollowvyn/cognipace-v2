@@ -12,6 +12,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
+- [`specs/2026-06-14-genai-byok-sdk-rebuild-design.md`](./specs/2026-06-14-genai-byok-sdk-rebuild-design.md): design for rebuilding GenAI BYOK provider setup as a Data Management connection workflow, separating Assessment enablement from provider/model/key state, and moving provider calls behind Vercel AI SDK Core in trusted background code.
 - [`specs/2026-06-08-agent-governance-drift-audit-design.md`](./specs/2026-06-08-agent-governance-drift-audit-design.md): Phase F design for adding a lightweight file-path-based drift audit checklist to the canonical agent governance doc after the first hardened release cycle, without adding new scheduled automation yet.
 - [`specs/2026-06-08-github-governance-templates-design.md`](./specs/2026-06-08-github-governance-templates-design.md): approved design for reinstating concise GitHub PR and issue templates, direct Bug/Task type labels, Project auto-add expectations, PR hygiene checks, stale PR handling, and workflow hardening before agent-specific enforcement.
 - [`specs/2026-06-07-agent-governance-phase-c-validation-smoke-design.md`](./specs/2026-06-07-agent-governance-phase-c-validation-smoke-design.md): Phase C design for making validation selection and smoke reporting easier to apply from the canonical agent governance doc without duplicating validation authority into root agent guides.
