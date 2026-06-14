@@ -11,6 +11,26 @@ export {
 } from './genai-types'
 
 export {
+  createUnverifiedProviderVerification,
+  genAiConnectionMetadataSchema,
+  genAiProviderConnectionSchema,
+  genAiProviderDefaultModels,
+  genAiProviderLabels,
+  genAiProviderVerificationSchema,
+  genAiVerificationErrorCodes,
+  genAiVerificationStates,
+  mapGenAiErrorToVerificationError,
+  type GenAiConnectionMetadata,
+  type GenAiProviderAction,
+  type GenAiProviderActionResult,
+  type GenAiProviderConnection,
+  type GenAiProviderStatus,
+  type GenAiProviderVerification,
+  type GenAiVerificationErrorCode,
+  type GenAiVerificationState,
+} from './genai-connection-types'
+
+export {
   aiProviderSecretsSchema,
   emptyAiProviderSecrets,
   makeEmptyAiProviderSecretPresence,
