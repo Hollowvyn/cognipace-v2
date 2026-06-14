@@ -37,16 +37,24 @@ export const genAiVerificationErrorCodes = [
 export type GenAiVerificationErrorCode =
   (typeof genAiVerificationErrorCodes)[number]
 
+const secretLikePattern = /(apiKey|AIza|sk-[A-Za-z0-9_-]+)/i
+
 export const genAiProviderVerificationSchema = z.strictObject({
   state: z.enum(genAiVerificationStates),
   verifiedAt: z.iso.datetime().nullable(),
   checkedModel: z.string().nullable(),
   errorCode: z.enum(genAiVerificationErrorCodes).nullable(),
-  message: z.string().nullable(),
+  message: z
+    .string()
+    .max(240)
+    .refine((message) => !secretLikePattern.test(message), {
+      message: 'Verification message must not contain secret-like values.',
+    })
+    .nullable(),
 })
 
 export const genAiProviderConnectionSchema = z.strictObject({
-  model: z.string().max(120),
+  model: z.string().trim().min(1).max(120),
   verification: genAiProviderVerificationSchema,
 })
 

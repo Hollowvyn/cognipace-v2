@@ -6,6 +6,7 @@ import {
   resetProviderVerification,
   selectGenAiProvider,
   updateGenAiProviderModel,
+  updateProviderVerification,
   writeGenAiConnectionMetadata,
 } from './genai-connection-metadata-store'
 
@@ -113,6 +114,74 @@ describe('genai connection metadata store', () => {
       message: null,
     })
     expect(next.updatedAt).toBe('2026-06-14T10:00:00.000Z')
+  })
+
+  it('rejects blank provider models', async () => {
+    await expect(
+      updateGenAiProviderModel(
+        'gemini',
+        '   ',
+        new Date('2026-06-14T10:00:00.000Z'),
+      ),
+    ).rejects.toThrow()
+  })
+
+  it('persists provider verification without changing other providers', async () => {
+    await writeGenAiConnectionMetadata({
+      ...defaultGenAiConnectionMetadata,
+      providers: {
+        ...defaultGenAiConnectionMetadata.providers,
+        openai: {
+          ...defaultGenAiConnectionMetadata.providers.openai,
+          verification: {
+            state: 'valid',
+            verifiedAt: '2026-06-14T09:00:00.000Z',
+            checkedModel: 'gpt-4o-mini',
+            errorCode: null,
+            message: null,
+          },
+        },
+      },
+      updatedAt: '2026-06-14T09:00:00.000Z',
+    })
+
+    const next = await updateProviderVerification(
+      'gemini',
+      {
+        state: 'invalid',
+        verifiedAt: '2026-06-14T10:00:00.000Z',
+        checkedModel: 'gemini-2.5-flash',
+        errorCode: 'auth',
+        message: 'Provider rejected the key.',
+      },
+      new Date('2026-06-14T10:01:00.000Z'),
+    )
+
+    expect(next.providers.gemini.verification).toEqual({
+      state: 'invalid',
+      verifiedAt: '2026-06-14T10:00:00.000Z',
+      checkedModel: 'gemini-2.5-flash',
+      errorCode: 'auth',
+      message: 'Provider rejected the key.',
+    })
+    expect(next.providers.openai.verification.state).toBe('valid')
+    expect(next.updatedAt).toBe('2026-06-14T10:01:00.000Z')
+  })
+
+  it('rejects secret-looking verification messages before storage', async () => {
+    await expect(
+      updateProviderVerification(
+        'gemini',
+        {
+          state: 'invalid',
+          verifiedAt: '2026-06-14T10:00:00.000Z',
+          checkedModel: 'gemini-2.5-flash',
+          errorCode: 'auth',
+          message: 'Provider echoed key AIza-test-secret',
+        },
+        new Date('2026-06-14T10:01:00.000Z'),
+      ),
+    ).rejects.toThrow()
   })
 
   it('resets provider verification after a secret change only for the target provider', async () => {
