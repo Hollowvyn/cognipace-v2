@@ -276,12 +276,19 @@ const configuredStatus = {
   ],
 } satisfies GenAiProviderStatus
 
-const savedUnverifiedStatus = {
-  ...unconfiguredStatus,
+const savedUnverifiedStatus: GenAiProviderStatus = {
+  selectedProvider: 'gemini',
+  selectedReady: false,
   providers: [
     {
-      ...unconfiguredStatus.providers[0],
+      provider: 'gemini',
+      label: 'Gemini',
+      model: 'gemini-2.5-flash',
       secretConfigured: true,
+      verificationState: 'unverified',
+      verifiedAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
     },
   ],
-} satisfies GenAiProviderStatus
+}

@@ -4,6 +4,7 @@ import { createMemoryHistory } from '@tanstack/react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
+import type { GenAiProviderStatus } from '@/features/genai'
 import { defaultUserSettings } from '@/features/settings/domain'
 import type { SyncActionResult } from '@/features/sync'
 import { createLibrarySelectionTrackDraft } from '@/features/tracks'
@@ -827,7 +828,7 @@ const configuredSyncStatus = {
   lastPushAt: '2026-05-26T12:00:00.000Z',
 } as const
 
-const defaultGenAiProviderStatus = {
+const defaultGenAiProviderStatus: GenAiProviderStatus = {
   selectedProvider: 'gemini',
   selectedReady: false,
   providers: [
@@ -862,7 +863,7 @@ const defaultGenAiProviderStatus = {
       lastErrorMessage: null,
     },
   ],
-} as const
+}
 
 function syncActionResult(
   action: SyncActionResult['action'],

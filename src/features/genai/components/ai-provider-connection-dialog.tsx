@@ -45,7 +45,12 @@ export function AiProviderConnectionDialog({
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useRef<HTMLElement>(null)
   const [feedback, setFeedback] = useState<ConnectionFeedback | null>(null)
-  const [effectiveStatus, setEffectiveStatus] = useState(status)
+  const [statusOverride, setStatusOverride] = useState<{
+    sourceStatus: GenAiProviderStatus
+    status: GenAiProviderStatus
+  } | null>(null)
+  const effectiveStatus =
+    statusOverride?.sourceStatus === status ? statusOverride.status : status
   const [provider, setProvider] = useState<GenAiProviderId>(
     status.selectedProvider,
   )
@@ -74,10 +79,6 @@ export function AiProviderConnectionDialog({
     }
   }, [])
 
-  useEffect(() => {
-    setEffectiveStatus(status)
-  }, [status])
-
   async function runAction(
     action: () => AiProviderActionResult,
     fallbackMessage: string,
@@ -87,7 +88,7 @@ export function AiProviderConnectionDialog({
       const result = await Promise.resolve(action())
 
       if (isProviderActionResult(result)) {
-        setEffectiveStatus(result.status)
+        setStatusOverride({ sourceStatus: status, status: result.status })
       }
 
       if (!result || result.outcome === 'success') {
