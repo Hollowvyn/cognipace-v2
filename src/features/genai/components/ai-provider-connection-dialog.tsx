@@ -291,6 +291,15 @@ export function AiProviderConnectionDialog({
               onClick={() => {
                 void runAction(
                   async () => {
+                    if (provider !== status.selectedProvider) {
+                      const selectResult =
+                        await actions.onSelectProvider(provider)
+
+                      if (isActionError(selectResult)) {
+                        return selectResult
+                      }
+                    }
+
                     const modelResult = await actions.onSaveModel(
                       provider,
                       model.trim(),
@@ -425,6 +434,12 @@ function readActionFeedback(
     role: 'alert',
     tone: 'danger',
   }
+}
+
+function isActionError(
+  result: GenAiProviderActionResult | null | undefined | void,
+) {
+  return result?.outcome === 'error'
 }
 
 function getFocusableElements(root: HTMLElement) {

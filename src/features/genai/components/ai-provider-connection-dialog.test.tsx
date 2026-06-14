@@ -48,6 +48,29 @@ describe('AiProviderConnectionDialog', () => {
     expect(onSaveSecret).toHaveBeenCalledWith('gemini', 'AIza-draft')
   })
 
+  it('persists the selected provider when saving provider setup', async () => {
+    const user = userEvent.setup()
+    const onSaveModel = vi.fn().mockResolvedValue(undefined)
+    const onSelectProvider = vi.fn().mockResolvedValue(undefined)
+
+    renderDialog({
+      actions: createActions({ onSaveModel, onSelectProvider }),
+      status: configuredStatus,
+    })
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: /^Provider$/i }),
+      'openai',
+    )
+    await user.click(screen.getByRole('button', { name: /Save provider/i }))
+
+    expect(onSelectProvider).toHaveBeenCalledWith('openai')
+    expect(onSaveModel).toHaveBeenCalledWith('openai', 'gpt-4o-mini')
+    expect(onSelectProvider.mock.invocationCallOrder[0]).toBeLessThan(
+      onSaveModel.mock.invocationCallOrder[0] ?? 0,
+    )
+  })
+
   it('can save a model without forcing key save when the stored key is masked', async () => {
     const user = userEvent.setup()
     const onSaveModel = vi.fn().mockResolvedValue(undefined)
