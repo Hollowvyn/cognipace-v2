@@ -30,6 +30,7 @@ export {
 
 export {
   useClearAiProviderSecretMutation,
+  useGenAiProviderStatusQuery,
   useGenAiSecretPresenceQuery,
   useSetAiProviderSecretMutation,
   type ClearAiProviderSecretHookInput,

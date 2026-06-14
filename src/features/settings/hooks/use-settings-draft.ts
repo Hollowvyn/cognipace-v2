@@ -2,8 +2,6 @@ import { useEffect, useReducer, useState } from 'react'
 
 import { readErrorMessage } from '@/utils/errors'
 
-import type { GenAiProviderId } from '@/features/genai'
-
 import { useSettings, useUpdateSettings } from '../api/settings-api'
 import {
   createUserSettingsPatch,
@@ -41,9 +39,6 @@ export interface SettingsDraftActions {
   retry: () => void
   save: () => Promise<void>
   setAiAssessmentEnabled: (value: boolean) => void
-  setAiEnabled: (value: boolean) => void
-  setAiModel: (value: string) => void
-  setAiProvider: (value: GenAiProviderId) => void
   setAutoAssessmentEnabled: (value: boolean) => void
   setAutoDetectSolved: (value: boolean) => void
   setNumberInput: (field: SettingsNumberField, value: string) => void
@@ -89,8 +84,6 @@ type SettingsDraftAction =
   | { type: 'number-input-changed'; field: SettingsNumberField; value: string }
   | { type: 'saved'; settings: UserSettings }
   | { type: 'set-ai-assessment-enabled'; value: boolean }
-  | { type: 'set-ai-model'; value: string }
-  | { type: 'set-ai-provider'; value: GenAiProviderId }
   | { type: 'set-auto-assessment-enabled'; value: boolean }
   | { type: 'set-auto-detect-solved'; value: boolean }
   | { type: 'set-reminders-enabled'; value: boolean }
@@ -269,11 +262,6 @@ export function useSettingsDraft(): SettingsDraftController {
       setAiAssessmentEnabled: (value) => {
         dispatch({ type: 'set-ai-assessment-enabled', value })
       },
-      setAiEnabled: (value) => {
-        dispatch({ type: 'set-ai-assessment-enabled', value })
-      },
-      setAiModel: (value) => dispatch({ type: 'set-ai-model', value }),
-      setAiProvider: (value) => dispatch({ type: 'set-ai-provider', value }),
       setAutoAssessmentEnabled: (value) => {
         dispatch({ type: 'set-auto-assessment-enabled', value })
       },
@@ -343,24 +331,6 @@ function settingsDraftReducer(
         },
         aiAssessment: { ...draft.aiAssessment, enabled: action.value },
       }))
-    case 'set-ai-model':
-      if (!state.draft) return state
-      return {
-        ...state,
-        draft: {
-          ...state.draft,
-          aiAssessment: { ...state.draft.aiAssessment, model: action.value },
-        },
-      }
-    case 'set-ai-provider':
-      if (!state.draft) return state
-      return {
-        ...state,
-        draft: {
-          ...state.draft,
-          aiAssessment: { ...state.draft.aiAssessment, provider: action.value },
-        },
-      }
     case 'set-auto-assessment-enabled':
       return updateDraft(state, (draft) => ({
         ...draft,

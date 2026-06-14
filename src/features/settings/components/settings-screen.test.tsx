@@ -19,6 +19,37 @@ vi.mock('@/features/sync', () => ({
   ),
 }))
 
+const providerStatus = {
+  selectedProvider: 'gemini' as const,
+  selectedReady: false,
+  providers: [
+    {
+      provider: 'gemini' as const,
+      label: 'Gemini',
+      model: 'gemini-2.5-flash',
+      secretConfigured: false,
+      verificationState: 'unverified' as const,
+      verifiedAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+    },
+  ],
+}
+
+function mockSettingsRuntime(settings = defaultUserSettings) {
+  vi.mocked(sendMessage).mockImplementation((method) => {
+    if (method === 'settings.getSettings') {
+      return Promise.resolve(settings)
+    }
+
+    if (method === 'genai.getProviderStatus') {
+      return Promise.resolve(providerStatus)
+    }
+
+    return Promise.reject(new Error(`Unexpected method ${method}`))
+  })
+}
+
 describe('SettingsScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -47,7 +78,7 @@ describe('SettingsScreen', () => {
 
   it('renders grouped lightweight settings with click-open hints', async () => {
     const user = userEvent.setup()
-    vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
+    mockSettingsRuntime()
     const { wrapper } = createQueryTestHarness()
 
     render(<SettingsScreen />, { wrapper })
@@ -67,6 +98,35 @@ describe('SettingsScreen', () => {
     expect(
       screen.getByRole('heading', { name: 'Review & Timing' }),
     ).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Assessment' })).toBeVisible()
+    expect(
+      screen.queryByRole('heading', { name: 'AI assessment' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('switch', { name: 'Auto assessment' }),
+    ).toBeVisible()
+    expect(screen.getByRole('switch', { name: 'AI assessment' })).toBeVisible()
+    expect(
+      screen.queryByRole('radio', { name: 'OpenAI' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('radio', { name: 'Anthropic' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('radio', { name: 'Gemini' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/^model$/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/saved keys/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/api key/i)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /save key/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /remove key/i }),
+    ).not.toBeInTheDocument()
+    expect(sendMessage).toHaveBeenCalledWith('genai.getProviderStatus', {
+      surface: 'dashboard',
+    })
     expect(
       screen.getByRole('button', { name: 'Study mode details' }),
     ).toBeVisible()
@@ -113,7 +173,7 @@ describe('SettingsScreen', () => {
     const studyModeHint =
       'Study plan follows the active track; free practice uses queue priority.'
     const dailyGoalHint = 'How many problems CogniPace queues each day.'
-    vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
+    mockSettingsRuntime()
     const { wrapper } = createQueryTestHarness()
 
     try {
@@ -207,6 +267,10 @@ describe('SettingsScreen', () => {
         return Promise.resolve(defaultUserSettings)
       }
 
+      if (method === 'genai.getProviderStatus') {
+        return Promise.resolve(providerStatus)
+      }
+
       if (method === 'settings.updateSettings') {
         return Promise.resolve(savedSettings)
       }
@@ -269,6 +333,10 @@ describe('SettingsScreen', () => {
         return Promise.resolve(defaultUserSettings)
       }
 
+      if (method === 'genai.getProviderStatus') {
+        return Promise.resolve(providerStatus)
+      }
+
       if (method === 'settings.updateSettings') {
         return Promise.resolve(savedSettings)
       }
@@ -304,7 +372,7 @@ describe('SettingsScreen', () => {
     const user = userEvent.setup()
     const disabledReason =
       'Enable Require solve time before using strict timing.'
-    vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
+    mockSettingsRuntime()
     const { wrapper } = createQueryTestHarness()
 
     render(<SettingsScreen />, { wrapper })
@@ -345,10 +413,12 @@ describe('SettingsScreen', () => {
   })
 
   it('renders the Reminders settings section', async () => {
-    vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
+    mockSettingsRuntime()
     const { wrapper } = createQueryTestHarness()
     render(<SettingsScreen />, { wrapper })
-    expect(await screen.findByRole('heading', { name: 'Reminders' })).toBeVisible()
+    expect(
+      await screen.findByRole('heading', { name: 'Reminders' }),
+    ).toBeVisible()
     expect(
       screen.getByRole('switch', { name: 'Daily reminder' }),
     ).toBeInTheDocument()
@@ -356,7 +426,7 @@ describe('SettingsScreen', () => {
 
   it('blocks invalid numeric saves with inline validation', async () => {
     const user = userEvent.setup()
-    vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
+    mockSettingsRuntime()
     const { wrapper } = createQueryTestHarness()
 
     render(<SettingsScreen />, { wrapper })

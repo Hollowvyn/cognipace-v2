@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button'
 import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
 import { DataManagementScreen } from '@/features/backup'
+import { useGenAiProviderStatusQuery } from '@/features/genai'
 
 import { useSettingsDraft } from '../hooks/use-settings-draft'
 import { AdvancedReviewSection } from './sections/advanced-review-section'
-import { AiAssessmentSection } from './sections/ai-assessment-section'
+import { AssessmentSection } from './sections/assessment-section'
 import { AppearanceSection } from './sections/appearance-section'
 import { DailyPracticeSection } from './sections/daily-practice-section'
 import { LeetCodeOverlaySection } from './sections/leetcode-overlay-section'
@@ -18,6 +19,7 @@ import { SettingsToast } from './settings-toast'
 
 export function SettingsScreen() {
   const controller = useSettingsDraft()
+  const providerStatus = useGenAiProviderStatusQuery()
 
   if (controller.isInitialLoading) {
     return (
@@ -102,13 +104,15 @@ export function SettingsScreen() {
               fieldErrors={controller.fieldErrors}
               numberInputs={controller.numberInputs}
             />
-            <AiAssessmentSection
+            <AssessmentSection
               actions={{
-                setAiEnabled: controller.actions.setAiEnabled,
-                setAiModel: controller.actions.setAiModel,
-                setAiProvider: controller.actions.setAiProvider,
+                setAiAssessmentEnabled:
+                  controller.actions.setAiAssessmentEnabled,
+                setAutoAssessmentEnabled:
+                  controller.actions.setAutoAssessmentEnabled,
               }}
               draft={controller.draft}
+              providerReady={providerStatus.data?.selectedReady ?? false}
             />
           </div>
           <SettingsSaveDock
