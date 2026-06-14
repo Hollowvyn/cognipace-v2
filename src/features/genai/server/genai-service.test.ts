@@ -7,19 +7,11 @@ import type {
   GenAiProviderId,
 } from '../domain'
 
-vi.mock('./providers/openai', () => ({
-  requestJson: vi.fn(() => buildSuccess('openai')),
-}))
-vi.mock('./providers/anthropic', () => ({
-  requestJson: vi.fn(() => buildSuccess('anthropic')),
-}))
-vi.mock('./providers/gemini', () => ({
-  requestJson: vi.fn(() => buildSuccess('gemini')),
+vi.mock('./providers/ai-sdk-provider', () => ({
+  requestJsonWithAiSdk: vi.fn(() => buildSuccess('openai')),
 }))
 
-import { requestJson as openaiRequestJson } from './providers/openai'
-import { requestJson as anthropicRequestJson } from './providers/anthropic'
-import { requestJson as geminiRequestJson } from './providers/gemini'
+import { requestJsonWithAiSdk } from './providers/ai-sdk-provider'
 import { generateJson } from './genai-service'
 
 const schema = z.object({ ok: z.boolean() })
@@ -51,39 +43,13 @@ describe('generateJson facade', () => {
     vi.clearAllMocks()
   })
 
-  it('dispatches openai requests to the openai adapter', async () => {
-    await generateJson(buildRequest('openai'))
-    expect(openaiRequestJson).toHaveBeenCalledOnce()
-    expect(anthropicRequestJson).not.toHaveBeenCalled()
-    expect(geminiRequestJson).not.toHaveBeenCalled()
-  })
+  it('delegates provider requests to the AI SDK wrapper', async () => {
+    const request = buildRequest('gemini')
 
-  it('dispatches anthropic requests to the anthropic adapter', async () => {
-    await generateJson(buildRequest('anthropic'))
-    expect(anthropicRequestJson).toHaveBeenCalledOnce()
-    expect(openaiRequestJson).not.toHaveBeenCalled()
-    expect(geminiRequestJson).not.toHaveBeenCalled()
-  })
+    const result = await generateJson(request)
 
-  it('dispatches gemini requests to the gemini adapter', async () => {
-    await generateJson(buildRequest('gemini'))
-    expect(geminiRequestJson).toHaveBeenCalledOnce()
-    expect(openaiRequestJson).not.toHaveBeenCalled()
-    expect(anthropicRequestJson).not.toHaveBeenCalled()
-  })
-
-  it('returns a generic unknown error for an unrecognized provider (defensive)', async () => {
-    const corrupted = {
-      ...buildRequest('openai'),
-      provider: 'unknown-provider' as unknown as GenAiProviderId,
-    }
-
-    const result = await generateJson(corrupted)
-
-    expect(result.status).toBe('error')
-    if (result.status === 'error') {
-      expect(result.code).toBe('unknown')
-      expect(result.providerMetadata.provider).toBe('unknown-provider')
-    }
+    expect(result.status).toBe('success')
+    expect(requestJsonWithAiSdk).toHaveBeenCalledOnce()
+    expect(requestJsonWithAiSdk).toHaveBeenCalledWith(request)
   })
 })

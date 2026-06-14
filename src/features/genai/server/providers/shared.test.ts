@@ -1,12 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import {
-  GenAiTimeoutError,
-  fetchWithTimeout,
-  logProviderHttpFailure,
   mapHttpStatusToGenAiError,
   redactErrorMessage,
-  readRedactedProviderResponseBody,
 } from './shared'
 
 describe('mapHttpStatusToGenAiError', () => {
@@ -67,117 +63,5 @@ describe('redactErrorMessage', () => {
     expect(redactErrorMessage({ provider: 'openai', cause: 'unknown' })).toBe(
       'openai request failed',
     )
-  })
-})
-
-describe('provider failure diagnostics', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  it('redacts known secrets from provider response bodies', async () => {
-    const body = await readRedactedProviderResponseBody(
-      new Response('{"error":"bad key sk-test-secret"}'),
-      ['sk-test-secret'],
-    )
-
-    expect(body).toBe('{"error":"bad key [redacted-secret]"}')
-  })
-
-  it('logs provider, model, status, and redacted response body as an error', () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-    logProviderHttpFailure({
-      provider: 'gemini',
-      model: 'gemini-3.5-flash',
-      status: 400,
-      responseBody: '{"error":"model not found"}',
-    })
-
-    expect(errorSpy).toHaveBeenCalledWith('[CogniPace GenAI provider failure]', {
-      provider: 'gemini',
-      model: 'gemini-3.5-flash',
-      status: 400,
-      responseBody: '{"error":"model not found"}',
-    })
-  })
-})
-
-describe('fetchWithTimeout', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-  })
-  afterEach(() => {
-    vi.useRealTimers()
-    vi.restoreAllMocks()
-  })
-
-  it('resolves with the Response when fetch completes before timeout', async () => {
-    const response = new Response('{}', { status: 200 })
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response)
-
-    const result = await fetchWithTimeout(
-      'https://example.test/x',
-      {},
-      { timeoutMs: 5000 },
-    )
-
-    expect(result).toBe(response)
-    expect(fetchSpy).toHaveBeenCalledOnce()
-  })
-
-  it('rejects with GenAiTimeoutError when fetch hangs past the timeout', async () => {
-    let abortReason: unknown = null
-    vi.spyOn(globalThis, 'fetch').mockImplementation(
-      (_input, init) =>
-        new Promise((_resolve, reject) => {
-          init?.signal?.addEventListener('abort', () => {
-            abortReason = (init.signal as AbortSignal & { reason?: unknown })
-              .reason
-            reject(new DOMException('Aborted', 'AbortError'))
-          })
-        }),
-    )
-
-    const pending = fetchWithTimeout(
-      'https://example.test/x',
-      {},
-      { timeoutMs: 5000 },
-    )
-    const expectTimeout =
-      expect(pending).rejects.toBeInstanceOf(GenAiTimeoutError)
-
-    await vi.advanceTimersByTimeAsync(5000)
-    await expectTimeout
-
-    expect(abortReason).toBeInstanceOf(GenAiTimeoutError)
-  })
-
-  it('re-throws the caller signal AbortError untouched', async () => {
-    const callerController = new AbortController()
-    vi.spyOn(globalThis, 'fetch').mockImplementation(
-      (_input, init) =>
-        new Promise((_resolve, reject) => {
-          init?.signal?.addEventListener('abort', () => {
-            reject(new DOMException('Aborted', 'AbortError'))
-          })
-        }),
-    )
-
-    const pending = fetchWithTimeout(
-      'https://example.test/x',
-      {},
-      { timeoutMs: 5000, externalSignal: callerController.signal },
-    )
-    const expectAbort = expect(pending).rejects.toMatchObject({
-      name: 'AbortError',
-    })
-    const expectNotTimeout =
-      expect(pending).rejects.not.toBeInstanceOf(GenAiTimeoutError)
-
-    callerController.abort()
-
-    await expectAbort
-    await expectNotTimeout
   })
 })
