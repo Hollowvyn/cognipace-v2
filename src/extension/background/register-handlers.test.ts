@@ -692,6 +692,49 @@ describe('background handler registration', () => {
     })
   })
 
+  it('warns when the selected provider verification is stale for the model', async () => {
+    backgroundMocks.getSettings.mockResolvedValue({
+      ...defaultUserSettings,
+      assessment: {
+        ...defaultUserSettings.assessment,
+        autoAssessmentEnabled: true,
+      },
+      aiAssessment: {
+        enabled: true,
+        provider: 'openai',
+        model: 'legacy-model',
+      },
+    })
+    backgroundMocks.getGenAiProviderStatus.mockResolvedValue(
+      redactedGenAiStatus({
+        selectedProvider: 'gemini',
+        selectedReady: false,
+        providers: [
+          redactedProviderStatus({
+            provider: 'gemini',
+            model: 'gemini-2.5-flash',
+            secretConfigured: true,
+            verificationState: 'valid',
+          }),
+        ],
+      }),
+    )
+
+    const response = await sendRuntimeMessage('devSmoke.run', {
+      surface: 'dashboard',
+    })
+    const report = devSmokeReportSchema.parse(response)
+
+    expect(backgroundMocks.loadActiveProviderConfig).not.toHaveBeenCalled()
+    expect(
+      report.checks.find((check) => check.id === 'genai.config'),
+    ).toMatchObject({
+      status: 'warn',
+      detail:
+        'Provider gemini is selected with model gemini-2.5-flash; verification valid; secret present: yes.',
+    })
+  })
+
   it('runs live GenAI smoke when requested and redacts provider errors', async () => {
     backgroundMocks.getSettings.mockResolvedValue({
       ...defaultUserSettings,
