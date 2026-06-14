@@ -1,7 +1,7 @@
 # GenAI BYOK SDK Rebuild — Design
 
-**Date:** 2026-06-14  
-**Status:** Written for user review  
+**Date:** 2026-06-14
+**Status:** Written for user review
 **Scope:** GenAI provider setup, Assessment settings cleanup, provider runtime,
 and development smoke testing
 
