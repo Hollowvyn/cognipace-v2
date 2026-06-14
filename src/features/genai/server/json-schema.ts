@@ -74,6 +74,7 @@ function stripGeminiUnsupported(node: unknown): unknown {
 
   delete result.additionalProperties
   delete result.$ref
+  delete result.const
 
   if (
     typeof result.format === 'string' &&

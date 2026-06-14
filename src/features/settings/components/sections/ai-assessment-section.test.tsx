@@ -10,7 +10,10 @@ vi.mock('@/extension/messaging', () => ({
 
 import { sendMessage } from '@/extension/messaging'
 
-import { defaultUserSettings, type UserSettings } from '@/features/settings/domain'
+import {
+  defaultUserSettings,
+  type UserSettings,
+} from '@/features/settings/domain'
 
 import { AiAssessmentSection } from './ai-assessment-section'
 
@@ -21,7 +24,9 @@ function Wrapper({ children }: { children: ReactNode }) {
   )
 }
 
-function renderSection(draftOverrides: Partial<UserSettings['aiAssessment']> = {}) {
+function renderSection(
+  draftOverrides: Partial<UserSettings['aiAssessment']> = {},
+) {
   queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
@@ -60,7 +65,9 @@ describe('AiAssessmentSection', () => {
     renderSection()
     await waitFor(() => expect(sendMessage).toHaveBeenCalled())
     expect(screen.getByRole('radio', { name: /openai/i })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /anthropic/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', { name: /anthropic/i }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /gemini/i })).toBeInTheDocument()
   })
 
@@ -79,9 +86,20 @@ describe('AiAssessmentSection', () => {
     })
     renderSection({ provider: 'openai', model: '', enabled: false })
     await waitFor(() => expect(sendMessage).toHaveBeenCalled())
-    expect(
-      screen.getByRole('switch', { name: /enabled/i }),
-    ).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('switch', { name: /enabled/i })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+  })
+
+  it('suggests the temporary OpenAI test model in the model placeholder', async () => {
+    renderSection({ provider: 'openai', model: '', enabled: false })
+    await waitFor(() => expect(sendMessage).toHaveBeenCalled())
+
+    expect(screen.getByLabelText(/^model$/i)).toHaveAttribute(
+      'placeholder',
+      'gpt-5.4-mini',
+    )
   })
 
   it('shows a Key set badge for providers with stored secrets', async () => {
@@ -91,14 +109,16 @@ describe('AiAssessmentSection', () => {
       gemini: false,
     })
     renderSection()
-    await waitFor(() => expect(screen.queryByText(/key set/i)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByText(/key set/i)).toBeInTheDocument(),
+    )
     expect(screen.getAllByText(/key set/i)).toHaveLength(1)
   })
 
   it('saves a key via the runtime and clears the input on success', async () => {
     vi.mocked(sendMessage)
       .mockResolvedValueOnce({ openai: false, anthropic: false, gemini: false }) // initial presence
-      .mockResolvedValueOnce({ openai: true, anthropic: false, gemini: false })  // after set
+      .mockResolvedValueOnce({ openai: true, anthropic: false, gemini: false }) // after set
     renderSection({ provider: 'openai', model: 'gpt-test', enabled: false })
     await waitFor(() => expect(sendMessage).toHaveBeenCalled())
 
@@ -126,16 +146,18 @@ describe('AiAssessmentSection', () => {
       .mockResolvedValueOnce({ openai: true, anthropic: false, gemini: false })
       .mockResolvedValueOnce({ openai: false, anthropic: false, gemini: false })
     renderSection({ provider: 'openai', model: 'gpt-test', enabled: false })
-    await waitFor(() => expect(screen.queryByText(/key set/i)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByText(/key set/i)).toBeInTheDocument(),
+    )
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /remove key/i }))
 
     await waitFor(() =>
-      expect(sendMessage).toHaveBeenCalledWith(
-        'genai.clearAiProviderSecret',
-        { surface: 'dashboard', provider: 'openai' },
-      ),
+      expect(sendMessage).toHaveBeenCalledWith('genai.clearAiProviderSecret', {
+        surface: 'dashboard',
+        provider: 'openai',
+      }),
     )
   })
 

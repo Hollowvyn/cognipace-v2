@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   GenAiTimeoutError,
   fetchWithTimeout,
+  logProviderHttpFailure,
   mapHttpStatusToGenAiError,
   redactErrorMessage,
+  readRedactedProviderResponseBody,
 } from './shared'
 
 describe('mapHttpStatusToGenAiError', () => {
@@ -68,6 +70,39 @@ describe('redactErrorMessage', () => {
   })
 })
 
+describe('provider failure diagnostics', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('redacts known secrets from provider response bodies', async () => {
+    const body = await readRedactedProviderResponseBody(
+      new Response('{"error":"bad key sk-test-secret"}'),
+      ['sk-test-secret'],
+    )
+
+    expect(body).toBe('{"error":"bad key [redacted-secret]"}')
+  })
+
+  it('logs provider, model, status, and redacted response body as an error', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    logProviderHttpFailure({
+      provider: 'gemini',
+      model: 'gemini-3.5-flash',
+      status: 400,
+      responseBody: '{"error":"model not found"}',
+    })
+
+    expect(errorSpy).toHaveBeenCalledWith('[CogniPace GenAI provider failure]', {
+      provider: 'gemini',
+      model: 'gemini-3.5-flash',
+      status: 400,
+      responseBody: '{"error":"model not found"}',
+    })
+  })
+})
+
 describe('fetchWithTimeout', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -79,9 +114,7 @@ describe('fetchWithTimeout', () => {
 
   it('resolves with the Response when fetch completes before timeout', async () => {
     const response = new Response('{}', { status: 200 })
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(response)
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response)
 
     const result = await fetchWithTimeout(
       'https://example.test/x',
@@ -111,7 +144,8 @@ describe('fetchWithTimeout', () => {
       {},
       { timeoutMs: 5000 },
     )
-    const expectTimeout = expect(pending).rejects.toBeInstanceOf(GenAiTimeoutError)
+    const expectTimeout =
+      expect(pending).rejects.toBeInstanceOf(GenAiTimeoutError)
 
     await vi.advanceTimersByTimeAsync(5000)
     await expectTimeout
@@ -135,8 +169,11 @@ describe('fetchWithTimeout', () => {
       {},
       { timeoutMs: 5000, externalSignal: callerController.signal },
     )
-    const expectAbort = expect(pending).rejects.toMatchObject({ name: 'AbortError' })
-    const expectNotTimeout = expect(pending).rejects.not.toBeInstanceOf(GenAiTimeoutError)
+    const expectAbort = expect(pending).rejects.toMatchObject({
+      name: 'AbortError',
+    })
+    const expectNotTimeout =
+      expect(pending).rejects.not.toBeInstanceOf(GenAiTimeoutError)
 
     callerController.abort()
 

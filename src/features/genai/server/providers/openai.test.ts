@@ -200,7 +200,9 @@ describe('openai requestJson', () => {
     )
 
     const pending = requestJson(buildRequest({ signal: controller.signal }))
-    const expectAbort = expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    const expectAbort = expect(pending).rejects.toMatchObject({
+      name: 'AbortError',
+    })
     controller.abort()
     await expectAbort
   })
@@ -226,6 +228,8 @@ describe('openai requestJson', () => {
     expect(body.text).toMatchObject({
       format: { type: 'json_schema', name: 'response', strict: true },
     })
-    expect((body.text as { format: { schema?: unknown } }).format.schema).toBeDefined()
+    expect(
+      (body.text as { format: { schema?: unknown } }).format.schema,
+    ).toBeDefined()
   })
 })

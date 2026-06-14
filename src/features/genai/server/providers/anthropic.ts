@@ -7,8 +7,10 @@ import { zodToProviderJsonSchema } from '../json-schema'
 import {
   GenAiTimeoutError,
   fetchWithTimeout,
+  logProviderHttpFailure,
   mapHttpStatusToGenAiError,
   redactErrorMessage,
+  readRedactedProviderResponseBody,
 } from './shared'
 
 const DEFAULT_BASE_URL = 'https://api.anthropic.com'
@@ -53,7 +55,9 @@ export async function requestJson<T>(
       },
       {
         timeoutMs: request.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-        ...(request.signal !== undefined ? { externalSignal: request.signal } : {}),
+        ...(request.signal !== undefined
+          ? { externalSignal: request.signal }
+          : {}),
       },
     )
   } catch (error) {
@@ -70,6 +74,16 @@ async function handleResponse<T>(
 ): Promise<GenAiGenerateJsonResult<T>> {
   const httpError = mapHttpStatusToGenAiError(response.status)
   if (httpError) {
+    const responseBody = await readRedactedProviderResponseBody(response, [
+      request.apiKey,
+    ])
+    logProviderHttpFailure({
+      provider: 'anthropic',
+      model: request.model,
+      status: response.status,
+      responseBody,
+    })
+
     return {
       status: 'error',
       code: httpError,
@@ -126,7 +140,11 @@ function extractText(envelope: unknown): string | null {
     return null
   }
   for (const part of content) {
-    if (isObject(part) && part.type === 'text' && typeof part.text === 'string') {
+    if (
+      isObject(part) &&
+      part.type === 'text' &&
+      typeof part.text === 'string'
+    ) {
       return part.text
     }
   }
@@ -168,7 +186,10 @@ function invalidOutput<T>(
   return {
     status: 'error',
     code: 'invalid-output',
-    message: redactErrorMessage({ provider: 'anthropic', cause: 'invalid-output' }),
+    message: redactErrorMessage({
+      provider: 'anthropic',
+      cause: 'invalid-output',
+    }),
     providerMetadata: {
       provider: 'anthropic',
       model: request.model,

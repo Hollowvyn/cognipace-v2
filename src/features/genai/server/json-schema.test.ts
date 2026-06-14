@@ -55,6 +55,17 @@ describe('zodToProviderJsonSchema', () => {
     expect(JSON.stringify(schema)).not.toContain('additionalProperties')
   })
 
+  it('removes const constraints from Gemini schemas because the API rejects them', () => {
+    const schema = z.object({
+      ok: z.literal(true),
+      version: z.literal('leetcode-assessment-v1'),
+    })
+
+    const result = zodToProviderJsonSchema(schema, 'gemini')
+
+    expect(JSON.stringify(result)).not.toContain('"const"')
+  })
+
   it('keeps enum constraints across all providers', () => {
     for (const provider of ['openai', 'anthropic', 'gemini'] as const) {
       const schema = JSON.stringify(

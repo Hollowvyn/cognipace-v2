@@ -25,7 +25,10 @@ interface AiAssessmentSectionProps {
   draft: UserSettings
 }
 
-const providerOptions: ReadonlyArray<{ label: string; value: GenAiProviderId }> = [
+const providerOptions: ReadonlyArray<{
+  label: string
+  value: GenAiProviderId
+}> = [
   { label: 'OpenAI', value: 'openai' },
   { label: 'Anthropic', value: 'anthropic' },
   { label: 'Gemini', value: 'gemini' },
@@ -38,12 +41,15 @@ const providerLabels: Record<GenAiProviderId, string> = {
 }
 
 const providerModelPlaceholders: Record<GenAiProviderId, string> = {
-  openai: 'gpt-4o-mini',
+  openai: 'gpt-5.4-mini',
   anthropic: 'claude-haiku-4-5',
   gemini: 'gemini-2.5-flash',
 }
 
-export function AiAssessmentSection({ actions, draft }: AiAssessmentSectionProps) {
+export function AiAssessmentSection({
+  actions,
+  draft,
+}: AiAssessmentSectionProps) {
   const presenceQuery = useGenAiSecretPresenceQuery()
   const setSecret = useSetAiProviderSecretMutation()
   const clearSecret = useClearAiProviderSecretMutation()
@@ -183,10 +189,14 @@ export function AiAssessmentSection({ actions, draft }: AiAssessmentSectionProps
           </Button>
         ) : null}
         {setSecret.isError ? (
-          <InlineStatus tone="danger">Save failed. Please try again.</InlineStatus>
+          <InlineStatus tone="danger">
+            Save failed. Please try again.
+          </InlineStatus>
         ) : null}
         {clearSecret.isError ? (
-          <InlineStatus tone="danger">Remove failed. Please try again.</InlineStatus>
+          <InlineStatus tone="danger">
+            Remove failed. Please try again.
+          </InlineStatus>
         ) : null}
       </SettingsRow>
     </SettingsSection>
