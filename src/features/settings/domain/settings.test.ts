@@ -12,6 +12,13 @@ import {
 } from './settings'
 
 describe('settings domain', () => {
+  it('defaults auto assessment off', () => {
+    expect(defaultUserSettings.assessment).toHaveProperty(
+      'autoAssessmentEnabled',
+      false,
+    )
+  })
+
   it('merges partial grouped stored settings with current defaults', () => {
     expect(
       parseStoredUserSettings({
@@ -35,6 +42,33 @@ describe('settings domain', () => {
       },
       overlay: {
         autoDetectSolved: false,
+      },
+    })
+  })
+
+  it('defaults auto assessment for old stored rows without dropping assessment timing settings', () => {
+    expect(
+      parseStoredUserSettings({
+        assessment: {
+          requireSolveTime: true,
+          strictTiming: true,
+          timeTargetsMinutes: {
+            easy: 18,
+            medium: 32,
+            hard: 48,
+          },
+        },
+      }),
+    ).toMatchObject({
+      assessment: {
+        autoAssessmentEnabled: false,
+        requireSolveTime: true,
+        strictTiming: true,
+        timeTargetsMinutes: {
+          easy: 18,
+          medium: 32,
+          hard: 48,
+        },
       },
     })
   })
@@ -136,6 +170,12 @@ describe('settings domain', () => {
         patch,
       ).appearance,
     ).toEqual({ themeMode: 'dark' })
+  })
+
+  it('does not add auto assessment defaults to partial assessment patches', () => {
+    expect(
+      userSettingsPatchSchema.parse({ assessment: { strictTiming: true } }),
+    ).toEqual({ assessment: { strictTiming: true } })
   })
 
   it('derives the next theme mode in repository-owned cycle order', () => {
@@ -275,6 +315,15 @@ describe('settings domain', () => {
     })
   })
 
+  it('merges auto assessment without dropping timing settings', () => {
+    const patch = { assessment: { autoAssessmentEnabled: true } }
+
+    expect(mergeUserSettings(defaultUserSettings, patch).assessment).toEqual({
+      ...defaultUserSettings.assessment,
+      autoAssessmentEnabled: true,
+    })
+  })
+
   it('creates minimal nested patches from saved settings and drafts', () => {
     const draft = {
       ...defaultUserSettings,
@@ -308,6 +357,25 @@ describe('settings domain', () => {
       overlay: { autoDetectSolved: false },
     })
     expect(hasUserSettingsChanges(defaultUserSettings, draft)).toBe(true)
+  })
+
+  it('creates an independent patch for auto assessment and AI assessment', () => {
+    const draft = {
+      ...defaultUserSettings,
+      assessment: {
+        ...defaultUserSettings.assessment,
+        autoAssessmentEnabled: true,
+      },
+      aiAssessment: {
+        ...defaultUserSettings.aiAssessment,
+        enabled: true,
+      },
+    }
+
+    expect(createUserSettingsPatch(defaultUserSettings, draft)).toEqual({
+      assessment: { autoAssessmentEnabled: true },
+      aiAssessment: { enabled: true },
+    })
   })
 
   it('returns no patch when a draft matches saved settings', () => {

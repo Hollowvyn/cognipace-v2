@@ -97,6 +97,7 @@ const reviewSettingsSchema = z
 
 const assessmentSettingsSchema = z
   .object({
+    autoAssessmentEnabled: z.boolean().default(false).optional(),
     requireSolveTime: z.boolean(),
     strictTiming: z.boolean(),
     timeTargetsMinutes: timeTargetsMinutesSchema,
@@ -179,6 +180,7 @@ export const userSettingsPatchSchema = z
     review: reviewSettingsSchema.partial().optional(),
     assessment: z
       .object({
+        autoAssessmentEnabled: z.boolean().optional(),
         requireSolveTime:
           assessmentSettingsSchema.shape.requireSolveTime.optional(),
         strictTiming: assessmentSettingsSchema.shape.strictTiming.optional(),
@@ -234,6 +236,7 @@ export const defaultUserSettings: UserSettings = {
     order: 'dueFirst',
   },
   assessment: {
+    autoAssessmentEnabled: false,
     requireSolveTime: false,
     strictTiming: false,
     timeTargetsMinutes: {
@@ -415,6 +418,13 @@ export function createUserSettingsPatch(
   }
 
   const assessmentPatch: NonNullable<UserSettingsPatch['assessment']> = {}
+  const savedAutoAssessmentEnabled =
+    saved.assessment.autoAssessmentEnabled ?? false
+  const draftAutoAssessmentEnabled =
+    draft.assessment.autoAssessmentEnabled ?? false
+  if (savedAutoAssessmentEnabled !== draftAutoAssessmentEnabled) {
+    assessmentPatch.autoAssessmentEnabled = draftAutoAssessmentEnabled
+  }
   if (saved.assessment.requireSolveTime !== draft.assessment.requireSolveTime) {
     assessmentPatch.requireSolveTime = draft.assessment.requireSolveTime
   }

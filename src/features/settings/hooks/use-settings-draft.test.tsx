@@ -451,6 +451,97 @@ describe('useSettingsDraft', () => {
     })
 
     expect(result.current.draft?.aiAssessment.enabled).toBe(true)
+    expect(result.current.draft?.assessment.autoAssessmentEnabled).toBe(true)
+  })
+
+  it('turns on auto assessment when AI assessment is enabled', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
+    const { wrapper } = createQueryTestHarness()
+    const { result } = renderHook(() => useSettingsDraft(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.draft).toEqual(defaultUserSettings)
+    })
+
+    act(() => {
+      result.current.actions.setAiAssessmentEnabled(true)
+    })
+
+    expect(result.current.draft?.aiAssessment.enabled).toBe(true)
+    expect(result.current.draft?.assessment.autoAssessmentEnabled).toBe(true)
+  })
+
+  it('leaves auto assessment on when AI assessment is disabled', async () => {
+    const currentSettings = {
+      ...defaultUserSettings,
+      assessment: {
+        ...defaultUserSettings.assessment,
+        autoAssessmentEnabled: true,
+      },
+      aiAssessment: {
+        ...defaultUserSettings.aiAssessment,
+        enabled: true,
+      },
+    }
+    vi.mocked(sendMessage).mockResolvedValue(currentSettings)
+    const { wrapper } = createQueryTestHarness()
+    const { result } = renderHook(() => useSettingsDraft(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.draft).toEqual(currentSettings)
+    })
+
+    act(() => {
+      result.current.actions.setAiAssessmentEnabled(false)
+    })
+
+    expect(result.current.draft?.aiAssessment.enabled).toBe(false)
+    expect(result.current.draft?.assessment.autoAssessmentEnabled).toBe(true)
+  })
+
+  it('turns off AI assessment when auto assessment is disabled', async () => {
+    const currentSettings = {
+      ...defaultUserSettings,
+      assessment: {
+        ...defaultUserSettings.assessment,
+        autoAssessmentEnabled: true,
+      },
+      aiAssessment: {
+        ...defaultUserSettings.aiAssessment,
+        enabled: true,
+      },
+    }
+    vi.mocked(sendMessage).mockResolvedValue(currentSettings)
+    const { wrapper } = createQueryTestHarness()
+    const { result } = renderHook(() => useSettingsDraft(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.draft).toEqual(currentSettings)
+    })
+
+    act(() => {
+      result.current.actions.setAutoAssessmentEnabled(false)
+    })
+
+    expect(result.current.draft?.assessment.autoAssessmentEnabled).toBe(false)
+    expect(result.current.draft?.aiAssessment.enabled).toBe(false)
+  })
+
+  it('leaves AI assessment off when auto assessment is enabled', async () => {
+    vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
+    const { wrapper } = createQueryTestHarness()
+    const { result } = renderHook(() => useSettingsDraft(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.draft).toEqual(defaultUserSettings)
+    })
+
+    act(() => {
+      result.current.actions.setAutoAssessmentEnabled(true)
+    })
+
+    expect(result.current.draft?.assessment.autoAssessmentEnabled).toBe(true)
+    expect(result.current.draft?.aiAssessment.enabled).toBe(false)
   })
 
   it('sets aiAssessment.provider via actions.setAiProvider', async () => {
