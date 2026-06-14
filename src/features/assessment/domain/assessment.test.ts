@@ -20,6 +20,7 @@ type ExpectedAccepted = Omit<Partial<AcceptedAssessment>, 'reason'> & {
 
 const secondsPerMinute = 60
 const timing = {
+  autoAssessmentEnabled: false,
   requireSolveTime: false,
   strictTiming: false,
   timeTargetsMinutes: {

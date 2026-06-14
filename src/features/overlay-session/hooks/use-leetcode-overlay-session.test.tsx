@@ -141,6 +141,7 @@ const problemMetadata = {
 } satisfies LeetCodeProblemMetadata
 
 const defaultTiming = {
+  autoAssessmentEnabled: false,
   requireSolveTime: false,
   strictTiming: false,
   timeTargetsMinutes: {

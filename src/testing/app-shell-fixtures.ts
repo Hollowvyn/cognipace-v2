@@ -74,6 +74,7 @@ export function createDashboardAppShellData(
         order: 'dueFirst',
       },
       assessment: {
+        autoAssessmentEnabled: false,
         requireSolveTime: false,
         strictTiming: false,
         timeTargetsMinutes: {

@@ -97,7 +97,7 @@ const reviewSettingsSchema = z
 
 const assessmentSettingsSchema = z
   .object({
-    autoAssessmentEnabled: z.boolean().default(false).optional(),
+    autoAssessmentEnabled: z.boolean().default(false),
     requireSolveTime: z.boolean(),
     strictTiming: z.boolean(),
     timeTargetsMinutes: timeTargetsMinutesSchema,

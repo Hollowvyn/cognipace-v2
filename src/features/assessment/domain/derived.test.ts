@@ -7,6 +7,7 @@ import type {
 import { deriveAssessmentSignals } from './derived'
 
 const timing = {
+  autoAssessmentEnabled: false,
   requireSolveTime: false,
   strictTiming: false,
   timeTargetsMinutes: { easy: 20, medium: 35, hard: 50 },

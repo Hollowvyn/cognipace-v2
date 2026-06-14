@@ -76,6 +76,7 @@ const baseContext: LeetCodeOverlayContext = {
   },
   practice: null,
   timing: {
+    autoAssessmentEnabled: false,
     requireSolveTime: false,
     strictTiming: false,
     timeTargetsMinutes: { easy: 15, medium: 25, hard: 35 },

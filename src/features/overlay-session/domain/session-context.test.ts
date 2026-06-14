@@ -88,6 +88,7 @@ function makeContext(
     },
     practice,
     timing: {
+      autoAssessmentEnabled: false,
       requireSolveTime: false,
       strictTiming: false,
       timeTargetsMinutes: { easy: 20, medium: 35, hard: 50 },

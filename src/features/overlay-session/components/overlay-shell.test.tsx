@@ -95,6 +95,7 @@ function createSession(
         title: 'Two Sum',
       },
       timing: {
+        autoAssessmentEnabled: false,
         requireSolveTime: false,
         strictTiming: false,
         timeTargetsMinutes: {

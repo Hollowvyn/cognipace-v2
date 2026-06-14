@@ -239,6 +239,7 @@ function createOverlayContext(): ExpandedOverlayProps['view']['context'] {
     },
     practice: null,
     timing: {
+      autoAssessmentEnabled: false,
       requireSolveTime: false,
       strictTiming: false,
       timeTargetsMinutes: {

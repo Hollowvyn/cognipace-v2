@@ -10,6 +10,7 @@ import {
   userSettingsPatchSchema,
   userSettingsSchema,
 } from './settings'
+import type { UserSettings } from './settings'
 
 describe('settings domain', () => {
   it('defaults auto assessment off', () => {
@@ -17,6 +18,25 @@ describe('settings domain', () => {
       'autoAssessmentEnabled',
       false,
     )
+  })
+
+  it('requires auto assessment on full settings objects', () => {
+    const assessment: Omit<
+      UserSettings['assessment'],
+      'autoAssessmentEnabled'
+    > = {
+      requireSolveTime: defaultUserSettings.assessment.requireSolveTime,
+      strictTiming: defaultUserSettings.assessment.strictTiming,
+      timeTargetsMinutes: defaultUserSettings.assessment.timeTargetsMinutes,
+    }
+
+    const settings: UserSettings = {
+      ...defaultUserSettings,
+      // @ts-expect-error full settings must always carry the migrated setting
+      assessment,
+    }
+
+    expect(settings.assessment).not.toHaveProperty('autoAssessmentEnabled')
   })
 
   it('merges partial grouped stored settings with current defaults', () => {

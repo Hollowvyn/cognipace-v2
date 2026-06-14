@@ -9,6 +9,7 @@ import { deriveAssessmentSignals } from '../derived'
 import { CONFIDENCE_FACTORS, scoreConfidence } from './confidence'
 
 const timing = {
+  autoAssessmentEnabled: false,
   requireSolveTime: false,
   strictTiming: false,
   timeTargetsMinutes: { easy: 20, medium: 35, hard: 50 },
