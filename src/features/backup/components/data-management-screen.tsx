@@ -4,6 +4,7 @@ import {
   FeedbackToast,
   type FeedbackToastStatus,
 } from '@/components/ui/feedback-toast'
+import { AiProviderSettingsSection } from '@/features/genai'
 import { GitHubSyncSettingsSection } from '@/features/sync'
 
 import {
@@ -178,7 +179,10 @@ export function DataManagementScreen() {
         label="Data management feedback"
         status={backupToast}
       />
-      <GitHubSyncSettingsSection />
+      <div className="grid gap-[var(--cp-surface-gap)] lg:grid-cols-2">
+        <GitHubSyncSettingsSection />
+        <AiProviderSettingsSection />
+      </div>
       <SelectiveImportPanel />
       <ResetLocalDataPanel
         error={resetError}
