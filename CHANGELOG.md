@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0](https://github.com/Hollowvyn/cognipace-v2/compare/v1.0.1...v1.1.0) (2026-06-14)
+
+
+### Features
+
+* overlay assessment recommendation component ([#8](https://github.com/Hollowvyn/cognipace-v2/issues/8)) ([#75](https://github.com/Hollowvyn/cognipace-v2/issues/75)) ([5d2c48f](https://github.com/Hollowvyn/cognipace-v2/commit/5d2c48f8e68d5034c527de5daa7fe888f413d04d))
+* overlay recommendation hook for AI assessment ([#7](https://github.com/Hollowvyn/cognipace-v2/issues/7)) ([#74](https://github.com/Hollowvyn/cognipace-v2/issues/74)) ([4ddb218](https://github.com/Hollowvyn/cognipace-v2/commit/4ddb2186a0b681b1923fc28b4287317e3140e319))
+
+
+### Bug Fixes
+
+* **genai:** stabilize AI assessment recommendations ([#80](https://github.com/Hollowvyn/cognipace-v2/issues/80)) ([e067d03](https://github.com/Hollowvyn/cognipace-v2/commit/e067d037bfc6af0a60a617f061c4576c5a576259))
+
 ## [1.0.1](https://github.com/Hollowvyn/cognipace-v2/compare/v1.0.0...v1.0.1) (2026-06-07)
 
 
