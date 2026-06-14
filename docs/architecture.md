@@ -104,12 +104,13 @@ Not every feature needs every folder. Add only the folder needed for the change.
 - `queue`: review recommendation composition for today.
 - `tracks`: curriculum tracks, groups, ordered memberships, active track and
   group state, progress, and dashboard track management.
-- `settings`: persisted preferences, defaults, validation, and settings form
-  behavior.
+- `settings`: persisted preferences, defaults, validation, settings form
+  behavior, and Assessment/Auto/AI assessment toggles.
 - `sync`: GitHub Gist configuration, sync metadata, directional pull/push
   rules, Settings/header sync UI, and background orchestration.
-- `genai`: AI provider settings contracts, trusted provider key storage,
-  provider network adapters, and background-owned BYOK provider calls.
+- `genai`: AI provider connection metadata, redacted status contracts, trusted
+  provider key storage, Vercel AI SDK provider wrapper, and background-owned
+  BYOK provider calls.
 - `dev-smoke`: hidden dashboard-only extension development smoke checks for
   background health, Analytics, queue, notifications, GenAI config, and opt-in
   live GenAI provider validation.
@@ -223,18 +224,20 @@ present.
 
 ## External APIs And Secrets
 
-External network calls use request declarations over `src/platform/http`. REST
-and GraphQL integrations should define typed request functions in the owning
+External network calls use request declarations over `src/platform/http` unless
+the owning feature deliberately wraps an approved SDK. REST and GraphQL
+integrations should define typed request functions in the owning
 `src/lib/<integration>/api` module and inject `fetch` in tests. Feature services
-or readers call those declarations instead of constructing ad hoc `fetch` calls.
+or readers call those declarations or feature-owned SDK wrappers instead of
+constructing ad hoc `fetch` calls.
 
 Current integrations:
 
 - `src/lib/github/api`: GitHub Gist REST requests for sync.
 - `src/lib/leetcode/api`: LeetCode GraphQL and submission REST requests used by
   LeetCode capture readers.
-- `src/features/genai/server/providers`: approved BYOK GenAI provider calls from
-  trusted background code.
+- `src/features/genai/server/providers/ai-sdk-provider.ts`: approved BYOK GenAI
+  provider calls from trusted background code through Vercel AI SDK Core.
 
 BYOK secrets use `src/platform/secrets`, backed by `chrome.storage.local` with
 trusted-context access. UI surfaces may save or delete secrets through runtime
@@ -255,7 +258,12 @@ provider host permissions are exactly:
 - `https://generativelanguage.googleapis.com/*`
 
 Provider calls run from trusted background code after settings and BYOK secret
-presence checks. Development smoke may optionally call the configured provider,
+presence checks. Provider/model/key setup is owned by `features/genai` connection
+metadata in local `chrome.storage.local`, not by the Settings draft form.
+Settings only decides whether deterministic Auto assessment and AI assessment are
+enabled. Vercel AI SDK Core imports stay under `src/features/genai/server` so
+React UI, Assessment, overlay, and dev-smoke surfaces depend only on CogniPace
+GenAI contracts. Development smoke may optionally call the configured provider,
 and smoke output must redact any provider error details that could contain a
 secret.
 

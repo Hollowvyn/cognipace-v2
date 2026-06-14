@@ -95,19 +95,40 @@ confirmation, restore success resets the import card, and clear offers backup
 first inside the confirmation dialog. After that backup export succeeds, the
 dialog button changes to a success state labeled Backup exported.
 
-### AI Assessment Settings
+### Assessment Settings
 
 1. Open the dashboard.
 2. Navigate to Settings.
-3. Find AI assessment.
-4. Select a provider and enter a model id.
-5. Save and remove a test API key.
-6. Confirm the UI shows key presence without revealing the key value.
+3. Find Assessment.
+4. Turn on Auto assessment, save, reload, and confirm it stays on.
+5. Turn on AI assessment and confirm Auto assessment also turns on in the draft.
+6. Turn Auto assessment off and confirm AI assessment turns off in the draft.
+7. Save and reload.
+
+Expected: Auto assessment is saveable without AI provider setup. AI assessment
+is a secondary toggle that depends on Auto assessment. Missing AI Provider setup
+shows a warning but does not block saving the Assessment settings.
+
+### AI Provider Setup
+
+1. Open the dashboard.
+2. Navigate to Settings > Data Management.
+3. Find AI Provider beside GitHub Sync.
+4. Confirm Gemini is the default provider and `gemini-2.5-flash` is the default
+   model.
+5. Open Manage provider.
+6. Save and verify a test provider key.
+7. Close the dialog and confirm the AI Provider card reports Ready.
+8. Export a backup and confirm the raw provider key is absent from the JSON.
+9. Reopen Manage provider, remove the provider key, and confirm Assessment
+   settings remain saved while AI assessment shows the provider warning.
 
 Expected: provider keys are stored locally in trusted extension secret storage.
-Configured AI assessment can call the approved BYOK provider from trusted
-background code without revealing the key value. Backup exports, sync payloads,
-logs, and status payloads must not include raw provider keys.
+Provider/model/key setup lives in the AI Provider Data Management workflow, not
+inside Assessment settings. Configured AI assessment can call the approved BYOK
+provider from trusted background code through Vercel AI SDK Core without
+revealing the key value. Backup exports, sync payloads, logs, query cache
+payloads, and status payloads must not include raw provider keys.
 
 ### Dashboard Dev Smoke
 
@@ -121,10 +142,12 @@ logs, and status payloads must not include raw provider keys.
    summary with memory profile, today's queue aliases, notification dry run,
    GenAI config, and skipped live GenAI checks.
 5. Leave Run live GenAI provider smoke unchecked for normal smoke testing.
-6. To intentionally test a live provider, first configure AI assessment with a
-   provider, model, and local BYOK secret, then check Run live GenAI provider
-   smoke.
-7. Confirm the live check reports pass, warn, fail, or skip without showing raw
+6. To intentionally test a live provider, first enable Auto assessment and AI
+   assessment, then configure and verify an AI Provider in Data Management.
+7. With live smoke still off, confirm GenAI config reports the selected provider,
+   selected model, secret presence, and verification state accurately.
+8. Check Run live GenAI provider smoke.
+9. Confirm the live check reports pass, warn, fail, or skip without showing raw
    provider keys or unredacted secret-bearing errors.
 
 Expected: dev smoke is a local extension development tool only. The live GenAI

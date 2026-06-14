@@ -52,8 +52,9 @@ Implemented or meaningfully wired:
 - Analytics dashboard route for local review-health reporting
 - Optional GitHub Gist pseudo-sync from Settings > Data Management
 - FSRS-backed practice scheduling
-- AI assessment settings and trusted local provider key storage for approved
-  BYOK providers
+- Assessment settings with separate Auto assessment and AI assessment toggles
+- AI Provider BYOK setup in Settings > Data Management, with trusted local key
+  storage for approved providers
 - Runtime messaging, cache invalidation, local database, migrations, and seed data
 
 Currently incomplete or intentionally light:
@@ -105,8 +106,9 @@ Current behavior:
   create/edit, activation, deletion, and reset progress.
 - Settings manages persisted user preferences through a dirty-state form workflow.
 - Data Management in Settings exports full local backups, validates and restores
-  full backups, configures optional GitHub Gist pseudo-sync, shows planned
-  selective import sections, and performs explicit full local clear/reset.
+  full backups, configures optional GitHub Gist pseudo-sync, configures local
+  BYOK AI providers, shows planned selective import sections, and performs
+  explicit full local clear/reset.
 - The dashboard header shows compact pull and push shortcuts after GitHub Gist
   sync is configured.
 - Analytics shows local review-day totals, all-time review counts, current
@@ -169,13 +171,21 @@ Settings owns persisted preferences, defaults, validation, and the dashboard
 settings form. Changes should flow through the settings feature API and
 invalidate affected query families.
 
-AI assessment settings can store provider preference and model configuration.
-Provider API keys are stored in trusted local extension secret storage, never in
-backup exports, sync payloads, logs, or unmasked UI payloads. When configured,
-trusted background code can call the approved BYOK provider hosts for OpenAI,
-Anthropic, and Google Gemini. Development smoke testing can optionally run a
-live provider check, but that hidden dashboard smoke route is not normal product
-navigation and never reveals stored secret values.
+Assessment settings separate deterministic Auto assessment from AI assessment.
+Auto assessment can run without AI. Turning AI assessment on also turns Auto
+assessment on, and turning Auto assessment off turns AI assessment off. Missing
+AI provider setup shows a warning but does not block saving the Assessment
+settings; deterministic Auto assessment remains available.
+
+AI Provider setup is a Data Management connection workflow, not a normal
+settings row. It stores selected provider metadata and model locally, while raw
+provider API keys are stored in trusted local extension secret storage. Provider
+keys are never included in backup exports, sync payloads, logs, TanStack Query
+cache payloads, or unmasked UI payloads. When configured and verified, trusted
+background code can call the approved BYOK provider hosts for OpenAI, Anthropic,
+and Google Gemini through the GenAI provider service. Development smoke testing
+can optionally run a live provider check, but that hidden dashboard smoke route
+is not normal product navigation and never reveals stored secret values.
 
 ### Analytics
 
