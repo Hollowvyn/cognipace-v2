@@ -12,7 +12,7 @@ import {
 
 const storage = new Map<string, unknown>()
 
-beforeEach(async () => {
+beforeEach(() => {
   storage.clear()
   vi.stubGlobal('chrome', {
     storage: {
@@ -41,8 +41,6 @@ beforeEach(async () => {
       },
     },
   })
-
-  await chrome.storage.local.clear()
 })
 
 afterEach(() => {
