@@ -182,8 +182,19 @@ function pushArrayColumnFilter(
   }
 }
 
+// ⚡ Bolt: Caching search text to optimize table filtering performance.
+// Expected Impact: Eliminates expensive string concatenation and array mapping during global
+// search (e.g. typing in the search box). Since TanStack Table creates new objects when row
+// data changes, using a WeakMap guarantees no memory leaks and fresh cache for updated rows.
+const searchTextCache = new WeakMap<ProblemLibraryRow, string>()
+
 function createProblemSearchText(row: ProblemLibraryRow) {
-  return normalizeSearch(
+  const cached = searchTextCache.get(row)
+  if (cached !== undefined) {
+    return cached
+  }
+
+  const text = normalizeSearch(
     [
       row.problem.title,
       row.problem.slug,
@@ -194,6 +205,9 @@ function createProblemSearchText(row: ProblemLibraryRow) {
       ...row.trackMemberships.map((membership) => membership.groupTitle),
     ].join(' '),
   )
+
+  searchTextCache.set(row, text)
+  return text
 }
 
 function normalizeSearch(value: string) {
