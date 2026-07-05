@@ -250,6 +250,12 @@ export function AnalyticsRetentionScatter({
   )
 }
 
+const tooltipDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+})
+
 function ScatterTooltip({
   entry,
   targetRetention,
@@ -264,11 +270,7 @@ function ScatterTooltip({
   const pct = Math.round(entry.retrievability * 100)
   const targetPct = Math.round(targetRetention * 100)
   const isBelow = entry.retrievability < targetRetention
-  const lastReview = new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(entry.lastReviewAt))
+  const lastReview = tooltipDateFormatter.format(new Date(entry.lastReviewAt))
 
   return (
     <div

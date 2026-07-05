@@ -76,10 +76,12 @@ export function AnalyticsForecast({
   )
 }
 
+const barDateFormatter = new Intl.DateTimeFormat('en-US', {
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'UTC',
+})
+
 function formatBarDate(dateStr: string): string {
-  return new Intl.DateTimeFormat('en-US', {
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  }).format(new Date(dateStr))
+  return barDateFormatter.format(new Date(dateStr))
 }

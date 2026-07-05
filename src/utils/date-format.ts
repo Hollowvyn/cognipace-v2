@@ -1,3 +1,8 @@
+const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+})
+
 export function formatDateTime(value: string, fallback = 'Unknown date') {
   const date = new Date(value)
 
@@ -5,8 +10,5 @@ export function formatDateTime(value: string, fallback = 'Unknown date') {
     return fallback
   }
 
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date)
+  return dateTimeFormatter.format(date)
 }

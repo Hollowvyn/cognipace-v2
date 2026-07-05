@@ -17,6 +17,13 @@ export function formatOverlayDuration(totalSeconds: number): string {
     .padStart(2, '0')}`
 }
 
+const overlayDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+})
+
 export function formatOverlayDateTime(
   value: string | null | undefined,
 ): string {
@@ -30,10 +37,5 @@ export function formatOverlayDateTime(
     return 'Unknown'
   }
 
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(date)
+  return overlayDateTimeFormatter.format(date)
 }

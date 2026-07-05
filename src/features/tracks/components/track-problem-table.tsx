@@ -317,16 +317,18 @@ function getCellClassName(columnId: string) {
   }
 }
 
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+})
+
 function formatDateCell(value: string | null, emptyLabel = '—') {
   if (!value) {
     return emptyLabel
   }
 
-  return new Intl.DateTimeFormat(undefined, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(value))
+  return dateFormatter.format(new Date(value))
 }
 
 const trackProblemColumnIds = {
