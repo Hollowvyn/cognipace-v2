@@ -142,7 +142,7 @@ function ActiveTrackHeader({
               <a
                 className="truncate font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 href={createLeetCodeProblemUrl(activeTrack.nextProblem.slug)}
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 target="_blank"
               >
                 {activeTrack.nextProblem.title}

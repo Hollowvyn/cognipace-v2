@@ -212,7 +212,7 @@ export function GitHubSyncConnectionDialog({
               Access token
             </label>
             <input
-              autoComplete="off"
+              autoComplete="new-password"
               className="min-w-[16rem] flex-1 rounded-[var(--cp-control-radius)] border border-border bg-background px-3 py-2 text-[length:var(--cp-copy-font-size)]"
               id="github-sync-dialog-token"
               onChange={(event) => {

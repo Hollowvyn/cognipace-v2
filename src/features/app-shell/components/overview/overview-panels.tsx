@@ -77,7 +77,7 @@ export function OverviewPrimaryPanel({
         <Button asChild className="w-full sm:w-auto">
           <a
             href={createLeetCodeProblemUrl(primary.problem.problemSlug)}
-            rel="noreferrer"
+            rel="noopener noreferrer"
             target="_blank"
           >
             <ExternalLink aria-hidden="true" />
@@ -197,7 +197,7 @@ export function OverviewActiveTrackPanel({
           <Button asChild>
             <a
               href={createLeetCodeProblemUrl(nextProblem.problemSlug)}
-              rel="noreferrer"
+              rel="noopener noreferrer"
               target="_blank"
             >
               <ExternalLink aria-hidden="true" />
@@ -254,7 +254,7 @@ export function OverviewQueuePreview({
                   <a
                     aria-label={`Open ${item.problem.title}`}
                     href={createLeetCodeProblemUrl(item.problem.problemSlug)}
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     target="_blank"
                   >
                     <ExternalLink aria-hidden="true" />

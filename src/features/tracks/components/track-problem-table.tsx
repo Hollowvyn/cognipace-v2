@@ -254,7 +254,7 @@ function ProblemTitleCell({ row }: { row: TrackProblemRow }) {
       )}
       href={createLeetCodeProblemUrl(row.problem.slug)}
       onClick={(event) => event.stopPropagation()}
-      rel="noreferrer"
+      rel="noopener noreferrer"
       target="_blank"
     >
       <span className="truncate">{row.problem.title}</span>
