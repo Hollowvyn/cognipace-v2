@@ -95,9 +95,22 @@ export function clearLibrarySelectionTrackDraft(
 }
 
 function createDraftId() {
-  const randomSuffix = Math.random().toString(36).slice(2, 10)
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID()
+  }
 
-  return globalThis.crypto?.randomUUID?.() ?? `draft-${Date.now()}-${randomSuffix}`
+  if (globalThis.crypto?.getRandomValues) {
+    const array = new Uint8Array(4)
+    globalThis.crypto.getRandomValues(array)
+    const randomSuffix = Array.from(array)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+
+    return `draft-${Date.now()}-${randomSuffix}`
+  }
+
+  const randomSuffix = Math.random().toString(36).slice(2, 10)
+  return `draft-${Date.now()}-${randomSuffix}`
 }
 
 function dedupeProblemSlugs(problemSlugs: readonly string[]) {
