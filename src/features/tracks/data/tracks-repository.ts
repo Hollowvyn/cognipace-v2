@@ -361,9 +361,12 @@ export class TracksRepository {
         })
         .where(eq(tracks.id, existingTrack.id))
 
-      for (const group of normalizedGroups) {
-        if (existingGroupIds.has(group.id)) {
-          await transactionDb
+      const groupsToUpdate = normalizedGroups.filter((group) => existingGroupIds.has(group.id))
+      const groupsToInsert = normalizedGroups.filter((group) => !existingGroupIds.has(group.id))
+
+      await Promise.all([
+        ...groupsToUpdate.map((group) =>
+          transactionDb
             .update(trackGroups)
             .set({
               title: group.title,
@@ -371,17 +374,20 @@ export class TracksRepository {
               updatedAt: timestamp,
             })
             .where(eq(trackGroups.id, group.id))
-        } else {
-          await transactionDb.insert(trackGroups).values({
-            id: group.id,
-            trackId: existingTrack.id,
-            title: group.title,
-            position: group.position,
-            createdAt: timestamp,
-            updatedAt: timestamp,
-          })
-        }
-      }
+        ),
+        groupsToInsert.length > 0
+          ? transactionDb.insert(trackGroups).values(
+              groupsToInsert.map((group) => ({
+                id: group.id,
+                trackId: existingTrack.id,
+                title: group.title,
+                position: group.position,
+                createdAt: timestamp,
+                updatedAt: timestamp,
+              }))
+            )
+          : Promise.resolve()
+      ])
 
       await moveExistingMembershipsToDesiredGroups(
         transactionDb,
@@ -398,9 +404,9 @@ export class TracksRepository {
         )
       }
 
-      for (const group of normalizedGroups) {
-        await syncGroupMemberships(transactionDb, group)
-      }
+      await Promise.all(
+        normalizedGroups.map((group) => syncGroupMemberships(transactionDb, group))
+      )
 
       const updatedTrack = await readTrackById(transactionDb, existingTrack.id)
 
