@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -43,6 +44,7 @@ export function ProblemConfirmationDialog({
       }}
     >
       <section
+        aria-busy={pending || undefined}
         aria-describedby={descriptionId}
         aria-labelledby={titleId}
         aria-modal="true"
@@ -79,6 +81,12 @@ export function ProblemConfirmationDialog({
             size="sm"
             variant="destructive"
           >
+            {pending ? (
+              <Loader2
+                aria-hidden="true"
+                className="animate-spin motion-reduce:animate-none"
+              />
+            ) : null}
             {confirmLabel}
           </Button>
         </div>

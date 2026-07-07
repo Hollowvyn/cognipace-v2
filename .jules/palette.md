@@ -1,0 +1,3 @@
+## 2024-06-14 - Improve Screen Reader Experience During Bulk Delete
+**Learning:** For confirmation dialogs involving destructive async operations, adding `aria-busy` to the dialog container and an inline `Loader2` component from `lucide-react` helps screen readers and standard users recognize when an action is in progress.
+**Action:** When adding confirmation dialogs for async operations, apply `aria-busy={pending || undefined}` to the dialog wrapper and use `Loader2` to give visual and screen-reader-friendly feedback.
