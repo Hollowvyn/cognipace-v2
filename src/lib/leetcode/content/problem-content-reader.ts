@@ -231,7 +231,11 @@ function createContentDocumentOrNull(
   }
 
   const contentDocument = hostDocument.implementation.createHTMLDocument('')
-  contentDocument.body.innerHTML = DOMPurify.sanitize(contentHtml)
+  const safeFragment = DOMPurify.sanitize(contentHtml, {
+    RETURN_DOM_FRAGMENT: true,
+    RETURN_DOM: true,
+  }) as unknown as DocumentFragment
+  contentDocument.body.appendChild(safeFragment)
 
   return contentDocument
 }
