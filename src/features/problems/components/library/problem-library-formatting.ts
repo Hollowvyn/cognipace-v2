@@ -30,16 +30,18 @@ export function getProblemLibraryStatusTone(
   }
 }
 
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+})
+
 export function formatDateCell(value: string | null, emptyLabel = '—') {
   if (!value) {
     return emptyLabel
   }
 
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(value))
+  return dateFormatter.format(new Date(value))
 }
 
 export function formatMetric(value: number | null, suffix = '') {
