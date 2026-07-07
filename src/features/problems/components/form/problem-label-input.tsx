@@ -2,6 +2,7 @@ import { ChevronDown, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 
 import { Badge } from '@/components/ui/badge'
+import { IconButton } from '@/components/ui/icon-button'
 import { cn } from '@/utils/cn'
 
 import {
@@ -205,17 +206,18 @@ export function ProblemLabelInput({
                 <span className="max-w-44 truncate text-left leading-tight">
                   {currentLabel}
                 </span>
-                <button
-                  aria-label={`Remove ${itemName} ${currentLabel}`}
-                  className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                <IconButton
+                  label={`Remove ${itemName} ${currentLabel}`}
+                  className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border-none bg-transparent hover:bg-transparent"
                   onClick={(event) => {
                     event.stopPropagation()
                     removeLabel(currentLabel)
                   }}
+                  size="icon"
                   type="button"
                 >
                   <X aria-hidden="true" className="size-3.5" />
-                </button>
+                </IconButton>
               </Badge>
             ))}
             <input
@@ -246,27 +248,31 @@ export function ProblemLabelInput({
             />
           </div>
           {labels.length > 0 ? (
-            <button
-              aria-label={`Clear ${label.toLowerCase()}`}
-              className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            <IconButton
+              label={`Clear ${label.toLowerCase()}`}
+              tooltip={`Clear ${label.toLowerCase()}`}
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border-none bg-transparent hover:bg-transparent"
               onClick={(event) => {
                 event.stopPropagation()
                 onChange([])
                 inputRef.current?.focus()
               }}
+              size="icon"
               type="button"
             >
               <X aria-hidden="true" className="size-4" />
-            </button>
+            </IconButton>
           ) : null}
-          <button
-            aria-label={`${isOpen ? 'Close' : 'Open'} ${label.toLowerCase()} options`}
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <IconButton
+            label={`${isOpen ? 'Close' : 'Open'} ${label.toLowerCase()} options`}
+            tooltip={`${isOpen ? 'Close' : 'Open'} ${label.toLowerCase()} options`}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border-none bg-transparent hover:bg-transparent"
             onClick={(event) => {
               event.stopPropagation()
               setIsOpen((current) => !current)
               inputRef.current?.focus()
             }}
+            size="icon"
             type="button"
           >
             <ChevronDown
@@ -276,7 +282,7 @@ export function ProblemLabelInput({
                 isOpen && 'rotate-180',
               )}
             />
-          </button>
+          </IconButton>
         </div>
 
         {isOpen ? (
