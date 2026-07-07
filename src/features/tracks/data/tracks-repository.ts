@@ -361,6 +361,8 @@ export class TracksRepository {
         })
         .where(eq(tracks.id, existingTrack.id))
 
+      const newGroupsToInsert = []
+
       for (const group of normalizedGroups) {
         if (existingGroupIds.has(group.id)) {
           await transactionDb
@@ -372,7 +374,7 @@ export class TracksRepository {
             })
             .where(eq(trackGroups.id, group.id))
         } else {
-          await transactionDb.insert(trackGroups).values({
+          newGroupsToInsert.push({
             id: group.id,
             trackId: existingTrack.id,
             title: group.title,
@@ -381,6 +383,10 @@ export class TracksRepository {
             updatedAt: timestamp,
           })
         }
+      }
+
+      if (newGroupsToInsert.length > 0) {
+        await transactionDb.insert(trackGroups).values(newGroupsToInsert)
       }
 
       await moveExistingMembershipsToDesiredGroups(
