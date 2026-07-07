@@ -398,9 +398,9 @@ export class TracksRepository {
         )
       }
 
-      for (const group of normalizedGroups) {
-        await syncGroupMemberships(transactionDb, group)
-      }
+      await Promise.all(
+        normalizedGroups.map((group) => syncGroupMemberships(transactionDb, group))
+      )
 
       const updatedTrack = await readTrackById(transactionDb, existingTrack.id)
 
@@ -826,9 +826,9 @@ async function writeNewGroups(
     })),
   )
 
-  for (const group of groups) {
-    await syncGroupMemberships(db, group)
-  }
+  await Promise.all(
+    groups.map((group) => syncGroupMemberships(db, group))
+  )
 }
 
 async function syncGroupMemberships(
