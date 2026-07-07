@@ -1,0 +1,13 @@
+## Details
+Replaced the use of `innerHTML` with `appendChild` for inserting sanitized HTML. While `DOMPurify` is used, relying on `innerHTML` is a dangerous sink that is often flagged by static analysis tools and can be a vector for DOM XSS if sanitization fails or is bypassed. Configured `DOMPurify.sanitize` to return a `DocumentFragment` instead of a string, and safely appended this fragment to the document body, eliminating the use of `innerHTML`.
+
+## Issue
+No issue - fixing potential DOM XSS vulnerability in ProblemContentReader.
+
+## Testing
+Tested the changes using npm run check.
+Manual smoke tested: happy path flows and edge case flows like loading problem content with script tags to ensure sanitization still works properly without innerHTML.
+Skipped validation: None
+
+## Screenshots
+N/A
