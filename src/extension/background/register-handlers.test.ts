@@ -41,6 +41,7 @@ import {
 import {
   registerBackgroundHandlers,
   serializeActiveTrack,
+  getAppShellRuntimeSurface,
 } from './register-handlers'
 
 const backgroundMocks = vi.hoisted(() => {
@@ -1946,6 +1947,21 @@ describe('background handler registration', () => {
         backgroundMocks.recommendLeetCodeAssessmentInBackground,
       ).not.toHaveBeenCalled()
     })
+  })
+})
+
+
+describe('getAppShellRuntimeSurface', () => {
+  it('maps popup to popup', () => {
+    expect(getAppShellRuntimeSurface({ surface: 'popup' })).toBe('popup')
+  })
+
+  it('maps dashboard to dashboard', () => {
+    expect(getAppShellRuntimeSurface({ surface: 'dashboard' })).toBe('dashboard')
+  })
+
+  it('maps overlay to content-script', () => {
+    expect(getAppShellRuntimeSurface({ surface: 'overlay' })).toBe('content-script')
   })
 })
 
