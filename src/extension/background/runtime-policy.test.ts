@@ -66,10 +66,25 @@ describe('runtime-policy', () => {
     ).toBe('content-script')
   })
 
-  it('rejects unknown methods', () => {
-    expect(isExtensionMethod('unknown.method')).toBe(false)
+
+  describe('isExtensionMethod', () => {
+    it('returns true for known extension methods', () => {
+      for (const method of extensionMethodNames) {
+        expect(isExtensionMethod(method)).toBe(true)
+      }
+    })
+
+    it('returns false for unknown methods', () => {
+      expect(isExtensionMethod('unknown.method')).toBe(false)
+      expect(isExtensionMethod('toString')).toBe(false)
+      expect(isExtensionMethod('__proto__')).toBe(false)
+    })
+  })
+
+  it('rejects unknown methods in canCallExtensionMethod', () => {
     expect(canCallExtensionMethod('unknown.method', 'popup')).toBe(false)
   })
+
 
   it('throws for unauthorized surfaces', () => {
     expect(() =>
