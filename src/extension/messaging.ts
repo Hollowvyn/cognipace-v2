@@ -218,7 +218,7 @@ export type CacheInvalidationEvent = z.infer<
   typeof cacheInvalidationEventSchema
 >
 
-export const queueItemSchema = z.object({
+const queueItemSchema = z.object({
   category: z.enum(['due', 'new', 'reinforcement']),
   problemSlug: problemSlugSchema,
   title: z.string(),
