@@ -1,0 +1,6 @@
+1. The `AppShellRequest` type has a `surface` property which can be 'popup', 'dashboard', or 'overlay'.
+2. The `getAppShellRuntimeSurface` function maps this to 'popup', 'dashboard', or 'content-script'.
+3. I will write a test in `src/extension/background/register-handlers.test.ts` to cover all three cases:
+   - if `surface` is 'popup', it should return 'popup'
+   - if `surface` is 'dashboard', it should return 'dashboard'
+   - if `surface` is 'overlay', it should return 'content-script'

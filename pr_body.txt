@@ -1,0 +1,15 @@
+## Details
+🎯 **What:** Added tests for the `getAppShellRuntimeSurface` utility function in `src/extension/background/register-handlers.ts`.
+📊 **Coverage:** Covered all three valid surface cases for `AppShellRequest`: 'popup' mapping to 'popup', 'dashboard' mapping to 'dashboard', and 'overlay' mapping to 'content-script'.
+✨ **Result:** Increased test coverage and confidence in the app shell runtime surface utility.
+
+## Issue
+No issue - Testing improvement task
+
+## Testing
+- `npm run check` passed successfully.
+- Manual smoke tested: happy path tested through automated tests (unit), edge case tested through automated tests. N/A for manual flows.
+- Skipped validation: N/A
+
+## Screenshots
+N/A (This is a unit test only PR)
