@@ -71,6 +71,13 @@ describe('runtime-policy', () => {
     expect(canCallExtensionMethod('unknown.method', 'popup')).toBe(false)
   })
 
+  it('rejects Object prototype properties', () => {
+    expect(isExtensionMethod('toString')).toBe(false)
+    expect(canCallExtensionMethod('toString', 'popup')).toBe(false)
+    expect(isExtensionMethod('valueOf')).toBe(false)
+    expect(isExtensionMethod('constructor')).toBe(false)
+  })
+
   it('throws for unauthorized surfaces', () => {
     expect(() =>
       assertCanCallExtensionMethod('app.getShellData', 'background'),
