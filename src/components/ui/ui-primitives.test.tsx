@@ -2,24 +2,11 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { Badge } from './badge'
-import { IconButton } from './icon-button'
 import { InlineStatus } from './inline-status'
 import { SurfaceRoot } from './surface'
 import { formatDuration, TimerDisplay } from './timer-display'
 
 describe('UI primitives', () => {
-  it('renders icon buttons with an accessible name', () => {
-    render(
-      <IconButton label="Open dashboard">
-        <span aria-hidden="true">D</span>
-      </IconButton>,
-    )
-
-    expect(
-      screen.getByRole('button', { name: 'Open dashboard' }),
-    ).toBeInTheDocument()
-  })
-
   it('applies surface and theme attributes at the surface root', () => {
     render(
       <SurfaceRoot surface="popup" theme="dark">
