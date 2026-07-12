@@ -378,6 +378,15 @@ function formatQueueItemState(
   return 'Extra Practice'
 }
 
+// ⚡ Bolt: Cache DateTimeFormat at module level to prevent excessive
+// ~4.9s/10k instantiations cost during queue item rendering
+const dateFormatter = new Intl.DateTimeFormat('en-US', {
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'UTC',
+  year: 'numeric',
+})
+
 function formatDateLabel(dateInput: string) {
   const date = new Date(dateInput)
 
@@ -385,10 +394,5 @@ function formatDateLabel(dateInput: string) {
     return 'Unknown date'
   }
 
-  return new Intl.DateTimeFormat('en-US', {
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-    year: 'numeric',
-  }).format(date)
+  return dateFormatter.format(date)
 }
