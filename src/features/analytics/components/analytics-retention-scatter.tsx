@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
@@ -45,6 +45,33 @@ export function AnalyticsRetentionScatter({
 }) {
   const [hovered, setHovered] = useState<HoveredEntry | null>(null)
 
+  // ⚡ Bolt: Using reduce prevents Maximum Call Stack Exceeded errors from spread operators on large arrays
+  const maxDays = useMemo(
+    () => scatter.reduce((max, e) => Math.max(max, e.daysSinceReview), 14),
+    [scatter],
+  )
+
+  const scatterDots = useMemo(
+    () =>
+      scatter.map((entry) => (
+        <circle
+          key={entry.slug}
+          cx={toX(entry.daysSinceReview, maxDays)}
+          cy={toY(entry.retrievability)}
+          r={5}
+          fill={dotColor(entry.retrievability, targetRetention)}
+          opacity={0.85}
+          data-testid="scatter-dot"
+          style={{ cursor: 'pointer' }}
+          onMouseEnter={(e) =>
+            setHovered({ entry, clientX: e.clientX, clientY: e.clientY })
+          }
+          onMouseLeave={() => setHovered(null)}
+        />
+      )),
+    [scatter, maxDays, targetRetention],
+  )
+
   const aboveCount = scatter.filter((e) => e.retrievability >= targetRetention).length
   const belowCount = scatter.length - aboveCount
   const targetPct = Math.round(targetRetention * 100)
@@ -61,8 +88,6 @@ export function AnalyticsRetentionScatter({
       </Surface>
     )
   }
-
-  const maxDays = Math.max(14, ...scatter.map((e) => e.daysSinceReview))
   const thresholdY = toY(targetRetention)
 
   const curvePath =
@@ -195,22 +220,7 @@ export function AnalyticsRetentionScatter({
             strokeWidth={1}
           />
 
-          {scatter.map((entry) => (
-            <circle
-              key={entry.slug}
-              cx={toX(entry.daysSinceReview, maxDays)}
-              cy={toY(entry.retrievability)}
-              r={5}
-              fill={dotColor(entry.retrievability, targetRetention)}
-              opacity={0.85}
-              data-testid="scatter-dot"
-              style={{ cursor: 'pointer' }}
-              onMouseEnter={(e) =>
-                setHovered({ entry, clientX: e.clientX, clientY: e.clientY })
-              }
-              onMouseLeave={() => setHovered(null)}
-            />
-          ))}
+          {scatterDots}
         </svg>
 
         {hovered !== null && (

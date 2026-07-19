@@ -10,7 +10,8 @@ export function AnalyticsForecast({
 }: {
   forecast: ForecastEntry[]
 }) {
-  const max = Math.max(...forecast.map((e) => e.dueCount), 1)
+  // ⚡ Bolt: Using reduce prevents Maximum Call Stack Exceeded errors from spread operators on large arrays
+  const max = forecast.reduce((m, e) => Math.max(m, e.dueCount), 1)
 
   return (
     <Surface
