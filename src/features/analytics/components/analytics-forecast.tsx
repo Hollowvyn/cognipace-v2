@@ -10,7 +10,8 @@ export function AnalyticsForecast({
 }: {
   forecast: ForecastEntry[]
 }) {
-  const max = Math.max(...forecast.map((e) => e.dueCount), 1)
+  // ⚡ Bolt: Avoid Math.max(...array.map()) to prevent maximum call stack exceeded and excess memory allocation.
+  const max = forecast.reduce((max, e) => Math.max(max, e.dueCount), 1)
 
   return (
     <Surface

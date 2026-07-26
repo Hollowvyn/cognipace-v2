@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
@@ -62,7 +62,8 @@ export function AnalyticsRetentionScatter({
     )
   }
 
-  const maxDays = Math.max(14, ...scatter.map((e) => e.daysSinceReview))
+  // ⚡ Bolt: Avoid Math.max(...array.map()) to prevent maximum call stack exceeded and excess memory allocation.
+  const maxDays = scatter.reduce((max, e) => Math.max(max, e.daysSinceReview), 14)
   const thresholdY = toY(targetRetention)
 
   const curvePath =
@@ -195,22 +196,27 @@ export function AnalyticsRetentionScatter({
             strokeWidth={1}
           />
 
-          {scatter.map((entry) => (
-            <circle
-              key={entry.slug}
-              cx={toX(entry.daysSinceReview, maxDays)}
-              cy={toY(entry.retrievability)}
-              r={5}
-              fill={dotColor(entry.retrievability, targetRetention)}
-              opacity={0.85}
-              data-testid="scatter-dot"
-              style={{ cursor: 'pointer' }}
-              onMouseEnter={(e) =>
-                setHovered({ entry, clientX: e.clientX, clientY: e.clientY })
-              }
-              onMouseLeave={() => setHovered(null)}
-            />
-          ))}
+          {/* ⚡ Bolt: Memoize scatter dot rendering to prevent expensive virtual DOM re-renders of all dots on mouse interactions */}
+          {useMemo(
+            () =>
+              scatter.map((entry) => (
+                <circle
+                  key={entry.slug}
+                  cx={toX(entry.daysSinceReview, maxDays)}
+                  cy={toY(entry.retrievability)}
+                  r={5}
+                  fill={dotColor(entry.retrievability, targetRetention)}
+                  opacity={0.85}
+                  data-testid="scatter-dot"
+                  style={{ cursor: 'pointer' }}
+                  onMouseEnter={(e) =>
+                    setHovered({ entry, clientX: e.clientX, clientY: e.clientY })
+                  }
+                  onMouseLeave={() => setHovered(null)}
+                />
+              )),
+            [scatter, maxDays, targetRetention],
+          )}
         </svg>
 
         {hovered !== null && (
