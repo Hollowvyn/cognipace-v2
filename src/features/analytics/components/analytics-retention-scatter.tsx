@@ -49,6 +49,32 @@ export function AnalyticsRetentionScatter({
   const belowCount = scatter.length - aboveCount
   const targetPct = Math.round(targetRetention * 100)
 
+  // ⚡ Bolt: Avoid Math.max(...array.map()) to prevent maximum call stack exceeded and excess memory allocation.
+  const maxDays = scatter.reduce((max, e) => Math.max(max, e.daysSinceReview), 14)
+
+  // ⚡ Bolt: Memoize scatter dot rendering to prevent expensive virtual DOM re-renders of all dots on mouse interactions
+  // Must be hoisted above the early return to comply with React Rules of Hooks
+  const scatterDots = useMemo(
+    () =>
+      scatter.map((entry) => (
+        <circle
+          key={entry.slug}
+          cx={toX(entry.daysSinceReview, maxDays)}
+          cy={toY(entry.retrievability)}
+          r={5}
+          fill={dotColor(entry.retrievability, targetRetention)}
+          opacity={0.85}
+          data-testid="scatter-dot"
+          style={{ cursor: 'pointer' }}
+          onMouseEnter={(e) =>
+            setHovered({ entry, clientX: e.clientX, clientY: e.clientY })
+          }
+          onMouseLeave={() => setHovered(null)}
+        />
+      )),
+    [scatter, maxDays, targetRetention],
+  )
+
   if (scatter.length === 0) {
     return (
       <Surface aria-label="Retention health" className="grid gap-3" role="region">
@@ -62,8 +88,6 @@ export function AnalyticsRetentionScatter({
     )
   }
 
-  // ⚡ Bolt: Avoid Math.max(...array.map()) to prevent maximum call stack exceeded and excess memory allocation.
-  const maxDays = scatter.reduce((max, e) => Math.max(max, e.daysSinceReview), 14)
   const thresholdY = toY(targetRetention)
 
   const curvePath =
@@ -196,27 +220,7 @@ export function AnalyticsRetentionScatter({
             strokeWidth={1}
           />
 
-          {/* ⚡ Bolt: Memoize scatter dot rendering to prevent expensive virtual DOM re-renders of all dots on mouse interactions */}
-          {useMemo(
-            () =>
-              scatter.map((entry) => (
-                <circle
-                  key={entry.slug}
-                  cx={toX(entry.daysSinceReview, maxDays)}
-                  cy={toY(entry.retrievability)}
-                  r={5}
-                  fill={dotColor(entry.retrievability, targetRetention)}
-                  opacity={0.85}
-                  data-testid="scatter-dot"
-                  style={{ cursor: 'pointer' }}
-                  onMouseEnter={(e) =>
-                    setHovered({ entry, clientX: e.clientX, clientY: e.clientY })
-                  }
-                  onMouseLeave={() => setHovered(null)}
-                />
-              )),
-            [scatter, maxDays, targetRetention],
-          )}
+          {scatterDots}
         </svg>
 
         {hovered !== null && (
