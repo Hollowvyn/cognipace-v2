@@ -272,34 +272,34 @@ describe('ProblemLibraryScreen', () => {
     expect(screen.getAllByText('Unscheduled').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Never reviewed').length).toBeGreaterThan(0)
 
-    await user.click(screen.getByRole('button', { name: 'Problem' }))
+    await user.click(screen.getByRole('button', { name: 'Sort Problem descending' }))
     expect(getProblemTitleOrder()).toEqual([
       'Two Sum',
       'Binary Search',
       '01 Matrix',
     ])
 
-    await user.click(screen.getByRole('button', { name: 'Difficulty' }))
+    await user.click(screen.getByRole('button', { name: 'Clear Problem sort' }))
+    expect(getProblemTitleOrder()).toEqual([
+      '01 Matrix',
+      'Binary Search',
+      'Two Sum',
+    ])
+
+    await user.click(screen.getByRole('button', { name: 'Sort Difficulty ascending' }))
+    expect(getProblemTitleOrder()[0]).toBe('Two Sum') // Difficulty sort
+
+    await user.click(screen.getByRole('button', { name: 'Sort Status ascending' })) // Status sort
     expect(getProblemTitleOrder()).toEqual([
       'Two Sum',
       'Binary Search',
       '01 Matrix',
     ])
 
-    await user.click(screen.getByRole('button', { name: 'Difficulty' }))
-    expect(getProblemTitleOrder()[0]).toBe('01 Matrix')
-
-    await user.click(screen.getByRole('button', { name: 'Status' }))
-    expect(getProblemTitleOrder()).toEqual([
-      'Two Sum',
-      'Binary Search',
-      '01 Matrix',
-    ])
-
-    await user.click(screen.getByRole('button', { name: 'Next Review' }))
+    await user.click(screen.getByRole('button', { name: 'Sort Next Review ascending' })) // Next Review sort
     expect(getProblemTitleOrder()[0]).toBe('Two Sum')
 
-    await user.click(screen.getByRole('button', { name: 'Last Review' }))
+    await user.click(screen.getByRole('button', { name: 'Sort Last Review ascending' })) // Last Review sort
     expect(getProblemTitleOrder()[0]).toBe('Two Sum')
   })
 

@@ -86,6 +86,14 @@ function SortableHeader({
 }) {
   const sortDirection = header.column.getIsSorted()
   const canSort = header.column.getCanSort()
+  const columnHeaderTitle = header.isPlaceholder ? '' : typeof header.column.columnDef.header === 'string' ? header.column.columnDef.header : header.column.id
+
+  const sortLabel =
+    sortDirection === 'asc'
+      ? `Sort ${columnHeaderTitle} descending`
+      : sortDirection === 'desc'
+        ? `Clear ${columnHeaderTitle} sort`
+        : `Sort ${columnHeaderTitle} ascending`
 
   return (
     <th
@@ -101,8 +109,10 @@ function SortableHeader({
     >
       {header.isPlaceholder ? null : canSort ? (
         <button
+          aria-label={sortLabel}
           className="inline-flex items-center gap-1 rounded-[var(--cp-radius-sm)] text-left uppercase hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={header.column.getToggleSortingHandler()}
+          title={sortLabel}
           type="button"
         >
           {flexRender(header.column.columnDef.header, header.getContext())}
