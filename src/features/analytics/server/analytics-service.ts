@@ -107,7 +107,9 @@ export async function getAnalyticsSummary(
   }))
 
   const medianStability = computeMedianStability(scatterCandidates.map((c) => c.stability))
-  const maxDays = Math.max(14, ...enrichedScatter.map((e) => e.daysSinceReview), 0)
+  // ⚡ Bolt: Use .reduce instead of Math.max(...map) for O(n) time and O(1) space complexity
+  // and to avoid Maximum Call Stack Exceeded errors on large arrays.
+  const maxDays = enrichedScatter.reduce((acc, e) => Math.max(acc, e.daysSinceReview), 14)
   const precomputedCurve: ReferenceCurvePoint[] = Array.from(
     { length: maxDays + 1 },
     (_, day) => ({

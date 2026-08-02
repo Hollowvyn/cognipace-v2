@@ -10,7 +10,9 @@ export function AnalyticsForecast({
 }: {
   forecast: ForecastEntry[]
 }) {
-  const max = Math.max(...forecast.map((e) => e.dueCount), 1)
+  // ⚡ Bolt: Use .reduce instead of Math.max(...map) for O(n) time and O(1) space complexity
+  // and to avoid Maximum Call Stack Exceeded errors on large arrays.
+  const max = forecast.reduce((acc, e) => Math.max(acc, e.dueCount), 1)
 
   return (
     <Surface

@@ -790,7 +790,11 @@ function summarizeAttempts(attempts: StoredPracticeReviewAttempt[]) {
     solvedCount: attempts.filter((attempt) => attempt.isCorrect === true)
       .length,
     bestElapsedSeconds:
-      elapsedValues.length > 0 ? Math.min(...elapsedValues) : null,
+      // ⚡ Bolt: Use .reduce instead of Math.min(...) to avoid Maximum Call Stack Exceeded
+      // errors on large arrays and reduce memory allocation.
+      elapsedValues.length > 0
+        ? elapsedValues.reduce((acc, val) => Math.min(acc, val), elapsedValues[0] as number)
+        : null,
   }
 }
 
