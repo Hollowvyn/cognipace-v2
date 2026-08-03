@@ -158,19 +158,21 @@ describe('platform http client', () => {
       .mockResolvedValue(
         new Response(JSON.stringify({ ok: true }), { status: 200 }),
       )
-    const signal = new AbortController().signal
+    const controller = new AbortController()
     const client = createHttpClient({ fetch: fetchMock })
 
     await client.requestJson({
       url: 'https://api.example.test/resource',
       method: 'POST',
-      signal,
+      signal: controller.signal,
     })
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.example.test/resource',
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
-    )
+    const fetchCallArgs = fetchMock.mock.calls[0] as [string, RequestInit]
+    const fetchCallSignal = fetchCallArgs[1].signal as AbortSignal
+    expect(fetchCallSignal).toBeInstanceOf(AbortSignal)
+    expect(fetchCallSignal.aborted).toBe(false)
+    controller.abort()
+    expect(fetchCallSignal.aborted).toBe(true)
   })
 
   it('normalizes TimeoutError and AbortError into "Network request timed out."', async () => {

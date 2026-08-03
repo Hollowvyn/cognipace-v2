@@ -1643,7 +1643,6 @@ function parseSyncActionResult(result: unknown) {
 type DbMutationSyncMode = 'mark-dirty' | 'none'
 
 let dbMutationQueue: Promise<void> = Promise.resolve()
-let dbMutationDepth = 0
 let hasPendingDirtyMarkRetry = false
 
 function runDbMutation<T>(
@@ -1673,13 +1672,7 @@ function runDbMutation<T>(
 
 function runInMutationQueue<T>(work: () => Promise<T>) {
   const queued = dbMutationQueue.then(async () => {
-    dbMutationDepth += 1
-
-    try {
-      return await work()
-    } finally {
-      dbMutationDepth -= 1
-    }
+    return await work()
   })
   dbMutationQueue = queued.then(
     () => undefined,

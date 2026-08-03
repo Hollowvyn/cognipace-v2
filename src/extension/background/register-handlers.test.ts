@@ -1086,7 +1086,7 @@ describe('background handler registration', () => {
   it('runs sync remote restores through the queued mutation path without marking dirty', async () => {
     const workOrder: string[] = []
     backgroundMocks.syncService.pullLatest.mockImplementation(async () => {
-      await readLatestSyncFactoryOptions().runWithLocalDataLock!(async () => {
+      await readLatestSyncFactoryOptions().runWithLocalDataLock(async () => {
         workOrder.push('remote-restore')
         await backgroundMocks.flushDbSnapshot()
         return null
@@ -1113,8 +1113,9 @@ describe('background handler registration', () => {
     backgroundMocks.syncService.pullLatest.mockImplementation(async () => {
       const lock = readLatestSyncFactoryOptions().runWithLocalDataLock
       expect(lock).toBeDefined()
-      await lock!(async () => {
+      await lock(async () => {
         lockRan = true
+        await Promise.resolve()
       })
 
       return syncActionResult
@@ -2801,11 +2802,7 @@ const cleanSyncMetadata = {
   lastError: null,
   conflict: null,
 }
-const dirtySyncMetadata = {
-  ...cleanSyncMetadata,
-  dirtySinceLastSync: true,
-  localDataUpdatedAt: '2026-05-26T12:01:00.000Z',
-}
+
 const validBackup = backupFileSchema.parse({
   schemaVersion: backupSchemaVersion,
   app: 'cognipace',
