@@ -75,7 +75,7 @@ export type SyncServiceDependencies = {
   restoreBackup: (backup: BackupFile) => Promise<BackupSummary>
   flushDbSnapshot: () => Promise<unknown>
   broadcastInvalidation: () => MaybePromise<void>
-  runRemoteRestore?: (<T>(work: () => Promise<T>) => Promise<T>) | undefined
+  runWithLocalDataLock?: (<T>(work: () => Promise<T>) => Promise<T>) | undefined
   syncCoordinator?: SyncOperationCoordinator | undefined
   now: () => Date
 }
@@ -426,7 +426,10 @@ export function createSyncService(deps: SyncServiceDependencies) {
         })
       }
 
-      await pullRemote(remote, { enabled: metadata.enabled })
+      await pullRemote(remote, {
+        enabled: metadata.enabled,
+        confirmLocalOverwrite: options.confirmLocalOverwrite,
+      })
 
       return createActionResult({
         action: 'pull-latest',
@@ -505,10 +508,23 @@ export function createSyncService(deps: SyncServiceDependencies) {
 
   async function pullRemote(
     gist: GitHubGistSummary,
-    options: { enabled?: boolean } = {},
+    options: {
+      enabled?: boolean
+      confirmLocalOverwrite?: boolean | undefined
+    } = {},
   ) {
     const envelope = parseRemoteSyncEnvelope(gist)
-    await runRemoteRestore(async () => {
+    await runWithLocalDataLock(async () => {
+      const currentMetadata = await deps.readMetadata()
+      if (
+        currentMetadata.dirtySinceLastSync &&
+        !options.confirmLocalOverwrite
+      ) {
+        throw new Error(
+          'Local data changed during sync. Aborting pull to prevent overwrite.',
+        )
+      }
+
       await deps.restoreBackup(envelope.backup)
       await deps.flushDbSnapshot()
       await Promise.resolve(deps.broadcastInvalidation())
@@ -562,7 +578,7 @@ export function createSyncService(deps: SyncServiceDependencies) {
     const metadata = await deps.readMetadata()
     const dataUpdatedAt =
       metadata.localDataUpdatedAt ?? deps.now().toISOString()
-    const backup = await deps.exportFullBackup()
+    const backup = await runWithLocalDataLock(() => deps.exportFullBackup())
 
     return {
       content: JSON.stringify(
@@ -669,8 +685,8 @@ export function createSyncService(deps: SyncServiceDependencies) {
     })
   }
 
-  function runRemoteRestore<T>(work: () => Promise<T>) {
-    return deps.runRemoteRestore ? deps.runRemoteRestore(work) : work()
+  function runWithLocalDataLock<T>(work: () => Promise<T>) {
+    return deps.runWithLocalDataLock ? deps.runWithLocalDataLock(work) : work()
   }
 
   return {
@@ -692,7 +708,7 @@ export function createBackgroundSyncService(
   db: Db,
   broadcastInvalidation: () => MaybePromise<void>,
   options: {
-    runRemoteRestore?: SyncServiceDependencies['runRemoteRestore']
+    runWithLocalDataLock?: SyncServiceDependencies['runWithLocalDataLock']
     syncCoordinator?: SyncOperationCoordinator
   } = {},
 ) {
@@ -709,8 +725,8 @@ export function createBackgroundSyncService(
     flushDbSnapshot,
     broadcastInvalidation,
     syncCoordinator: options.syncCoordinator ?? sharedSyncOperationCoordinator,
-    ...(options.runRemoteRestore
-      ? { runRemoteRestore: options.runRemoteRestore }
+    ...(options.runWithLocalDataLock
+      ? { runWithLocalDataLock: options.runWithLocalDataLock }
       : {}),
     now: () => new Date(),
   })

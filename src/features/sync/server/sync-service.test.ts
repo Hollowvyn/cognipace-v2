@@ -1227,25 +1227,54 @@ describe('sync service', () => {
     })
   })
 
-  it('runs remote pulls through the injected restore coordinator', async () => {
-    const runRemoteRestoreCalls: Array<() => Promise<unknown>> = []
-    let metadataCleanedBeforeRestoreCoordinatorSettled = false
-    let readMetadata: () => SyncMetadata = () => {
-      throw new Error('Harness metadata is not available.')
-    }
-    const runRemoteRestore: NonNullable<
-      SyncServiceDependencies['runRemoteRestore']
+  it('runs remote pulls and local exports through the injected runWithLocalDataLock coordinator', async () => {
+    const lockCalls: string[] = []
+    const runWithLocalDataLock: NonNullable<
+      SyncServiceDependencies['runWithLocalDataLock']
     > = async (work) => {
-      runRemoteRestoreCalls.push(work)
+      lockCalls.push('lock-acquired')
       const result = await work()
-      metadataCleanedBeforeRestoreCoordinatorSettled =
-        readMetadata().dirtySinceLastSync === false &&
-        readMetadata().lastSyncDirection === 'pull'
-
+      lockCalls.push('lock-released')
       return result
     }
-    const harness = createHarness({ runRemoteRestore })
-    readMetadata = harness.getMetadata
+    const harness = createHarness({ runWithLocalDataLock })
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: true,
+      localDataUpdatedAt: '2026-05-26T12:05:00.000Z',
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:00:00.000Z',
+        remoteVersion: 'remote_1',
+      }),
+    )
+    harness.githubClient.updateSyncGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: currentTime,
+        remoteVersion: 'remote_2',
+      }),
+    )
+
+    await harness.service.pushLocal()
+
+    expect(lockCalls).toEqual(['lock-acquired', 'lock-released'])
+    expect(harness.exportFullBackup).toHaveBeenCalledTimes(1)
+  })
+
+  it('pullRemote aborts pull if local data becomes dirty during sync before lock evaluation', async () => {
+    const runWithLocalDataLock: NonNullable<
+      SyncServiceDependencies['runWithLocalDataLock']
+    > = async (work) => {
+      // Simulate local data becoming dirty right before restore executes inside the lock
+      harness.setMetadata({ dirtySinceLastSync: true })
+      return work()
+    }
+    const harness = createHarness({ runWithLocalDataLock })
     harness.setMetadata({
       enabled: true,
       gistId: 'gist_1',
@@ -1266,19 +1295,19 @@ describe('sync service', () => {
       }),
     )
 
-    await harness.service.pullLatest()
+    const result = await harness.service.pullLatest()
 
-    expect(runRemoteRestoreCalls).toHaveLength(1)
-    expect(metadataCleanedBeforeRestoreCoordinatorSettled).toBe(true)
-    expect(harness.restoreBackup).toHaveBeenCalledWith(backup)
-    expect(harness.flushDbSnapshot).toHaveBeenCalled()
-    expect(harness.broadcastInvalidation).toHaveBeenCalled()
+    expect(result).toMatchObject({
+      action: 'pull-latest',
+      outcome: 'error',
+    })
+    expect(harness.restoreBackup).not.toHaveBeenCalled()
   })
 })
 
 function createHarness(
   overrides: Partial<
-    Pick<SyncServiceDependencies, 'runRemoteRestore' | 'syncCoordinator'>
+    Pick<SyncServiceDependencies, 'runWithLocalDataLock' | 'syncCoordinator'>
   > = {},
 ) {
   let metadata: SyncMetadata = { ...defaultSyncMetadata }
@@ -1327,8 +1356,8 @@ function createHarness(
     now: () => new Date(currentTime),
     syncCoordinator:
       overrides.syncCoordinator ?? createSyncOperationCoordinator(),
-    ...(overrides.runRemoteRestore
-      ? { runRemoteRestore: overrides.runRemoteRestore }
+    ...(overrides.runWithLocalDataLock
+      ? { runWithLocalDataLock: overrides.runWithLocalDataLock }
       : {}),
   })
 

@@ -1086,7 +1086,7 @@ describe('background handler registration', () => {
   it('runs sync remote restores through the queued mutation path without marking dirty', async () => {
     const workOrder: string[] = []
     backgroundMocks.syncService.pullLatest.mockImplementation(async () => {
-      await readLatestSyncFactoryOptions().runRemoteRestore(async () => {
+      await readLatestSyncFactoryOptions().runWithLocalDataLock(async () => {
         workOrder.push('remote-restore')
         await backgroundMocks.flushDbSnapshot()
         return null
@@ -1113,7 +1113,7 @@ describe('background handler registration', () => {
     let remoteWorkRan = false
     backgroundMocks.readSyncMetadata.mockResolvedValueOnce(dirtySyncMetadata)
     backgroundMocks.syncService.pullLatest.mockImplementation(async () => {
-      await readLatestSyncFactoryOptions().runRemoteRestore(() => {
+      await readLatestSyncFactoryOptions().runWithLocalDataLock(() => {
         remoteWorkRan = true
 
         return Promise.resolve(null)
@@ -2470,14 +2470,14 @@ function isSyncAutoSyncDeps(value: unknown): value is SyncAutoSyncDeps {
 }
 
 type SyncFactoryOptions = {
-  runRemoteRestore: <T>(work: () => Promise<T>) => Promise<T>
+  runWithLocalDataLock: <T>(work: () => Promise<T>) => Promise<T>
 }
 
 function readLatestSyncFactoryOptions(): SyncFactoryOptions {
   const options = readLatestSyncFactoryCall()[2]
 
   if (!isSyncFactoryOptions(options)) {
-    throw new Error('Expected sync factory runRemoteRestore option.')
+    throw new Error('Expected sync factory runWithLocalDataLock option.')
   }
 
   return options
@@ -2501,7 +2501,7 @@ function isSyncFactoryOptions(value: unknown): value is SyncFactoryOptions {
   }
 
   return (
-    typeof (value as { runRemoteRestore?: unknown }).runRemoteRestore ===
+    typeof (value as { runWithLocalDataLock?: unknown }).runWithLocalDataLock ===
     'function'
   )
 }

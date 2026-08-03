@@ -1610,7 +1610,7 @@ function createSyncServiceForDbInQueue(db: Db, isInsideMutationQueue: boolean) {
       await broadcastDataManagementInvalidation('dashboard')
     },
     {
-      runRemoteRestore: (work) =>
+      runWithLocalDataLock: (work) =>
         runRemoteRestoreInMutationQueue(work, isInsideMutationQueue),
     },
   )
