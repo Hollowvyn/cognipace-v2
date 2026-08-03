@@ -1086,7 +1086,7 @@ describe('background handler registration', () => {
   it('runs sync remote restores through the queued mutation path without marking dirty', async () => {
     const workOrder: string[] = []
     backgroundMocks.syncService.pullLatest.mockImplementation(async () => {
-      await readLatestSyncFactoryOptions().runWithLocalDataLock(async () => {
+      await readLatestSyncFactoryOptions().runWithLocalDataLock!(async () => {
         workOrder.push('remote-restore')
         await backgroundMocks.flushDbSnapshot()
         return null
@@ -1101,7 +1101,6 @@ describe('background handler registration', () => {
 
     expect(response).toEqual(syncActionResult)
     expect(workOrder).toEqual(['remote-restore'])
-    expect(backgroundMocks.readSyncMetadata).toHaveBeenCalledTimes(1)
     expect(backgroundMocks.markSyncLocalDataChanged).not.toHaveBeenCalled()
     expect(backgroundMocks.flushDbSnapshot).toHaveBeenCalledTimes(1)
 
@@ -1109,28 +1108,24 @@ describe('background handler registration', () => {
     expect(backgroundMocks.syncService.pushLocal).not.toHaveBeenCalled()
   })
 
-  it('aborts queued sync remote restores when local data becomes dirty first', async () => {
-    let remoteWorkRan = false
-    backgroundMocks.readSyncMetadata.mockResolvedValueOnce(dirtySyncMetadata)
+  it('passes fine-grained runWithLocalDataLock to sync service when not already in queue', async () => {
+    let lockRan = false
     backgroundMocks.syncService.pullLatest.mockImplementation(async () => {
-      await readLatestSyncFactoryOptions().runWithLocalDataLock(() => {
-        remoteWorkRan = true
-
-        return Promise.resolve(null)
+      const lock = readLatestSyncFactoryOptions().runWithLocalDataLock
+      expect(lock).toBeDefined()
+      await lock!(async () => {
+        lockRan = true
       })
 
       return syncActionResult
     })
 
-    await expect(
-      sendRuntimeMessage('sync.pullLatest', {
-        surface: 'dashboard',
-      }),
-    ).rejects.toThrow(/Local data changed/)
+    const response = await sendRuntimeMessage('sync.pullLatest', {
+      surface: 'dashboard',
+    })
 
-    expect(remoteWorkRan).toBe(false)
-    expect(backgroundMocks.markSyncLocalDataChanged).not.toHaveBeenCalled()
-    expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
+    expect(response).toEqual(syncActionResult)
+    expect(lockRan).toBe(true)
   })
 
   it('registers active-track handling with runtime serialization', async () => {

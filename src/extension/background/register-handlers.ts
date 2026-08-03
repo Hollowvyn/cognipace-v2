@@ -1603,26 +1603,27 @@ function createSyncServiceForDb(db: Db) {
   return createSyncServiceForDbInQueue(db, false)
 }
 
-function createSyncServiceForDbInQueue(db: Db, isInsideMutationQueue: boolean) {
+function createSyncServiceForDbInQueue(db: Db, isAlreadyInQueue: boolean) {
   return createBackgroundSyncService(
     db,
     async () => {
       await broadcastDataManagementInvalidation('dashboard')
     },
     {
-      runWithLocalDataLock: (work) =>
-        runRemoteRestoreInMutationQueue(work, isInsideMutationQueue),
+      runWithLocalDataLock: isAlreadyInQueue
+        ? undefined
+        : (work) => runInMutationQueue(work),
     },
   )
 }
 
 type BackgroundSyncService = ReturnType<typeof createBackgroundSyncService>
 
-function runQueuedSyncAction<T>(
+async function runQueuedSyncAction<T>(
   db: Db,
   action: (service: BackgroundSyncService) => Promise<T>,
 ) {
-  return runInMutationQueue(async () => {
+  await runInMutationQueue(async () => {
     const dirtyMarkReady = await retryPendingDirtyMark()
 
     if (!dirtyMarkReady) {
@@ -1630,9 +1631,9 @@ function runQueuedSyncAction<T>(
         'Local data changed but sync metadata could not be saved.',
       )
     }
-
-    return action(createSyncServiceForDbInQueue(db, true))
   })
+
+  return action(createSyncServiceForDbInQueue(db, false))
 }
 
 function parseSyncActionResult(result: unknown) {
@@ -1728,28 +1729,6 @@ async function retryPendingDirtyMark() {
   }
 }
 
-function runRemoteRestoreInMutationQueue<T>(
-  work: () => Promise<T>,
-  isInsideMutationQueue: boolean,
-) {
-  const guardedWork = async () => {
-    const metadata = await readSyncMetadata()
-
-    if (metadata.dirtySinceLastSync) {
-      throw new Error(
-        'Sync conflict detected. Local data changed before remote data could be applied.',
-      )
-    }
-
-    return work()
-  }
-
-  if (isInsideMutationQueue && dbMutationDepth > 0) {
-    return guardedWork()
-  }
-
-  return runInMutationQueue(guardedWork)
-}
 
 function readReviewLogRequest(request: {
   log?:
