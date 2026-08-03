@@ -152,7 +152,7 @@ describe('platform http client', () => {
     })
   })
 
-  it('passes caller supplied AbortSignal through to fetch', async () => {
+  it('passes caller supplied AbortSignal through to fetch combined with timeout', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(
@@ -169,8 +169,25 @@ describe('platform http client', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.example.test/resource',
-      expect.objectContaining({ signal }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
+  })
+
+  it('normalizes TimeoutError and AbortError into "Network request timed out."', async () => {
+    const timeoutError = new Error('The operation timed out')
+    timeoutError.name = 'TimeoutError'
+    const fetchMock = vi.fn().mockRejectedValue(timeoutError)
+    const client = createHttpClient({ fetch: fetchMock })
+
+    await expect(
+      client.requestJson({
+        url: 'https://api.example.test/resource',
+        method: 'GET',
+      }),
+    ).rejects.toMatchObject({
+      name: 'HttpRequestError',
+      message: 'Network request timed out.',
+    })
   })
 
   it('builds REST JSON requests with shared transport', async () => {

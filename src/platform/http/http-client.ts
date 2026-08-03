@@ -54,9 +54,10 @@ export function createHttpClient(
           init.credentials = request.credentials
         }
 
-        if (request.signal !== undefined) {
-          init.signal = request.signal
-        }
+        const timeoutSignal = AbortSignal.timeout(15000)
+        init.signal = request.signal
+          ? AbortSignal.any([request.signal, timeoutSignal])
+          : timeoutSignal
 
         const response = await fetchImpl(request.url, init)
         const payload = await readResponsePayload(response, request)
@@ -79,11 +80,18 @@ export function createHttpClient(
           throw error
         }
 
+        const isTimeout =
+          error instanceof Error &&
+          (error.name === 'TimeoutError' || error.name === 'AbortError')
+
+        const errorMessage = isTimeout
+          ? 'Network request timed out.'
+          : error instanceof Error
+            ? error.message
+            : String(error)
+
         throw new HttpRequestError(
-          redactString(
-            error instanceof Error ? error.message : String(error),
-            request.sensitiveValues,
-          ),
+          redactString(errorMessage, request.sensitiveValues),
           debug,
           undefined,
           { cause: createSanitizedCause(error, request.sensitiveValues) },
