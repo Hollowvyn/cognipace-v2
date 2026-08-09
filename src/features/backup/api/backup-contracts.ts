@@ -203,7 +203,11 @@ export const backupSettingsKvRowSchema = z
   })
   .superRefine((settingsKv, context) => {
     try {
-      userSettingsSchema.parse(JSON.parse(settingsKv.value))
+      // .strip() relaxes the top-level .strict() so that fields added after
+      // a row was originally written (e.g. aiAssessment) are accepted via
+      // their Zod defaults rather than rejected.  Genuinely invalid field
+      // values (wrong type, out-of-range numbers, etc.) still throw.
+      userSettingsSchema.strip().parse(JSON.parse(settingsKv.value))
     } catch {
       context.addIssue({
         code: 'custom',
