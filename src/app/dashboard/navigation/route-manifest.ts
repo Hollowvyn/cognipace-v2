@@ -14,7 +14,7 @@ export interface DashboardRouteStaticData {
   title: string
 }
 
-declare module '@tanstack/router-core' {
+declare module '@tanstack/react-router' {
   interface StaticDataRouteOption {
     navLabel?: string
     presentation?: DashboardRoutePresentation
