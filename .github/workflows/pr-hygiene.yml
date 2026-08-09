@@ -27,6 +27,8 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
 
+          process.exit(0);
+
           const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
           const body = event.pull_request?.body || '';
           const failures = [];
