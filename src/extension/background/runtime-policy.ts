@@ -68,7 +68,7 @@ export const extensionMethodNames = Object.keys(methodSurfaceAccess) as Array<
 export type ExtensionMethod = keyof typeof methodSurfaceAccess
 
 export function isExtensionMethod(method: string): method is ExtensionMethod {
-  return Object.prototype.hasOwnProperty.call(methodSurfaceAccess, method)
+  return method in methodSurfaceAccess
 }
 
 export function canCallExtensionMethod(
