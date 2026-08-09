@@ -62,7 +62,8 @@ export function AnalyticsRetentionScatter({
     )
   }
 
-  const maxDays = Math.max(14, ...scatter.map((e) => e.daysSinceReview))
+  // ⚡ Bolt: Replace Math.max(...map()) with reduce to prevent call stack exceeded errors and avoid allocating intermediate array
+  const maxDays = scatter.reduce((acc, e) => Math.max(acc, e.daysSinceReview), 14)
   const thresholdY = toY(targetRetention)
 
   const curvePath =
