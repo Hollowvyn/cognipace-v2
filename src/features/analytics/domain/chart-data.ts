@@ -9,6 +9,16 @@ import {
   type ReviewRating,
 } from '@/lib/fsrs'
 
+import {
+  medianBucketValues,
+  recomputeBucketRatio,
+  sumBucketValues,
+} from './chart-buckets'
+import type {
+  AnalyticsBucket,
+  AnalyticsRangePolicy,
+} from './analytics-range-policy'
+
 export interface AnalyticsReviewEvent {
   id: string
   cardId: string
@@ -44,6 +54,8 @@ export interface AnalyticsOverdueSnapshot {
 
 export interface RecallQualityPoint {
   date: string
+  bucketStart: string
+  bucketEnd: string
   observedRecall: number | null
   predictedRecall: number | null
   targetRetention: number
@@ -53,19 +65,27 @@ export interface RecallQualityPoint {
 
 export interface PredictedRecallSample {
   date: string
+  reviewedAt: Date
   value: number
 }
 
-export interface ConsistencyPoint {
-  week: string
-  reviewDays: number
+export interface PracticeRhythmPoint {
+  bucketStart: string
+  bucketEnd: string
+  reviewCount: number
   observedCorrectness: number | null
   sampleSize: number
   associationOnly: true
 }
 
+// Task 4 updates the serialized contract and chart caller to the new name.
+// Keep this type-only alias while Task 3 changes the domain builder shape.
+export type ConsistencyPoint = PracticeRhythmPoint
+
 export interface RatingsMixPoint {
   date: string
+  bucketStart: string
+  bucketEnd: string
   again: number
   hard: number
   good: number
@@ -94,12 +114,16 @@ export interface TopicPoint {
 
 export interface StabilityPoint {
   week: string
+  bucketStart: string
+  bucketEnd: string
   medianStabilityDays: number | null
   sampleSize: number
 }
 
 export interface OverdueBacklogPoint {
   date: string
+  bucketStart: string
+  bucketEnd: string
   overdueCount: number
   historyAvailable: boolean
 }
@@ -142,6 +166,8 @@ export interface FragileKnowledgeRow {
 export interface AnalyticsRangeOptions {
   start: Date
   end: Date
+  buckets: readonly AnalyticsBucket[]
+  rangePolicy: AnalyticsRangePolicy
   fsrsOptions: NormalizedFsrsSchedulingOptions
   lowSampleThreshold?: number
 }
@@ -156,50 +182,44 @@ export function toAnalyticsDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-export function toAnalyticsWeekKey(date: Date): string {
-  const day = new Date(date)
-  const dayOfWeek = day.getDay() || 7
-  day.setDate(day.getDate() - dayOfWeek + 1)
-  return toAnalyticsDateKey(day)
-}
-
 export function buildRecallQualityPoints(
   events: readonly AnalyticsReviewEvent[],
   options: AnalyticsRangeOptions,
 ): RecallQualityPoint[] {
-  const points = dailyKeys(options).map((date) => ({
-    date,
-    observed: [] as boolean[],
+  const points = options.buckets.map((bucket) => ({
+    bucket,
+    observed: { numerator: 0, denominator: 0 },
     predicted: [] as number[],
     reviewCount: 0,
   }))
-  const byDate = new Map(points.map((point) => [point.date, point]))
+
   for (const event of events) {
-    const point = byDate.get(toAnalyticsDateKey(event.reviewedAt))
-    if (
-      !point ||
-      event.reviewedAt < options.start ||
-      event.reviewedAt > options.end
-    )
-      continue
+    if (!isWithinRange(event.reviewedAt, options)) continue
+    const point = findBucketPoint(points, event.reviewedAt)
+    if (!point) continue
+
     point.reviewCount += 1
-    if (event.isCorrect !== null) point.observed.push(event.isCorrect)
+    if (event.isCorrect !== null) {
+      point.observed.denominator += 1
+      if (event.isCorrect) point.observed.numerator += 1
+    }
   }
+
   for (const prediction of buildPredictedRecallSamples(events, options)) {
-    const point = byDate.get(prediction.date)
-    if (point && prediction.value !== null)
-      point.predicted.push(prediction.value)
+    const point = findBucketPoint(points, prediction.reviewedAt)
+    if (point) point.predicted.push(prediction.value)
   }
+
   return points.map((point) => ({
-    date: point.date,
-    observedRecall: ratio(
-      point.observed.filter(Boolean).length,
-      point.observed.length,
+    date: point.bucket.key,
+    ...bucketBounds(point.bucket),
+    observedRecall: recomputeBucketRatio([point.observed]),
+    predictedRecall: recomputeBucketRatio(
+      point.predicted.map((value) => ({ numerator: value, denominator: 1 })),
     ),
-    predictedRecall: average(point.predicted),
     targetRetention: options.fsrsOptions.targetRetention,
     reviewCount: point.reviewCount,
-    eligibleSampleSize: point.observed.length,
+    eligibleSampleSize: point.observed.denominator,
   }))
 }
 
@@ -244,6 +264,7 @@ export function buildPredictedRecallSamples(
       ) {
         results.push({
           date: toAnalyticsDateKey(event.reviewedAt),
+          reviewedAt: event.reviewedAt,
           value: predicted,
         })
       }
@@ -252,53 +273,54 @@ export function buildPredictedRecallSamples(
   return results
 }
 
-export function buildConsistencyPoints(
+export function buildPracticeRhythmPoints(
   events: readonly AnalyticsReviewEvent[],
   options: AnalyticsRangeOptions,
-): ConsistencyPoint[] {
-  const weeks = new Map<string, { days: Set<string>; correct: boolean[] }>()
+): PracticeRhythmPoint[] {
+  const points = options.buckets.map((bucket) => ({
+    bucket,
+    reviewCount: 0,
+    observed: { numerator: 0, denominator: 0 },
+  }))
+
   for (const event of events) {
-    if (event.reviewedAt < options.start || event.reviewedAt > options.end)
-      continue
-    const week = weeks.get(toAnalyticsWeekKey(event.reviewedAt)) ?? {
-      days: new Set(),
-      correct: [],
+    if (!isWithinRange(event.reviewedAt, options)) continue
+    const point = findBucketPoint(points, event.reviewedAt)
+    if (!point) continue
+
+    point.reviewCount += 1
+    if (event.isCorrect !== null) {
+      point.observed.denominator += 1
+      if (event.isCorrect) point.observed.numerator += 1
     }
-    week.days.add(toAnalyticsDateKey(event.reviewedAt))
-    if (event.isCorrect !== null) week.correct.push(event.isCorrect)
-    weeks.set(toAnalyticsWeekKey(event.reviewedAt), week)
   }
-  return [...weeks.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([week, value]) => ({
-      week,
-      reviewDays: value.days.size,
-      observedCorrectness: ratio(
-        value.correct.filter(Boolean).length,
-        value.correct.length,
-      ),
-      sampleSize: value.correct.length,
-      associationOnly: true,
-    }))
+
+  return points.map((point) => ({
+    ...bucketBounds(point.bucket),
+    reviewCount: point.reviewCount,
+    observedCorrectness: recomputeBucketRatio([point.observed]),
+    sampleSize: point.observed.denominator,
+    associationOnly: true,
+  }))
 }
 
 export function buildRatingsMixPoints(
   events: readonly AnalyticsReviewEvent[],
   options: AnalyticsRangeOptions,
 ): RatingsMixPoint[] {
-  return dailyKeys(options).map((date) => {
+  return options.buckets.map((bucket) => {
     const counts = { again: 0, hard: 0, good: 0, easy: 0 }
     for (const event of events)
       if (
-        event.reviewedAt >= options.start &&
-        event.reviewedAt <= options.end &&
-        toAnalyticsDateKey(event.reviewedAt) === date &&
+        isWithinRange(event.reviewedAt, options) &&
+        isInBucket(event.reviewedAt, bucket) &&
         isReviewRating(event.rating)
       )
         counts[event.rating] += 1
-    const total = counts.again + counts.hard + counts.good + counts.easy
+    const total = sumBucketValues(Object.values(counts))
     return {
-      date,
+      date: bucket.key,
+      ...bucketBounds(bucket),
       ...counts,
       total,
       hardAgainShare: total === 0 ? null : (counts.again + counts.hard) / total,
@@ -371,7 +393,12 @@ export function buildTopicPoints(
   return [...topics.entries()]
     .map(([topic, values]) => ({
       topic,
-      recallQuality: ratio(values.filter(Boolean).length, values.length),
+      recallQuality: recomputeBucketRatio([
+        {
+          numerator: values.filter(Boolean).length,
+          denominator: values.length,
+        },
+      ]),
       sampleSize: values.length,
       lowSample: values.length < threshold,
     }))
@@ -386,27 +413,27 @@ export function buildStabilityPoints(
   events: readonly AnalyticsReviewEvent[],
   options: AnalyticsRangeOptions,
 ): StabilityPoint[] {
-  const grouped = new Map<string, number[]>()
+  const points = options.buckets.map((bucket) => ({
+    bucket,
+    values: [] as number[],
+  }))
+
   for (const event of events) {
-    if (
-      event.reviewedAt < options.start ||
-      event.reviewedAt > options.end ||
-      !event.fsrsReviewLog
-    )
-      continue
+    if (!isWithinRange(event.reviewedAt, options)) continue
+    const point = findBucketPoint(points, event.reviewedAt)
+    if (!point || !event.fsrsReviewLog) continue
+
     const stability = parseValidStability(event.fsrsReviewLog)
     if (stability === null) continue
-    const values = grouped.get(toAnalyticsWeekKey(event.reviewedAt)) ?? []
-    values.push(stability)
-    grouped.set(toAnalyticsWeekKey(event.reviewedAt), values)
+    point.values.push(stability)
   }
-  return [...grouped.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([week, values]) => ({
-      week,
-      medianStabilityDays: median(values),
-      sampleSize: values.length,
-    }))
+
+  return points.map((point) => ({
+    week: point.bucket.key,
+    ...bucketBounds(point.bucket),
+    medianStabilityDays: medianBucketValues(point.values),
+    sampleSize: point.values.length,
+  }))
 }
 
 export function buildOverdueBacklogPoints(
@@ -433,13 +460,20 @@ export function buildOverdueBacklogPoints(
   )
 
   return {
-    points: [...byDate.entries()]
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([date, snapshot]) => ({
-        date,
-        overdueCount: snapshot.overdueCount,
-        historyAvailable: true,
-      })),
+    points: options.buckets.flatMap((bucket) => {
+      const date = toAnalyticsDateKey(bucket.end)
+      const snapshot = byDate.get(date)
+      if (!snapshot) return []
+
+      return [
+        {
+          date,
+          ...bucketBounds(bucket),
+          overdueCount: snapshot.overdueCount,
+          historyAvailable: true,
+        },
+      ]
+    }),
     overdueHistoryAvailableFrom,
   }
 }
@@ -468,8 +502,7 @@ export function reconstructOverdueBacklogSnapshots(
     ),
   }))
 
-  return dailyKeys(options).flatMap((date) => {
-    const observationAt = observationDateForKey(date, options.end)
+  return dailyObservationDates(options).flatMap((observationAt) => {
     let overdueCount = 0
 
     for (const { card, intervals } of intervalsByCard) {
@@ -577,14 +610,16 @@ export function buildRetentionHealth(
   return { health, fragile }
 }
 
-function dailyKeys(options: AnalyticsRangeOptions): string[] {
-  const keys: string[] = []
+function dailyObservationDates(options: AnalyticsRangeOptions): Date[] {
+  const observations: Date[] = []
   const date = new Date(options.start)
   while (date <= options.end) {
-    keys.push(toAnalyticsDateKey(date))
+    observations.push(
+      observationDateForKey(toAnalyticsDateKey(date), options.end),
+    )
     date.setDate(date.getDate() + 1)
   }
-  return keys
+  return observations
 }
 function compareEvents(
   a: AnalyticsReviewEvent,
@@ -594,13 +629,27 @@ function compareEvents(
     a.reviewedAt.getTime() - b.reviewedAt.getTime() || a.id.localeCompare(b.id)
   )
 }
-function ratio(numerator: number, denominator: number): number | null {
-  return denominator === 0 ? null : numerator / denominator
+
+function bucketBounds(bucket: AnalyticsBucket) {
+  return {
+    bucketStart: toAnalyticsDateKey(bucket.start),
+    bucketEnd: toAnalyticsDateKey(bucket.end),
+  }
 }
-function average(values: readonly number[]): number | null {
-  return values.length === 0
-    ? null
-    : values.reduce((sum, value) => sum + value, 0) / values.length
+
+function isInBucket(date: Date, bucket: AnalyticsBucket): boolean {
+  return date >= bucket.start && date <= bucket.end
+}
+
+function isWithinRange(date: Date, options: AnalyticsRangeOptions): boolean {
+  return date >= options.start && date <= options.end
+}
+
+function findBucketPoint<T extends { bucket: AnalyticsBucket }>(
+  points: readonly T[],
+  date: Date,
+): T | undefined {
+  return points.find((point) => isInBucket(date, point.bucket))
 }
 
 function calculateHardAgainShare(
@@ -748,14 +797,6 @@ function observationDateForKey(dateKey: string, end: Date): Date {
   return date > end ? end : date
 }
 
-function median(values: readonly number[]): number | null {
-  if (!values.length) return null
-  const sorted = [...values].sort((a, b) => a - b)
-  const mid = Math.floor(sorted.length / 2)
-  return sorted.length % 2
-    ? sorted[mid]!
-    : (sorted[mid - 1]! + sorted[mid]!) / 2
-}
 function parseValidStability(serialized: string): number | null {
   try {
     return parseSerializedFsrsReviewLogSnapshot(serialized).stability

@@ -26,9 +26,9 @@ import {
 
 import {
   buildHardAgainSummary,
-  buildConsistencyPoints,
   buildOverdueBacklogPoints,
   buildPredictedRecallSamples,
+  buildPracticeRhythmPoints,
   buildRatingsMixPoints,
   buildRecallQualityPoints,
   buildRetentionHealth,
@@ -40,6 +40,10 @@ import {
   type AnalyticsRangeOptions,
   type AnalyticsReviewEvent,
 } from '../domain/chart-data'
+import {
+  buildAnalyticsBuckets,
+  getAnalyticsRangePolicy,
+} from '../domain/analytics-range-policy'
 
 import {
   buildObservedRatingQuality,
@@ -62,8 +66,10 @@ export async function getAnalyticsSummary(
       ? nowOrOptions
       : (nowOrOptions.now ?? new Date())
   const range = nowOrOptions instanceof Date ? 30 : nowOrOptions.range
-  const periodStart = subtractDays(now, range)
   const periodEnd = now
+  const rangePolicy = getAnalyticsRangePolicy(range)
+  const buckets = buildAnalyticsBuckets({ requestedDays: range, periodEnd })
+  const periodStart = buckets[0]!.start
   const fourteenDaysLater = addDays(now, 14)
 
   const [
@@ -135,6 +141,8 @@ export async function getAnalyticsSummary(
   const chartOptions: AnalyticsRangeOptions = {
     start: periodStart,
     end: periodEnd,
+    buckets,
+    rangePolicy,
     fsrsOptions,
   }
   const analyticsReviewHistory = reviewHistory satisfies AnalyticsReviewEvent[]
@@ -147,7 +155,7 @@ export async function getAnalyticsSummary(
       (sample) => sample.value,
     ),
   )
-  const consistency = buildConsistencyPoints(
+  const consistency = buildPracticeRhythmPoints(
     analyticsReviewHistory,
     chartOptions,
   )
@@ -408,12 +416,6 @@ function computeMedianStability(stabilities: number[]): number {
   return sorted.length % 2 === 0
     ? (sorted[mid - 1]! + sorted[mid]!) / 2
     : sorted[mid]!
-}
-
-function subtractDays(date: Date, days: number): Date {
-  const result = new Date(date)
-  result.setDate(result.getDate() - days)
-  return result
 }
 
 function addDays(date: Date, days: number): Date {

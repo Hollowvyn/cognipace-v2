@@ -20,6 +20,7 @@ import {
 } from '@/platform/db/schema'
 
 import { updateSettings } from '@/features/settings/server/settings-service'
+import { buildAnalyticsBuckets } from '../domain/analytics-range-policy'
 
 import { getAnalyticsSummary } from './analytics-service'
 
@@ -29,14 +30,16 @@ describe('getAnalyticsSummary memory profile', () => {
     async (range) => {
       const handle = await createTestDb()
       const now = new Date('2026-01-15T12:00:00.000Z')
+      const buckets = buildAnalyticsBuckets({
+        requestedDays: range,
+        periodEnd: now,
+      })
 
       const summary = await getAnalyticsSummary(handle.db, { range, now })
 
       expect(summary.range).toBe(range)
       expect(summary.periodEnd).toBe(now.toISOString())
-      expect(summary.periodStart).toBe(
-        new Date(now.getTime() - range * 24 * 60 * 60 * 1000).toISOString(),
-      )
+      expect(summary.periodStart).toBe(buckets[0]!.start.toISOString())
       expect(summary.observedRatingQuality).toBeNull()
       expect(summary.chartDataStatus).toBe('ready')
       expect(summary.predictedRecall).toEqual({
@@ -44,8 +47,8 @@ describe('getAnalyticsSummary memory profile', () => {
         sampleSize: 0,
         lowSample: true,
       })
-      expect(summary.recallQuality).toHaveLength(range + 1)
-      expect(summary.ratingsMix).toHaveLength(range + 1)
+      expect(summary.recallQuality).toHaveLength(buckets.length)
+      expect(summary.ratingsMix).toHaveLength(buckets.length)
       expect(summary.upcomingLoad).toHaveLength(14)
     },
   )
@@ -130,7 +133,14 @@ describe('getAnalyticsSummary memory profile', () => {
       summary.recallQuality.every((point) => point.observedRecall === null),
     ).toBe(true)
     expect(summary.topics).toEqual([])
-    expect(summary.stability).toEqual([])
+    expect(summary.stability).toHaveLength(
+      buildAnalyticsBuckets({ requestedDays: 30, periodEnd: now }).length,
+    )
+    expect(
+      summary.stability.every(
+        (point) => point.medianStabilityDays === null && point.sampleSize === 0,
+      ),
+    ).toBe(true)
     expect(summary.overdueBacklog).toEqual([])
     expect(summary.overdueHistoryAvailableFrom).toBeNull()
     expect(summary.upcomingLoad).toHaveLength(14)
