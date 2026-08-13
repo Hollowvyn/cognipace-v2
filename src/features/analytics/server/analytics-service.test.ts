@@ -20,6 +20,7 @@ import {
 } from '@/platform/db/schema'
 
 import { updateSettings } from '@/features/settings/server/settings-service'
+import { analyticsSummarySchema } from '../api/analytics-contracts'
 import { buildAnalyticsBuckets } from '../domain/analytics-range-policy'
 
 import { getAnalyticsSummary } from './analytics-service'
@@ -47,8 +48,8 @@ describe('getAnalyticsSummary memory profile', () => {
         sampleSize: 0,
         lowSample: true,
       })
-      expect(summary.recallQuality).toHaveLength(buckets.length)
-      expect(summary.ratingsMix).toHaveLength(buckets.length)
+      expect(summary.recallQuality).toEqual([])
+      expect(summary.ratingsMix).toEqual([])
       expect(summary.upcomingLoad).toHaveLength(14)
     },
   )
@@ -133,14 +134,7 @@ describe('getAnalyticsSummary memory profile', () => {
       summary.recallQuality.every((point) => point.observedRecall === null),
     ).toBe(true)
     expect(summary.topics).toEqual([])
-    expect(summary.stability).toHaveLength(
-      buildAnalyticsBuckets({ requestedDays: 30, periodEnd: now }).length,
-    )
-    expect(
-      summary.stability.every(
-        (point) => point.medianStabilityDays === null && point.sampleSize === 0,
-      ),
-    ).toBe(true)
+    expect(summary.stability).toEqual([])
     expect(summary.overdueBacklog).toEqual([])
     expect(summary.overdueHistoryAvailableFrom).toBeNull()
     expect(summary.upcomingLoad).toHaveLength(14)
@@ -326,6 +320,42 @@ describe('getAnalyticsSummary memory profile', () => {
     ).toBe(true)
     expect(summary.overdueBacklog.length).toBeGreaterThan(0)
     expect(summary.overdueHistoryAvailableFrom).not.toBeNull()
+  })
+
+  it('returns non-empty legacy consistency data accepted by the current background response parser', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-01-31T12:00:00.000Z')
+
+    await insertAnalyticsProblem(handle.db, 'legacy-consistency', 'Legacy', [])
+    await insertAnalyticsHistory(handle.db, 'legacy-consistency', {
+      id: 'legacy-consistency-card:default',
+      dates: [new Date('2026-01-20T12:00:00.000Z')],
+      ratings: ['good'],
+      correct: [true],
+      dueAt: new Date('2026-02-01T12:00:00.000Z'),
+      stability: 4,
+      difficulty: 5,
+    })
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 14, now })
+    const parsed = analyticsSummarySchema.parse({
+      ...summary,
+      observedRatingQuality: {
+        value: summary.lowSample ? null : summary.observedRatingQuality,
+        sampleSize: summary.observedRatingSampleSize,
+        lowSample: summary.lowSample,
+      },
+    })
+
+    expect(parsed.consistency).toEqual([
+      {
+        week: '2026-01-19',
+        reviewDays: 1,
+        observedCorrectness: 1,
+        sampleSize: 1,
+        associationOnly: true,
+      },
+    ])
   })
 
   it('keeps the serialized summary deterministic for the same range and time', async () => {

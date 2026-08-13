@@ -163,8 +163,10 @@ describe('analytics chart-data builders', () => {
     const inRangeOnly = buildRecallQualityPoints(inRangeEvents, options)
     const replayed = buildRecallQualityPoints(withPreRangeHistory, options)
 
-    expect(replayed[2]!.predictedRecall).not.toBe(
-      inRangeOnly[2]!.predictedRecall,
+    expect(
+      replayed.find((point) => point.date === '2026-08-03')?.predictedRecall,
+    ).not.toBe(
+      inRangeOnly.find((point) => point.date === '2026-08-03')?.predictedRecall,
     )
   })
 
@@ -243,11 +245,13 @@ describe('analytics chart-data builders', () => {
 
     expect(samples).toHaveLength(2)
     expect(samples.every((sample) => sample.date === '2026-08-02')).toBe(true)
-    expect(points[1]).toMatchObject({
+    expect(points.find((point) => point.date === '2026-08-02')).toMatchObject({
       date: '2026-08-02',
       reviewCount: 2,
     })
-    expect(points[1]?.predictedRecall).not.toBeNull()
+    expect(
+      points.find((point) => point.date === '2026-08-02')?.predictedRecall,
+    ).not.toBeNull()
   })
 
   it('builds practice rhythm by bucket as association-only', () => {
@@ -327,6 +331,110 @@ describe('analytics chart-data builders', () => {
         sampleSize: 6,
       },
     )
+  })
+
+  it('trims only leading buckets according to each historical metric’s evidence', () => {
+    const periodEnd = new Date('2026-08-30T23:59:59.999Z')
+    const buckets = buildAnalyticsBuckets({
+      requestedDays: 30,
+      periodEnd,
+    }).slice(0, 3)
+    const bucketOptions = {
+      ...options,
+      start: buckets[0]!.start,
+      end: buckets[2]!.end,
+      buckets,
+      rangePolicy: getAnalyticsRangePolicy(30),
+    }
+    const events = [
+      event({
+        id: 'unrated-review',
+        rating: 'unknown',
+        isCorrect: null,
+        fsrsReviewLog: null,
+      }),
+      event({
+        id: 'eligible-review',
+        cardId: 'eligible-card',
+        reviewedAt: new Date('2026-08-04T12:00:00.000Z'),
+      }),
+    ]
+
+    expect(buildRecallQualityPoints(events, bucketOptions)).toMatchObject([
+      { bucketStart: '2026-08-04', reviewCount: 1 },
+      {
+        bucketStart: '2026-08-07',
+        reviewCount: 0,
+        observedRecall: null,
+        predictedRecall: null,
+      },
+    ])
+    expect(buildPracticeRhythmPoints(events, bucketOptions)).toMatchObject([
+      { bucketStart: '2026-08-01', reviewCount: 1, sampleSize: 0 },
+      { bucketStart: '2026-08-04', reviewCount: 1, sampleSize: 1 },
+      { bucketStart: '2026-08-07', reviewCount: 0, sampleSize: 0 },
+    ])
+    expect(buildRatingsMixPoints(events, bucketOptions)).toMatchObject([
+      { bucketStart: '2026-08-04', total: 1 },
+      { bucketStart: '2026-08-07', total: 0 },
+    ])
+    expect(buildStabilityPoints(events, bucketOptions)).toMatchObject([
+      { bucketStart: '2026-08-04', sampleSize: 1 },
+      { bucketStart: '2026-08-07', sampleSize: 0 },
+    ])
+  })
+
+  it('preserves internal and trailing historical gaps after the first evidence bucket', () => {
+    const periodEnd = new Date('2026-08-30T23:59:59.999Z')
+    const buckets = buildAnalyticsBuckets({
+      requestedDays: 30,
+      periodEnd,
+    }).slice(0, 4)
+    const bucketOptions = {
+      ...options,
+      start: buckets[0]!.start,
+      end: buckets[3]!.end,
+      buckets,
+      rangePolicy: getAnalyticsRangePolicy(30),
+    }
+    const events = [
+      event({ id: 'first', cardId: 'first-card' }),
+      event({
+        id: 'third',
+        cardId: 'third-card',
+        reviewedAt: new Date('2026-08-07T12:00:00.000Z'),
+      }),
+    ]
+
+    expect(buildRecallQualityPoints(events, bucketOptions)).toMatchObject([
+      { bucketStart: '2026-08-01', reviewCount: 1 },
+      { bucketStart: '2026-08-04', reviewCount: 0, observedRecall: null },
+      { bucketStart: '2026-08-07', reviewCount: 1 },
+      { bucketStart: '2026-08-10', reviewCount: 0, observedRecall: null },
+    ])
+    expect(buildPracticeRhythmPoints(events, bucketOptions)).toMatchObject([
+      { bucketStart: '2026-08-01', reviewCount: 1 },
+      { bucketStart: '2026-08-04', reviewCount: 0 },
+      { bucketStart: '2026-08-07', reviewCount: 1 },
+      { bucketStart: '2026-08-10', reviewCount: 0 },
+    ])
+    expect(
+      buildRatingsMixPoints(events, bucketOptions).map((point) => point.total),
+    ).toEqual([1, 0, 1, 0])
+    expect(
+      buildStabilityPoints(events, bucketOptions).map(
+        (point) => point.sampleSize,
+      ),
+    ).toEqual([1, 0, 1, 0])
+    expect(
+      buildOverdueBacklogPoints(
+        [
+          { date: new Date('2026-08-02T12:00:00.000Z'), overdueCount: 1 },
+          { date: new Date('2026-08-08T12:00:00.000Z'), overdueCount: 3 },
+        ],
+        bucketOptions,
+      ).points.map((point) => point.bucketStart),
+    ).toEqual(['2026-08-01', '2026-08-07'])
   })
 
   it('builds rating mix, including null Hard + Again on empty days', () => {
@@ -418,25 +526,11 @@ describe('analytics chart-data builders', () => {
       rating: 'again',
     })
 
-    expect(
-      buildRecallQualityPoints([futureReview], currentOptions)[0],
-    ).toMatchObject({
-      reviewCount: 0,
-      eligibleSampleSize: 0,
-      observedRecall: null,
-    })
-    expect(
-      buildPracticeRhythmPoints([futureReview], currentOptions)[0],
-    ).toMatchObject({
-      reviewCount: 0,
-      sampleSize: 0,
-      observedCorrectness: null,
-    })
-    expect(
-      buildRatingsMixPoints([futureReview], currentOptions)[0],
-    ).toMatchObject({
-      total: 0,
-    })
+    expect(buildRecallQualityPoints([futureReview], currentOptions)).toEqual([])
+    expect(buildPracticeRhythmPoints([futureReview], currentOptions)).toEqual(
+      [],
+    )
+    expect(buildRatingsMixPoints([futureReview], currentOptions)).toEqual([])
   })
 
   it('groups weakest topics, skips missing topics, and marks low samples', () => {
@@ -761,6 +855,36 @@ describe('analytics chart-data builders', () => {
         date: '2026-08-02',
         bucketStart: '2026-08-02',
         bucketEnd: '2026-08-02',
+        overdueCount: 2,
+        historyAvailable: true,
+      },
+    ])
+  })
+
+  it('uses the latest snapshot inside a bucket and preserves later unavailable buckets', () => {
+    const periodEnd = new Date('2026-08-30T23:59:59.999Z')
+    const buckets = buildAnalyticsBuckets({
+      requestedDays: 30,
+      periodEnd,
+    }).slice(0, 3)
+    const bucketOptions = {
+      ...options,
+      start: buckets[0]!.start,
+      end: buckets[2]!.end,
+      buckets,
+      rangePolicy: getAnalyticsRangePolicy(30),
+    }
+
+    expect(
+      buildOverdueBacklogPoints(
+        [{ date: new Date('2026-08-05T12:00:00.000Z'), overdueCount: 2 }],
+        bucketOptions,
+      ).points,
+    ).toEqual([
+      {
+        date: '2026-08-06',
+        bucketStart: '2026-08-04',
+        bucketEnd: '2026-08-06',
         overdueCount: 2,
         historyAvailable: true,
       },

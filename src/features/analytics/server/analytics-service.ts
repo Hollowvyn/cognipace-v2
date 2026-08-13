@@ -26,9 +26,9 @@ import {
 
 import {
   buildHardAgainSummary,
+  buildConsistencyPoints,
   buildOverdueBacklogPoints,
   buildPredictedRecallSamples,
-  buildPracticeRhythmPoints,
   buildRatingsMixPoints,
   buildRecallQualityPoints,
   buildRetentionHealth,
@@ -155,7 +155,7 @@ export async function getAnalyticsSummary(
       (sample) => sample.value,
     ),
   )
-  const consistency = buildPracticeRhythmPoints(
+  const consistency = buildConsistencyPoints(
     analyticsReviewHistory,
     chartOptions,
   )

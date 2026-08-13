@@ -10,6 +10,7 @@ import {
 } from '@/lib/fsrs'
 
 import {
+  lastBucketValue,
   medianBucketValues,
   recomputeBucketRatio,
   sumBucketValues,
@@ -78,9 +79,14 @@ export interface PracticeRhythmPoint {
   associationOnly: true
 }
 
-// Task 4 updates the serialized contract and chart caller to the new name.
-// Keep this type-only alias while Task 3 changes the domain builder shape.
-export type ConsistencyPoint = PracticeRhythmPoint
+// Task 4 replaces this legacy API shape with PracticeRhythmPoint.
+export interface ConsistencyPoint {
+  week: string
+  reviewDays: number
+  observedCorrectness: number | null
+  sampleSize: number
+  associationOnly: true
+}
 
 export interface RatingsMixPoint {
   date: string
@@ -210,17 +216,23 @@ export function buildRecallQualityPoints(
     if (point) point.predicted.push(prediction.value)
   }
 
-  return points.map((point) => ({
-    date: point.bucket.key,
-    ...bucketBounds(point.bucket),
-    observedRecall: recomputeBucketRatio([point.observed]),
-    predictedRecall: recomputeBucketRatio(
-      point.predicted.map((value) => ({ numerator: value, denominator: 1 })),
-    ),
-    targetRetention: options.fsrsOptions.targetRetention,
-    reviewCount: point.reviewCount,
-    eligibleSampleSize: point.observed.denominator,
-  }))
+  return trimLeadingEmptyBuckets(
+    points.map((point) => ({
+      date: point.bucket.key,
+      ...bucketBounds(point.bucket),
+      observedRecall: recomputeBucketRatio([point.observed]),
+      predictedRecall: recomputeBucketRatio(
+        point.predicted.map((value) => ({
+          numerator: value,
+          denominator: 1,
+        })),
+      ),
+      targetRetention: options.fsrsOptions.targetRetention,
+      reviewCount: point.reviewCount,
+      eligibleSampleSize: point.observed.denominator,
+    })),
+    (point) => point.observedRecall !== null || point.predictedRecall !== null,
+  )
 }
 
 export function buildPredictedRecallSamples(
@@ -295,37 +307,76 @@ export function buildPracticeRhythmPoints(
     }
   }
 
-  return points.map((point) => ({
-    ...bucketBounds(point.bucket),
-    reviewCount: point.reviewCount,
-    observedCorrectness: recomputeBucketRatio([point.observed]),
-    sampleSize: point.observed.denominator,
-    associationOnly: true,
-  }))
+  return trimLeadingEmptyBuckets(
+    points.map((point) => ({
+      ...bucketBounds(point.bucket),
+      reviewCount: point.reviewCount,
+      observedCorrectness: recomputeBucketRatio([point.observed]),
+      sampleSize: point.observed.denominator,
+      associationOnly: true,
+    })),
+    (point) => point.reviewCount > 0,
+  )
+}
+
+export function buildConsistencyPoints(
+  events: readonly AnalyticsReviewEvent[],
+  options: AnalyticsRangeOptions,
+): ConsistencyPoint[] {
+  const weeks = new Map<string, { days: Set<string>; correct: boolean[] }>()
+
+  for (const event of events) {
+    if (!isWithinRange(event.reviewedAt, options)) continue
+
+    const week = toAnalyticsWeekKey(event.reviewedAt)
+    const value = weeks.get(week) ?? { days: new Set(), correct: [] }
+    value.days.add(toAnalyticsDateKey(event.reviewedAt))
+    if (event.isCorrect !== null) value.correct.push(event.isCorrect)
+    weeks.set(week, value)
+  }
+
+  return [...weeks.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([week, value]) => ({
+      week,
+      reviewDays: value.days.size,
+      observedCorrectness: recomputeBucketRatio([
+        {
+          numerator: value.correct.filter(Boolean).length,
+          denominator: value.correct.length,
+        },
+      ]),
+      sampleSize: value.correct.length,
+      associationOnly: true,
+    }))
 }
 
 export function buildRatingsMixPoints(
   events: readonly AnalyticsReviewEvent[],
   options: AnalyticsRangeOptions,
 ): RatingsMixPoint[] {
-  return options.buckets.map((bucket) => {
-    const counts = { again: 0, hard: 0, good: 0, easy: 0 }
-    for (const event of events)
-      if (
-        isWithinRange(event.reviewedAt, options) &&
-        isInBucket(event.reviewedAt, bucket) &&
-        isReviewRating(event.rating)
-      )
-        counts[event.rating] += 1
-    const total = sumBucketValues(Object.values(counts))
-    return {
-      date: bucket.key,
-      ...bucketBounds(bucket),
-      ...counts,
-      total,
-      hardAgainShare: total === 0 ? null : (counts.again + counts.hard) / total,
-    }
-  })
+  return trimLeadingEmptyBuckets(
+    options.buckets.map((bucket) => {
+      const counts = { again: 0, hard: 0, good: 0, easy: 0 }
+      for (const event of events)
+        if (
+          isWithinRange(event.reviewedAt, options) &&
+          isInBucket(event.reviewedAt, bucket) &&
+          isReviewRating(event.rating)
+        )
+          counts[event.rating] += 1
+      const total = sumBucketValues(Object.values(counts))
+      return {
+        date: bucket.key,
+        ...bucketBounds(bucket),
+        ...counts,
+        total,
+        hardAgainShare:
+          total === 0 ? null : (counts.again + counts.hard) / total,
+      }
+    }),
+    (point) => point.total > 0,
+  )
 }
 
 export function buildHardAgainSummary(
@@ -428,52 +479,54 @@ export function buildStabilityPoints(
     point.values.push(stability)
   }
 
-  return points.map((point) => ({
-    week: point.bucket.key,
-    ...bucketBounds(point.bucket),
-    medianStabilityDays: medianBucketValues(point.values),
-    sampleSize: point.values.length,
-  }))
+  return trimLeadingEmptyBuckets(
+    points.map((point) => ({
+      week: point.bucket.key,
+      ...bucketBounds(point.bucket),
+      medianStabilityDays: medianBucketValues(point.values),
+      sampleSize: point.values.length,
+    })),
+    (point) => point.sampleSize > 0,
+  )
 }
 
 export function buildOverdueBacklogPoints(
   snapshots: readonly AnalyticsOverdueSnapshot[] | null,
   options: AnalyticsRangeOptions,
 ): OverdueBacklogResult {
-  const overdueHistoryAvailableFrom = snapshots?.length
-    ? [...snapshots]
-        .sort((a, b) => a.date.getTime() - b.date.getTime())
-        .at(0)!
-        .date.toISOString()
-    : null
+  const visibleSnapshots = snapshots
+    ?.filter(
+      (snapshot) =>
+        snapshot.date >= options.start && snapshot.date <= options.end,
+    )
+    .sort((left, right) => left.date.getTime() - right.date.getTime())
 
-  if (!snapshots?.length) {
+  const overdueHistoryAvailableFrom =
+    visibleSnapshots?.[0]?.date.toISOString() ?? null
+
+  if (!visibleSnapshots?.length) {
     return { points: [], overdueHistoryAvailableFrom }
   }
-  const byDate = new Map(
-    snapshots
-      .filter(
-        (snapshot) =>
-          snapshot.date >= options.start && snapshot.date <= options.end,
-      )
-      .map((snapshot) => [toAnalyticsDateKey(snapshot.date), snapshot]),
-  )
 
   return {
-    points: options.buckets.flatMap((bucket) => {
-      const date = toAnalyticsDateKey(bucket.end)
-      const snapshot = byDate.get(date)
-      if (!snapshot) return []
+    points: trimLeadingEmptyBuckets(
+      options.buckets.map((bucket) => {
+        const snapshot = lastBucketValue(
+          visibleSnapshots.filter((candidate) =>
+            isInBucket(candidate.date, bucket),
+          ),
+        )
+        if (!snapshot) return null
 
-      return [
-        {
-          date,
+        return {
+          date: toAnalyticsDateKey(bucket.end),
           ...bucketBounds(bucket),
           overdueCount: snapshot.overdueCount,
           historyAvailable: true,
-        },
-      ]
-    }),
+        }
+      }),
+      (point) => point !== null,
+    ).flatMap((point) => (point ? [point] : [])),
     overdueHistoryAvailableFrom,
   }
 }
@@ -637,12 +690,27 @@ function bucketBounds(bucket: AnalyticsBucket) {
   }
 }
 
+function trimLeadingEmptyBuckets<T>(
+  points: readonly T[],
+  hasEvidence: (point: T) => boolean,
+): T[] {
+  const firstEvidenceIndex = points.findIndex(hasEvidence)
+  return firstEvidenceIndex === -1 ? [] : points.slice(firstEvidenceIndex)
+}
+
 function isInBucket(date: Date, bucket: AnalyticsBucket): boolean {
   return date >= bucket.start && date <= bucket.end
 }
 
 function isWithinRange(date: Date, options: AnalyticsRangeOptions): boolean {
   return date >= options.start && date <= options.end
+}
+
+function toAnalyticsWeekKey(date: Date): string {
+  const day = new Date(date)
+  const dayOfWeek = day.getDay() || 7
+  day.setDate(day.getDate() - dayOfWeek + 1)
+  return toAnalyticsDateKey(day)
 }
 
 function findBucketPoint<T extends { bucket: AnalyticsBucket }>(
