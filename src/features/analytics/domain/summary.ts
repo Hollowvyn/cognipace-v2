@@ -1,3 +1,5 @@
+import { isReviewRating } from '@/lib/fsrs'
+
 import type { AnalyticsReadiness } from './analytics-readiness'
 
 export interface ObservedRatingQualityResult {
@@ -148,7 +150,8 @@ export function buildObservedRatingQuality(
 ): ObservedRatingQualityResult {
   const since = subtractDays(now, range)
   const recent = attempts.filter(
-    (a) => a.reviewedAt >= since && a.reviewedAt <= now,
+    (a) =>
+      a.reviewedAt >= since && a.reviewedAt <= now && isReviewRating(a.rating),
   )
   const sampleSize = recent.length
 

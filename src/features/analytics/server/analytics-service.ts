@@ -1,6 +1,5 @@
 import {
   getRetrievability,
-  isReviewRating,
   normalizeFsrsSchedulingOptions,
   parseFsrsCardState,
   type FsrsCardSnapshot,
@@ -35,6 +34,10 @@ import {
   buildStabilityPoints,
   buildTopicPoints,
   buildUpcomingLoadPoints,
+  getValidStabilitySample,
+  hasObservedCorrectnessReview,
+  hasTopicRecallEvidence,
+  hasValidReviewRating,
   reconstructOverdueBacklogSnapshots,
   type AnalyticsCurrentCard,
   type AnalyticsRangeOptions,
@@ -158,7 +161,7 @@ export async function getAnalyticsSummary(
     analyticsReviewHistory,
     buckets,
     periodEnd,
-    (event) => isReviewRating(event.rating),
+    hasValidReviewRating,
   )
   const requestedReadiness = calculateAnalyticsReadiness({
     requestedDays: range,
@@ -171,7 +174,7 @@ export async function getAnalyticsSummary(
       analyticsReviewHistory,
       buckets,
       periodEnd,
-      (event) => event.isCorrect !== null,
+      hasObservedCorrectnessReview,
     ),
     bucketKeys: buckets.map((bucket) => bucket.key),
   })
@@ -181,7 +184,7 @@ export async function getAnalyticsSummary(
       analyticsReviewHistory,
       buckets,
       periodEnd,
-      (event) => event.isCorrect !== null,
+      hasObservedCorrectnessReview,
     ),
     bucketKeys: buckets.map((bucket) => bucket.key),
   })
@@ -212,17 +215,18 @@ export async function getAnalyticsSummary(
       analyticsReviewHistory,
       buckets,
       periodEnd,
-      (event) => event.isCorrect !== null && event.topicLabels.length > 0,
+      hasTopicRecallEvidence,
     ),
     bucketKeys: buckets.map((bucket) => bucket.key),
   })
   const stability = buildStabilityPoints(analyticsReviewHistory, chartOptions)
   const stabilityReadiness = calculateAnalyticsReadiness({
     requestedDays: range,
-    evidenceCounts: bucketCountsFromPoints(
+    evidenceCounts: buildBucketEvidenceCounts(
+      analyticsReviewHistory,
       buckets,
-      stability,
-      (point) => point.sampleSize,
+      periodEnd,
+      (event) => getValidStabilitySample(event) !== null,
     ),
     bucketKeys: buckets.map((bucket) => bucket.key),
   })
@@ -461,18 +465,6 @@ function buildBucketEvidenceCounts(
   )
 }
 
-function bucketCountsFromPoints<T extends { bucketStart: string }>(
-  buckets: readonly AnalyticsBucket[],
-  points: readonly T[],
-  getCount: (point: T) => number,
-): number[] {
-  const counts = new Map(
-    points.map((point) => [point.bucketStart, getCount(point)]),
-  )
-
-  return buckets.map((bucket) => counts.get(bucket.key) ?? 0)
-}
-
 function bucketCountsFromDatedObservations<T extends { date: Date }>(
   buckets: readonly AnalyticsBucket[],
   observations: readonly T[],
@@ -517,7 +509,7 @@ function findRecommendedRange(
           events,
           buckets,
           now,
-          (event) => isReviewRating(event.rating),
+          hasValidReviewRating,
         ),
         bucketKeys: buckets.map((bucket) => bucket.key),
       })

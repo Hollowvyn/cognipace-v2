@@ -183,6 +183,38 @@ export function toAnalyticsDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
+export function hasValidReviewRating(
+  event: AnalyticsReviewEvent,
+): event is AnalyticsReviewEvent & { rating: ReviewRating } {
+  return isReviewRating(event.rating)
+}
+
+export function hasObservedCorrectnessReview(
+  event: AnalyticsReviewEvent,
+): event is AnalyticsReviewEvent & {
+  rating: ReviewRating
+  isCorrect: boolean
+} {
+  return hasValidReviewRating(event) && event.isCorrect !== null
+}
+
+export function hasTopicRecallEvidence(
+  event: AnalyticsReviewEvent,
+): event is AnalyticsReviewEvent & {
+  rating: ReviewRating
+  isCorrect: boolean
+} {
+  return hasObservedCorrectnessReview(event) && event.topicLabels.length > 0
+}
+
+export function getValidStabilitySample(
+  event: AnalyticsReviewEvent,
+): number | null {
+  return hasValidReviewRating(event) && event.fsrsReviewLog
+    ? parseValidStability(event.fsrsReviewLog)
+    : null
+}
+
 export function buildRecallQualityPoints(
   events: readonly AnalyticsReviewEvent[],
   options: AnalyticsRangeOptions,
@@ -195,7 +227,11 @@ export function buildRecallQualityPoints(
   }))
 
   for (const event of events) {
-    if (!isWithinRange(event.reviewedAt, options)) continue
+    if (
+      !isWithinRange(event.reviewedAt, options) ||
+      !hasValidReviewRating(event)
+    )
+      continue
     const point = findBucketPoint(points, event.reviewedAt)
     if (!point) continue
 
@@ -242,10 +278,7 @@ export function buildPredictedRecallSamples(
   }
   for (const history of byCard.values()) {
     const orderedHistory = history
-      .filter(
-        (event): event is AnalyticsReviewEvent & { rating: ReviewRating } =>
-          isReviewRating(event.rating),
-      )
+      .filter(hasValidReviewRating)
       .sort(compareEvents)
     const replayedReviews = replayReviewHistorySequence(
       orderedHistory.map((event) => ({
@@ -290,7 +323,11 @@ export function buildPracticeRhythmPoints(
   }))
 
   for (const event of events) {
-    if (!isWithinRange(event.reviewedAt, options)) continue
+    if (
+      !isWithinRange(event.reviewedAt, options) ||
+      !hasValidReviewRating(event)
+    )
+      continue
     const point = findBucketPoint(points, event.reviewedAt)
     if (!point) continue
 
@@ -324,7 +361,7 @@ export function buildRatingsMixPoints(
         if (
           isWithinRange(event.reviewedAt, options) &&
           isInBucket(event.reviewedAt, bucket) &&
-          isReviewRating(event.rating)
+          hasValidReviewRating(event)
         )
           counts[event.rating] += 1
       const total = sumBucketValues(Object.values(counts))
@@ -351,13 +388,13 @@ export function buildHardAgainSummary(
     (event) =>
       event.reviewedAt >= options.start &&
       event.reviewedAt <= options.end &&
-      isReviewRating(event.rating),
+      hasValidReviewRating(event),
   )
   const previousRatings = events.filter(
     (event) =>
       event.reviewedAt >= previousStart &&
       event.reviewedAt < options.start &&
-      isReviewRating(event.rating),
+      hasValidReviewRating(event),
   )
   const selectedShare = calculateHardAgainShare(selectedRatings)
   const previousShare = calculateHardAgainShare(previousRatings)
@@ -391,7 +428,7 @@ export function buildTopicPoints(
   const topics = new Map<string, boolean[]>()
   for (const event of events) {
     if (
-      event.isCorrect === null ||
+      !hasTopicRecallEvidence(event) ||
       event.reviewedAt < options.start ||
       event.reviewedAt > options.end
     )
@@ -433,10 +470,9 @@ export function buildStabilityPoints(
   for (const event of events) {
     if (!isWithinRange(event.reviewedAt, options)) continue
     const point = findBucketPoint(points, event.reviewedAt)
-    if (!point || !event.fsrsReviewLog) continue
+    const stability = getValidStabilitySample(event)
+    if (!point || stability === null) continue
 
-    const stability = parseValidStability(event.fsrsReviewLog)
-    if (stability === null) continue
     point.values.push(stability)
   }
 
@@ -713,7 +749,7 @@ function buildKnownOverdueIntervals(
     if (
       !historyKnown ||
       !log ||
-      !isReviewRating(event.rating) ||
+      !hasValidReviewRating(event) ||
       !isConsistentReviewLog(log, event, currentCard)
     ) {
       if (

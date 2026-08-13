@@ -154,6 +154,61 @@ describe('analytics chart-data builders', () => {
     expect(points[0]!.predictedRecall).not.toBeNull()
   })
 
+  it('does not create observed metric points from invalid rated reviews', () => {
+    const invalidRating = event({
+      rating: 'unexpected-rating',
+      isCorrect: false,
+      topicLabels: ['Graph'],
+      fsrsReviewLog: validLog(99),
+    })
+
+    expect(buildRecallQualityPoints([invalidRating], options)).toEqual([])
+    expect(buildPracticeRhythmPoints([invalidRating], options)).toEqual([])
+    expect(buildTopicPoints([invalidRating], options)).toEqual([])
+    expect(buildStabilityPoints([invalidRating], options)).toEqual([])
+  })
+
+  it('excludes invalid ratings from mixed observed metric aggregations', () => {
+    const validReview = event({ fsrsReviewLog: validLog(4) })
+    const invalidRating = event({
+      id: 'invalid-rating',
+      cardId: 'invalid-rating-card',
+      rating: 'unexpected-rating',
+      isCorrect: false,
+      topicLabels: ['Graph'],
+      fsrsReviewLog: validLog(99),
+    })
+
+    expect(
+      buildRecallQualityPoints([validReview, invalidRating], options)[0],
+    ).toMatchObject({
+      reviewCount: 1,
+      eligibleSampleSize: 1,
+      observedRecall: 1,
+    })
+    expect(
+      buildPracticeRhythmPoints([validReview, invalidRating], options)[0],
+    ).toMatchObject({
+      reviewCount: 1,
+      sampleSize: 1,
+      observedCorrectness: 1,
+    })
+    expect(buildTopicPoints([validReview, invalidRating], options)).toEqual([
+      {
+        topic: 'Array',
+        recallQuality: 1,
+        sampleSize: 1,
+        lowSample: true,
+      },
+    ])
+    expect(
+      buildStabilityPoints([validReview, invalidRating], options)[0],
+    ).toMatchObject({
+      medianStabilityDays: 4,
+      sampleSize: 1,
+    })
+  })
+
   it('keeps no eligible assessments unknown and handles zero-review days', () => {
     const points = buildRecallQualityPoints(
       [event({ isCorrect: null })],
@@ -362,7 +417,7 @@ describe('analytics chart-data builders', () => {
     )
   })
 
-  it('trims only leading buckets according to each historical metric’s evidence', () => {
+  it('trims only leading buckets according to valid historical metric evidence', () => {
     const periodEnd = new Date('2026-08-30T23:59:59.999Z')
     const buckets = buildAnalyticsBuckets({
       requestedDays: 30,
@@ -399,7 +454,6 @@ describe('analytics chart-data builders', () => {
       },
     ])
     expect(buildPracticeRhythmPoints(events, bucketOptions)).toMatchObject([
-      { bucketStart: '2026-08-01', reviewCount: 1, sampleSize: 0 },
       { bucketStart: '2026-08-04', reviewCount: 1, sampleSize: 1 },
       { bucketStart: '2026-08-07', reviewCount: 0, sampleSize: 0 },
     ])

@@ -56,6 +56,27 @@ describe('buildObservedRatingQuality', () => {
     expect(result.sampleSize).toBe(10)
   })
 
+  it('excludes invalid persisted ratings from the observed rating sample', () => {
+    const attempts = [
+      ...Array.from({ length: 10 }, () => ({
+        rating: 'good',
+        reviewedAt: recentDate,
+      })),
+      ...Array.from({ length: 10 }, () => ({
+        rating: 'unexpected-rating',
+        reviewedAt: recentDate,
+      })),
+    ]
+
+    const result = buildObservedRatingQuality(attempts, now, 30)
+
+    expect(result).toMatchObject({
+      value: 1,
+      sampleSize: 10,
+      lowSample: false,
+    })
+  })
+
   it('counts good and easy as positive; again and hard as not positive', () => {
     const attempts = [
       { rating: 'good', reviewedAt: recentDate },

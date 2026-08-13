@@ -486,6 +486,125 @@ describe('getAnalyticsSummary memory profile', () => {
     expect(summary.practiceRhythm).toEqual([])
   })
 
+  it('excludes invalid persisted ratings from every historical readiness metric', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-08-13T12:00:00.000Z')
+    const dates = Array.from({ length: 24 }, (_, index) => {
+      const date = new Date('2026-07-21T12:00:00.000Z')
+      date.setDate(date.getDate() + index)
+      return date
+    })
+
+    await insertAnalyticsProblem(
+      handle.db,
+      'invalid-rating-evidence',
+      'Invalid rating evidence',
+      ['Graphs'],
+    )
+    await insertAnalyticsHistory(handle.db, 'invalid-rating-evidence', {
+      id: 'invalid-rating-evidence:default',
+      dates,
+      ratings: Array<ReviewRating>(dates.length).fill('good'),
+      correct: Array<boolean>(dates.length).fill(true),
+      dueAt: new Date('2026-08-14T12:00:00.000Z'),
+      stability: 10,
+      difficulty: 5,
+    })
+    await handle.db
+      .update(reviewAttempts)
+      .set({ rating: 'unexpected-rating' })
+      .where(eq(reviewAttempts.cardId, 'invalid-rating-evidence:default'))
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 30, now })
+
+    for (const readiness of [
+      summary.historicalReadiness.requested,
+      summary.historicalReadiness.recallQuality,
+      summary.historicalReadiness.practiceRhythm,
+      summary.historicalReadiness.topics,
+      summary.historicalReadiness.stability,
+    ]) {
+      expect(readiness).toMatchObject({
+        ready: false,
+        assessments: 0,
+        activeBuckets: 0,
+        effectiveStart: null,
+      })
+    }
+    expect(summary.recallQuality).toEqual([])
+    expect(summary.practiceRhythm).toEqual([])
+    expect(summary.ratingsMix).toEqual([])
+    expect(summary.topics).toEqual([])
+    expect(summary.stability).toEqual([])
+  })
+
+  it('uses only valid persisted ratings for mixed historical readiness evidence', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-08-13T12:00:00.000Z')
+    const dates = Array.from({ length: 14 }, (_, index) => {
+      const date = new Date('2026-07-31T12:00:00.000Z')
+      date.setDate(date.getDate() + index)
+      return date
+    })
+
+    await insertAnalyticsProblem(
+      handle.db,
+      'mixed-rating-evidence',
+      'Mixed rating evidence',
+      ['Graphs'],
+    )
+    await insertAnalyticsHistory(handle.db, 'mixed-rating-evidence', {
+      id: 'mixed-rating-evidence:default',
+      dates,
+      ratings: Array<ReviewRating>(dates.length).fill('good'),
+      correct: Array<boolean>(dates.length).fill(true),
+      dueAt: new Date('2026-08-14T12:00:00.000Z'),
+      stability: 10,
+      difficulty: 5,
+    })
+    for (const index of [0, 2, 4, 6, 8, 10, 12]) {
+      await handle.db
+        .update(reviewAttempts)
+        .set({ rating: 'unexpected-rating' })
+        .where(eq(reviewAttempts.id, `mixed-rating-evidence:default:${index}`))
+    }
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 14, now })
+
+    for (const readiness of [
+      summary.historicalReadiness.requested,
+      summary.historicalReadiness.recallQuality,
+      summary.historicalReadiness.practiceRhythm,
+      summary.historicalReadiness.topics,
+      summary.historicalReadiness.stability,
+    ]) {
+      expect(readiness).toMatchObject({ assessments: 7, activeBuckets: 7 })
+    }
+    expect(
+      summary.recallQuality.reduce(
+        (count, point) => count + point.eligibleSampleSize,
+        0,
+      ),
+    ).toBe(7)
+    expect(
+      summary.practiceRhythm.reduce(
+        (count, point) => count + point.reviewCount,
+        0,
+      ),
+    ).toBe(7)
+    expect(summary.topics).toEqual([
+      {
+        topic: 'Graphs',
+        recallQuality: 1,
+        sampleSize: 7,
+        lowSample: true,
+      },
+    ])
+    expect(
+      summary.stability.reduce((count, point) => count + point.sampleSize, 0),
+    ).toBe(7)
+  })
+
   it('counts only persisted correctness observations for practice rhythm readiness', async () => {
     const handle = await createTestDb({ seed: false })
     const now = new Date('2026-08-13T12:00:00.000Z')
