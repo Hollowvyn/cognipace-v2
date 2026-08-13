@@ -111,7 +111,10 @@ const analyticsRoute = createRoute({
     const rawRange =
       typeof search.range === 'string' ? Number(search.range) : search.range
     const parsed = analyticsRangeSchema.safeParse(rawRange)
-    return { range: parsed.success ? parsed.data : 30 }
+    const context =
+      typeof search.context === 'string' ? { context: search.context } : {}
+
+    return { range: parsed.success ? parsed.data : 30, ...context }
   },
   staticData: dashboardRouteMeta.analytics.staticData,
 })

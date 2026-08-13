@@ -1,9 +1,17 @@
 import { render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { describe, expect, it } from 'vitest'
+import { vi } from 'vitest'
 
 import type { AnalyticsReadiness } from '../api/analytics-contracts'
 
 import { AnalyticsReadinessState } from './analytics-readiness-state'
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children }: { children: ReactNode }) => (
+    <a href="#/analytics?range=30">{children}</a>
+  ),
+}))
 
 function createReadiness(
   overrides: Partial<AnalyticsReadiness> = {},

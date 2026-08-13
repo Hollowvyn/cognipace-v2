@@ -1,4 +1,5 @@
 import { InlineStatus } from '@/components/ui/inline-status'
+import { Link } from '@tanstack/react-router'
 import type {
   AnalyticsRange,
   AnalyticsReadiness,
@@ -58,12 +59,13 @@ export function AnalyticsReadinessState({
       ) : null}
       <EffectiveWindowCopy readiness={readiness} />
       {recommendedRange !== null ? (
-        <a
+        <Link
           className="w-fit font-medium text-foreground underline underline-offset-4 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-          href={`#/analytics?range=${recommendedRange}`}
+          search={(previous) => ({ ...previous, range: recommendedRange })}
+          to="/analytics"
         >
           Use ready {recommendedRange}-day view
-        </a>
+        </Link>
       ) : null}
     </InlineStatus>
   )

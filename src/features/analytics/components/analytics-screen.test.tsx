@@ -1,4 +1,5 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -13,6 +14,12 @@ import { AnalyticsScreen } from './analytics-screen'
 
 vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children }: { children: ReactNode }) => (
+    <a href="#/analytics?range=30">{children}</a>
+  ),
 }))
 
 function createUnreadyHistoricalReadiness() {

@@ -9,6 +9,7 @@ import type { SyncActionResult } from '@/features/sync'
 import { createLibrarySelectionTrackDraft } from '@/features/tracks'
 import { createDashboardAppShellData } from '@/testing/app-shell-fixtures'
 import { createSerializedAnalyticsSummary } from '@/testing/analytics-fixtures'
+import type { ReadinessFailure } from '@/features/analytics/api/analytics-contracts'
 import {
   createProblemForEditResponse,
   createProblemLibraryResponse,
@@ -33,6 +34,8 @@ vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
 }))
 
+let analyticsSummary = createSerializedAnalyticsSummary()
+
 function renderDashboard(initialEntry = '/') {
   const router = createDashboardRouter({
     history: createMemoryHistory({ initialEntries: [initialEntry] }),
@@ -56,13 +59,14 @@ describe('dashboard routes', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    analyticsSummary = createSerializedAnalyticsSummary()
     vi.mocked(sendMessage).mockImplementation((method, request) => {
       if (method === 'app.getShellData') {
         return Promise.resolve(createDashboardAppShellData())
       }
 
       if (method === 'analytics.getSummary') {
-        return Promise.resolve(createSerializedAnalyticsSummary())
+        return Promise.resolve(analyticsSummary)
       }
 
       if (method === 'sync.getStatus') {
@@ -214,6 +218,61 @@ describe('dashboard routes', () => {
       'aria-pressed',
       'true',
     )
+  })
+
+  it('preserves analytics search context when a readiness recommendation changes the range', async () => {
+    const readiness = {
+      ...analyticsSummary.historicalReadiness.requested,
+      requestedDays: 90,
+      bucketDays: 7,
+      requestedBuckets: 13,
+      effectiveBuckets: 6,
+      effectiveStart: '2026-05-01',
+      assessments: 32,
+      minimumAssessments: 45,
+      activeBuckets: 4,
+      minimumActiveBuckets: 5,
+      failingReasons: [
+        'insufficient-span',
+        'insufficient-assessments',
+        'insufficient-active-buckets',
+      ] as ReadinessFailure[],
+    }
+    analyticsSummary = createSerializedAnalyticsSummary({
+      chartDataStatus: 'unready',
+      range: 90,
+      historicalReadiness: {
+        requested: readiness,
+        recallQuality: readiness,
+        practiceRhythm: readiness,
+        ratingsMix: readiness,
+        topics: readiness,
+        stability: readiness,
+        overdueBacklog: readiness,
+        recommendedRange: 30,
+      },
+    })
+
+    const { router } = renderDashboard(
+      '/analytics?range=90&context=retention-health',
+    )
+
+    const recommendation = await screen.findByRole('link', {
+      name: 'Use ready 30-day view',
+    })
+
+    expect(recommendation).toHaveAttribute(
+      'href',
+      expect.stringContaining('context=retention-health'),
+    )
+    expect(recommendation).toHaveAttribute(
+      'href',
+      expect.stringContaining('range=30'),
+    )
+    expect(router.state.location.search).toEqual({
+      context: 'retention-health',
+      range: 90,
+    })
   })
 
   it.each(['14', '30', '90'])(
