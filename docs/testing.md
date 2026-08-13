@@ -209,16 +209,53 @@ review is saved.
 
 1. Open the dashboard.
 2. Navigate to Analytics.
-3. Confirm metric tiles render for review days, total reviews, and retention.
-4. Confirm the memory profile renders tracked-card counts, due
-   today/overdue/learning or review composition, average retrievability, and
-   low-sample messaging when local data is sparse.
-5. Confirm the 14-day due forecast renders.
-6. Confirm the weak-problems section renders an empty state or local problem
-   rows.
+3. Test 14, 30, and 90 days from the range control. Confirm their historical
+   bucket labels are respectively daily, three-day, and weekly; the selected
+   range stays selected unless you explicitly choose another one.
+4. With enough eligible local history, confirm the historical chart story
+   renders. If older leading buckets have no evidence, confirm the effective-
+   window copy explains the usable part of the selected range rather than
+   drawing a fabricated value from the range start.
+5. For a range or metric that is not ready, confirm the warning identifies the
+   evidence shortfall, reports its progress in buckets/assessments where
+   applicable, and offers a shorter ready range only as an explicit link. The
+   page must not silently switch ranges.
+6. Check a line chart with a permitted missing-evidence gap. It may use a
+   dashed bridge between measured values; the absent bucket remains unknown.
+   A gap beyond the allowed threshold or too many separate gaps must show an
+   unready state instead of a continuous line.
+7. Confirm Recall Quality, Practice Rhythm, Ratings Mix, Where to Focus, and
+   Memory Strength communicate their defined data meanings. Practice Rhythm is
+   review volume plus observed correctness; it must not claim causation.
+8. Confirm Recent Overdue Backlog has a watch zone at five problems: values at
+   or below five render in the healthy green treatment, values above five use
+   the attention yellow treatment, and its tooltip reports the bucket's
+   threshold status. Unknown/reconstructable history must not be made up.
+9. Confirm Upcoming Review Load always shows its fixed next 14 calendar days,
+   including when the selected historical range is unready.
+10. In Retention Health, hover and keyboard-focus a point to inspect the
+    preview, pin its details, tab through the dialog controls, press Escape,
+    and dismiss it by clicking outside. Confirm its LeetCode action opens the
+    matching canonical problem in a new tab.
+11. In Fragile Knowledge, confirm exactly five rows appear per page when there
+    are more than five rows, Previous/Next and the live row range update
+    correctly, and every visible problem link opens its canonical LeetCode
+    problem in a new tab.
+12. Exercise sparse and unknown history: verify readiness rather than invented
+    trends, while Retention Health, Fragile Knowledge, and Upcoming Review Load
+    remain usable. Repeat the happy path and sparse path at a narrow dashboard
+    width; charts, range controls, dialogs, table scrolling, and keyboard focus
+    must remain usable.
 
 Expected: Analytics loads through the extension runtime without the failed-load
-state, and it only reflects local practice data.
+state, reflects only local practice data, and tells a truthful chart story
+without filling missing evidence.
+
+For this dashboard behavior change, the human engineer must attach screenshot
+or screen-recording proof of both the ready-history happy path and the sparse or
+unready edge path before PR review or merge. This is required by
+`docs/agent-governance.md`; automated checks do not replace real-time extension
+smoke testing.
 
 ### LeetCode Overlay
 

@@ -92,9 +92,10 @@ Not every feature needs every folder. Add only the folder needed for the change.
 ## Feature Ownership
 
 - `app-shell`: popup, dashboard, and overlay shell data composition.
-- `analytics`: local dashboard review-health read models, observed rating
-  quality (the observed share of Good/Easy ratings, not FSRS-predicted
-  retrievability or retention), due forecast, and weak-problem ranking.
+- `analytics`: local dashboard analytics read models: evidence-gated
+  historical charts, current retention health, fragile knowledge, future load,
+  and explainable readiness. It owns chart presentation contracts but not
+  practice persistence or FSRS scheduling.
 - `overlay-session`: LeetCode overlay UI state, timer, draft fields, page sync,
   submission automation, and review action orchestration.
 - `practice`: FSRS-backed practice state, review logs, scheduling details,
@@ -193,14 +194,58 @@ Background mutations are serialized through the mutation queue in
 `src/platform/db/instance.ts`, which restores a matching stored snapshot or
 creates a fresh migrated and seeded database.
 
-Analytics read models include observed rating quality, calculated as the
-observed share of Good/Easy ratings rather than FSRS-predicted retrievability or
-retention. FSRS predicted recall is a separate metric planned for the
-chart-ready analytics contract. They also include a memory profile derived from
-tracked local FSRS cards, with due today, overdue, learning, review, and
-retrievability fields plus low-sample messaging. Queue summaries expose
-`dueToday`, `newAvailable`, `queueLoad`, and `recommendationReason` aliases while
-preserving legacy queue fields for existing consumers.
+### Analytics Read Models And Chart Story
+
+Analytics is a feature-owned, read-only calculation. The background Analytics
+service reads the full review history once for a request, together with the
+current FSRS cards and supporting local state; chart components do not make
+per-chart database calls. Its data flow is:
+
+```text
+review and FSRS inputs
+-> analytics range policy
+-> effective evidence window and readiness
+-> metric-specific presentation buckets
+-> Zod runtime contract
+-> explicit chart components
+```
+
+The owners in that flow are:
+
+- `src/features/analytics/domain/analytics-range-policy.ts` selects and builds
+  local-date bucket boundaries. The current contract supports 14-day daily,
+  30-day three-day, and 90-day weekly presentation buckets.
+- `src/features/analytics/domain/analytics-readiness.ts` derives the effective
+  window and readiness gates. `S`, `A`, `G`, `K`, and `E` mean eligible
+  assessments, active buckets, longest gap, gap runs, and effective buckets.
+- `src/features/analytics/domain/chart-buckets.ts` and
+  `src/features/analytics/domain/chart-data.ts` aggregate each metric only from
+  eligible evidence, preserve unknown buckets as `null`, and classify solid,
+  bridgeable, and unbridgeable line continuity.
+- `src/features/analytics/api/analytics-contracts.ts` validates the serialized
+  read model with Zod before it crosses the extension runtime boundary.
+- `src/features/analytics/components/charts/chart-definitions.ts` is the typed
+  chart catalogue: title, question, data meaning, eligibility, aggregation,
+  semantic series, and sparse-state copy. `LineSegments` in
+  `src/features/analytics/components/charts/line-segments.tsx` renders measured
+  runs and permitted dashed bridges without interpolating data.
+- `src/lib/leetcode/domain/problem-url.ts` owns canonical problem URLs; the
+  retention details and fragile-knowledge rows use `createLeetCodeProblemUrl`
+  rather than constructing links in chart components.
+
+The Analytics service applies the range policy, calculates readiness separately
+for each metric's eligibility rules, trims only unsupported leading history, and
+then builds its Zod-validated summary. Current Retention Health, Fragile
+Knowledge, and the fixed 14-day Upcoming Review Load do not depend on the
+historical range being ready.
+
+Readiness diagnostics are a read-only view of that same production
+calculation—not a second implementation. They include `S/A/G/K/E`, selected
+bucket boundaries, gate thresholds, and which evidence each metric accepted or
+rejected. Treat the diagnostics as an explanation of the serialized chart data;
+do not use them to recalculate a competing result in the UI. Queue summaries
+expose `dueToday`, `newAvailable`, `queueLoad`, and `recommendationReason`
+aliases while preserving legacy queue fields for existing consumers.
 
 Due-review notifications are local background work. The extension declares the
 Chrome `notifications` permission so `src/extension/background/due-notification.ts`
