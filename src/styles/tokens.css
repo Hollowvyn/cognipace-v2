@@ -17,6 +17,11 @@
   --color-destructive: var(--cp-color-danger);
   --color-destructive-foreground: var(--cp-color-danger-foreground);
   --color-ring: var(--cp-color-ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
   --radius-sm: var(--cp-radius-sm);
   --radius-md: var(--cp-radius-md);
   --radius-lg: var(--cp-radius-lg);
@@ -52,6 +57,16 @@
     --cp-color-danger: #b42318;
     --cp-color-danger-foreground: #ffffff;
     --cp-color-ring: #2347a8;
+
+    /* Analytics roles: model, target, and risk map to existing semantic tokens. */
+    --cp-analytics-model: var(--cp-color-primary);
+    --cp-analytics-target: var(--cp-color-secondary);
+    --cp-analytics-risk: var(--cp-tone-danger-fg);
+    --chart-1: var(--cp-analytics-model);
+    --chart-2: var(--cp-analytics-target);
+    --chart-3: var(--cp-tone-success-fg);
+    --chart-4: var(--cp-tone-warning-fg);
+    --chart-5: var(--cp-analytics-risk);
 
     --cp-tone-neutral-bg: #eef1f5;
     --cp-tone-neutral-fg: #46505f;
@@ -138,6 +153,15 @@
     --cp-color-danger-foreground: #690005;
     --cp-color-ring: #a1d1b4;
 
+    --cp-analytics-model: var(--cp-color-primary);
+    --cp-analytics-target: var(--cp-color-secondary);
+    --cp-analytics-risk: var(--cp-tone-danger-fg);
+    --chart-1: var(--cp-analytics-model);
+    --chart-2: var(--cp-analytics-target);
+    --chart-3: var(--cp-tone-success-fg);
+    --chart-4: var(--cp-tone-warning-fg);
+    --chart-5: var(--cp-analytics-risk);
+
     --cp-tone-neutral-bg: rgb(182 192 186 / 14%);
     --cp-tone-neutral-fg: #c0c9c1;
     --cp-tone-neutral-border: rgb(192 201 193 / 22%);
@@ -201,6 +225,15 @@
       --cp-color-danger: #ffb4ab;
       --cp-color-danger-foreground: #690005;
       --cp-color-ring: #a1d1b4;
+
+      --cp-analytics-model: var(--cp-color-primary);
+      --cp-analytics-target: var(--cp-color-secondary);
+      --cp-analytics-risk: var(--cp-tone-danger-fg);
+      --chart-1: var(--cp-analytics-model);
+      --chart-2: var(--cp-analytics-target);
+      --chart-3: var(--cp-tone-success-fg);
+      --chart-4: var(--cp-tone-warning-fg);
+      --chart-5: var(--cp-analytics-risk);
 
       --cp-tone-neutral-bg: rgb(182 192 186 / 14%);
       --cp-tone-neutral-fg: #c0c9c1;
