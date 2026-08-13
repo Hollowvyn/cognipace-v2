@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import type { Db } from '@/platform/db'
 import { createTestDb } from '@/platform/db/test-db'
-import { fsrsCards, problemPractice, reviewAttempts } from '@/platform/db/schema'
+import {
+  fsrsCards,
+  problemPractice,
+  problemTopics,
+  problems,
+  reviewAttempts,
+  topics,
+} from '@/platform/db/schema'
 
 import {
   getReviewDayStats,
@@ -10,6 +17,8 @@ import {
   getUpcomingCards,
   getWeakProblemCandidates,
   getRetentionScatterCandidates,
+  getReviewEvents,
+  getReviewHistory,
 } from './analytics-repository'
 
 const BASE_TS = new Date('2026-01-15T12:00:00.000Z').getTime()
@@ -84,6 +93,33 @@ async function insertAttempt(
   })
 }
 
+async function insertProblemWithTopics(
+  db: Db,
+  slug: string,
+  title: string,
+  topicLabels: string[] = [],
+) {
+  await db.insert(problems).values({
+    slug,
+    title,
+    difficulty: 'medium',
+    isPremium: false,
+    createdAt: BASE_TS,
+    updatedAt: BASE_TS,
+  })
+
+  for (const label of topicLabels) {
+    const topicId = `${slug}:${label.toLowerCase().replaceAll(' ', '-')}`
+    await db.insert(topics).values({
+      id: topicId,
+      label,
+      createdAt: BASE_TS,
+      updatedAt: BASE_TS,
+    })
+    await db.insert(problemTopics).values({ problemSlug: slug, topicId })
+  }
+}
+
 // ---------------------------------------------------------------------------
 
 describe('getReviewDayStats', () => {
@@ -150,6 +186,132 @@ describe('getRecentRatings', () => {
     const [item] = await getRecentRatings(db, since)
     expect(item?.rating).toBe('again')
     expect(item?.reviewedAt.getTime()).toBe(reviewedAt.getTime())
+  })
+})
+
+// ---------------------------------------------------------------------------
+
+describe('review history reads', () => {
+  it('returns range-scoped chronological events with problem identity and topic labels', async () => {
+    const { db } = await createTestDb({ seed: false })
+    const first = new Date('2026-01-10T09:00:00.000Z')
+    const second = new Date('2026-01-11T09:00:00.000Z')
+    const outside = new Date('2026-01-01T09:00:00.000Z')
+
+    await insertProblemWithTopics(db, 'topic-problem', 'Topic Problem', [
+      'Arrays',
+      'Two Pointers',
+    ])
+    await insertProblemWithTopics(db, 'untagged-problem', 'Untagged Problem')
+    const topicCardId = await insertCard(db, 'topic-problem')
+    const untaggedCardId = await insertCard(db, 'untagged-problem')
+
+    await db.insert(reviewAttempts).values([
+      {
+        id: 'outside',
+        problemSlug: 'topic-problem',
+        cardId: topicCardId,
+        rating: 'again',
+        reviewMode: 'standard',
+        reviewedAt: ts(outside),
+        isCorrect: false,
+        fsrsReviewLog: '{"rating":"again"}',
+        createdAt: ts(outside),
+        updatedAt: ts(outside),
+      },
+      {
+        id: 'later',
+        problemSlug: 'untagged-problem',
+        cardId: untaggedCardId,
+        rating: 'easy',
+        reviewMode: 'leetcode',
+        reviewedAt: ts(second),
+        isCorrect: null,
+        fsrsReviewLog: null,
+        createdAt: ts(second),
+        updatedAt: ts(second),
+      },
+      {
+        id: 'earlier',
+        problemSlug: 'topic-problem',
+        cardId: topicCardId,
+        rating: 'good',
+        reviewMode: 'manual',
+        reviewedAt: ts(first),
+        isCorrect: true,
+        fsrsReviewLog: '{"rating":"good"}',
+        createdAt: ts(first),
+        updatedAt: ts(first),
+      },
+    ])
+
+    const result = await getReviewEvents(db, { since: first, until: second })
+
+    expect(result).toEqual([
+      {
+        id: 'earlier',
+        problemSlug: 'topic-problem',
+        cardId: topicCardId,
+        title: 'Topic Problem',
+        topicLabels: ['Arrays', 'Two Pointers'],
+        rating: 'good',
+        reviewedAt: first,
+        isCorrect: true,
+        reviewMode: 'manual',
+        fsrsReviewLog: '{"rating":"good"}',
+      },
+      {
+        id: 'later',
+        problemSlug: 'untagged-problem',
+        cardId: untaggedCardId,
+        title: 'Untagged Problem',
+        topicLabels: [],
+        rating: 'easy',
+        reviewedAt: second,
+        isCorrect: null,
+        reviewMode: 'leetcode',
+        fsrsReviewLog: null,
+      },
+    ])
+  })
+
+  it('returns complete replay history with deterministic timestamp and id ordering', async () => {
+    const { db } = await createTestDb({ seed: false })
+    const reviewedAt = new Date('2026-01-10T09:00:00.000Z')
+
+    await insertProblemWithTopics(db, 'history-problem', 'History Problem')
+    const cardId = await insertCard(db, 'history-problem')
+    await db.insert(reviewAttempts).values([
+      {
+        id: 'z-review',
+        problemSlug: 'history-problem',
+        cardId,
+        rating: 'good',
+        reviewMode: 'manual',
+        reviewedAt: ts(reviewedAt),
+        isCorrect: true,
+        fsrsReviewLog: null,
+        createdAt: ts(reviewedAt),
+        updatedAt: ts(reviewedAt),
+      },
+      {
+        id: 'a-review',
+        problemSlug: 'history-problem',
+        cardId,
+        rating: 'hard',
+        reviewMode: 'manual',
+        reviewedAt: ts(reviewedAt),
+        isCorrect: null,
+        fsrsReviewLog: null,
+        createdAt: ts(reviewedAt),
+        updatedAt: ts(reviewedAt),
+      },
+    ])
+
+    const result = await getReviewHistory(db)
+
+    expect(result.map((event) => event.id)).toEqual(['a-review', 'z-review'])
+    expect(result[0]?.reviewedAt).toEqual(reviewedAt)
   })
 })
 
