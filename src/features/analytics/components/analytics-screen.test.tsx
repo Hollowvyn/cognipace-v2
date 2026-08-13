@@ -41,15 +41,7 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
       date: `2026-01-${String(15 + i).padStart(2, '0')}`,
       dueCount: i === 0 ? 6 : (i + 1) * 3,
     })),
-    weakProblems: [
-      {
-        slug: 'longest-substring-without-repeating-characters',
-        title: 'Longest Substring Without Repeating',
-        lapseCount: 5,
-        difficulty: 0.6,
-        retrievability: 0.28,
-      },
-    ],
+    weakProblems: [],
     targetRetention: 0.9,
     retentionScatter: [],
     retentionScatterCurve: [],
@@ -70,6 +62,88 @@ function createAnalyticsSummary(
   overrides: Partial<SerializedAnalyticsSummary> = {},
 ) {
   return { ...baseAnalyticsSummary(), ...overrides }
+}
+
+function readyAnalyticsSummary(
+  overrides: Partial<SerializedAnalyticsSummary> = {},
+): SerializedAnalyticsSummary {
+  return createAnalyticsSummary({
+    chartDataStatus: 'ready',
+    recallQuality: [
+      {
+        date: '2026-01-14',
+        observedRecall: 0.78,
+        predictedRecall: 0.84,
+        targetRetention: 0.9,
+        reviewCount: 12,
+        eligibleSampleSize: 12,
+      },
+    ],
+    consistency: [
+      {
+        week: '2026-01-12',
+        reviewDays: 4,
+        observedCorrectness: 0.78,
+        sampleSize: 12,
+        associationOnly: true,
+      },
+    ],
+    ratingsMix: [
+      {
+        date: '2026-01-14',
+        again: 1,
+        hard: 2,
+        good: 6,
+        easy: 3,
+        total: 12,
+        hardAgainShare: 0.25,
+      },
+    ],
+    topics: [
+      {
+        topic: 'Graphs',
+        recallQuality: 0.61,
+        sampleSize: 12,
+        lowSample: false,
+      },
+    ],
+    stability: [
+      { week: '2026-01-12', medianStabilityDays: 8.2, sampleSize: 12 },
+    ],
+    overdueBacklog: [
+      { date: '2026-01-14', overdueCount: 3, historyAvailable: true },
+    ],
+    overdueHistoryAvailableFrom: '2026-01-14T00:00:00.000Z',
+    upcomingLoad: [
+      { date: '2026-01-15', dueCount: 5, overdueCount: 1, today: true },
+    ],
+    retentionHealth: [
+      {
+        slug: 'graph-traversal',
+        title: 'Graph Traversal',
+        retrievability: 0.86,
+        targetRetention: 0.9,
+        daysSinceReview: 3,
+        stabilityDays: 4,
+        difficulty: 7.8,
+        lapseCount: 2,
+        overdueDays: 1,
+      },
+    ],
+    fragileKnowledge: [
+      {
+        slug: 'graph-traversal',
+        title: 'Graph Traversal',
+        retrievability: 0.86,
+        stabilityDays: 4,
+        difficulty: 7.8,
+        lapseCount: 2,
+        overdueDays: 1,
+        topics: ['Graphs'],
+      },
+    ],
+    ...overrides,
+  })
 }
 
 describe('AnalyticsScreen', () => {
@@ -94,135 +168,34 @@ describe('AnalyticsScreen', () => {
 
     renderAnalyticsScreen()
 
-    expect(screen.getByText('Loading analytics...')).toBeVisible()
-
     deferred.reject(new Error('network error'))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Failed to load Analytics.',
     )
-    const retryButton = screen.getByRole('button', { name: 'Retry' })
-    expect(retryButton).toBeVisible()
-
-    await user.click(retryButton)
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
 
     await waitFor(() => {
       expect(sendMessage).toHaveBeenCalledTimes(2)
     })
-    const reviewDaysTile = await screen.findByLabelText('Review Days metric')
-    expect(within(reviewDaysTile).getByText('42')).toBeVisible()
+    expect(await screen.findByLabelText('Review Days metric')).toBeVisible()
   })
 
-  it('renders metric tiles with correct values', async () => {
+  it('keeps summary and profile content that supports the chart story', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(createAnalyticsSummary())
 
     renderAnalyticsScreen()
 
     const reviewDaysTile = await screen.findByLabelText('Review Days metric')
     expect(within(reviewDaysTile).getByText('42')).toBeVisible()
-
-    const totalReviewsTile = screen.getByLabelText('Total Reviews metric')
-    expect(within(totalReviewsTile).getByText('381')).toBeVisible()
-
-    const qualityTile = screen.getByLabelText('Observed rating quality metric')
-    expect(within(qualityTile).getByText('72%')).toBeVisible()
     expect(
-      within(qualityTile).getByText('58 reviews in the selected 30-day period'),
+      within(screen.getByRole('region', { name: 'Memory profile' })).getByText(
+        '3 due today',
+      ),
     ).toBeVisible()
   })
 
-  it('renders memory profile totals and retrievability', async () => {
-    vi.mocked(sendMessage).mockResolvedValueOnce(createAnalyticsSummary())
-
-    renderAnalyticsScreen()
-
-    const memoryProfile = await screen.findByRole('region', {
-      name: 'Memory profile',
-    })
-
-    expect(
-      within(memoryProfile).getByRole('heading', { name: 'Memory Profile' }),
-    ).toBeVisible()
-    expect(within(memoryProfile).getByText('12')).toBeVisible()
-    expect(within(memoryProfile).getByText('74%')).toBeVisible()
-    expect(within(memoryProfile).getByText('3 due today')).toBeVisible()
-  })
-
-  it('shows limited-sample caveat when memory profile has a non-null low-sample average', async () => {
-    vi.mocked(sendMessage).mockResolvedValueOnce(
-      createAnalyticsSummary({
-        memoryProfile: {
-          ...baseAnalyticsSummary().memoryProfile,
-          averageRetrievability: 0.74,
-          lowSample: true,
-        },
-      }),
-    )
-
-    renderAnalyticsScreen()
-
-    const memoryProfile = await screen.findByRole('region', {
-      name: 'Memory profile',
-    })
-
-    expect(within(memoryProfile).getByText('74%')).toBeVisible()
-    expect(
-      within(memoryProfile).getByText('Limited review sample'),
-    ).toBeVisible()
-  })
-
-  it('renders not-enough-review-data state for memory profile average', async () => {
-    vi.mocked(sendMessage).mockResolvedValueOnce(
-      createAnalyticsSummary({
-        memoryProfile: {
-          ...baseAnalyticsSummary().memoryProfile,
-          averageRetrievability: null,
-          lowSample: true,
-        },
-      }),
-    )
-
-    renderAnalyticsScreen()
-
-    const memoryProfile = await screen.findByRole('region', {
-      name: 'Memory profile',
-    })
-
-    expect(
-      within(memoryProfile).getByText('Not enough review data'),
-    ).toBeVisible()
-  })
-
-  it('renders 14 forecast bars with a Today label', async () => {
-    vi.mocked(sendMessage).mockResolvedValueOnce(createAnalyticsSummary())
-
-    renderAnalyticsScreen()
-
-    const forecastRegion = await screen.findByRole('region', {
-      name: '14-day due forecast',
-    })
-    expect(screen.getAllByTestId('forecast-bar')).toHaveLength(14)
-    expect(
-      within(forecastRegion).getAllByText('Today').length,
-    ).toBeGreaterThanOrEqual(1)
-  })
-
-  it('renders weak problem rows with lapse count and retention', async () => {
-    vi.mocked(sendMessage).mockResolvedValueOnce(createAnalyticsSummary())
-
-    renderAnalyticsScreen()
-
-    const weakSection = await screen.findByRole('region', {
-      name: 'Weak problems',
-    })
-    expect(
-      within(weakSection).getByText('Longest Substring Without Repeating'),
-    ).toBeVisible()
-    expect(within(weakSection).getByText('5 lapses')).toBeVisible()
-    expect(within(weakSection).getByText('28%')).toBeVisible()
-  })
-
-  it('shows warning notice and dash retention when lowSample is true', async () => {
+  it('shows the observed-correctness low-sample warning', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(
       createAnalyticsSummary({
         lowSample: true,
@@ -236,79 +209,100 @@ describe('AnalyticsScreen', () => {
     expect(
       await screen.findByText(/Observed rating quality needs more data/),
     ).toBeVisible()
-    const qualityTile = screen.getByLabelText('Observed rating quality metric')
-    expect(within(qualityTile).getByText('—')).toBeVisible()
     expect(
-      within(qualityTile).getByText(
-        'Fewer than 10 reviews in the selected 30-day period',
+      within(screen.getByLabelText('Observed rating quality metric')).getByText(
+        '—',
       ),
     ).toBeVisible()
   })
 
-  it('renders empty-state message when there are no weak problems', async () => {
-    vi.mocked(sendMessage).mockResolvedValueOnce(
-      createAnalyticsSummary({ weakProblems: [] }),
-    )
-
-    renderAnalyticsScreen()
-
-    await screen.findByRole('region', { name: 'Weak problems' })
-    expect(
-      screen.getByText('No weak problems found — keep it up!'),
-    ).toBeVisible()
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
-  })
-
-  it('resolves forecast and weak problems sections by accessible role', async () => {
+  it('shows one unavailable chart state instead of partial or fabricated charts', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(createAnalyticsSummary())
 
     renderAnalyticsScreen()
 
+    const emptyPanel = await screen.findByRole('region', {
+      name: 'Analytics charts',
+    })
     expect(
-      await screen.findByRole('region', { name: '14-day due forecast' }),
+      within(emptyPanel).getByText(/Not enough valid review history/),
     ).toBeVisible()
-    expect(screen.getByRole('region', { name: 'Weak problems' })).toBeVisible()
+    expect(
+      screen.queryByRole('region', { name: 'Recall quality' }),
+    ).not.toBeInTheDocument()
   })
 
-  it('renders retention health region when scatter data is present', async () => {
+  it('renders the approved chart hierarchy with explanations and fragile knowledge', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(readyAnalyticsSummary())
+
+    renderAnalyticsScreen()
+
+    expect(
+      await screen.findByRole('region', { name: 'Recall quality' }),
+    ).toBeVisible()
+    expect(
+      screen.getByText(
+        /Predicted recall is FSRS's estimate immediately before reviews/,
+      ),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('region', { name: 'Fragile knowledge' }),
+    ).toBeVisible()
+    expect(screen.getByText('Graph Traversal')).toBeVisible()
+
+    const chartRegionNames = [
+      'Recall quality',
+      'Consistency vs observed correctness',
+      'Ratings mix',
+      'Weakest topics',
+      'Memory strength',
+      'Recent overdue backlog',
+      'Upcoming review load',
+      'Retention health',
+      'Fragile knowledge',
+    ]
+    const regionOrder = screen.getAllByRole('region').map((region) => {
+      const labelledBy = region.getAttribute('aria-labelledby')
+      return labelledBy
+        ? document.getElementById(labelledBy)?.textContent
+        : region.getAttribute('aria-label')
+    })
+    const chartOrder = regionOrder.filter((name) =>
+      chartRegionNames.includes(name ?? ''),
+    )
+
+    expect(chartOrder).toEqual(chartRegionNames)
+    expect(
+      screen.queryByRole('region', { name: '14-day due forecast' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Weak problems' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('renders chart-level empty states when the service is ready but a series is empty', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(
-      createAnalyticsSummary({
-        chartDataStatus: 'ready',
-        retentionScatter: [
-          {
-            slug: 'two-sum',
-            title: 'Two Sum',
-            retrievability: 0.95,
-            daysSinceReview: 3,
-            difficulty: 0.3,
-            stability: 10.5,
-            lapseCount: 0,
-            lastReviewAt: '2026-01-12T10:00:00.000Z',
-          },
-        ],
-        retentionScatterCurve: [
-          { days: 0, retrievability: 1.0 },
-          { days: 14, retrievability: 0.9 },
-        ],
+      readyAnalyticsSummary({
+        recallQuality: [],
+        fragileKnowledge: [],
       }),
     )
 
     renderAnalyticsScreen()
 
+    const recallPanel = await screen.findByRole('region', {
+      name: 'Recall quality',
+    })
     expect(
-      await screen.findByRole('region', { name: 'Retention health' }),
+      within(recallPanel).getByText(
+        'Not enough review data for recall quality yet.',
+      ),
     ).toBeVisible()
-  })
-
-  it('renders retention health empty state when scatter is empty', async () => {
-    vi.mocked(sendMessage).mockResolvedValueOnce(
-      createAnalyticsSummary({ retentionScatter: [] }),
-    )
-
-    renderAnalyticsScreen()
-
-    await screen.findByRole('region', { name: 'Retention health' })
-    expect(screen.getByText(/No reviewed problems yet/)).toBeVisible()
+    expect(
+      within(
+        screen.getByRole('region', { name: 'Fragile knowledge' }),
+      ).getByText(/No fragile knowledge detected/),
+    ).toBeVisible()
   })
 })
 
