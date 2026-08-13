@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  evaluateAnalyticsReadiness,
+  calculateAnalyticsReadiness,
   findRichestReadyRange,
-  type AnalyticsReadinessInput,
 } from './analytics-readiness'
 
 const keys = (count: number) =>
@@ -11,10 +10,10 @@ const keys = (count: number) =>
 
 describe('analytics readiness', () => {
   it('trims leading empty buckets and reports explainable measurements', () => {
-    const readiness = evaluateAnalyticsReadiness({
+    const readiness = calculateAnalyticsReadiness({
       requestedDays: 30,
-      counts: [0, 0, 4, 2, 0, 3, 0, 0, 5, 1],
-      keys: keys(10),
+      evidenceCounts: [0, 0, 4, 2, 0, 3, 0, 0, 5, 1],
+      bucketKeys: keys(10),
     })
 
     expect(readiness).toMatchObject({
@@ -38,10 +37,10 @@ describe('analytics readiness', () => {
   })
 
   it('reports too many gaps for fragmented 14-day evidence', () => {
-    const readiness = evaluateAnalyticsReadiness({
+    const readiness = calculateAnalyticsReadiness({
       requestedDays: 14,
-      counts: [3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 3],
-      keys: keys(14),
+      evidenceCounts: [3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 3],
+      bucketKeys: keys(14),
     })
 
     expect(readiness.ready).toBe(false)
@@ -52,10 +51,10 @@ describe('analytics readiness', () => {
   })
 
   it('accepts a 14-day range with two consecutive empty buckets', () => {
-    const readiness = evaluateAnalyticsReadiness({
+    const readiness = calculateAnalyticsReadiness({
       requestedDays: 14,
-      counts: [2, 2, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2],
-      keys: keys(14),
+      evidenceCounts: [2, 2, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2],
+      bucketKeys: keys(14),
     })
 
     expect(readiness).toMatchObject({
@@ -68,33 +67,32 @@ describe('analytics readiness', () => {
   })
 
   it('finds the largest passing range regardless of input order', () => {
-    const input: AnalyticsReadinessInput[] = [
-      { requestedDays: 90, counts: Array(13).fill(0), keys: keys(13) },
-      { requestedDays: 14, counts: Array(14).fill(2), keys: keys(14) },
-      { requestedDays: 30, counts: Array(10).fill(3), keys: keys(10) },
+    const input = [
+      { range: 90, ready: false },
+      { range: 14, ready: true },
+      { range: 30, ready: true },
     ]
-    const originalOrder = input.map(({ requestedDays }) => requestedDays)
+    const originalInput = structuredClone(input)
 
     expect(findRichestReadyRange(input)).toBe(30)
-    expect(input.map(({ requestedDays }) => requestedDays)).toEqual(
-      originalOrder,
-    )
+    expect(input).toEqual(originalInput)
   })
 
   it('returns null when no configured range passes', () => {
     expect(
       findRichestReadyRange([
-        { requestedDays: 14, counts: Array(14).fill(0), keys: keys(14) },
-        { requestedDays: 30, counts: Array(10).fill(0), keys: keys(10) },
+        { range: 90, ready: false },
+        { range: 14, ready: false },
+        { range: 30, ready: false },
       ]),
     ).toBeNull()
   })
 
   it('reports no evidence without inventing an effective start', () => {
-    const readiness = evaluateAnalyticsReadiness({
+    const readiness = calculateAnalyticsReadiness({
       requestedDays: 14,
-      counts: Array(14).fill(0),
-      keys: keys(14),
+      evidenceCounts: Array(14).fill(0),
+      bucketKeys: keys(14),
     })
 
     expect(readiness.effectiveStart).toBeNull()
@@ -108,10 +106,10 @@ describe('analytics readiness', () => {
 
   it('rejects mismatched keys and counts', () => {
     expect(() =>
-      evaluateAnalyticsReadiness({
+      calculateAnalyticsReadiness({
         requestedDays: 14,
-        counts: [1],
-        keys: ['b1', 'b2'],
+        evidenceCounts: [1],
+        bucketKeys: ['b1', 'b2'],
       }),
     ).toThrow(RangeError)
   })
@@ -119,10 +117,10 @@ describe('analytics readiness', () => {
   it('rejects negative and non-integer counts', () => {
     for (const count of [-1, 1.5]) {
       expect(() =>
-        evaluateAnalyticsReadiness({
+        calculateAnalyticsReadiness({
           requestedDays: 14,
-          counts: [count],
-          keys: ['b1'],
+          evidenceCounts: [count],
+          bucketKeys: ['b1'],
         }),
       ).toThrow(RangeError)
     }

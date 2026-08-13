@@ -10,8 +10,8 @@ export type ReadinessFailure =
 
 export interface AnalyticsReadinessInput {
   requestedDays: number
-  counts: readonly number[]
-  keys: readonly string[]
+  evidenceCounts: readonly number[]
+  bucketKeys: readonly string[]
 }
 
 export interface AnalyticsReadiness {
@@ -32,19 +32,19 @@ export interface AnalyticsReadiness {
   failingReasons: ReadinessFailure[]
 }
 
-export function evaluateAnalyticsReadiness({
+export function calculateAnalyticsReadiness({
   requestedDays,
-  counts,
-  keys,
+  evidenceCounts,
+  bucketKeys,
 }: AnalyticsReadinessInput): AnalyticsReadiness {
   const { bucketDays, maximumGapBuckets } =
     getAnalyticsRangePolicy(requestedDays)
 
-  if (counts.length !== keys.length) {
+  if (evidenceCounts.length !== bucketKeys.length) {
     throw new RangeError('Analytics readiness keys and counts must align.')
   }
   if (
-    counts.some(
+    evidenceCounts.some(
       (count) =>
         !Number.isInteger(count) || count < 0 || !Number.isFinite(count),
     )
@@ -54,10 +54,11 @@ export function evaluateAnalyticsReadiness({
     )
   }
 
-  const firstEvidence = counts.findIndex((count) => count > 0)
+  const firstEvidence = evidenceCounts.findIndex((count) => count > 0)
   const effectiveCounts =
-    firstEvidence === -1 ? [] : counts.slice(firstEvidence)
-  const effectiveKeys = firstEvidence === -1 ? [] : keys.slice(firstEvidence)
+    firstEvidence === -1 ? [] : evidenceCounts.slice(firstEvidence)
+  const effectiveKeys =
+    firstEvidence === -1 ? [] : bucketKeys.slice(firstEvidence)
   const effectiveBuckets = effectiveCounts.length
   const assessments = effectiveCounts.reduce((sum, count) => sum + count, 0)
   const activeBuckets = effectiveCounts.filter((count) => count > 0).length
@@ -69,7 +70,7 @@ export function evaluateAnalyticsReadiness({
   const minimumActiveBuckets = Math.ceil(
     coverage(requestedDays) * effectiveBuckets,
   )
-  const minimumEffectiveBuckets = Math.ceil((keys.length || 0) * 0.6)
+  const minimumEffectiveBuckets = Math.ceil(bucketKeys.length * 0.6)
   const maximumGapRuns = Math.max(1, Math.ceil(effectiveBuckets * 0.2))
 
   const failingReasons: ReadinessFailure[] = []
@@ -90,7 +91,7 @@ export function evaluateAnalyticsReadiness({
     ready: failingReasons.length === 0,
     requestedDays,
     bucketDays,
-    requestedBuckets: keys.length,
+    requestedBuckets: bucketKeys.length,
     effectiveBuckets,
     effectiveStart: effectiveKeys[0] ?? null,
     assessments,
@@ -106,14 +107,12 @@ export function evaluateAnalyticsReadiness({
 }
 
 export function findRichestReadyRange(
-  ranges: readonly AnalyticsReadinessInput[],
+  ranges: readonly { range: number; ready: boolean }[],
 ): number | null {
   return (
     ranges
-      .map(evaluateAnalyticsReadiness)
       .filter(({ ready }) => ready)
-      .sort((left, right) => right.requestedDays - left.requestedDays)[0]
-      ?.requestedDays ?? null
+      .sort((left, right) => right.range - left.range)[0]?.range ?? null
   )
 }
 
