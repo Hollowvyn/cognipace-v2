@@ -22,9 +22,9 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
     reviewDays: 42,
     totalReviews: 381,
     currentStreak: 7,
-    observedRecallQuality: { value: 0.72, sampleSize: 58, lowSample: false },
+    observedRatingQuality: { value: 0.72, sampleSize: 58, lowSample: false },
     predictedRecall: { value: null, sampleSize: 0, lowSample: true },
-    retentionSampleSize: 58,
+    observedRatingSampleSize: 58,
     lowSample: false,
     memoryProfile: {
       totalTracked: 12,
@@ -225,8 +225,8 @@ describe('AnalyticsScreen', () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(
       createAnalyticsSummary({
         lowSample: true,
-        observedRecallQuality: { value: null, sampleSize: 7, lowSample: true },
-        retentionSampleSize: 7,
+        observedRatingQuality: { value: null, sampleSize: 7, lowSample: true },
+        observedRatingSampleSize: 7,
       }),
     )
 

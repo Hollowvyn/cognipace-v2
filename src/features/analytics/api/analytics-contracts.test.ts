@@ -25,7 +25,7 @@ const validSummary: SerializedAnalyticsSummary = {
   reviewDays: 10,
   totalReviews: 42,
   currentStreak: 3,
-  observedRecallQuality: {
+  observedRatingQuality: {
     value: 0.75,
     sampleSize: 20,
     lowSample: false,
@@ -35,7 +35,7 @@ const validSummary: SerializedAnalyticsSummary = {
     sampleSize: 0,
     lowSample: true,
   },
-  retentionSampleSize: 20,
+  observedRatingSampleSize: 20,
   lowSample: false,
   dueForecast14Days: validForecast,
   weakProblems: [],
@@ -165,7 +165,7 @@ describe('analyticsSummarySchema', () => {
     expect(
       analyticsSummarySchema.safeParse({
         ...validSummary,
-        retentionSampleSize: -1,
+        observedRatingSampleSize: -1,
       }).success,
     ).toBe(false)
   })
@@ -219,7 +219,7 @@ describe('analyticsSummarySchema', () => {
     expect(
       analyticsSummarySchema.safeParse({
         ...validSummary,
-        predictedRecall: { value: 0.8, sampleSize: 20, lowSample: false },
+        predictedRecall: { value: null, sampleSize: 1, lowSample: true },
       }).success,
     ).toBe(false)
     expect(
@@ -248,12 +248,35 @@ describe('analyticsSummarySchema', () => {
     })
   })
 
+  it.each([
+    { value: 0.8, sampleSize: 20, lowSample: true },
+    { value: null, sampleSize: 20, lowSample: false },
+  ])('rejects invalid nullable metric combinations: %j', (metric) => {
+    expect(
+      analyticsSummarySchema.safeParse({
+        ...validSummary,
+        observedRatingQuality: metric,
+      }).success,
+    ).toBe(false)
+  })
+
+  it('accepts a valid null low-sample metric', () => {
+    expect(
+      analyticsSummarySchema.safeParse({
+        ...validSummary,
+        observedRatingQuality: { value: null, sampleSize: 7, lowSample: true },
+        observedRatingSampleSize: 7,
+        lowSample: true,
+      }).success,
+    ).toBe(true)
+  })
+
   it('rejects percentages outside 0..1 and negative chart counts', () => {
     expect(
       analyticsSummarySchema.safeParse({
         ...validSummary,
-        observedRecallQuality: {
-          ...validSummary.observedRecallQuality,
+        observedRatingQuality: {
+          ...validSummary.observedRatingQuality,
           value: 1.01,
         },
       }).success,

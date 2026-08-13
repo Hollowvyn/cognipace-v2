@@ -337,7 +337,7 @@ describe('buildAnalyticsSummary', () => {
     expect(result.currentStreak).toBe(3)
     expect(result.observedRatingQuality).toBe(0.75)
     expect(result.observedRatingQualityLabel).toBe('75%')
-    expect(result.retentionSampleSize).toBe(20)
+    expect(result.observedRatingSampleSize).toBe(20)
     expect(result.lowSample).toBe(false)
     expect(result.dueForecast14Days).toBe(forecast)
     expect(result.weakProblems).toEqual([])

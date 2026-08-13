@@ -12,11 +12,18 @@ const percentageSchema = z.number().min(0).max(1)
 const countSchema = z.number().int().nonnegative()
 const nullablePercentageSchema = percentageSchema.nullable()
 
-export const analyticsMetricSummarySchema = z.object({
-  value: nullablePercentageSchema,
-  sampleSize: countSchema,
-  lowSample: z.boolean(),
-})
+export const analyticsMetricSummarySchema = z.union([
+  z.object({
+    value: z.null(),
+    sampleSize: countSchema,
+    lowSample: z.literal(true),
+  }),
+  z.object({
+    value: percentageSchema,
+    sampleSize: countSchema,
+    lowSample: z.literal(false),
+  }),
+])
 
 export type AnalyticsMetricSummary = z.infer<
   typeof analyticsMetricSummarySchema
@@ -157,9 +164,9 @@ export const analyticsSummarySchema = z
   reviewDays: countSchema,
   totalReviews: countSchema,
   currentStreak: countSchema,
-  observedRecallQuality: analyticsMetricSummarySchema,
+  observedRatingQuality: analyticsMetricSummarySchema,
   predictedRecall: analyticsMetricSummarySchema,
-  retentionSampleSize: countSchema,
+  observedRatingSampleSize: countSchema,
   lowSample: z.boolean(),
   dueForecast14Days: z.array(forecastEntrySchema).length(14),
   weakProblems: z.array(weakProblemSchema).max(10),
@@ -180,11 +187,16 @@ export const analyticsSummarySchema = z
   .superRefine((summary, context) => {
     if (summary.chartDataStatus !== 'unavailable') return
 
-    if (summary.predictedRecall.value !== null) {
+    if (
+      summary.predictedRecall.value !== null ||
+      summary.predictedRecall.sampleSize !== 0 ||
+      summary.predictedRecall.lowSample !== true
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Unavailable chart data must not include predicted recall.',
-        path: ['predictedRecall', 'value'],
+        message:
+          'Unavailable chart data must use an empty low-sample predicted recall metric.',
+        path: ['predictedRecall'],
       })
     }
 

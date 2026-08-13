@@ -337,7 +337,7 @@ describe('background handler registration', () => {
       currentStreak: 2,
       observedRatingQuality: 0.75,
       observedRatingQualityLabel: '75%',
-      retentionSampleSize: 12,
+      observedRatingSampleSize: 12,
       lowSample: false,
       dueForecast14Days: Array.from({ length: 14 }, (_, index) => ({
         date: `2026-01-${String(15 + index).padStart(2, '0')}`,
@@ -572,7 +572,7 @@ describe('background handler registration', () => {
       reviewDays: 3,
       totalReviews: 12,
       currentStreak: 2,
-      observedRecallQuality: {
+      observedRatingQuality: {
         value: 0.75,
         sampleSize: 12,
         lowSample: false,
@@ -609,7 +609,7 @@ describe('background handler registration', () => {
       currentStreak: 1,
       observedRatingQuality: null,
       observedRatingQualityLabel: '—',
-      retentionSampleSize: 4,
+      observedRatingSampleSize: 4,
       lowSample: true,
       dueForecast14Days: Array.from({ length: 14 }, (_, index) => ({
         date: `2026-01-${String(15 + index).padStart(2, '0')}`,
@@ -639,8 +639,8 @@ describe('background handler registration', () => {
       }),
     )
 
-    expect(response.observedRecallQuality.value).toBeNull()
-    expect(response.observedRecallQuality.value).not.toBe(0)
+    expect(response.observedRatingQuality.value).toBeNull()
+    expect(response.observedRatingQuality.value).not.toBe(0)
   })
 
   it('registers dev smoke handling with dashboard policy and response parsing', async () => {

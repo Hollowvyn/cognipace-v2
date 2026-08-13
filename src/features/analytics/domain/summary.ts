@@ -84,7 +84,7 @@ export interface AnalyticsSummary {
   range: 14 | 30 | 90
   periodStart: string
   periodEnd: string
-  retentionSampleSize: number
+  observedRatingSampleSize: number
   lowSample: boolean
   dueForecast14Days: ForecastEntry[]
   weakProblems: WeakProblem[]
@@ -195,7 +195,7 @@ export function buildAnalyticsSummary(
     currentStreak: input.currentStreak,
     observedRatingQuality: input.observedRatingQuality.value,
     observedRatingQualityLabel: input.observedRatingQuality.label,
-    retentionSampleSize: input.observedRatingQuality.sampleSize,
+    observedRatingSampleSize: input.observedRatingQuality.sampleSize,
     lowSample: input.observedRatingQuality.lowSample,
     range: input.range,
     periodStart: input.periodStart.toISOString(),

@@ -12,9 +12,9 @@ export function createSerializedAnalyticsSummary(
     reviewDays: 30,
     totalReviews: 150,
     currentStreak: 7,
-    observedRecallQuality: { value: 0.85, sampleSize: 50, lowSample: false },
+    observedRatingQuality: { value: 0.85, sampleSize: 50, lowSample: false },
     predictedRecall: { value: null, sampleSize: 0, lowSample: true },
-    retentionSampleSize: 50,
+    observedRatingSampleSize: 50,
     lowSample: false,
     dueForecast14Days: Array.from({ length: 14 }, (_, i) => {
       const dateStr = `2026-01-${String(15 + i).padStart(2, '0')}`

@@ -62,14 +62,14 @@ export function AnalyticsMetricRow({
               summary.lowSample ? 'text-muted-foreground' : 'text-foreground',
             )}
           >
-            {summary.observedRecallQuality.value === null
+            {summary.observedRatingQuality.value === null
               ? '—'
-              : `${Math.round(summary.observedRecallQuality.value * 100)}%`}
+              : `${Math.round(summary.observedRatingQuality.value * 100)}%`}
           </div>
           <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
             {summary.lowSample
               ? `Fewer than 10 reviews in the selected ${summary.range}-day period`
-              : `${summary.retentionSampleSize} reviews in the selected ${summary.range}-day period`}
+              : `${summary.observedRatingSampleSize} reviews in the selected ${summary.range}-day period`}
           </p>
         </Surface>
       </div>
