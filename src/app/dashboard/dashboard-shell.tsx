@@ -77,7 +77,10 @@ export function DashboardShell() {
           <aside className="sticky top-0 z-20 min-w-0 border-b border-border bg-card/95 px-4 py-3 text-card-foreground backdrop-blur lg:h-screen lg:w-[220px] lg:shrink-0 lg:border-b-0 lg:border-r lg:bg-card lg:p-5">
             <div className="flex min-w-0 items-center gap-3 lg:block">
               <div className="flex min-w-0 shrink-0 items-center gap-2">
-                <h1 className="m-0 truncate text-[1rem] font-extrabold leading-tight text-foreground lg:text-[length:var(--cp-title-font-size)]">
+                <h1
+                  aria-label="CogniPace"
+                  className="m-0 text-[1rem] font-extrabold leading-tight text-foreground lg:text-[length:var(--cp-title-font-size)]"
+                >
                   <Link
                     aria-label="Open Overview"
                     className="inline-flex min-w-0 items-center gap-2 rounded-[var(--cp-radius-md)] transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
