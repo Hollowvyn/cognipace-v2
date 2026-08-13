@@ -391,7 +391,7 @@ describe('background handler registration', () => {
       stability: [],
       overdueBacklog: [],
       overdueHistoryAvailableFrom: null,
-      upcomingLoad: [],
+      upcomingLoad: createSerializedAnalyticsSummary().upcomingLoad,
       retentionHealth: [],
       fragileKnowledge: [],
     })
@@ -695,7 +695,7 @@ describe('background handler registration', () => {
       stability: [],
       overdueBacklog: [],
       overdueHistoryAvailableFrom: null,
-      upcomingLoad: [],
+      upcomingLoad: createSerializedAnalyticsSummary().upcomingLoad,
       retentionHealth: [],
       fragileKnowledge: [],
     })
@@ -723,9 +723,7 @@ describe('background handler registration', () => {
           ready: false,
         },
       },
-      upcomingLoad: [
-        { date: '2026-01-15', dueCount: 4, overdueCount: 1, today: true },
-      ],
+      upcomingLoad: createSerializedAnalyticsSummary().upcomingLoad,
       retentionHealth: [
         {
           slug: 'two-sum',
@@ -769,7 +767,7 @@ describe('background handler registration', () => {
     expect(response.chartDataStatus).toBe('unready')
     expect(response.range).toBe(90)
     expect(response.historicalReadiness.requested.ready).toBe(false)
-    expect(response.upcomingLoad).toHaveLength(1)
+    expect(response.upcomingLoad).toHaveLength(14)
     expect(response.retentionHealth).toHaveLength(1)
     expect(response.fragileKnowledge).toHaveLength(1)
   })

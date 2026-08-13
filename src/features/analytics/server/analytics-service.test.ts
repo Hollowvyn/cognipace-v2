@@ -450,6 +450,78 @@ describe('getAnalyticsSummary memory profile', () => {
     expect(summary.recallQuality).toEqual([])
   })
 
+  it('keeps practice rhythm unready when review volume has no persisted correctness', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-08-13T12:00:00.000Z')
+    const dates = Array.from({ length: 24 }, (_, index) => {
+      const date = new Date('2026-07-21T12:00:00.000Z')
+      date.setDate(date.getDate() + index)
+      return date
+    })
+
+    await insertAnalyticsProblem(
+      handle.db,
+      'practice-without-correctness',
+      'Practice without correctness',
+      [],
+    )
+    await insertAnalyticsHistory(handle.db, 'practice-without-correctness', {
+      id: 'practice-without-correctness:default',
+      dates,
+      ratings: Array<ReviewRating>(dates.length).fill('good'),
+      correct: Array<boolean | null>(dates.length).fill(null),
+      dueAt: new Date('2026-08-14T12:00:00.000Z'),
+      stability: 10,
+      difficulty: 5,
+    })
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 30, now })
+
+    expect(summary.historicalReadiness.requested.ready).toBe(true)
+    expect(summary.historicalReadiness.practiceRhythm).toMatchObject({
+      ready: false,
+      assessments: 0,
+      activeBuckets: 0,
+    })
+    expect(summary.practiceRhythm).toEqual([])
+  })
+
+  it('counts only persisted correctness observations for practice rhythm readiness', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-08-13T12:00:00.000Z')
+    const dates = Array.from({ length: 14 }, (_, index) => {
+      const date = new Date('2026-07-31T12:00:00.000Z')
+      date.setDate(date.getDate() + index)
+      return date
+    })
+
+    await insertAnalyticsProblem(
+      handle.db,
+      'mixed-practice-correctness',
+      'Mixed practice correctness',
+      [],
+    )
+    await insertAnalyticsHistory(handle.db, 'mixed-practice-correctness', {
+      id: 'mixed-practice-correctness:default',
+      dates,
+      ratings: Array<ReviewRating>(dates.length).fill('good'),
+      correct: dates.map((_, index) =>
+        index === 0 || index === 7 ? null : true,
+      ),
+      dueAt: new Date('2026-08-14T12:00:00.000Z'),
+      stability: 10,
+      difficulty: 5,
+    })
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 14, now })
+
+    expect(summary.historicalReadiness.practiceRhythm).toMatchObject({
+      ready: true,
+      assessments: 12,
+      activeBuckets: 12,
+    })
+  })
+
   it('counts only persisted correctness observations for recall quality readiness', async () => {
     const handle = await createTestDb({ seed: false })
     const now = new Date('2026-08-13T12:00:00.000Z')
@@ -577,6 +649,97 @@ describe('getAnalyticsSummary memory profile', () => {
     expect(readiness.retentionHealth.length).toBeGreaterThan(0)
   })
 
+  it('recommends only a shorter ready range than the selected range', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-08-13T12:00:00.000Z')
+    const dates = Array.from({ length: 14 }, (_, index) => {
+      const date = new Date('2026-07-31T12:00:00.000Z')
+      date.setDate(date.getDate() + index)
+      return date
+    })
+
+    await insertAnalyticsProblem(
+      handle.db,
+      'shorter-range-evidence',
+      'Shorter range evidence',
+      [],
+    )
+    await insertAnalyticsHistory(handle.db, 'shorter-range-evidence', {
+      id: 'shorter-range-evidence:default',
+      dates,
+      ratings: Array<ReviewRating>(dates.length).fill('good'),
+      correct: Array<boolean>(dates.length).fill(true),
+      dueAt: new Date('2026-08-14T12:00:00.000Z'),
+      stability: 10,
+      difficulty: 5,
+    })
+
+    const selected30 = await getAnalyticsSummary(handle.db, {
+      range: 30,
+      now,
+    })
+    const selected90 = await getAnalyticsSummary(handle.db, {
+      range: 90,
+      now,
+    })
+    const selected14 = await getAnalyticsSummary(handle.db, {
+      range: 14,
+      now,
+    })
+
+    expect(selected30.historicalReadiness.requested.ready).toBe(false)
+    expect(selected30.historicalReadiness.recommendedRange).toBe(14)
+    expect(selected90.historicalReadiness.requested.ready).toBe(false)
+    expect(selected90.historicalReadiness.recommendedRange).toBe(14)
+    expect(selected14.historicalReadiness.requested.ready).toBe(true)
+    expect(selected14.historicalReadiness.recommendedRange).toBeNull()
+  })
+
+  it('never recommends a ready longer range for an unready selected range', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-08-13T12:00:00.000Z')
+    const earlierDates = Array.from({ length: 31 }, (_, index) => {
+      const date = new Date('2026-05-16T12:00:00.000Z')
+      date.setDate(date.getDate() + index * 2)
+      return date
+    })
+    const recentDates = Array.from({ length: 14 }, (_, index) => {
+      const date = new Date('2026-07-31T12:00:00.000Z')
+      date.setDate(date.getDate() + index)
+      return date
+    })
+    const dates = [...earlierDates, ...recentDates]
+
+    await insertAnalyticsProblem(
+      handle.db,
+      'longer-range-evidence',
+      'Longer range evidence',
+      [],
+    )
+    await insertAnalyticsHistory(handle.db, 'longer-range-evidence', {
+      id: 'longer-range-evidence:default',
+      dates,
+      ratings: Array<ReviewRating>(dates.length).fill('good'),
+      correct: Array<boolean>(dates.length).fill(true),
+      dueAt: new Date('2026-08-14T12:00:00.000Z'),
+      stability: 10,
+      difficulty: 5,
+    })
+
+    const selected30 = await getAnalyticsSummary(handle.db, {
+      range: 30,
+      now,
+    })
+    const selected90 = await getAnalyticsSummary(handle.db, {
+      range: 90,
+      now,
+    })
+
+    expect(selected30.historicalReadiness.requested.ready).toBe(false)
+    expect(selected90.historicalReadiness.requested.ready).toBe(true)
+    expect(selected30.historicalReadiness.recommendedRange).toBe(14)
+  })
+
   it('calculates readiness from each metric’s eligible evidence, not a copied range status', async () => {
     const handle = await createTestDb({ seed: false })
     const now = new Date('2026-08-13T12:00:00.000Z')
@@ -607,11 +770,13 @@ describe('getAnalyticsSummary memory profile', () => {
       historicalReadiness: {
         requested: { ready: boolean }
         topics: { ready: boolean; failingReasons: string[] }
+        recommendedRange: number | null
       }
     }
 
     expect(readiness.historicalReadiness.requested.ready).toBe(true)
     expect(summary.chartDataStatus).toBe('ready')
+    expect(readiness.historicalReadiness.recommendedRange).toBeNull()
     expect(readiness.historicalReadiness.topics.ready).toBe(false)
     expect(readiness.historicalReadiness.topics.failingReasons).toContain(
       'no-evidence',

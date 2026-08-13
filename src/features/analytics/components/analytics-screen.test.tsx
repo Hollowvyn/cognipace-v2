@@ -102,7 +102,12 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
     stability: [],
     overdueBacklog: [],
     overdueHistoryAvailableFrom: null,
-    upcomingLoad: [],
+    upcomingLoad: Array.from({ length: 14 }, (_, index) => ({
+      date: `2026-01-${String(15 + index).padStart(2, '0')}`,
+      dueCount: 0,
+      overdueCount: 0,
+      today: index === 0,
+    })),
     retentionHealth: [],
     fragileKnowledge: [],
   }
@@ -177,9 +182,12 @@ function readyAnalyticsSummary(
       },
     ],
     overdueHistoryAvailableFrom: '2026-01-14T00:00:00.000Z',
-    upcomingLoad: [
-      { date: '2026-01-15', dueCount: 5, overdueCount: 1, today: true },
-    ],
+    upcomingLoad: Array.from({ length: 14 }, (_, index) => ({
+      date: `2026-01-${String(15 + index).padStart(2, '0')}`,
+      dueCount: index === 0 ? 5 : 0,
+      overdueCount: index === 0 ? 1 : 0,
+      today: index === 0,
+    })),
     retentionHealth: [
       {
         slug: 'graph-traversal',

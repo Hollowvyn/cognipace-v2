@@ -181,7 +181,7 @@ export async function getAnalyticsSummary(
       analyticsReviewHistory,
       buckets,
       periodEnd,
-      () => true,
+      (event) => event.isCorrect !== null,
     ),
     bucketKeys: buckets.map((bucket) => bucket.key),
   })
@@ -260,7 +260,9 @@ export async function getAnalyticsSummary(
     topics: topicReadiness,
     stability: stabilityReadiness,
     overdueBacklog: overdueReadiness,
-    recommendedRange: findRecommendedRange(analyticsReviewHistory, now),
+    recommendedRange: requestedReadiness.ready
+      ? null
+      : findRecommendedRange(analyticsReviewHistory, now, range),
   }
   const upcomingLoad = buildUpcomingLoadPoints(
     upcomingCards.map((card) => card.dueAt),
@@ -500,22 +502,28 @@ function trimHistoricalPoints<T extends { bucketStart: string }>(
 function findRecommendedRange(
   events: readonly AnalyticsReviewEvent[],
   now: Date,
+  requestedDays: AnalyticsRange,
 ): AnalyticsRange | null {
-  const ranges = ([14, 30, 90] as const).map((range) => {
-    const buckets = buildAnalyticsBuckets({
-      requestedDays: range,
-      periodEnd: now,
-    })
-    const readiness = calculateAnalyticsReadiness({
-      requestedDays: range,
-      evidenceCounts: buildBucketEvidenceCounts(events, buckets, now, (event) =>
-        isReviewRating(event.rating),
-      ),
-      bucketKeys: buckets.map((bucket) => bucket.key),
-    })
+  const ranges = ([14, 30, 90] as const)
+    .filter((range) => range < requestedDays)
+    .map((range) => {
+      const buckets = buildAnalyticsBuckets({
+        requestedDays: range,
+        periodEnd: now,
+      })
+      const readiness = calculateAnalyticsReadiness({
+        requestedDays: range,
+        evidenceCounts: buildBucketEvidenceCounts(
+          events,
+          buckets,
+          now,
+          (event) => isReviewRating(event.rating),
+        ),
+        bucketKeys: buckets.map((bucket) => bucket.key),
+      })
 
-    return { range, ready: readiness.ready }
-  })
+      return { range, ready: readiness.ready }
+    })
 
   const recommendedRange = findRichestReadyRange(ranges)
   return recommendedRange === 14 ||

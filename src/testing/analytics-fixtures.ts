@@ -136,7 +136,12 @@ export function createSerializedAnalyticsSummary(
     stability: [],
     overdueBacklog: [],
     overdueHistoryAvailableFrom: null,
-    upcomingLoad: [],
+    upcomingLoad: Array.from({ length: 14 }, (_, i) => ({
+      date: `2026-01-${String(15 + i).padStart(2, '0')}`,
+      dueCount: i === 0 ? 3 : 0,
+      overdueCount: i === 0 ? 1 : 0,
+      today: i === 0,
+    })),
     retentionHealth: [],
     fragileKnowledge: [],
     ...overrides,

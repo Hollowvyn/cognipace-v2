@@ -41,6 +41,13 @@ const validForecast = Array.from({ length: 14 }, (_, index) => ({
   dueCount: index,
 }))
 
+const validUpcomingLoad = Array.from({ length: 14 }, (_, index) => ({
+  date: `2026-01-${String(15 + index).padStart(2, '0')}`,
+  dueCount: index,
+  overdueCount: index === 0 ? 1 : 0,
+  today: index === 0,
+}))
+
 const validSummary: SerializedAnalyticsSummary = {
   chartDataStatus: 'unavailable',
   range: 30,
@@ -105,7 +112,7 @@ const validSummary: SerializedAnalyticsSummary = {
   stability: [],
   overdueBacklog: [],
   overdueHistoryAvailableFrom: null,
-  upcomingLoad: [],
+  upcomingLoad: validUpcomingLoad,
   retentionHealth: [],
   fragileKnowledge: [],
 }
@@ -202,14 +209,7 @@ describe('analyticsSummarySchema', () => {
           ready: false,
         },
       },
-      upcomingLoad: [
-        {
-          date: '2026-01-15',
-          dueCount: 3,
-          overdueCount: 1,
-          today: true,
-        },
-      ],
+      upcomingLoad: validUpcomingLoad,
       retentionHealth: [
         {
           slug: 'two-sum',
@@ -240,7 +240,7 @@ describe('analyticsSummarySchema', () => {
     expect(parsed.chartDataStatus).toBe('unready')
     expect(parsed.range).toBe(90)
     expect(parsed.historicalReadiness.requested.ready).toBe(false)
-    expect(parsed.upcomingLoad).toHaveLength(1)
+    expect(parsed.upcomingLoad).toHaveLength(14)
     expect(parsed.retentionHealth).toHaveLength(1)
     expect(parsed.fragileKnowledge).toHaveLength(1)
   })
@@ -263,6 +263,35 @@ describe('analyticsSummarySchema', () => {
     })
     expect(result.success).toBe(false)
   })
+
+  it.each(['ready', 'unready'] as const)(
+    'requires exactly 14 upcoming-load entries for %s summaries',
+    (chartDataStatus) => {
+      const summary = { ...validSummary, chartDataStatus }
+
+      expect(analyticsSummarySchema.safeParse(summary).success).toBe(true)
+      expect(
+        analyticsSummarySchema.safeParse({
+          ...summary,
+          upcomingLoad: validUpcomingLoad.slice(0, 13),
+        }).success,
+      ).toBe(false)
+      expect(
+        analyticsSummarySchema.safeParse({
+          ...summary,
+          upcomingLoad: [
+            ...validUpcomingLoad,
+            {
+              date: '2026-01-29',
+              dueCount: 0,
+              overdueCount: 0,
+              today: false,
+            },
+          ],
+        }).success,
+      ).toBe(false)
+    },
+  )
 
   it('rejects more than 10 weak problems', () => {
     const tooMany = Array.from({ length: 11 }, (_, index) => ({

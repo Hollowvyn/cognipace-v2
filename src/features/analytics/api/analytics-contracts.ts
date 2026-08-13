@@ -253,7 +253,7 @@ export const analyticsSummarySchema = z
     stability: z.array(stabilityPointSchema),
     overdueBacklog: z.array(overdueBacklogPointSchema),
     overdueHistoryAvailableFrom: z.iso.datetime().nullable(),
-    upcomingLoad: z.array(upcomingLoadPointSchema),
+    upcomingLoad: z.array(upcomingLoadPointSchema).length(14),
     retentionHealth: z.array(retentionHealthPointSchema),
     fragileKnowledge: z.array(fragileKnowledgeSchema),
   })
@@ -282,7 +282,6 @@ export const analyticsSummarySchema = z
       'topics',
       'stability',
       'overdueBacklog',
-      'upcomingLoad',
       'retentionHealth',
       'fragileKnowledge',
     ] as const
