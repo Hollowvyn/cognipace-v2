@@ -1,0 +1,102 @@
+import { InlineStatus } from '@/components/ui/inline-status'
+import type {
+  AnalyticsRange,
+  AnalyticsReadiness,
+  ReadinessFailure,
+} from '@/features/analytics/api/analytics-contracts'
+
+const readinessMessages: Record<
+  ReadinessFailure,
+  (readiness: AnalyticsReadiness) => string
+> = {
+  'no-evidence': () =>
+    'Complete your first eligible review to begin this view.',
+  'insufficient-span': (readiness) =>
+    `${deficit(readiness.minimumActiveBuckets, readiness.effectiveBuckets)} more active buckets needed.`,
+  'insufficient-assessments': (readiness) =>
+    `${deficit(readiness.minimumAssessments, readiness.assessments)} more assessments needed.`,
+  'insufficient-active-buckets': (readiness) =>
+    `${deficit(readiness.minimumActiveBuckets, readiness.activeBuckets)} more active buckets needed.`,
+  'gap-too-long': () => 'A practice gap is longer than this trend can bridge.',
+  'too-many-gaps': () => 'Practice is too fragmented for a reliable trend.',
+}
+
+export interface AnalyticsReadinessStateProps {
+  readiness: AnalyticsReadiness
+  recommendedRange: AnalyticsRange | null
+  title?: string
+}
+
+export function AnalyticsReadinessState({
+  readiness,
+  recommendedRange,
+  title,
+}: AnalyticsReadinessStateProps) {
+  const messages = readiness.failingReasons.map((reason) =>
+    readinessMessages[reason](readiness),
+  )
+  const accessibleName = title
+    ? `${title} readiness`
+    : `${readiness.requestedDays}-day analytics readiness`
+
+  return (
+    <InlineStatus
+      aria-label={accessibleName}
+      className="grid gap-2"
+      role="status"
+      tone="warning"
+    >
+      {title ? (
+        <strong className="font-semibold text-foreground">{title}</strong>
+      ) : null}
+      {messages.length > 0 ? (
+        <ul className="m-0 grid list-none gap-1 p-0">
+          {messages.map((message) => (
+            <li key={message}>{message}</li>
+          ))}
+        </ul>
+      ) : null}
+      <EffectiveWindowCopy readiness={readiness} />
+      {recommendedRange !== null ? (
+        <a
+          className="w-fit font-medium text-foreground underline underline-offset-4 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+          href={`#/analytics?range=${recommendedRange}`}
+        >
+          Use ready {recommendedRange}-day view
+        </a>
+      ) : null}
+    </InlineStatus>
+  )
+}
+
+function EffectiveWindowCopy({ readiness }: { readiness: AnalyticsReadiness }) {
+  if (
+    readiness.effectiveStart === null ||
+    readiness.effectiveBuckets >= readiness.requestedBuckets
+  ) {
+    return null
+  }
+
+  return (
+    <p className="m-0">
+      Showing {readiness.effectiveBuckets} {bucketNoun(readiness)} of usable
+      history from your selected {readiness.requestedDays}-day range.
+    </p>
+  )
+}
+
+function bucketNoun(readiness: AnalyticsReadiness): string {
+  if (readiness.bucketDays === 1) {
+    return readiness.effectiveBuckets === 1 ? 'day' : 'days'
+  }
+  if (readiness.bucketDays === 7) {
+    return readiness.effectiveBuckets === 1 ? 'week' : 'weeks'
+  }
+  return readiness.effectiveBuckets === 1
+    ? 'adaptive bucket'
+    : 'adaptive buckets'
+}
+
+function deficit(minimum: number, actual: number): number {
+  return Math.max(0, minimum - actual)
+}

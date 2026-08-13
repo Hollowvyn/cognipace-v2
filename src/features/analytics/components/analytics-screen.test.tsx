@@ -53,14 +53,26 @@ function createUnreadyHistoricalReadiness() {
 
 function createReadyHistoricalReadiness() {
   const historicalReadiness = createUnreadyHistoricalReadiness()
+  const ready = {
+    ...historicalReadiness.requested,
+    ready: true,
+    effectiveBuckets: 10,
+    effectiveStart: '2026-01-01',
+    assessments: 58,
+    activeBuckets: 10,
+    minimumActiveBuckets: 8,
+    failingReasons: [] as ReadinessFailure[],
+  }
 
   return {
     ...historicalReadiness,
-    requested: {
-      ...historicalReadiness.requested,
-      ready: true,
-      failingReasons: [],
-    },
+    requested: ready,
+    recallQuality: { ...ready },
+    practiceRhythm: { ...ready },
+    ratingsMix: { ...ready },
+    topics: { ...ready },
+    stability: { ...ready },
+    overdueBacklog: { ...ready },
     recommendedRange: null,
   }
 }
@@ -267,7 +279,7 @@ describe('AnalyticsScreen', () => {
     expect(await screen.findByLabelText('Review Days metric')).toBeVisible()
   })
 
-  it('keeps summary and profile content that supports the chart story', async () => {
+  it('keeps the selected-period summary content above the chart story', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(createAnalyticsSummary())
 
     renderAnalyticsScreen()
@@ -275,8 +287,8 @@ describe('AnalyticsScreen', () => {
     const reviewDaysTile = await screen.findByLabelText('Review Days metric')
     expect(within(reviewDaysTile).getByText('42')).toBeVisible()
     expect(
-      within(screen.getByRole('region', { name: 'Memory profile' })).getByText(
-        '3 due today',
+      within(reviewDaysTile).getByText(
+        'Days with at least one review in the selected 30-day period',
       ),
     ).toBeVisible()
   })
@@ -293,7 +305,7 @@ describe('AnalyticsScreen', () => {
     renderAnalyticsScreen()
 
     expect(
-      await screen.findByText(/Observed rating quality needs more data/),
+      await screen.findByText(/Observed correctness needs more data/),
     ).toBeVisible()
     expect(
       within(screen.getByLabelText('Observed rating quality metric')).getByText(
@@ -318,6 +330,131 @@ describe('AnalyticsScreen', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('keeps the selected unready range while offering a ready shorter view and current-state panels', async () => {
+    const readiness = {
+      ...createUnreadyHistoricalReadiness().requested,
+      requestedDays: 90,
+      bucketDays: 7,
+      requestedBuckets: 13,
+      effectiveBuckets: 6,
+      effectiveStart: '2026-01-19',
+      assessments: 32,
+      minimumAssessments: 45,
+      activeBuckets: 4,
+      minimumActiveBuckets: 5,
+      failingReasons: [
+        'insufficient-span',
+        'insufficient-assessments',
+        'insufficient-active-buckets',
+      ] as ReadinessFailure[],
+    }
+
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      readyAnalyticsSummary({
+        chartDataStatus: 'unready',
+        range: 90,
+        historicalReadiness: {
+          requested: readiness,
+          recallQuality: readiness,
+          practiceRhythm: readiness,
+          ratingsMix: readiness,
+          topics: readiness,
+          stability: readiness,
+          overdueBacklog: readiness,
+          recommendedRange: 30,
+        },
+      }),
+    )
+
+    renderAnalyticsScreen(90)
+
+    expect(
+      await screen.findByRole('status', {
+        name: '90-day analytics readiness',
+      }),
+    ).toHaveTextContent('13 more assessments needed.')
+    expect(
+      screen.getByRole('link', { name: 'Use ready 30-day view' }),
+    ).toHaveAttribute('href', expect.stringContaining('range=30'))
+    expect(
+      screen.queryByRole('region', { name: 'Recall quality' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('region', { name: 'Upcoming review load' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('region', { name: 'Retention health' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('region', { name: 'Fragile knowledge' }),
+    ).toBeVisible()
+  })
+
+  it('shows an effective historical window when a ready range trims leading empty buckets', async () => {
+    const readiness = {
+      ...createReadyHistoricalReadiness().requested,
+      requestedDays: 90,
+      bucketDays: 7,
+      requestedBuckets: 13,
+      effectiveBuckets: 8,
+      effectiveStart: '2025-12-01',
+    }
+
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      readyAnalyticsSummary({
+        range: 90,
+        historicalReadiness: {
+          requested: readiness,
+          recallQuality: readiness,
+          practiceRhythm: readiness,
+          ratingsMix: readiness,
+          topics: readiness,
+          stability: readiness,
+          overdueBacklog: readiness,
+          recommendedRange: null,
+        },
+      }),
+    )
+
+    renderAnalyticsScreen(90)
+
+    expect(
+      await screen.findByText(
+        'Showing 8 weeks of usable history from your selected 90-day range.',
+      ),
+    ).toBeVisible()
+  })
+
+  it('renders a metric-specific readiness state without hiding ready historical charts', async () => {
+    const historicalReadiness = createReadyHistoricalReadiness()
+    const practiceRhythm = {
+      ...historicalReadiness.practiceRhythm,
+      ready: false,
+      assessments: 12,
+      minimumAssessments: 24,
+      failingReasons: ['insufficient-assessments'] as ReadinessFailure[],
+    }
+
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      readyAnalyticsSummary({
+        historicalReadiness: {
+          ...historicalReadiness,
+          practiceRhythm,
+        },
+      }),
+    )
+
+    renderAnalyticsScreen()
+
+    expect(
+      await screen.findByRole('status', { name: 'Practice rhythm readiness' }),
+    ).toHaveTextContent('12 more assessments needed.')
+    expect(
+      screen.queryByRole('region', { name: 'Practice rhythm' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Ratings mix' })).toBeVisible()
+  })
+
   it('renders the approved chart hierarchy with explanations and fragile knowledge', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(readyAnalyticsSummary())
 
@@ -328,7 +465,7 @@ describe('AnalyticsScreen', () => {
     ).toBeVisible()
     expect(
       within(screen.getByRole('region', { name: 'Recall quality' })).getByText(
-        /FSRS model estimate of retrievability immediately before a review/,
+        /The FSRS model estimate of retrievability immediately before a review/,
       ),
     ).toBeVisible()
     expect(
@@ -338,9 +475,9 @@ describe('AnalyticsScreen', () => {
 
     const chartRegionNames = [
       'Recall quality',
-      'Practice rhythm vs observed correctness',
+      'Practice rhythm',
       'Ratings mix',
-      'Weakest topics',
+      'Where to focus',
       'Memory strength',
       'Recent overdue backlog',
       'Upcoming review load',
@@ -359,7 +496,7 @@ describe('AnalyticsScreen', () => {
 
     expect(chartOrder).toEqual(chartRegionNames)
     const practiceRhythm = screen.getByRole('region', {
-      name: 'Practice rhythm vs observed correctness',
+      name: 'Practice rhythm',
     })
     expect(
       within(practiceRhythm).getByText(
@@ -404,9 +541,9 @@ describe('AnalyticsScreen', () => {
   })
 })
 
-function renderAnalyticsScreen() {
+function renderAnalyticsScreen(range?: 14 | 30 | 90) {
   const harness = createQueryTestHarness()
-  render(<AnalyticsScreen />, { wrapper: harness.wrapper })
+  render(<AnalyticsScreen range={range} />, { wrapper: harness.wrapper })
   return harness
 }
 

@@ -11,7 +11,9 @@ export interface AnalyticsChartPanelProps {
   emptyMessage?: ReactNode
   footer?: ReactNode
   id: string
+  question?: string | undefined
   title: string
+  warning?: string | undefined
 }
 
 export function AnalyticsChartPanel({
@@ -21,15 +23,20 @@ export function AnalyticsChartPanel({
   emptyMessage,
   footer,
   id,
+  question,
   title,
+  warning,
 }: AnalyticsChartPanelProps) {
   const titleId = `${id}-title`
+  const questionId = `${id}-question`
   const descriptionId = `${id}-description`
   const hasEmptyState = emptyMessage !== undefined && emptyMessage !== null
 
   return (
     <Surface
-      aria-describedby={descriptionId}
+      aria-describedby={
+        question ? `${questionId} ${descriptionId}` : descriptionId
+      }
       aria-labelledby={titleId}
       className={cn('grid min-w-0 gap-4', className)}
       id={id}
@@ -42,6 +49,14 @@ export function AnalyticsChartPanel({
         >
           {title}
         </h2>
+        {question ? (
+          <p
+            className="m-0 text-[length:var(--cp-copy-font-size)] font-medium leading-relaxed text-foreground"
+            id={questionId}
+          >
+            {question}
+          </p>
+        ) : null}
         <p
           className="m-0 max-w-3xl text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground"
           id={descriptionId}
@@ -63,6 +78,11 @@ export function AnalyticsChartPanel({
         <footer className="min-w-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
           {footer}
         </footer>
+      ) : null}
+      {warning ? (
+        <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
+          {warning}
+        </p>
       ) : null}
     </Surface>
   )
