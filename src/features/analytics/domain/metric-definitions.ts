@@ -8,6 +8,14 @@ export interface AnalyticsMetricDefinition {
 }
 
 export const metricDefinitions = {
+  analyticsCharts: {
+    label: 'Analytics charts',
+    question: 'What can your review history show?',
+    explanation: 'Review trends for the selected period.',
+    unit: 'analytics trends',
+    lowSampleOrEmptyState:
+      'Not enough valid review history to draw the selected analytics charts yet. Keep reviewing to build a useful trend.',
+  },
   observedCorrectness: {
     label: 'Observed correctness',
     explanation:

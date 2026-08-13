@@ -53,7 +53,7 @@ export function AnalyticsMetricRow({
         </Surface>
 
         <Surface
-          aria-label="Observed rating quality metric"
+          aria-label={`${metricDefinitions.observedCorrectness.label} metric`}
           className="grid min-h-[6rem] gap-2 !p-4"
         >
           <div className="text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">

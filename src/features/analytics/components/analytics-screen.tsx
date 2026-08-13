@@ -67,18 +67,18 @@ export function AnalyticsScreen({
   }
 
   const { data } = query
+  const analyticsChartsDefinition = metricDefinitions.analyticsCharts
 
   return (
     <div className="flex min-w-0 flex-col gap-[var(--cp-surface-gap)]">
       <AnalyticsMetricRow summary={data} />
       {data.chartDataStatus === 'unavailable' ? (
         <AnalyticsChartPanel
-          description={metricDefinitions.recallQuality.explanation}
-          emptyMessage={
-            'Not enough valid review history to draw the selected analytics charts yet. Keep reviewing to build a useful trend.'
-          }
+          description={analyticsChartsDefinition.explanation}
+          emptyMessage={analyticsChartsDefinition.lowSampleOrEmptyState}
           id="analytics-chart-data"
-          title="Analytics charts"
+          question={analyticsChartsDefinition.question}
+          title={analyticsChartsDefinition.label}
         />
       ) : null}
       {data.chartDataStatus === 'unready' ? (

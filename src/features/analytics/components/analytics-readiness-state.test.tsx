@@ -55,7 +55,7 @@ describe('AnalyticsReadinessState', () => {
       name: '90-day analytics readiness',
     })
 
-    expect(status).toHaveTextContent('1 more active buckets needed.')
+    expect(status).toHaveTextContent('2 more active buckets needed.')
     expect(status).toHaveTextContent('13 more assessments needed.')
     expect(status).toHaveTextContent(
       'A practice gap is longer than this trend can bridge.',
@@ -66,6 +66,24 @@ describe('AnalyticsReadinessState', () => {
     expect(
       screen.getByRole('link', { name: 'Use ready 30-day view' }),
     ).toHaveAttribute('href', expect.stringContaining('range=30'))
+  })
+
+  it('uses the effective-span threshold rather than active-bucket coverage for span deficits', () => {
+    render(
+      <AnalyticsReadinessState
+        readiness={createReadiness({
+          requestedBuckets: 13,
+          effectiveBuckets: 7,
+          minimumActiveBuckets: 5,
+          failingReasons: ['insufficient-span'],
+        })}
+        recommendedRange={null}
+      />,
+    )
+
+    expect(
+      screen.getByRole('status', { name: '90-day analytics readiness' }),
+    ).toHaveTextContent('1 more active buckets needed.')
   })
 
   it('describes the usable effective window without changing the selected range', () => {

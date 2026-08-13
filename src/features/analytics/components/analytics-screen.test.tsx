@@ -9,6 +9,7 @@ import type {
   SerializedAnalyticsSummary,
 } from '@/features/analytics/api/analytics-contracts'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
+import { metricDefinitions } from '../domain/metric-definitions'
 
 import { AnalyticsScreen } from './analytics-screen'
 
@@ -315,9 +316,11 @@ describe('AnalyticsScreen', () => {
       await screen.findByText(/Observed correctness needs more data/),
     ).toBeVisible()
     expect(
-      within(screen.getByLabelText('Observed rating quality metric')).getByText(
-        '—',
-      ),
+      within(
+        screen.getByLabelText(
+          `${metricDefinitions.observedCorrectness.label} metric`,
+        ),
+      ).getByText('—'),
     ).toBeVisible()
   })
 
@@ -326,11 +329,16 @@ describe('AnalyticsScreen', () => {
 
     renderAnalyticsScreen()
 
+    const definition = metricDefinitions.analyticsCharts
     const emptyPanel = await screen.findByRole('region', {
-      name: 'Analytics charts',
+      name: definition.label,
     })
     expect(
-      within(emptyPanel).getByText(/Not enough valid review history/),
+      within(emptyPanel).getByText(definition.question ?? ''),
+    ).toBeVisible()
+    expect(within(emptyPanel).getByText(definition.explanation)).toBeVisible()
+    expect(
+      within(emptyPanel).getByText(definition.lowSampleOrEmptyState),
     ).toBeVisible()
     expect(
       screen.queryByRole('region', { name: 'Recall quality' }),

@@ -70,7 +70,7 @@ export function calculateAnalyticsReadiness({
   const minimumActiveBuckets = Math.ceil(
     coverage(requestedDays) * effectiveBuckets,
   )
-  const minimumEffectiveBuckets = Math.ceil(bucketKeys.length * 0.6)
+  const minimumEffectiveBuckets = getMinimumEffectiveBuckets(bucketKeys.length)
   const maximumGapRuns = Math.max(1, Math.ceil(effectiveBuckets * 0.2))
 
   const failingReasons: ReadinessFailure[] = []
@@ -114,6 +114,10 @@ export function findRichestReadyRange(
       .filter(({ ready }) => ready)
       .sort((left, right) => right.range - left.range)[0]?.range ?? null
   )
+}
+
+export function getMinimumEffectiveBuckets(requestedBuckets: number): number {
+  return Math.ceil(requestedBuckets * 0.6)
 }
 
 function coverage(requestedDays: number): number {

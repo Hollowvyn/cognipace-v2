@@ -5,6 +5,7 @@ import type {
   AnalyticsReadiness,
   ReadinessFailure,
 } from '@/features/analytics/api/analytics-contracts'
+import { getMinimumEffectiveBuckets } from '../domain/analytics-readiness'
 
 const readinessMessages: Record<
   ReadinessFailure,
@@ -13,7 +14,7 @@ const readinessMessages: Record<
   'no-evidence': () =>
     'Complete your first eligible review to begin this view.',
   'insufficient-span': (readiness) =>
-    `${deficit(readiness.minimumActiveBuckets, readiness.effectiveBuckets)} more active buckets needed.`,
+    `${deficit(getMinimumEffectiveBuckets(readiness.requestedBuckets), readiness.effectiveBuckets)} more active buckets needed.`,
   'insufficient-assessments': (readiness) =>
     `${deficit(readiness.minimumAssessments, readiness.assessments)} more assessments needed.`,
   'insufficient-active-buckets': (readiness) =>
