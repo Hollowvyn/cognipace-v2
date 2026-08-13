@@ -159,6 +159,274 @@ The Analytics domain owns bucketing. React chart components receive typed,
 chart-ready points and do not calculate FSRS state or contain range-specific
 business rules.
 
+## Analytics Evidence System
+
+Analytics V1 introduces a feature-owned Analytics Evidence System. It is not a
+new npm package or generic shared library. It standardizes how CogniPace turns
+review history into sufficiently rich, chart-ready historical evidence:
+
+```text
+raw review history
+  -> eligible evidence
+  -> adaptive time buckets
+  -> effective history window
+  -> readiness evaluation
+  -> trustworthy metric aggregation
+  -> chart-ready data
+```
+
+Keep this system inside `src/features/analytics/domain` while it remains
+specific to review assessments, FSRS stability, retrievability, ratings, and
+practice history. Extract proven primitives only when another feature has a
+real matching need.
+
+### Generic bucket policy
+
+For a requested range of `R` days, choose a bucket size `B` that produces a
+readable historical chart:
+
+- use one-day buckets when `R <= 14`
+- otherwise choose from `2, 3, 7, 14, 30` days to produce approximately 8–14
+  points
+
+The current ranges resolve to:
+
+| Requested range | Bucket size | Requested buckets |
+| --------------- | ----------- | ----------------- |
+| 7 days          | 1 day       | 7                 |
+| 14 days         | 1 day       | 14                |
+| 30 days         | 3 days      | 10                |
+| 90 days         | 7 days      | 13                |
+| 120 days        | 14 days     | 9                 |
+
+In general:
+
+```text
+N = ceil(R / B)
+```
+
+The policy is deterministic and unit tested so future ranges do not require
+new chart-component conditionals.
+
+### Eligible evidence
+
+For each requested bucket `i`, calculate:
+
+```text
+s_i = number of eligible persisted assessments in bucket i
+a_i = 1 when s_i > 0, otherwise 0
+```
+
+The baseline evidence event is a persisted review assessment with a valid
+rating. Individual metrics may require stricter evidence. Observed correctness,
+for example, requires an observed correctness result; FSRS-predicted recall
+requires a replayable card history. Stricter metric eligibility must be named
+in the metric definition and may produce a metric-specific sparse state even
+when the overall historical range is ready.
+
+### Effective history window
+
+Leading empty buckets are not rendered. Let `f` be the first requested bucket
+containing eligible baseline evidence. The effective history window is
+`[f, N]`, aligned to the beginning of bucket `f`:
+
+```text
+E = N - f + 1
+```
+
+`E` is the number of effective buckets. Internal and trailing empty buckets
+remain because they represent real practice gaps. The UI identifies the
+effective period honestly, for example:
+
+> Showing 8 weeks of usable history from your selected 90-day range.
+
+The selected range remains 90 days; CogniPace does not silently pretend that
+the user selected a different range.
+
+### Readiness measurements
+
+Calculate readiness only across the effective window:
+
+```text
+S = sum(s_i) from f through N
+A = sum(a_i) from f through N
+G = longest consecutive run where a_i = 0 from f through N
+```
+
+Where:
+
+- `S` is total eligible baseline assessments
+- `A` is the number of active effective buckets
+- `G` is the longest internal or trailing empty-bucket gap
+
+Example:
+
+```text
+Requested evidence: [0, 0, 4, 2, 0, 3, 0, 0, 5, 1]
+Effective evidence:       [4, 2, 0, 3, 0, 0, 5, 1]
+
+S = 15
+A = 5
+G = 2
+E = 8
+```
+
+### Generic readiness thresholds
+
+Minimum effective history span:
+
+```text
+E_min = ceil(0.60 * N)
+```
+
+Minimum assessment count:
+
+```text
+S_min(R) = ceil(max(12, 0.5 * R, 0.8 * min(R, 30)))
+```
+
+Required active-bucket coverage:
+
+```text
+C(R) = clamp(0.76 - 0.06 * log2(R / 7), 0.55, 0.80)
+A_min = ceil(C(R) * E)
+```
+
+Maximum consecutive empty-bucket gap:
+
+```text
+G_max = min(3, max(1, floor(0.20 * E) + indicator(R >= 60)))
+```
+
+A historical range is ready when every gate passes:
+
+```text
+Ready(R) =
+  E >= E_min
+  AND S >= S_min
+  AND A >= A_min
+  AND G <= G_max
+```
+
+The system returns the individual gate results rather than only an opaque
+combined score:
+
+```ts
+interface AnalyticsReadiness {
+  ready: boolean
+  requestedDays: number
+  bucketDays: number
+  requestedBuckets: number
+  effectiveBuckets: number
+  effectiveStart: string | null
+  assessments: number
+  minimumAssessments: number
+  activeBuckets: number
+  minimumActiveBuckets: number
+  longestGap: number
+  maximumGap: number
+  failingReasons: ReadinessFailure[]
+}
+```
+
+### Unready ranges and richest available analytics
+
+All configured ranges remain selectable. When a requested historical range is
+not ready:
+
+- show the exact failing gates in plain English
+- show achievable progress such as “3 more active weeks needed” or “8 more
+  assessments needed”
+- offer the longest shorter configured range that passes
+- do not silently change the selected URL range
+- continue rendering current-state and fixed-forecast analytics that do not
+  depend on the selected historical window
+
+The richest available historical range is:
+
+```text
+r* = max({r in configured ranges where Ready(r) is true})
+```
+
+Current-state Retention Health and Fragile Knowledge remain available when
+historical readiness fails. Upcoming Review Load remains available because its
+forward-looking 14-day horizon is independent of historical range readiness.
+Historical Recall Quality, Practice Rhythm, Ratings Mix, Where to Focus, Memory
+Strength, and Recent Overdue Backlog use the readiness contract applicable to
+their evidence.
+
+The readiness system encourages sustained practice by making progress visible,
+but it must not shame the user, inflate activity requirements, or imply that
+more review volume is inherently better.
+
+## Chart catalogue and diagnostics
+
+Every production chart has a typed, inspectable definition. The catalogue
+documents chart semantics without replacing explicit Recharts components with
+one generic configuration-driven renderer.
+
+Suggested ownership:
+
+```text
+src/features/analytics/domain/
+  analytics-range-policy.ts
+  analytics-readiness.ts
+  metric-definitions.ts
+
+src/features/analytics/components/charts/
+  chart-definitions.ts
+  chart-shared.tsx
+  <explicit chart components>
+```
+
+Each chart definition records:
+
+```ts
+interface AnalyticsChartDefinition {
+  id: AnalyticsChartId
+  title: string
+  question: string
+  metricMeaning: string
+  dataSource: string
+  eligibility: string
+  aggregation: string
+  readiness: 'historical' | 'current-state' | 'forecast'
+  xAxis: string
+  yAxis: string
+  series: readonly ChartSeriesDefinition[]
+  tooltipFields: readonly string[]
+  emptyState: string
+  interpretationWarning?: string
+}
+```
+
+Definitions use stable chart IDs, series keys, labels, and semantic color token
+names. Legends and tooltips use the same labels. Each explicit chart component
+links to its definition and corresponding metric builder so a maintainer can
+trace:
+
+```text
+chart mark -> series definition -> serialized field -> aggregation -> evidence
+```
+
+Development diagnostics may serialize or display:
+
+- requested and effective range boundaries
+- bucket size and exact bucket boundaries
+- accepted and rejected evidence counts
+- `S`, `A`, `G`, and `E`
+- every readiness threshold and pass/fail result
+- metric-specific sample sizes
+- null buckets and rejection reasons
+
+If a visual diagnostics panel is added, it is development-only, is not part of
+normal user-facing Analytics, and consumes the same typed readiness result used
+by production behavior. It must not introduce a second calculation path.
+
+Focused tests keep chart definitions, contract keys, calculations, legends,
+tooltips, and rendered series aligned. Semantic colors use named Analytics
+tokens rather than anonymous `chart-1`, `chart-2`, or positional assumptions.
+
 ## Component and data ownership
 
 Preserve the repository dependency direction:
@@ -182,6 +450,10 @@ SQLite review attempts and FSRS cards
 
 Responsibilities:
 
+- `src/features/analytics/domain/analytics-range-policy.ts` owns generic bucket
+  selection and configured-range ordering.
+- `src/features/analytics/domain/analytics-readiness.ts` owns effective-window
+  and readiness calculations.
 - `src/features/analytics/domain` owns pure bucketing and metric aggregation.
 - `src/features/analytics/server` composes local persisted and FSRS-derived
   inputs.
@@ -231,6 +503,11 @@ for each changed behavior and then pass after the smallest production change.
 
 Domain and contract tests cover:
 
+- generic bucket selection for current and future example ranges
+- exact `S`, `A`, `G`, `E`, and readiness-gate results
+- leading-empty trimming without removal of internal or trailing gaps
+- richest passing configured-range selection
+- explainable readiness failure reasons
 - exact 14-day daily, 30-day three-day, and 90-day weekly boundaries
 - partial first and last buckets
 - count preservation across aggregation
@@ -241,6 +518,10 @@ Domain and contract tests cover:
 
 Component tests cover:
 
+- selected but unready range progress and shorter-range recommendation
+- effective-window copy when leading empty buckets are removed
+- continued current-state and forecast rendering when history is unready
+- chart catalogue labels and semantic series alignment
 - Recall Quality hierarchy, legends, and tooltip values
 - mixed Practice Rhythm bars and correctness line
 - stable Ratings Mix semantic series
