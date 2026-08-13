@@ -170,6 +170,23 @@ describe('dashboard routes', () => {
     expect(await screen.findByText(new RegExp(expectedCopy, 'i'))).toBeVisible()
   })
 
+  it('navigates from Settings to Overview through the brand link', async () => {
+    const { router, user } = renderDashboard('/settings')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Settings' }),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('link', { name: 'Open Overview' }))
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/')
+    })
+    expect(
+      await screen.findByRole('heading', { name: 'Overview' }),
+    ).toBeVisible()
+  })
+
   it('renders the hidden dev smoke route without adding it to primary navigation', async () => {
     vi.mocked(sendMessage).mockImplementation((method) => {
       if (method === 'devSmoke.run') {
