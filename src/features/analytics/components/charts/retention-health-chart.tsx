@@ -11,38 +11,36 @@ import {
   ReferenceLine,
   Scatter,
   ScatterChart,
+  type ScatterShapeProps,
   XAxis,
   YAxis,
 } from 'recharts'
+import { useEffect, useRef, useState } from 'react'
 
 import { ChartEmptyState, chartDimension, formatPercent } from './chart-shared'
 import type { RetentionHealthPoint } from './types'
+import {
+  classifyRetentionStatus,
+  describeRetentionPoint,
+  RetentionHealthTooltip,
+  retentionStatusDetails,
+  type RetentionStatus,
+} from './retention-health-tooltip'
 
 const retentionHealthChartConfig = {
   aboveTarget: {
-    label: 'Above target',
-    color: 'var(--chart-3)',
+    label: retentionStatusDetails.aboveTarget.label,
+    color: retentionStatusDetails.aboveTarget.color,
   },
   approaching: {
-    label: 'Approaching',
-    color: 'var(--chart-4)',
+    label: retentionStatusDetails.approaching.label,
+    color: retentionStatusDetails.approaching.color,
   },
   belowTarget: {
-    label: 'Below target',
-    color: 'var(--chart-5)',
+    label: retentionStatusDetails.belowTarget.label,
+    color: retentionStatusDetails.belowTarget.color,
   },
 } satisfies ChartConfig
-
-type RetentionStatus = 'aboveTarget' | 'approaching' | 'belowTarget'
-
-function getStatus(
-  retrievability: number,
-  targetRetention: number,
-): RetentionStatus {
-  if (retrievability >= targetRetention) return 'aboveTarget'
-  if (retrievability >= targetRetention - 0.1) return 'approaching'
-  return 'belowTarget'
-}
 
 export function RetentionHealthChart({
   data,
@@ -51,6 +49,37 @@ export function RetentionHealthChart({
   data: RetentionHealthPoint[]
   targetRetention: number
 }) {
+  const [pinnedPoint, setPinnedPoint] = useState<RetentionHealthPoint | null>(
+    null,
+  )
+  const chartRegionRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!pinnedPoint) return
+
+    function closeIfOutside(event: PointerEvent) {
+      const target = event.target
+
+      if (target instanceof Node && !chartRegionRef.current?.contains(target)) {
+        setPinnedPoint(null)
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setPinnedPoint(null)
+      }
+    }
+
+    document.addEventListener('pointerdown', closeIfOutside, true)
+    document.addEventListener('keydown', closeOnEscape)
+
+    return () => {
+      document.removeEventListener('pointerdown', closeIfOutside, true)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [pinnedPoint])
+
   if (data.length === 0) {
     return (
       <ChartEmptyState
@@ -62,98 +91,169 @@ export function RetentionHealthChart({
 
   const grouped = data.reduce<Record<RetentionStatus, RetentionHealthPoint[]>>(
     (groups, point) => {
-      groups[getStatus(point.retrievability, targetRetention)].push(point)
+      groups[
+        classifyRetentionStatus(point.retrievability, point.targetRetention)
+      ].push(point)
       return groups
     },
     { aboveTarget: [], approaching: [], belowTarget: [] },
   )
 
-  return (
-    <ChartContainer
-      accessibleDescription={`Each point is a reviewed problem plotted by days since review and predicted retrievability. The target is ${formatPercent(targetRetention)}.`}
-      accessibleName="Retention health chart"
-      aria-label="Retention health chart"
-      aria-roledescription="scatter plot"
-      className="aspect-auto h-72 min-h-[18rem]"
-      config={retentionHealthChartConfig}
-      initialDimension={chartDimension}
-      role="img"
-    >
-      <ScatterChart
-        accessibilityLayer
-        margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
-      >
-        <CartesianGrid stroke="var(--color-border)" />
-        <XAxis
-          allowDecimals={false}
-          axisLine={false}
-          dataKey="daysSinceReview"
-          label={{
-            value: 'Days since review',
-            position: 'insideBottom',
-            offset: -2,
-          }}
-          tickLine={false}
-          type="number"
-          width={42}
-        />
-        <YAxis
-          axisLine={false}
-          domain={[0, 1]}
-          tickFormatter={formatPercent}
-          tickLine={false}
-          width={42}
-        />
-        <ReferenceLine
-          label={{
-            fill: 'var(--chart-2)',
-            fontSize: 11,
-            position: 'insideTopRight',
-            value: `Target ${formatPercent(targetRetention)}`,
-          }}
-          stroke="var(--chart-2)"
-          strokeDasharray="5 5"
-          y={targetRetention}
-        />
-        <ChartTooltip
-          content={
-            <ChartTooltipContent
-              active={false}
-              formatter={(value, name) => [
-                name === 'daysSinceReview'
-                  ? `${String(value)} days`
-                  : formatPercent(typeof value === 'number' ? value : null),
-                name === 'daysSinceReview'
-                  ? 'Days since review'
-                  : 'Retrievability',
-              ]}
-              payload={[]}
-            />
+  const summary = (Object.keys(grouped) as RetentionStatus[]).map((status) => ({
+    count: grouped[status].length,
+    status,
+  }))
+
+  function renderPoint({
+    cx,
+    cy,
+    fill,
+    payload,
+  }: ScatterShapeProps & { fill?: string | undefined }) {
+    const point = payload as RetentionHealthPoint | undefined
+
+    if (cx === undefined || cy === undefined || point === undefined) {
+      return null
+    }
+
+    const label = describeRetentionPoint(point)
+
+    return (
+      <g
+        aria-controls="retention-health-details"
+        aria-expanded={pinnedPoint?.slug === point.slug}
+        aria-haspopup="dialog"
+        aria-label={label}
+        className="cursor-pointer focus-visible:[&>circle:first-of-type]:stroke-2 focus-visible:[&>circle:first-of-type]:stroke-ring"
+        onClick={() => setPinnedPoint(point)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            setPinnedPoint(point)
           }
+        }}
+        role="button"
+        tabIndex={0}
+      >
+        <title>{label}</title>
+        <circle cx={cx} cy={cy} fill={fill} r={6} />
+        <circle cx={cx} cy={cy} fill="transparent" r={12} />
+      </g>
+    )
+  }
+
+  return (
+    <div className="relative" ref={chartRegionRef}>
+      <dl className="mb-3 grid grid-cols-3 gap-2">
+        {summary.map(({ count, status }) => (
+          <div className="min-w-0" key={status}>
+            <dt className="text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+              {retentionStatusDetails[status].label}
+            </dt>
+            <dd
+              className="m-0 text-lg font-semibold tabular-nums"
+              style={{ color: retentionStatusDetails[status].color }}
+            >
+              {count}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <ChartContainer
+        accessibleDescription={`Each point is a reviewed problem plotted by days since review and predicted retrievability. The target is ${formatPercent(targetRetention)}.`}
+        accessibleName="Retention health chart"
+        aria-label="Retention health chart"
+        aria-roledescription="interactive scatter plot"
+        className="aspect-auto h-72 min-h-[18rem]"
+        config={retentionHealthChartConfig}
+        initialDimension={chartDimension}
+        role="group"
+      >
+        <ScatterChart
+          accessibilityLayer
+          margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+        >
+          <CartesianGrid stroke="var(--color-border)" />
+          <XAxis
+            allowDecimals={false}
+            axisLine={false}
+            dataKey="daysSinceReview"
+            label={{
+              value: 'Days since review',
+              position: 'insideBottom',
+              offset: -2,
+            }}
+            tickLine={false}
+            type="number"
+            width={42}
+          />
+          <YAxis
+            axisLine={false}
+            domain={[0, 1]}
+            tickFormatter={formatPercent}
+            tickLine={false}
+            width={42}
+          />
+          <ReferenceLine
+            label={{
+              fill: 'var(--chart-2)',
+              fontSize: 11,
+              position: 'insideTopRight',
+              value: `Target ${formatPercent(targetRetention)}`,
+            }}
+            stroke="var(--chart-2)"
+            strokeDasharray="5 5"
+            y={targetRetention}
+          />
+          <ChartTooltip
+            content={
+              <ChartTooltipContent
+                active={false}
+                formatter={(value, name) => [
+                  name === 'daysSinceReview'
+                    ? `${String(value)} days`
+                    : formatPercent(typeof value === 'number' ? value : null),
+                  name === 'daysSinceReview'
+                    ? 'Days since review'
+                    : 'Retrievability',
+                ]}
+                payload={[]}
+              />
+            }
+          />
+          <ChartLegend content={<ChartLegendContent />} />
+          <Scatter
+            data={grouped.aboveTarget}
+            dataKey="retrievability"
+            fill="var(--color-aboveTarget)"
+            isAnimationActive={false}
+            name="Above target"
+            shape={renderPoint}
+          />
+          <Scatter
+            data={grouped.approaching}
+            dataKey="retrievability"
+            fill="var(--color-approaching)"
+            isAnimationActive={false}
+            name="Approaching"
+            shape={renderPoint}
+          />
+          <Scatter
+            data={grouped.belowTarget}
+            dataKey="retrievability"
+            fill="var(--color-belowTarget)"
+            isAnimationActive={false}
+            name="Below target"
+            shape={renderPoint}
+          />
+        </ScatterChart>
+      </ChartContainer>
+      {pinnedPoint ? (
+        <RetentionHealthTooltip
+          onClose={() => setPinnedPoint(null)}
+          point={pinnedPoint}
         />
-        <ChartLegend content={<ChartLegendContent />} />
-        <Scatter
-          data={grouped.aboveTarget}
-          dataKey="retrievability"
-          fill="var(--color-aboveTarget)"
-          isAnimationActive={false}
-          name="Above target"
-        />
-        <Scatter
-          data={grouped.approaching}
-          dataKey="retrievability"
-          fill="var(--color-approaching)"
-          isAnimationActive={false}
-          name="Approaching"
-        />
-        <Scatter
-          data={grouped.belowTarget}
-          dataKey="retrievability"
-          fill="var(--color-belowTarget)"
-          isAnimationActive={false}
-          name="Below target"
-        />
-      </ScatterChart>
-    </ChartContainer>
+      ) : null}
+    </div>
   )
 }

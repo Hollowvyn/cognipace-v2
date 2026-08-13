@@ -63,9 +63,9 @@ describe('FragileKnowledgeTable', () => {
     expect(within(region).queryByRole('table')).not.toBeInTheDocument()
   })
 
-  it('shows a compact initial list with an accessible expansion control', async () => {
+  it('paginates five fragile rows at a time and links each problem safely', async () => {
     const user = userEvent.setup()
-    const manyRows = Array.from({ length: 11 }, (_, index) => ({
+    const manyRows = Array.from({ length: 12 }, (_, index) => ({
       ...rows[0]!,
       slug: `graph-${index}`,
       title: `Graph ${index}`,
@@ -74,15 +74,52 @@ describe('FragileKnowledgeTable', () => {
     render(<FragileKnowledgeTable rows={manyRows} />)
 
     const region = screen.getByRole('region', { name: 'Fragile knowledge' })
+    expect(within(region).getAllByRole('row')).toHaveLength(6)
+    expect(within(region).getByText('Showing 1–5 of 12')).toBeVisible()
     expect(
-      within(region).getByText('Showing 10 of 11 fragile problems.'),
-    ).toBeVisible()
-    expect(within(region).queryByText('Graph 10')).not.toBeInTheDocument()
+      within(region).getByRole('link', { name: 'Graph 0' }),
+    ).toHaveAttribute('href', 'https://leetcode.com/problems/graph-0/')
+    expect(
+      within(region).getByRole('link', { name: 'Graph 0' }),
+    ).toHaveAttribute('target', '_blank')
+    expect(
+      within(region).getByRole('link', { name: 'Graph 0' }),
+    ).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(
+      within(region).getByRole('button', { name: 'Previous page' }),
+    ).toBeDisabled()
 
-    const button = within(region).getByRole('button', { name: 'Show 1 more' })
-    expect(button).toHaveAttribute('aria-expanded', 'false')
-    await user.click(button)
-    expect(within(region).getByText('Graph 10')).toBeVisible()
-    expect(button).toHaveAttribute('aria-expanded', 'true')
+    await user.click(within(region).getByRole('button', { name: 'Next page' }))
+    expect(within(region).getByText('Showing 6–10 of 12')).toBeVisible()
+    expect(within(region).queryByText('Graph 0')).not.toBeInTheDocument()
+
+    await user.click(within(region).getByRole('button', { name: 'Next page' }))
+    expect(within(region).getByText('Showing 11–12 of 12')).toBeVisible()
+    expect(
+      within(region).getByRole('button', { name: 'Next page' }),
+    ).toBeDisabled()
+
+    await user.click(
+      within(region).getByRole('button', { name: 'Previous page' }),
+    )
+    expect(within(region).getByText('Showing 6–10 of 12')).toBeVisible()
+  })
+
+  it('resets the page when changed rows remove the current page', async () => {
+    const user = userEvent.setup()
+    const manyRows = Array.from({ length: 12 }, (_, index) => ({
+      ...rows[0]!,
+      slug: `graph-${index}`,
+      title: `Graph ${index}`,
+    }))
+    const { rerender } = render(<FragileKnowledgeTable rows={manyRows} />)
+    const region = screen.getByRole('region', { name: 'Fragile knowledge' })
+
+    await user.click(within(region).getByRole('button', { name: 'Next page' }))
+    await user.click(within(region).getByRole('button', { name: 'Next page' }))
+    expect(within(region).getByText('Showing 11–12 of 12')).toBeVisible()
+
+    rerender(<FragileKnowledgeTable rows={manyRows.slice(0, 6)} />)
+    expect(within(region).getByText('Showing 1–5 of 6')).toBeVisible()
   })
 })

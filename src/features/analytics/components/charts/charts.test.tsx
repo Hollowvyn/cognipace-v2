@@ -5,6 +5,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -219,7 +220,7 @@ describe('analytics chart components', () => {
       screen.getByRole('img', { name: 'Upcoming review load chart' }),
     ).toBeVisible()
     expect(
-      screen.getByRole('img', { name: 'Retention health chart' }),
+      screen.getByRole('group', { name: 'Retention health chart' }),
     ).toBeVisible()
     expect(document.querySelectorAll('svg')).toHaveLength(10)
   })
@@ -404,6 +405,74 @@ describe('analytics chart components', () => {
     expect(
       screen.getByTestId('recall-predicted-lines-semantic-tooltip-source'),
     ).toHaveAttribute('stroke', 'transparent')
+  })
+
+  it('pins retention details from mouse and keyboard interactions', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <RetentionHealthChart data={retentionHealth} targetRetention={0.9} />,
+    )
+
+    const dijkstraPoint = screen.getByRole('button', {
+      name: /Dijkstra retention/i,
+    })
+    await user.click(dijkstraPoint)
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'Dijkstra memory details',
+    })
+    expect(dialog).toBeVisible()
+    expect(
+      within(dialog).getByRole('link', { name: 'Open Dijkstra on LeetCode' }),
+    ).toHaveAttribute('href', 'https://leetcode.com/problems/graphs-dijkstra/')
+    expect(
+      within(dialog).getByRole('link', { name: 'Open Dijkstra on LeetCode' }),
+    ).toHaveAttribute('target', '_blank')
+    expect(
+      within(dialog).getByRole('link', { name: 'Open Dijkstra on LeetCode' }),
+    ).toHaveAttribute('rel', 'noopener noreferrer')
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    screen.getByRole('button', { name: /Dijkstra retention/i }).focus()
+    await user.keyboard('{Enter}')
+    expect(
+      screen.getByRole('dialog', { name: 'Dijkstra memory details' }),
+    ).toBeVisible()
+
+    await user.keyboard('{Escape}')
+    screen.getByRole('button', { name: /Dijkstra retention/i }).focus()
+    await user.keyboard(' ')
+    expect(
+      screen.getByRole('dialog', { name: 'Dijkstra memory details' }),
+    ).toBeVisible()
+  })
+
+  it('closes pinned retention details on outside pointerdown without closing its link', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <RetentionHealthChart data={retentionHealth} targetRetention={0.9} />,
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: /Dijkstra retention/i }),
+    )
+    const dialog = screen.getByRole('dialog', {
+      name: 'Dijkstra memory details',
+    })
+    const link = within(dialog).getByRole('link', {
+      name: 'Open Dijkstra on LeetCode',
+    })
+
+    fireEvent.pointerDown(link)
+    fireEvent.click(link)
+    expect(dialog).toBeVisible()
+
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('renders unknown overdue history as an unconnected chart category gap', () => {
