@@ -18,7 +18,7 @@ const chartConfig = {
 
 describe('Chart primitive', () => {
   it('provides stable identity, configured labels, and an accessible description', () => {
-    render(
+    const chart = (
       <>
         <p id="review-chart-description">
           Daily review outcomes for the selected period.
@@ -51,18 +51,27 @@ describe('Chart primitive', () => {
             />
           </BarChart>
         </ChartContainer>
-      </>,
+      </>
     )
 
-    const chart = document.querySelector(
+    const { rerender } = render(chart)
+
+    const chartContainer = document.querySelector(
       '[data-chart="chart-analytics-review-quality"]',
     )
 
-    expect(chart).toBeInTheDocument()
-    expect(chart).toHaveAttribute(
+    expect(chartContainer).toBeInTheDocument()
+    expect(chartContainer).toHaveAttribute(
       'aria-describedby',
       'review-chart-description',
     )
     expect(screen.getByText('Reviews')).toBeInTheDocument()
+    expect(screen.getByRole('application')).toHaveAttribute('tabindex', '0')
+
+    rerender(chart)
+
+    expect(
+      document.querySelector('[data-chart="chart-analytics-review-quality"]'),
+    ).toBe(chartContainer)
   })
 })

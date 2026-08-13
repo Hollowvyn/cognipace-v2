@@ -225,8 +225,15 @@ export const ChartTooltipContent = React.forwardRef<
                 nameKey ?? item.name ?? item.dataKey ?? 'value',
               )
               const itemConfig = getPayloadConfigFromPayload(config, item, key)
-              const indicatorColor = color ?? item.payload?.fill ?? item.color
+              const indicatorColor =
+                color ?? getPayloadFill(item.payload as unknown) ?? item.color
               const Icon = itemConfig?.icon
+              const value =
+                item.value != null
+                  ? formatter
+                    ? formatter(item.value, item.name, item, index, payload)
+                    : item.value.toLocaleString()
+                  : null
 
               return (
                 <div
@@ -273,9 +280,9 @@ export const ChartTooltipContent = React.forwardRef<
                         {itemConfig?.label ?? item.name}
                       </span>
                     </div>
-                    {item.value != null && (
+                    {value != null && (
                       <span className="font-mono font-medium tabular-nums text-foreground">
-                        {item.value.toLocaleString()}
+                        {value}
                       </span>
                     )}
                   </div>
@@ -383,6 +390,15 @@ function getPayloadConfigFromPayload(
         : key
 
   return config[configLabelKey] ?? config[key]
+}
+
+function getPayloadFill(payload: unknown): string | undefined {
+  if (typeof payload !== 'object' || payload === null || !('fill' in payload)) {
+    return undefined
+  }
+
+  const fill = payload.fill
+  return typeof fill === 'string' ? fill : undefined
 }
 
 export { ChartStyle }
