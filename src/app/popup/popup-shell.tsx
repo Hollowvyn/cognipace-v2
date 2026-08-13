@@ -32,7 +32,7 @@ export function PopupShell({
       theme={data.settings.appearance.themeMode}
     >
       <header className="flex items-center justify-between gap-3">
-        <h1 aria-label="CogniPace" className="m-0 min-w-0 truncate">
+        <h1 aria-label="CogniPace" className="m-0 min-w-0">
           <button
             aria-label="Open Overview"
             className="inline-flex min-w-0 max-w-full items-center gap-2 rounded-[var(--cp-control-radius)] border-0 bg-transparent p-0 text-left text-[length:var(--cp-title-font-size)] font-extrabold leading-tight text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
