@@ -13,16 +13,20 @@ import {
   formatChartDate,
   toChartLabel,
 } from './chart-shared'
+import { analyticsChartDefinitions } from './chart-definitions'
 import type { UpcomingLoadPoint } from './types'
+
+const upcomingLoadDefinition = analyticsChartDefinitions.upcomingLoad
+const [overdueSeries, upcomingSeries] = upcomingLoadDefinition.series
 
 const upcomingLoadChartConfig = {
   dueCount: {
-    label: 'Upcoming reviews',
-    color: 'var(--cp-analytics-healthy)',
+    label: upcomingSeries.label,
+    color: upcomingSeries.color,
   },
   overdueCount: {
-    label: 'Overdue reviews',
-    color: 'var(--cp-analytics-risk)',
+    label: overdueSeries.label,
+    color: overdueSeries.color,
   },
 } satisfies ChartConfig
 
@@ -41,12 +45,18 @@ export function UpcomingReviewLoadChart({
   }
 
   return (
-    <div className="grid min-w-0 gap-3">
-      <p className="m-0 text-sm font-medium text-foreground">Next 14 days</p>
+    <div
+      className="grid min-w-0 gap-3"
+      data-chart-definition={upcomingLoadDefinition.id}
+      data-testid={`analytics-chart-${upcomingLoadDefinition.id}`}
+    >
+      <p className="m-0 text-sm font-medium text-foreground">
+        {upcomingLoadDefinition.title} · Next 14 days
+      </p>
       <ChartContainer
-        accessibleDescription="Fixed next 14 days review workload forecast. Overdue work is separated from scheduled upcoming reviews and does not change with the historical range."
-        accessibleName="Upcoming review load chart"
-        aria-label="Upcoming review load chart"
+        accessibleDescription={upcomingLoadDefinition.metricMeaning}
+        accessibleName={`${upcomingLoadDefinition.title} chart`}
+        aria-label={`${upcomingLoadDefinition.title} chart`}
         aria-roledescription="bar chart"
         className="aspect-auto h-64 min-h-[16rem]"
         config={upcomingLoadChartConfig}
@@ -92,16 +102,16 @@ export function UpcomingReviewLoadChart({
           <ChartLegend />
           <Bar
             dataKey="overdueCount"
-            fill="var(--color-overdueCount)"
+            fill={overdueSeries.color}
             isAnimationActive={false}
-            name="Overdue reviews"
+            name={overdueSeries.label}
             stackId="load"
           />
           <Bar
             dataKey="dueCount"
-            fill="var(--color-dueCount)"
+            fill={upcomingSeries.color}
             isAnimationActive={false}
-            name="Upcoming reviews"
+            name={upcomingSeries.label}
             radius={[3, 3, 0, 0]}
             stackId="load"
           />

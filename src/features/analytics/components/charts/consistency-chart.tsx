@@ -15,17 +15,23 @@ import {
   formatPercent,
   toChartLabel,
 } from './chart-shared'
+import { analyticsChartDefinitions } from './chart-definitions'
 import { LineSegments } from './line-segments'
 import type { PracticeRhythmPoint } from './types'
 
+const practiceRhythmDefinition = analyticsChartDefinitions.practiceRhythm
+const [reviewSeries, correctnessSeries] = practiceRhythmDefinition.series
+const [reviewsTooltip, correctnessTooltip, sampleTooltip] =
+  practiceRhythmDefinition.tooltipFields
+
 const practiceRhythmChartConfig = {
   reviewCount: {
-    label: 'Reviews',
-    color: 'var(--cp-analytics-practice-volume)',
+    label: reviewSeries.label,
+    color: reviewSeries.color,
   },
   observedCorrectness: {
-    label: 'Observed correctness',
-    color: 'var(--cp-analytics-observed)',
+    label: correctnessSeries.label,
+    color: correctnessSeries.color,
   },
 } satisfies ChartConfig
 
@@ -43,11 +49,9 @@ function hasPermittedGap(data: readonly PracticeRhythmPoint[]): boolean {
 function PracticeRhythmLegend() {
   return (
     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-      <span style={{ color: 'var(--cp-analytics-practice-volume)' }}>
-        Reviews
-      </span>
-      <span style={{ color: 'var(--cp-analytics-observed)' }}>
-        Observed correctness
+      <span style={{ color: reviewSeries.color }}>{reviewSeries.label}</span>
+      <span style={{ color: correctnessSeries.color }}>
+        {correctnessSeries.label}
       </span>
     </div>
   )
@@ -69,12 +73,16 @@ export function PracticeRhythmChart({ data }: { data: PracticeRhythmPoint[] }) {
   }
 
   return (
-    <div className="grid min-w-0 gap-3">
-      <div data-testid="practice-correctness-lines">
+    <div
+      className="grid min-w-0 gap-3"
+      data-chart-definition={practiceRhythmDefinition.id}
+      data-testid={`analytics-chart-${practiceRhythmDefinition.id}`}
+    >
+      <div>
         <ChartContainer
-          accessibleDescription="Each adaptive time bucket shows review volume and, when eligible assessments exist, observed correctness. This describes an association, not proof of causation."
-          accessibleName="Practice rhythm chart"
-          aria-label="Practice rhythm chart"
+          accessibleDescription={practiceRhythmDefinition.metricMeaning}
+          accessibleName={`${practiceRhythmDefinition.title} chart`}
+          aria-label={`${practiceRhythmDefinition.title} chart`}
           aria-roledescription="composed bar and line chart"
           className="aspect-auto h-72 min-h-[18rem]"
           config={practiceRhythmChartConfig}
@@ -127,12 +135,12 @@ export function PracticeRhythmChart({ data }: { data: PracticeRhythmPoint[] }) {
                   active={false}
                   formatter={(value, name, item) => {
                     const point = item.payload as PracticeRhythmPoint
-                    const reviews = name === 'Reviews'
+                    const reviews = name === reviewSeries.label
                     return [
                       reviews
                         ? `${String(value)} reviews`
-                        : `${formatPercent(typeof value === 'number' ? value : null)} · ${point.sampleSize} eligible review${point.sampleSize === 1 ? '' : 's'}`,
-                      reviews ? 'Reviews' : 'Observed correctness',
+                        : `${formatPercent(typeof value === 'number' ? value : null)} · ${point.sampleSize} ${sampleTooltip.label.toLowerCase()}`,
+                      reviews ? reviewsTooltip.label : correctnessTooltip.label,
                     ]
                   }}
                   labelFormatter={(label, payload) => {
@@ -151,9 +159,9 @@ export function PracticeRhythmChart({ data }: { data: PracticeRhythmPoint[] }) {
             <Bar
               dataKey="reviewCount"
               data-testid="practice-review-bars"
-              fill="var(--cp-analytics-practice-volume)"
+              fill={reviewSeries.color}
               isAnimationActive={false}
-              name="Reviews"
+              name={reviewSeries.label}
               radius={[3, 3, 0, 0]}
               yAxisId="reviews"
             />
@@ -162,8 +170,9 @@ export function PracticeRhythmChart({ data }: { data: PracticeRhythmPoint[] }) {
                 data={data}
                 dataKey="observedCorrectness"
                 maximumGap={2}
-                seriesKey="Observed correctness"
-                stroke="var(--cp-analytics-observed)"
+                seriesKey={correctnessSeries.label}
+                stroke={correctnessSeries.color}
+                testId="practice-correctness-lines"
                 type="linear"
                 yAxisId="correctness"
               />
@@ -173,7 +182,7 @@ export function PracticeRhythmChart({ data }: { data: PracticeRhythmPoint[] }) {
       </div>
       <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
         <span className="font-medium text-foreground">
-          Association, not causation.
+          {practiceRhythmDefinition.interpretationWarning}
         </span>{' '}
         More reviews and stronger observed correctness can move together without
         either one proving it caused the other.

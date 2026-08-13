@@ -19,6 +19,7 @@ export interface LineSegmentsProps<T extends Record<string, unknown>> {
   seriesKey: string
   stroke: string
   strokeWidth?: number
+  testId?: string
   type?: 'linear' | 'monotone'
   yAxisId?: string
 }
@@ -125,6 +126,7 @@ export function LineSegments<T extends Record<string, unknown>>({
   seriesKey,
   stroke,
   strokeWidth = 2.5,
+  testId = seriesKey,
   type = 'monotone',
   yAxisId,
 }: LineSegmentsProps<T>) {
@@ -138,7 +140,7 @@ export function LineSegments<T extends Record<string, unknown>>({
         activeDot={false}
         aria-hidden="true"
         data={data}
-        data-testid={`${seriesKey}-semantic-tooltip-source`}
+        data-testid={testId}
         dataKey={dataKey}
         dot={false}
         isAnimationActive={false}
@@ -150,7 +152,7 @@ export function LineSegments<T extends Record<string, unknown>>({
         {...(yAxisId === undefined ? {} : { yAxisId })}
       />
       {segments.map((segment) => {
-        const testId = `${seriesKey}-${segment.kind}-${segment.fromIndex}-${segment.toIndex}`
+        const segmentTestId = `${testId}-${segment.kind}-${segment.fromIndex}-${segment.toIndex}`
 
         return (
           <Line
@@ -162,7 +164,7 @@ export function LineSegments<T extends Record<string, unknown>>({
               segment.fromIndex,
               segment.toIndex,
             )}
-            data-testid={testId}
+            data-testid={segmentTestId}
             dataKey={
               SEGMENT_VALUE_KEY as keyof (T &
                 Record<typeof SEGMENT_VALUE_KEY, number | null>) &
@@ -176,7 +178,7 @@ export function LineSegments<T extends Record<string, unknown>>({
             stroke={stroke}
             {...(segment.kind === 'bridge'
               ? {
-                  shape: createBridgeShape(testId),
+                  shape: createBridgeShape(segmentTestId),
                   strokeDasharray: '5 5',
                 }
               : {})}

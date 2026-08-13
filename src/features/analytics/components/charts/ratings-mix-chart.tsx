@@ -15,24 +15,29 @@ import {
   formatPercent,
   toChartLabel,
 } from './chart-shared'
+import { analyticsChartDefinitions } from './chart-definitions'
 import type { HardAgainSummary, RatingsMixPoint } from './types'
+
+const ratingsMixDefinition = analyticsChartDefinitions.ratingsMix
+const [againSeries, hardSeries, goodSeries, easySeries] =
+  ratingsMixDefinition.series
 
 const ratingsMixChartConfig = {
   again: {
-    label: 'Again',
-    color: 'var(--cp-analytics-again)',
+    label: againSeries.label,
+    color: againSeries.color,
   },
   hard: {
-    label: 'Hard',
-    color: 'var(--cp-analytics-hard)',
+    label: hardSeries.label,
+    color: hardSeries.color,
   },
   good: {
-    label: 'Good',
-    color: 'var(--cp-analytics-good)',
+    label: goodSeries.label,
+    color: goodSeries.color,
   },
   easy: {
-    label: 'Easy',
-    color: 'var(--cp-analytics-easy)',
+    label: easySeries.label,
+    color: easySeries.color,
   },
 } satisfies ChartConfig
 
@@ -40,10 +45,10 @@ export const ratingsMixStackOffset = 'expand' as const
 
 function RatingsLegend() {
   const items = [
-    ['Again', 'var(--cp-analytics-again)'],
-    ['Hard', 'var(--cp-analytics-hard)'],
-    ['Good', 'var(--cp-analytics-good)'],
-    ['Easy', 'var(--cp-analytics-easy)'],
+    [againSeries.label, againSeries.color],
+    [hardSeries.label, hardSeries.color],
+    [goodSeries.label, goodSeries.color],
+    [easySeries.label, easySeries.color],
   ] as const
 
   return (
@@ -76,11 +81,15 @@ export function RatingsMixChart({
   }
 
   return (
-    <div className="grid min-w-0 gap-3">
+    <div
+      className="grid min-w-0 gap-3"
+      data-chart-definition={ratingsMixDefinition.id}
+      data-testid={`analytics-chart-${ratingsMixDefinition.id}`}
+    >
       <ChartContainer
-        accessibleDescription="Stacked rating proportions in each selected time bucket for Again, Hard, Good, and Easy. The Hard plus Again summary compares the selected period with the immediately preceding comparable period."
-        accessibleName="Ratings mix chart"
-        aria-label="Ratings mix chart"
+        accessibleDescription={ratingsMixDefinition.metricMeaning}
+        accessibleName={`${ratingsMixDefinition.title} chart`}
+        aria-label={`${ratingsMixDefinition.title} chart`}
         aria-roledescription="stacked bar chart"
         className="aspect-auto h-64 min-h-[16rem]"
         config={ratingsMixChartConfig}
@@ -136,30 +145,30 @@ export function RatingsMixChart({
           <ChartLegend content={<RatingsLegend />} />
           <Bar
             dataKey="again"
-            fill="var(--color-again)"
+            fill={againSeries.color}
             isAnimationActive={false}
-            name="Again"
+            name={againSeries.label}
             stackId="ratings"
           />
           <Bar
             dataKey="hard"
-            fill="var(--color-hard)"
+            fill={hardSeries.color}
             isAnimationActive={false}
-            name="Hard"
+            name={hardSeries.label}
             stackId="ratings"
           />
           <Bar
             dataKey="good"
-            fill="var(--color-good)"
+            fill={goodSeries.color}
             isAnimationActive={false}
-            name="Good"
+            name={goodSeries.label}
             stackId="ratings"
           />
           <Bar
             dataKey="easy"
-            fill="var(--color-easy)"
+            fill={easySeries.color}
             isAnimationActive={false}
-            name="Easy"
+            name={easySeries.label}
             stackId="ratings"
           />
         </BarChart>

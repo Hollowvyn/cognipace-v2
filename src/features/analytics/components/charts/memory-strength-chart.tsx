@@ -14,13 +14,17 @@ import {
   formatDays,
   toChartLabel,
 } from './chart-shared'
+import { analyticsChartDefinitions } from './chart-definitions'
 import { LineSegments } from './line-segments'
 import type { StabilityPoint } from './types'
 
+const memoryStrengthDefinition = analyticsChartDefinitions.memoryStrength
+const [stabilitySeries] = memoryStrengthDefinition.series
+
 const memoryStrengthChartConfig = {
   medianStabilityDays: {
-    label: 'Median stability',
-    color: 'var(--cp-analytics-observed)',
+    label: stabilitySeries.label,
+    color: stabilitySeries.color,
   },
 } satisfies ChartConfig
 
@@ -48,11 +52,15 @@ export function MemoryStrengthChart({ data }: { data: StabilityPoint[] }) {
   }
 
   return (
-    <div className="grid min-w-0 gap-3">
+    <div
+      className="grid min-w-0 gap-3"
+      data-chart-definition={memoryStrengthDefinition.id}
+      data-testid={`analytics-chart-${memoryStrengthDefinition.id}`}
+    >
       <ChartContainer
-        accessibleDescription="Median FSRS stability in each selected adaptive presentation bucket. Higher stability generally means the problem can go longer between reviews."
-        accessibleName="Memory strength chart"
-        aria-label="Memory strength chart"
+        accessibleDescription={memoryStrengthDefinition.metricMeaning}
+        accessibleName={`${memoryStrengthDefinition.title} chart`}
+        aria-label={`${memoryStrengthDefinition.title} chart`}
         aria-roledescription="line chart"
         className="aspect-auto h-64 min-h-[16rem]"
         config={memoryStrengthChartConfig}
@@ -91,7 +99,7 @@ export function MemoryStrengthChart({ data }: { data: StabilityPoint[] }) {
                   const point = item.payload as StabilityPoint
                   return [
                     `${formatDays(typeof value === 'number' ? value : null)} · ${point.sampleSize} stability sample${point.sampleSize === 1 ? '' : 's'}`,
-                    'Median stability',
+                    stabilitySeries.label,
                   ]
                 }}
                 labelFormatter={(label, payload) => {
@@ -110,8 +118,8 @@ export function MemoryStrengthChart({ data }: { data: StabilityPoint[] }) {
             data={data}
             dataKey="medianStabilityDays"
             maximumGap={2}
-            seriesKey="Median stability"
-            stroke="var(--cp-analytics-observed)"
+            seriesKey={stabilitySeries.label}
+            stroke={stabilitySeries.color}
             type="linear"
           />
         </LineChart>

@@ -11,6 +11,7 @@ import {
   UpcomingReviewLoadChart,
   WeakestTopicsChart,
 } from './index'
+import { analyticsChartDefinitions } from './chart-definitions'
 import { buildOverdueBacklogChartSeries } from './overdue-backlog-chart'
 import { ratingsMixStackOffset } from './ratings-mix-chart'
 import type {
@@ -56,11 +57,27 @@ const recallQuality: RecallQualityPoint[] = [
 
 const practiceRhythm: PracticeRhythmPoint[] = [
   {
-    bucketStart: '2026-07-27',
-    bucketEnd: '2026-08-02',
+    bucketStart: '2026-08-01',
+    bucketEnd: '2026-08-01',
     reviewCount: 4,
     observedCorrectness: 0.78,
     sampleSize: 22,
+    associationOnly: true,
+  },
+  {
+    bucketStart: '2026-08-02',
+    bucketEnd: '2026-08-02',
+    reviewCount: 3,
+    observedCorrectness: null,
+    sampleSize: 0,
+    associationOnly: true,
+  },
+  {
+    bucketStart: '2026-08-03',
+    bucketEnd: '2026-08-03',
+    reviewCount: 5,
+    observedCorrectness: 0.84,
+    sampleSize: 18,
     associationOnly: true,
   },
 ]
@@ -115,6 +132,12 @@ const overdue: OverdueBacklogPoint[] = [
   {
     bucketStart: '2026-08-02',
     bucketEnd: '2026-08-02',
+    overdueCount: 5,
+    historyAvailable: true,
+  },
+  {
+    bucketStart: '2026-08-03',
+    bucketEnd: '2026-08-03',
     overdueCount: 7,
     historyAvailable: true,
   },
@@ -216,8 +239,23 @@ describe('analytics chart components', () => {
         screen.getByRole('img', { name: 'Practice rhythm chart' }),
       ).getByText('Observed correctness'),
     ).toBeInTheDocument()
-    expect(screen.getByTestId('practice-review-bars')).toBeInTheDocument()
-    expect(screen.getByTestId('practice-correctness-lines')).toBeInTheDocument()
+    expect(screen.getAllByTestId('practice-review-bars')).not.toHaveLength(0)
+    expect(
+      screen
+        .getAllByTestId('practice-review-bars')
+        .some(
+          (mark) =>
+            mark.getAttribute('fill') ===
+            analyticsChartDefinitions.practiceRhythm.series[0].color,
+        ),
+    ).toBe(true)
+    expect(screen.getByTestId('practice-correctness-lines')).toHaveAttribute(
+      'stroke',
+      'transparent',
+    )
+    expect(
+      screen.getByTestId('practice-correctness-lines-bridge-0-2'),
+    ).toHaveAttribute('stroke-dasharray', '5 5')
     expect(screen.getByText('Association, not causation.')).toBeVisible()
     expect(screen.getByText('Again')).toHaveStyle({
       color: 'var(--cp-analytics-again)',
@@ -235,13 +273,56 @@ describe('analytics chart components', () => {
     expect(
       screen.getByText(/^Showing the five weakest sufficiently sampled topics/),
     ).toBeVisible()
-    expect(screen.getByText(/Dashed line crosses a period/)).toBeVisible()
+    expect(
+      screen.getAllByText(/Dashed line crosses a period/),
+    ).not.toHaveLength(0)
     expect(
       screen.getByText('Target retention', { selector: 'span' }),
     ).toBeVisible()
     expect(screen.getByText('Watch zone · 5')).toBeVisible()
-    expect(screen.getAllByTestId('backlog-healthy-range')).not.toHaveLength(0)
-    expect(screen.getAllByTestId('backlog-attention-range')).not.toHaveLength(0)
+    expect(
+      screen
+        .getAllByTestId('backlog-healthy-range')
+        .some(
+          (mark) =>
+            mark.getAttribute('stroke') ===
+            analyticsChartDefinitions.overdueBacklog.series[2].color,
+        ),
+    ).toBe(true)
+    expect(
+      screen
+        .getAllByTestId('backlog-attention-range')
+        .some(
+          (mark) =>
+            mark.getAttribute('stroke') ===
+            analyticsChartDefinitions.overdueBacklog.series[3].color,
+        ),
+    ).toBe(true)
+    expect(
+      buildOverdueBacklogChartSeries(overdue).map(
+        (point) => point.healthyRange,
+      ),
+    ).toEqual([3, 5, null])
+    expect(
+      buildOverdueBacklogChartSeries(overdue).map(
+        (point) => point.attentionRange,
+      ),
+    ).toEqual([null, null, 7])
+    const lineGradient = document.querySelector('#backlog-line-gradient')
+    expect(lineGradient).toHaveAttribute('y1', '0')
+    expect(lineGradient).toHaveAttribute('y2', '1')
+    expect(lineGradient?.querySelectorAll('stop')[1]).toHaveAttribute(
+      'offset',
+      `${(1 - 5 / 7) * 100}%`,
+    )
+    expect(lineGradient?.querySelectorAll('stop')[1]).toHaveAttribute(
+      'stop-color',
+      analyticsChartDefinitions.overdueBacklog.series[3].color,
+    )
+    expect(lineGradient?.querySelectorAll('stop')[2]).toHaveAttribute(
+      'stop-color',
+      analyticsChartDefinitions.overdueBacklog.series[2].color,
+    )
     expect(screen.getByText(/Next 14 days/)).toBeVisible()
     expect(screen.getByText(/Hard \+ Again this period:/)).toHaveTextContent(
       '25%',
@@ -252,16 +333,92 @@ describe('analytics chart components', () => {
     expect(screen.getByText(/threshold status/i)).toBeVisible()
   })
 
+  it('uses the catalogue as the visible semantic source for every Task 6 chart', () => {
+    render(
+      <div>
+        <RecallQualityChart data={recallQuality} />
+        <PracticeRhythmChart data={practiceRhythm} />
+        <RatingsMixChart data={ratingsMix} summary={hardAgain} />
+        <WeakestTopicsChart data={topics} />
+        <MemoryStrengthChart data={stability} />
+        <OverdueBacklogChart
+          data={overdue}
+          historyAvailableFrom="2026-08-01T00:00:00.000Z"
+        />
+        <UpcomingReviewLoadChart data={upcoming} />
+      </div>,
+    )
+
+    const definitions = [
+      analyticsChartDefinitions.recallQuality,
+      analyticsChartDefinitions.practiceRhythm,
+      analyticsChartDefinitions.ratingsMix,
+      analyticsChartDefinitions.weakestTopics,
+      analyticsChartDefinitions.memoryStrength,
+      analyticsChartDefinitions.overdueBacklog,
+      analyticsChartDefinitions.upcomingLoad,
+    ]
+
+    for (const definition of definitions) {
+      expect(
+        screen.getByTestId(`analytics-chart-${definition.id}`),
+      ).toHaveAttribute('data-chart-definition', definition.id)
+      expect(
+        screen.getByRole('img', { name: `${definition.title} chart` }),
+      ).toBeVisible()
+    }
+
+    expect(
+      within(
+        screen.getByRole('img', { name: 'Recall quality chart' }),
+      ).getByText(analyticsChartDefinitions.recallQuality.series[0].label),
+    ).toBeVisible()
+    expect(
+      within(
+        screen.getByRole('img', { name: 'Practice rhythm chart' }),
+      ).getByText(analyticsChartDefinitions.practiceRhythm.series[0].label),
+    ).toBeVisible()
+    expect(
+      screen.getByText(analyticsChartDefinitions.ratingsMix.series[0].label),
+    ).toBeVisible()
+  })
+
+  it('renders recall’s latest values without inventing a previous-period comparison', () => {
+    render(<RecallQualityChart data={recallQuality} />)
+
+    expect(screen.getByText('Latest observed 80%')).toBeVisible()
+    expect(screen.getByText('84%', { selector: 'dd' })).toBeVisible()
+    expect(screen.getByText('14 reviews', { selector: 'dd' })).toBeVisible()
+    expect(
+      screen.getByText(/Previous-period comparison is unavailable/),
+    ).toBeVisible()
+    expect(screen.getByTestId('recall-target-reference')).toBeInTheDocument()
+    expect(screen.getByTestId('recall-observed-lines')).toHaveAttribute(
+      'stroke',
+      'transparent',
+    )
+    expect(screen.getByTestId('recall-predicted-lines')).toHaveAttribute(
+      'stroke',
+      'transparent',
+    )
+  })
+
   it('keeps unknown overdue buckets as nullable chart gaps', () => {
+    const [firstOverdue, secondOverdue] = overdue
+
+    if (firstOverdue === undefined || secondOverdue === undefined) {
+      throw new Error('The overdue chart fixture requires two known buckets.')
+    }
+
     const chartData = buildOverdueBacklogChartSeries([
-      overdue[0]!,
+      firstOverdue,
       {
         bucketStart: '2026-08-02',
         bucketEnd: '2026-08-02',
         overdueCount: null,
         historyAvailable: false,
       },
-      overdue[1]!,
+      secondOverdue,
     ])
 
     expect(chartData).toHaveLength(3)
@@ -274,9 +431,14 @@ describe('analytics chart components', () => {
   it('uses adaptive buckets, not weekly practice days, for practice rhythm', () => {
     render(<PracticeRhythmChart data={practiceRhythm} />)
 
-    expect(screen.getByText('Reviews', { selector: 'span' })).toBeVisible()
+    expect(
+      screen.getByText(
+        analyticsChartDefinitions.practiceRhythm.series[0].label,
+        { selector: 'span' },
+      ),
+    ).toBeVisible()
     expect(document.querySelector('svg desc')).toHaveTextContent(
-      'Each adaptive time bucket',
+      'adaptive presentation bucket',
     )
   })
 
@@ -320,8 +482,7 @@ describe('analytics chart components', () => {
     const descriptions = Array.from(document.querySelectorAll('svg desc'))
       .map((description) => description.textContent)
       .join(' ')
-    expect(descriptions).toContain('selected time bucket')
-    expect(descriptions).toContain('each selected time bucket')
+    expect(descriptions).toContain('adaptive presentation bucket')
     expect(descriptions).not.toMatch(/daily|by week/i)
   })
 

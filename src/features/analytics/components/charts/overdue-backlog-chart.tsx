@@ -20,12 +20,17 @@ import {
   formatHistoryBoundary,
   toChartLabel,
 } from './chart-shared'
+import { analyticsChartDefinitions } from './chart-definitions'
 import type { OverdueBacklogPoint } from './types'
+
+const overdueBacklogDefinition = analyticsChartDefinitions.overdueBacklog
+const [backlogSeries, watchZoneSeries, healthySeries, attentionSeries] =
+  overdueBacklogDefinition.series
 
 const overdueBacklogChartConfig = {
   overdueCount: {
-    label: 'Overdue problems',
-    color: 'var(--cp-analytics-healthy)',
+    label: backlogSeries.label,
+    color: backlogSeries.color,
   },
 } satisfies ChartConfig
 
@@ -69,7 +74,7 @@ export function OverdueBacklogChart({
     point.overdueCount === null ? [] : [point.overdueCount],
   )
   const yMax = Math.max(watchZone + 1, ...knownCounts)
-  const attentionStart = `${Math.max(0, Math.min(100, (1 - watchZone / yMax) * 100))}%`
+  const thresholdOffset = `${Math.max(0, Math.min(100, (1 - watchZone / yMax) * 100))}%`
 
   if (!points.some((point) => point.historyAvailable)) {
     return (
@@ -81,11 +86,15 @@ export function OverdueBacklogChart({
   }
 
   return (
-    <div className="grid min-w-0 gap-3">
+    <div
+      className="grid min-w-0 gap-3"
+      data-chart-definition={overdueBacklogDefinition.id}
+      data-testid={`analytics-chart-${overdueBacklogDefinition.id}`}
+    >
       <ChartContainer
-        accessibleDescription={`Overdue backlog across adaptive presentation buckets. Values at or below ${watchZone} are healthy; values above it need attention. Unknown historical buckets remain gaps.`}
-        accessibleName="Recent overdue backlog chart"
-        aria-label="Recent overdue backlog chart"
+        accessibleDescription={overdueBacklogDefinition.metricMeaning}
+        accessibleName={`${overdueBacklogDefinition.title} chart`}
+        aria-label={`${overdueBacklogDefinition.title} chart`}
         aria-roledescription="line and area chart"
         className="aspect-auto h-64 min-h-[16rem]"
         config={overdueBacklogChartConfig}
@@ -102,43 +111,42 @@ export function OverdueBacklogChart({
               id="backlog-line-gradient"
               x1="0"
               x2="0"
-              y1="1"
-              y2="0"
+              y1="0"
+              y2="1"
             >
+              <stop offset="0%" stopColor={attentionSeries.color} />
               <stop
-                offset={attentionStart}
-                stopColor="var(--cp-analytics-attention)"
+                offset={thresholdOffset}
+                stopColor={attentionSeries.color}
               />
-              <stop
-                offset={attentionStart}
-                stopColor="var(--cp-analytics-healthy)"
-              />
+              <stop offset={thresholdOffset} stopColor={healthySeries.color} />
+              <stop offset="100%" stopColor={healthySeries.color} />
             </linearGradient>
             <linearGradient
               id="backlog-area-gradient"
               x1="0"
               x2="0"
-              y1="1"
-              y2="0"
+              y1="0"
+              y2="1"
             >
               <stop
-                offset={attentionStart}
-                stopColor="var(--cp-analytics-attention)"
-                stopOpacity={0.2}
-              />
-              <stop
-                offset={attentionStart}
-                stopColor="var(--cp-analytics-healthy)"
-                stopOpacity={0.2}
-              />
-              <stop
                 offset="0%"
-                stopColor="var(--cp-analytics-healthy)"
-                stopOpacity={0.02}
+                stopColor={attentionSeries.color}
+                stopOpacity={0.2}
+              />
+              <stop
+                offset={thresholdOffset}
+                stopColor={attentionSeries.color}
+                stopOpacity={0.2}
+              />
+              <stop
+                offset={thresholdOffset}
+                stopColor={healthySeries.color}
+                stopOpacity={0.2}
               />
               <stop
                 offset="100%"
-                stopColor="var(--cp-analytics-healthy)"
+                stopColor={healthySeries.color}
                 stopOpacity={0.03}
               />
             </linearGradient>
@@ -146,12 +154,12 @@ export function OverdueBacklogChart({
           <CartesianGrid stroke="var(--color-border)" vertical={false} />
           <ReferenceLine
             label={{
-              fill: 'var(--cp-analytics-attention)',
+              fill: watchZoneSeries.color,
               fontSize: 11,
               position: 'insideTopRight',
               value: `Watch zone · ${watchZone}`,
             }}
-            stroke="var(--cp-analytics-attention)"
+            stroke={watchZoneSeries.color}
             strokeDasharray="4 4"
             y={watchZone}
           />
@@ -184,7 +192,7 @@ export function OverdueBacklogChart({
                     count === null
                       ? 'Unknown historical backlog'
                       : `${count} overdue · ${formatBacklogStatus(count, watchZone)}`,
-                    'Backlog',
+                    backlogSeries.label,
                   ]
                 }}
                 labelFormatter={(label, payload) => {
@@ -204,7 +212,7 @@ export function OverdueBacklogChart({
             fill="url(#backlog-area-gradient)"
             fillOpacity={1}
             isAnimationActive={false}
-            name="Overdue problems"
+            name={backlogSeries.label}
             stroke="url(#backlog-line-gradient)"
             strokeWidth={2.5}
             type="linear"
@@ -214,8 +222,8 @@ export function OverdueBacklogChart({
             data-testid="backlog-healthy-range"
             fill="none"
             isAnimationActive={false}
-            name="Healthy backlog range"
-            stroke="var(--cp-analytics-healthy)"
+            name={healthySeries.label}
+            stroke={healthySeries.color}
             strokeWidth={2.5}
             type="linear"
           />
@@ -224,8 +232,8 @@ export function OverdueBacklogChart({
             data-testid="backlog-attention-range"
             fill="none"
             isAnimationActive={false}
-            name="Attention backlog range"
-            stroke="var(--cp-analytics-attention)"
+            name={attentionSeries.label}
+            stroke={attentionSeries.color}
             strokeWidth={2.5}
             type="linear"
           />

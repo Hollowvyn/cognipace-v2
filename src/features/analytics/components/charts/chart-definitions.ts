@@ -257,6 +257,18 @@ export const analyticsChartDefinitions = {
         mark: 'reference-line',
         color: target,
       },
+      {
+        key: 'healthyRange',
+        label: 'Within watch zone',
+        mark: 'line',
+        color: healthy,
+      },
+      {
+        key: 'attentionRange',
+        label: 'Above watch zone',
+        mark: 'line',
+        color: attention,
+      },
     ],
     tooltipFields: [
       { key: 'overdueCount', label: 'Overdue problems' },

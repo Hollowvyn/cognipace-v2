@@ -21,21 +21,27 @@ import {
   formatPercent,
   toChartLabel,
 } from './chart-shared'
+import { analyticsChartDefinitions } from './chart-definitions'
 import { LineSegments } from './line-segments'
 import type { RecallQualityPoint } from './types'
 
+const recallDefinition = analyticsChartDefinitions.recallQuality
+const [observedSeries, predictedSeries, targetSeries] = recallDefinition.series
+const [observedTooltip, predictedTooltip, eligibleTooltip] =
+  recallDefinition.tooltipFields
+
 const recallChartConfig = {
   observedRecall: {
-    label: 'Observed correctness',
-    color: 'var(--cp-analytics-observed)',
+    label: observedSeries.label,
+    color: observedSeries.color,
   },
   predictedRecall: {
-    label: 'Predicted recall',
-    color: 'var(--cp-analytics-predicted)',
+    label: predictedSeries.label,
+    color: predictedSeries.color,
   },
   targetRetention: {
-    label: 'Target retention',
-    color: 'var(--cp-analytics-target)',
+    label: targetSeries.label,
+    color: targetSeries.color,
   },
 } satisfies ChartConfig
 
@@ -56,15 +62,13 @@ function hasPermittedGap(
 function RecallLegend() {
   return (
     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-      <span style={{ color: 'var(--cp-analytics-observed)' }}>
-        Observed correctness
+      <span style={{ color: observedSeries.color }}>
+        {observedSeries.label}
       </span>
-      <span style={{ color: 'var(--cp-analytics-predicted)' }}>
-        Predicted recall
+      <span style={{ color: predictedSeries.color }}>
+        {predictedSeries.label}
       </span>
-      <span style={{ color: 'var(--cp-analytics-target)' }}>
-        Target retention
-      </span>
+      <span style={{ color: targetSeries.color }}>{targetSeries.label}</span>
     </div>
   )
 }
@@ -79,6 +83,12 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
   const showsDashedContinuity =
     hasPermittedGap(data, 'observedRecall') ||
     hasPermittedGap(data, 'predictedRecall')
+  const latestObserved = [...data]
+    .reverse()
+    .find((point) => point.observedRecall !== null)
+  const latestPredicted = [...data]
+    .reverse()
+    .find((point) => point.predictedRecall !== null)
 
   if (!hasValues) {
     return (
@@ -90,11 +100,28 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
   }
 
   return (
-    <div className="grid min-w-0 gap-3">
+    <div
+      className="grid min-w-0 gap-3"
+      data-chart-definition={recallDefinition.id}
+      data-testid={`analytics-chart-${recallDefinition.id}`}
+    >
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <p className="m-0 text-sm font-medium text-foreground">
+            {recallDefinition.title}
+          </p>
+          <p className="m-0 text-xs text-muted-foreground">
+            {recallDefinition.question}
+          </p>
+        </div>
+        <p className="m-0 text-sm font-semibold text-foreground">
+          Latest observed {formatPercent(latestObserved?.observedRecall)}
+        </p>
+      </div>
       <ChartContainer
-        accessibleDescription="Observed correctness is based on eligible persisted review outcomes. Predicted recall is the FSRS estimate immediately before review."
-        accessibleName="Recall quality chart"
-        aria-label="Recall quality chart"
+        accessibleDescription={recallDefinition.metricMeaning}
+        accessibleName={`${recallDefinition.title} chart`}
+        aria-label={`${recallDefinition.title} chart`}
         aria-roledescription="line chart"
         className="aspect-auto h-80 min-h-[20rem]"
         config={recallChartConfig}
@@ -132,16 +159,16 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
                 active={false}
                 formatter={(value, name, item) => {
                   const point = item.payload as RecallQualityPoint
-                  const observed = name === 'Observed correctness'
+                  const observed = name === observedSeries.label
                   const label = observed
-                    ? 'Observed correctness'
-                    : 'Predicted recall (FSRS estimate)'
+                    ? observedTooltip.label
+                    : predictedTooltip.label
                   const sampleSize = observed
                     ? point.eligibleSampleSize
                     : point.reviewCount
 
                   return [
-                    `${formatPercent(typeof value === 'number' ? value : null)} · ${sampleSize} eligible review${sampleSize === 1 ? '' : 's'}`,
+                    `${formatPercent(typeof value === 'number' ? value : null)} · ${sampleSize} ${eligibleTooltip.label.toLowerCase()}`,
                     label,
                   ]
                 }}
@@ -162,12 +189,13 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
             <ReferenceLine
               ifOverflow="extendDomain"
               label={{
-                fill: 'var(--cp-analytics-target)',
+                fill: targetSeries.color,
                 fontSize: 11,
                 position: 'insideTopRight',
-                value: 'Target retention',
+                value: targetSeries.label,
               }}
-              stroke="var(--cp-analytics-target)"
+              data-testid="recall-target-reference"
+              stroke={targetSeries.color}
               strokeDasharray="5 5"
               y={targetRetention}
             />
@@ -176,16 +204,18 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
             data={data}
             dataKey="observedRecall"
             maximumGap={2}
-            seriesKey="Observed correctness"
-            stroke="var(--cp-analytics-observed)"
+            seriesKey={observedSeries.label}
+            stroke={observedSeries.color}
+            testId="recall-observed-lines"
             type="linear"
           />
           <LineSegments
             data={data}
             dataKey="predictedRecall"
             maximumGap={2}
-            seriesKey="Predicted recall"
-            stroke="var(--cp-analytics-predicted)"
+            seriesKey={predictedSeries.label}
+            stroke={predictedSeries.color}
+            testId="recall-predicted-lines"
             type="linear"
           />
         </ComposedChart>
@@ -195,6 +225,31 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
           {DASHED_LINE_EVIDENCE_LABEL}
         </p>
       ) : null}
+      <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+        <div>
+          <dt className="text-muted-foreground">Latest observed</dt>
+          <dd className="m-0 font-medium text-foreground">
+            {formatPercent(latestObserved?.observedRecall)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Latest predicted</dt>
+          <dd className="m-0 font-medium text-foreground">
+            {formatPercent(latestPredicted?.predictedRecall)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Eligible sample</dt>
+          <dd className="m-0 font-medium text-foreground">
+            {latestObserved?.eligibleSampleSize ?? 0} reviews
+          </dd>
+        </div>
+      </dl>
+      <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
+        Previous-period comparison is unavailable because this chart receives
+        the selected period only; it will not infer a comparison from a
+        different bucket.
+      </p>
       <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
         Predicted recall is an FSRS estimate immediately before each review, not
         an observed result or guarantee. Tooltips show the eligible review

@@ -7,12 +7,16 @@ import {
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts'
 
 import { ChartEmptyState, chartDimension, formatPercent } from './chart-shared'
+import { analyticsChartDefinitions } from './chart-definitions'
 import type { TopicPoint } from './types'
+
+const weakestTopicsDefinition = analyticsChartDefinitions.weakestTopics
+const [topicSeries] = weakestTopicsDefinition.series
 
 const weakestTopicsChartConfig = {
   recallQuality: {
-    label: 'Recall quality',
-    color: 'var(--cp-analytics-attention)',
+    label: topicSeries.label,
+    color: topicSeries.color,
   },
 } satisfies ChartConfig
 
@@ -42,11 +46,15 @@ export function WeakestTopicsChart({ data }: { data: TopicPoint[] }) {
   }
 
   return (
-    <div className="grid min-w-0 gap-3">
+    <div
+      className="grid min-w-0 gap-3"
+      data-chart-definition={weakestTopicsDefinition.id}
+      data-testid={`analytics-chart-${weakestTopicsDefinition.id}`}
+    >
       <ChartContainer
-        accessibleDescription="The five weakest sufficiently sampled topics are ordered by observed correctness. Low-sample topics are excluded from the confident ranking and qualified below."
-        accessibleName="Where to focus chart"
-        aria-label="Where to focus chart"
+        accessibleDescription={weakestTopicsDefinition.metricMeaning}
+        accessibleName={`${weakestTopicsDefinition.title} chart`}
+        aria-label={`${weakestTopicsDefinition.title} chart`}
         aria-roledescription="horizontal bar chart"
         className="aspect-auto h-72 min-h-[18rem]"
         config={weakestTopicsChartConfig}
@@ -82,7 +90,7 @@ export function WeakestTopicsChart({ data }: { data: TopicPoint[] }) {
                   const point = item.payload as TopicPoint
                   return [
                     `${formatPercent(typeof value === 'number' ? value : null)} · ${point.sampleSize} eligible review${point.sampleSize === 1 ? '' : 's'}`,
-                    'Observed correctness',
+                    topicSeries.label,
                   ]
                 }}
                 payload={[]}
@@ -92,11 +100,11 @@ export function WeakestTopicsChart({ data }: { data: TopicPoint[] }) {
           <Bar
             dataKey="recallQuality"
             isAnimationActive={false}
-            name="Recall quality"
+            name={topicSeries.label}
             radius={[0, 3, 3, 0]}
           >
             {points.map((point) => (
-              <Cell fill="var(--color-recallQuality)" key={point.topic} />
+              <Cell fill={topicSeries.color} key={point.topic} />
             ))}
           </Bar>
         </BarChart>
