@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   classifyRetentionStatus,
+  RetentionHealthPreview,
   RetentionHealthTooltip,
 } from './retention-health-tooltip'
 
@@ -34,5 +35,15 @@ describe('retention health tooltip', () => {
     expect(
       screen.getByRole('link', { name: 'Open Dijkstra on LeetCode' }),
     ).toHaveAttribute('href', 'https://leetcode.com/problems/graphs-dijkstra/')
+  })
+
+  it('keeps passive previews descriptive without an action', () => {
+    render(<RetentionHealthPreview point={point} />)
+
+    expect(
+      screen.getByRole('status', { name: 'Dijkstra memory preview' }),
+    ).toHaveTextContent('Dijkstra retention: 74% predicted recall')
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 })

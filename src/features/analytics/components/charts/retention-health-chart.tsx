@@ -22,7 +22,9 @@ import type { RetentionHealthPoint } from './types'
 import {
   classifyRetentionStatus,
   describeRetentionPoint,
+  RetentionHealthPreviewPanel,
   RetentionHealthTooltip,
+  type RetentionHealthPreviewHandle,
   retentionStatusDetails,
   type RetentionStatus,
 } from './retention-health-tooltip'
@@ -53,6 +55,32 @@ export function RetentionHealthChart({
     null,
   )
   const chartRegionRef = useRef<HTMLDivElement>(null)
+  const pinnedPointRef = useRef<RetentionHealthPoint | null>(null)
+  const previewRef = useRef<RetentionHealthPreviewHandle>(null)
+
+  function clearPreview() {
+    if (!pinnedPointRef.current) {
+      previewRef.current?.clear()
+    }
+  }
+
+  function showPreview(point: RetentionHealthPoint) {
+    if (!pinnedPointRef.current) {
+      previewRef.current?.show(point)
+    }
+  }
+
+  function dismissPinnedPoint() {
+    pinnedPointRef.current = null
+    setPinnedPoint(null)
+    previewRef.current?.clear()
+  }
+
+  function pinPoint(point: RetentionHealthPoint) {
+    pinnedPointRef.current = point
+    previewRef.current?.clear()
+    setPinnedPoint(point)
+  }
 
   useEffect(() => {
     if (!pinnedPoint) return
@@ -61,13 +89,13 @@ export function RetentionHealthChart({
       const target = event.target
 
       if (target instanceof Node && !chartRegionRef.current?.contains(target)) {
-        setPinnedPoint(null)
+        dismissPinnedPoint()
       }
     }
 
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        setPinnedPoint(null)
+        dismissPinnedPoint()
       }
     }
 
@@ -125,13 +153,17 @@ export function RetentionHealthChart({
         aria-haspopup="dialog"
         aria-label={label}
         className="cursor-pointer focus-visible:[&>circle:first-of-type]:stroke-2 focus-visible:[&>circle:first-of-type]:stroke-ring"
-        onClick={() => setPinnedPoint(point)}
+        onBlur={clearPreview}
+        onClick={() => pinPoint(point)}
+        onFocus={() => showPreview(point)}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
-            setPinnedPoint(point)
+            pinPoint(point)
           }
         }}
+        onMouseEnter={() => showPreview(point)}
+        onMouseLeave={clearPreview}
         role="button"
         tabIndex={0}
       >
@@ -248,9 +280,10 @@ export function RetentionHealthChart({
           />
         </ScatterChart>
       </ChartContainer>
+      <RetentionHealthPreviewPanel ref={previewRef} />
       {pinnedPoint ? (
         <RetentionHealthTooltip
-          onClose={() => setPinnedPoint(null)}
+          onClose={dismissPinnedPoint}
           point={pinnedPoint}
         />
       ) : null}

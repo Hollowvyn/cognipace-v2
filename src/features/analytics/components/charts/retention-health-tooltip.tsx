@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { createLeetCodeProblemUrl } from '@/lib/leetcode'
 import { ExternalLink, X } from 'lucide-react'
+import { forwardRef, useImperativeHandle, useState } from 'react'
 
 import { formatDays, formatPercent } from './chart-shared'
 import type { RetentionHealthPoint } from './types'
@@ -42,6 +43,57 @@ export function describeRetentionPoint(point: RetentionHealthPoint): string {
 
   return `${point.title} retention: ${formatPercent(point.retrievability)} predicted recall, ${retentionStatusDetails[status].label.toLowerCase()}, reviewed ${formatDays(point.daysSinceReview)} ago.`
 }
+
+export function RetentionHealthPreview({
+  point,
+}: {
+  point: RetentionHealthPoint
+}) {
+  const status = classifyRetentionStatus(
+    point.retrievability,
+    point.targetRetention,
+  )
+  const statusDetail = retentionStatusDetails[status]
+
+  return (
+    <div
+      aria-label={`${point.title} memory preview`}
+      aria-live="polite"
+      className="pointer-events-none absolute bottom-3 left-3 z-10 max-w-sm rounded-[var(--cp-panel-radius)] border border-border bg-card/95 px-3 py-2 text-[length:var(--cp-badge-font-size)] shadow-overlay backdrop-blur-sm"
+      role="status"
+    >
+      <p className="m-0 font-semibold" style={{ color: statusDetail.color }}>
+        {statusDetail.label}
+      </p>
+      <p className="m-0 mt-1 text-muted-foreground">
+        {describeRetentionPoint(point)}
+      </p>
+    </div>
+  )
+}
+
+export type RetentionHealthPreviewHandle = {
+  clear: () => void
+  show: (point: RetentionHealthPoint) => void
+}
+
+export const RetentionHealthPreviewPanel = forwardRef<
+  RetentionHealthPreviewHandle,
+  object
+>(function RetentionHealthPreviewPanel(_, ref) {
+  const [point, setPoint] = useState<RetentionHealthPoint | null>(null)
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      clear: () => setPoint(null),
+      show: (nextPoint) => setPoint(nextPoint),
+    }),
+    [],
+  )
+
+  return point ? <RetentionHealthPreview point={point} /> : null
+})
 
 export function RetentionHealthTooltip({
   onClose,

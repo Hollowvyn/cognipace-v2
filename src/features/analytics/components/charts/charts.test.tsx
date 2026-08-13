@@ -450,6 +450,48 @@ describe('analytics chart components', () => {
     ).toBeVisible()
   })
 
+  it('previews retention details on hover and focus without exposing actions', async () => {
+    render(
+      <RetentionHealthChart data={retentionHealth} targetRetention={0.9} />,
+    )
+
+    const dijkstraPoint = screen.getByRole('button', {
+      name: /Dijkstra retention/i,
+    })
+
+    fireEvent.mouseEnter(dijkstraPoint)
+    await waitFor(() => {
+      expect(
+        screen.getByRole('status', { name: 'Dijkstra memory preview' }),
+      ).toHaveTextContent('Dijkstra retention: 74% predicted recall')
+    })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'Open Dijkstra on LeetCode' }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.mouseLeave(dijkstraPoint)
+    expect(
+      screen.queryByRole('status', { name: 'Dijkstra memory preview' }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.focus(dijkstraPoint)
+    await waitFor(() => {
+      expect(
+        screen.getByRole('status', { name: 'Dijkstra memory preview' }),
+      ).toHaveTextContent('Dijkstra retention: 74% predicted recall')
+    })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'Open Dijkstra on LeetCode' }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.blur(dijkstraPoint)
+    expect(
+      screen.queryByRole('status', { name: 'Dijkstra memory preview' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('closes pinned retention details on outside pointerdown without closing its link', async () => {
     const user = userEvent.setup()
 
