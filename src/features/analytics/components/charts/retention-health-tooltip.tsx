@@ -108,10 +108,12 @@ export const RetentionHealthPreviewPanel = forwardRef<
 
 export function RetentionHealthTooltip({
   closeButtonRef,
+  dialogRef,
   onClose,
   point,
 }: {
   closeButtonRef?: Ref<HTMLButtonElement>
+  dialogRef?: Ref<HTMLDivElement>
   onClose: () => void
   point: RetentionHealthPoint
 }) {
@@ -126,6 +128,7 @@ export function RetentionHealthTooltip({
       aria-label={`${point.title} memory details`}
       className="absolute inset-x-3 top-3 z-10 max-w-sm rounded-[var(--cp-panel-radius)] border border-border bg-card p-3 shadow-overlay sm:left-auto sm:right-3"
       id="retention-health-details"
+      ref={dialogRef}
       role="dialog"
     >
       <div className="flex min-w-0 items-start justify-between gap-3">

@@ -643,16 +643,18 @@ describe('analytics chart components', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('closes pinned retention details on outside pointerdown without closing its link', async () => {
+  it('dismisses from the chart region but keeps dialog and link pointerdowns open', async () => {
     const user = userEvent.setup()
 
     render(
       <RetentionHealthChart data={retentionHealth} targetRetention={0.9} />,
     )
 
-    await user.click(
-      screen.getByRole('button', { name: /Dijkstra retention/i }),
-    )
+    const dijkstraPoint = screen.getByRole('button', {
+      name: /Dijkstra retention/i,
+    })
+    dijkstraPoint.focus()
+    await user.keyboard('{Enter}')
     const dialog = screen.getByRole('dialog', {
       name: 'Dijkstra memory details',
     })
@@ -660,12 +662,22 @@ describe('analytics chart components', () => {
       name: 'Open Dijkstra on LeetCode',
     })
 
+    fireEvent.pointerDown(dialog)
+    expect(dialog).toBeVisible()
+
     fireEvent.pointerDown(link)
     fireEvent.click(link)
     expect(dialog).toBeVisible()
 
-    fireEvent.pointerDown(document.body)
+    fireEvent.pointerDown(
+      screen.getByRole('group', { name: 'Retention health chart' }),
+    )
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Dijkstra retention/i }),
+      ).toHaveFocus()
+    })
   })
 
   it('renders unknown overdue history as an unconnected chart category gap', () => {

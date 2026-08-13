@@ -54,6 +54,7 @@ export function RetentionHealthChart({
   const [pinnedSlug, setPinnedSlug] = useState<string | null>(null)
   const chartRegionRef = useRef<HTMLDivElement>(null)
   const dialogCloseButtonRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
   const originTriggerRef = useRef<SVGGElement | null>(null)
   const originTriggerSlugRef = useRef<string | null>(null)
   const pinnedSlugRef = useRef<string | null>(null)
@@ -157,7 +158,7 @@ export function RetentionHealthChart({
     function closeIfOutside(event: PointerEvent) {
       const target = event.target
 
-      if (target instanceof Node && !chartRegionRef.current?.contains(target)) {
+      if (target instanceof Node && !dialogRef.current?.contains(target)) {
         dismissPinnedPoint()
       }
     }
@@ -366,6 +367,7 @@ export function RetentionHealthChart({
       {pinnedPoint ? (
         <RetentionHealthTooltip
           closeButtonRef={dialogCloseButtonRef}
+          dialogRef={dialogRef}
           onClose={dismissPinnedPoint}
           point={pinnedPoint}
         />
