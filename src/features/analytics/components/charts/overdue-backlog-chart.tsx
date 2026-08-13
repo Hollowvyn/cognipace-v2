@@ -208,7 +208,11 @@ export function OverdueBacklogChart({
             }
           />
           <Area
+            connectNulls={false}
+            data-connect-nulls="false"
             dataKey="overdueCount"
+            data-null-policy="preserve-gaps"
+            data-testid="backlog-history-series"
             fill="url(#backlog-area-gradient)"
             fillOpacity={1}
             isAnimationActive={false}
@@ -218,7 +222,10 @@ export function OverdueBacklogChart({
             type="linear"
           />
           <Area
+            connectNulls={false}
+            data-connect-nulls="false"
             dataKey="healthyRange"
+            data-null-policy="preserve-gaps"
             data-testid="backlog-healthy-range"
             fill="none"
             isAnimationActive={false}
@@ -228,7 +235,10 @@ export function OverdueBacklogChart({
             type="linear"
           />
           <Area
+            connectNulls={false}
+            data-connect-nulls="false"
             dataKey="attentionRange"
+            data-null-policy="preserve-gaps"
             data-testid="backlog-attention-range"
             fill="none"
             isAnimationActive={false}

@@ -131,6 +131,7 @@ export function LineSegments<T extends Record<string, unknown>>({
   yAxisId,
 }: LineSegmentsProps<T>) {
   const segments = buildLineSegments(data, dataKey, maximumGap)
+  const semanticTooltipSourceTestId = `${testId}-semantic-tooltip-source`
 
   if (segments.length === 0) return null
 
@@ -140,7 +141,7 @@ export function LineSegments<T extends Record<string, unknown>>({
         activeDot={false}
         aria-hidden="true"
         data={data}
-        data-testid={testId}
+        data-testid={semanticTooltipSourceTestId}
         dataKey={dataKey}
         dot={false}
         isAnimationActive={false}

@@ -249,10 +249,9 @@ describe('analytics chart components', () => {
             analyticsChartDefinitions.practiceRhythm.series[0].color,
         ),
     ).toBe(true)
-    expect(screen.getByTestId('practice-correctness-lines')).toHaveAttribute(
-      'stroke',
-      'transparent',
-    )
+    expect(
+      screen.getByTestId('practice-correctness-lines-semantic-tooltip-source'),
+    ).toHaveAttribute('stroke', 'transparent')
     expect(
       screen.getByTestId('practice-correctness-lines-bridge-0-2'),
     ).toHaveAttribute('stroke-dasharray', '5 5')
@@ -393,24 +392,22 @@ describe('analytics chart components', () => {
       screen.getByText(/Previous-period comparison is unavailable/),
     ).toBeVisible()
     expect(screen.getByTestId('recall-target-reference')).toBeInTheDocument()
-    expect(screen.getByTestId('recall-observed-lines')).toHaveAttribute(
-      'stroke',
-      'transparent',
-    )
-    expect(screen.getByTestId('recall-predicted-lines')).toHaveAttribute(
-      'stroke',
-      'transparent',
-    )
+    expect(
+      screen.getByTestId('recall-observed-lines-semantic-tooltip-source'),
+    ).toHaveAttribute('stroke', 'transparent')
+    expect(
+      screen.getByTestId('recall-predicted-lines-semantic-tooltip-source'),
+    ).toHaveAttribute('stroke', 'transparent')
   })
 
-  it('keeps unknown overdue buckets as nullable chart gaps', () => {
+  it('renders unknown overdue history as an unconnected chart category gap', () => {
     const [firstOverdue, secondOverdue] = overdue
 
     if (firstOverdue === undefined || secondOverdue === undefined) {
       throw new Error('The overdue chart fixture requires two known buckets.')
     }
 
-    const chartData = buildOverdueBacklogChartSeries([
+    const dataWithUnknownHistory: OverdueBacklogPoint[] = [
       firstOverdue,
       {
         bucketStart: '2026-08-02',
@@ -419,13 +416,39 @@ describe('analytics chart components', () => {
         historyAvailable: false,
       },
       secondOverdue,
-    ])
+    ]
+    const chartData = buildOverdueBacklogChartSeries(dataWithUnknownHistory)
 
     expect(chartData).toHaveLength(3)
     expect(chartData[1]).toMatchObject({
       overdueCount: null,
       historyAvailable: false,
     })
+
+    render(
+      <OverdueBacklogChart
+        data={dataWithUnknownHistory}
+        historyAvailableFrom="2026-08-01T00:00:00.000Z"
+      />,
+    )
+
+    expect(screen.getAllByText('Aug 2')).not.toHaveLength(0)
+
+    for (const seriesId of [
+      'backlog-history-series',
+      'backlog-healthy-range',
+      'backlog-attention-range',
+    ]) {
+      const marks = screen.getAllByTestId(seriesId)
+      expect(marks).not.toHaveLength(0)
+      expect(
+        marks.every(
+          (mark) =>
+            mark.getAttribute('data-connect-nulls') === 'false' &&
+            mark.getAttribute('data-null-policy') === 'preserve-gaps',
+        ),
+      ).toBe(true)
+    }
   })
 
   it('uses adaptive buckets, not weekly practice days, for practice rhythm', () => {
