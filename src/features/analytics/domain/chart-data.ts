@@ -4,6 +4,7 @@ import {
   isReviewRating,
   parseSerializedFsrsReviewLogSnapshot,
   replayReviewHistorySequence,
+  scheduleReview,
   type NormalizedFsrsSchedulingOptions,
   type ReviewRating,
 } from '@/lib/fsrs'
@@ -463,7 +464,7 @@ export function reconstructOverdueBacklogSnapshots(
     intervals: buildKnownOverdueIntervals(
       card,
       eventsByCard.get(card.cardId) ?? [],
-      options.end,
+      options,
     ),
   }))
 
@@ -622,17 +623,37 @@ interface KnownOverdueInterval {
 function buildKnownOverdueIntervals(
   card: AnalyticsCurrentCard,
   events: readonly AnalyticsReviewEvent[],
-  end: Date,
+  options: AnalyticsRangeOptions,
 ): KnownOverdueInterval[] {
-  const ordered = [...events].sort(compareEvents)
+  const ordered = [...events]
+    .filter((event) => event.reviewedAt <= options.end)
+    .sort(compareEvents)
   const intervals: KnownOverdueInterval[] = []
+  let currentCard = createInitialFsrsCard(card.createdAt)
   let segmentStart: Date | null = card.createdAt
-  let lastKnownReviewAt: Date | null = null
+  let historyKnown = true
 
   for (const event of ordered) {
     const log = parseReviewLog(event.fsrsReviewLog)
-    if (!log || !isReviewRating(event.rating)) {
+    if (
+      !historyKnown ||
+      !log ||
+      !isReviewRating(event.rating) ||
+      !isConsistentReviewLog(log, event, currentCard)
+    ) {
+      if (
+        historyKnown &&
+        segmentStart !== null &&
+        segmentStart <= event.reviewedAt
+      ) {
+        intervals.push({
+          start: segmentStart,
+          endExclusive: event.reviewedAt,
+          dueAt: currentCard.dueAt,
+        })
+      }
       segmentStart = null
+      historyKnown = false
       continue
     }
 
@@ -640,35 +661,68 @@ function buildKnownOverdueIntervals(
       intervals.push({
         start: segmentStart,
         endExclusive: event.reviewedAt,
-        dueAt: new Date(log.dueAt),
+        // ReviewLog.due is prior-state rollback metadata in ts-fsrs. The
+        // active due date before this review belongs to the prior card.
+        dueAt: currentCard.dueAt,
       })
     }
+
+    try {
+      // The scheduled card carries the due date that becomes active after
+      // this review; the review log itself does not.
+      currentCard = scheduleReview(
+        currentCard,
+        event.rating,
+        event.reviewedAt,
+        options.fsrsOptions,
+      ).card
+    } catch {
+      segmentStart = null
+      historyKnown = false
+      continue
+    }
     segmentStart = event.reviewedAt
-    lastKnownReviewAt = event.reviewedAt
   }
 
   if (
+    historyKnown &&
     card.lastReviewAt === null &&
     ordered.length === 0 &&
-    card.createdAt <= end
+    card.createdAt <= options.end
   ) {
     intervals.push({
       start: card.createdAt,
-      endExclusive: new Date(end.getTime() + 1),
+      endExclusive: new Date(options.end.getTime() + 1),
       dueAt: card.dueAt,
     })
   } else if (
-    lastKnownReviewAt !== null &&
-    card.lastReviewAt?.getTime() === lastKnownReviewAt.getTime()
+    historyKnown &&
+    segmentStart !== null &&
+    ordered.length > 0 &&
+    card.lastReviewAt?.getTime() === segmentStart.getTime()
   ) {
     intervals.push({
-      start: lastKnownReviewAt,
-      endExclusive: new Date(end.getTime() + 1),
+      start: segmentStart,
+      endExclusive: new Date(options.end.getTime() + 1),
       dueAt: card.dueAt,
     })
   }
 
   return intervals
+}
+
+function isConsistentReviewLog(
+  log: ReturnType<typeof parseSerializedFsrsReviewLogSnapshot>,
+  event: AnalyticsReviewEvent,
+  card: ReturnType<typeof createInitialFsrsCard>,
+): boolean {
+  const expectedDueAt = card.lastReviewAt ?? card.dueAt
+
+  return (
+    log.rating === event.rating &&
+    log.reviewedAt === event.reviewedAt.toISOString() &&
+    log.dueAt === expectedDueAt.toISOString()
+  )
 }
 
 function parseReviewLog(serialized: string | null) {

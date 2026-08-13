@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   getRetrievability,
   normalizeFsrsSchedulingOptions,
+  serializeFsrsReviewLogSnapshot,
   scheduleReview,
   createInitialFsrsCard,
 } from '@/lib/fsrs'
@@ -422,9 +423,12 @@ describe('analytics chart-data builders', () => {
         event({
           cardId: 'card-1',
           reviewedAt: reviewAt,
-          fsrsReviewLog: validLog(4).replace(
-            '2026-08-01T12:00:00.000Z',
-            '2026-08-02T12:00:00.000Z',
+          fsrsReviewLog: serializeFsrsReviewLogSnapshot(
+            scheduleReview(
+              createInitialFsrsCard(new Date('2026-08-01T00:00:00.000Z')),
+              'good',
+              reviewAt,
+            ).log,
           ),
         }),
       ],
@@ -438,10 +442,190 @@ describe('analytics chart-data builders', () => {
         snapshot.overdueCount,
       ]),
     ).toEqual([
-      ['2026-08-01', 0],
+      ['2026-08-01', 1],
       ['2026-08-02', 1],
       ['2026-08-03', 0],
     ])
+  })
+
+  it('uses the initial card due date for the interval before its first review', () => {
+    const createdAt = new Date('2026-08-01T12:00:00.000Z')
+    const reviewedAt = new Date('2026-08-03T12:00:00.000Z')
+    const fsrsOptions = normalizeFsrsSchedulingOptions({
+      enableShortTerm: false,
+      learningSteps: ['1d'],
+      relearningSteps: ['1d'],
+    })
+    const scheduled = scheduleReview(
+      createInitialFsrsCard(createdAt),
+      'good',
+      reviewedAt,
+      fsrsOptions,
+    )
+    const snapshots = reconstructOverdueBacklogSnapshots(
+      [
+        event({
+          id: 'first-review',
+          reviewedAt,
+          fsrsReviewLog: serializeFsrsReviewLogSnapshot(scheduled.log),
+        }),
+      ],
+      [
+        {
+          cardId: 'card-1',
+          slug: 'two-sum',
+          title: 'Two Sum',
+          topics: ['Array'],
+          retrievability: 0.8,
+          targetRetention: 0.9,
+          stabilityDays: scheduled.card.stability,
+          difficulty: scheduled.card.difficulty,
+          lapseCount: scheduled.card.lapses,
+          dueAt: scheduled.card.dueAt,
+          createdAt,
+          lastReviewAt: reviewedAt,
+        },
+      ],
+      {
+        ...options,
+        start: new Date('2026-08-01T00:00:00.000Z'),
+        end: new Date('2026-08-03T23:59:59.999Z'),
+        fsrsOptions,
+      },
+    )
+
+    expect(snapshots.map((snapshot) => snapshot.overdueCount)).toEqual([
+      1, 1, 0,
+    ])
+  })
+
+  it('uses a review card due date for the interval after that review', () => {
+    const createdAt = new Date('2026-08-01T12:00:00.000Z')
+    const firstReviewedAt = new Date('2026-08-02T12:00:00.000Z')
+    const secondReviewedAt = new Date('2026-08-06T12:00:00.000Z')
+    const fsrsOptions = normalizeFsrsSchedulingOptions({
+      enableShortTerm: false,
+      learningSteps: ['1d'],
+      relearningSteps: ['1d'],
+    })
+    const firstReview = scheduleReview(
+      createInitialFsrsCard(createdAt),
+      'good',
+      firstReviewedAt,
+      fsrsOptions,
+    )
+    const secondReview = scheduleReview(
+      firstReview.card,
+      'again',
+      secondReviewedAt,
+      fsrsOptions,
+    )
+    const snapshots = reconstructOverdueBacklogSnapshots(
+      [
+        event({
+          id: 'first-review',
+          reviewedAt: firstReviewedAt,
+          fsrsReviewLog: serializeFsrsReviewLogSnapshot(firstReview.log),
+        }),
+        event({
+          id: 'second-review',
+          reviewedAt: secondReviewedAt,
+          rating: 'again',
+          fsrsReviewLog: serializeFsrsReviewLogSnapshot(secondReview.log),
+        }),
+      ],
+      [
+        {
+          cardId: 'card-1',
+          slug: 'two-sum',
+          title: 'Two Sum',
+          topics: ['Array'],
+          retrievability: 0.8,
+          targetRetention: 0.9,
+          stabilityDays: secondReview.card.stability,
+          difficulty: secondReview.card.difficulty,
+          lapseCount: secondReview.card.lapses,
+          dueAt: secondReview.card.dueAt,
+          createdAt,
+          lastReviewAt: secondReviewedAt,
+        },
+      ],
+      {
+        ...options,
+        start: new Date('2026-08-01T00:00:00.000Z'),
+        end: new Date('2026-08-06T23:59:59.999Z'),
+        fsrsOptions,
+      },
+    )
+    const countsByDate = new Map(
+      snapshots.map((snapshot) => [
+        toAnalyticsDateKey(snapshot.date),
+        snapshot.overdueCount,
+      ]),
+    )
+
+    expect(toAnalyticsDateKey(firstReview.card.dueAt)).toBe('2026-08-05')
+    expect(secondReview.log.dueAt).toBe(firstReviewedAt.toISOString())
+    expect(countsByDate.get('2026-08-02')).toBe(0)
+    expect(countsByDate.get('2026-08-04')).toBe(0)
+    expect(countsByDate.get(toAnalyticsDateKey(firstReview.card.dueAt))).toBe(1)
+  })
+
+  it('leaves the backlog unknown after an invalid review log', () => {
+    const createdAt = new Date('2026-08-01T12:00:00.000Z')
+    const firstReviewedAt = new Date('2026-08-02T12:00:00.000Z')
+    const invalidReviewedAt = new Date('2026-08-05T12:00:00.000Z')
+    const fsrsOptions = normalizeFsrsSchedulingOptions({
+      enableShortTerm: false,
+      learningSteps: ['1d'],
+      relearningSteps: ['1d'],
+    })
+    const firstReview = scheduleReview(
+      createInitialFsrsCard(createdAt),
+      'good',
+      firstReviewedAt,
+      fsrsOptions,
+    )
+    const snapshots = reconstructOverdueBacklogSnapshots(
+      [
+        event({
+          id: 'first-review',
+          reviewedAt: firstReviewedAt,
+          fsrsReviewLog: serializeFsrsReviewLogSnapshot(firstReview.log),
+        }),
+        event({
+          id: 'invalid-review',
+          reviewedAt: invalidReviewedAt,
+          fsrsReviewLog: null,
+        }),
+      ],
+      [
+        {
+          cardId: 'card-1',
+          slug: 'two-sum',
+          title: 'Two Sum',
+          topics: ['Array'],
+          retrievability: 0.8,
+          targetRetention: 0.9,
+          stabilityDays: firstReview.card.stability,
+          difficulty: firstReview.card.difficulty,
+          lapseCount: firstReview.card.lapses,
+          dueAt: firstReview.card.dueAt,
+          createdAt,
+          lastReviewAt: invalidReviewedAt,
+        },
+      ],
+      {
+        ...options,
+        start: new Date('2026-08-01T00:00:00.000Z'),
+        end: new Date('2026-08-06T23:59:59.999Z'),
+        fsrsOptions,
+      },
+    )
+
+    expect(
+      snapshots.map((snapshot) => toAnalyticsDateKey(snapshot.date)),
+    ).toEqual(['2026-08-01', '2026-08-02', '2026-08-03', '2026-08-04'])
   })
 
   it('keeps partial overdue history instead of fabricating missing dates', () => {
