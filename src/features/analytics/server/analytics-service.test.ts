@@ -447,7 +447,13 @@ describe('getAnalyticsSummary memory profile', () => {
     expect(summary.historicalReadiness.recallQuality.failingReasons).toContain(
       'no-evidence',
     )
-    expect(summary.recallQuality).toEqual([])
+    expect(summary.recallQuality.length).toBeGreaterThan(0)
+    expect(
+      summary.recallQuality.every(
+        (point) =>
+          point.observedRecall === null && point.predictedRecall !== null,
+      ),
+    ).toBe(true)
   })
 
   it('keeps practice rhythm unready when review volume has no persisted correctness', async () => {
@@ -483,7 +489,15 @@ describe('getAnalyticsSummary memory profile', () => {
       assessments: 0,
       activeBuckets: 0,
     })
-    expect(summary.practiceRhythm).toEqual([])
+    expect(summary.practiceRhythm.length).toBeGreaterThan(0)
+    expect(summary.practiceRhythm.some((point) => point.reviewCount > 0)).toBe(
+      true,
+    )
+    expect(
+      summary.practiceRhythm.every(
+        (point) => point.observedCorrectness === null,
+      ),
+    ).toBe(true)
   })
 
   it('excludes invalid persisted ratings from every historical readiness metric', async () => {
@@ -708,7 +722,9 @@ describe('getAnalyticsSummary memory profile', () => {
     })
 
     expect(parsed.practiceRhythm).toHaveLength(12)
-    expect(parsed.practiceRhythm[0]).toEqual({
+    expect(
+      parsed.practiceRhythm.find((point) => point.reviewCount > 0),
+    ).toEqual({
       bucketStart: '2026-01-20',
       bucketEnd: '2026-01-20',
       reviewCount: 1,

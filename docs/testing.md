@@ -216,34 +216,40 @@ review is saved.
    renders. If older leading buckets have no evidence, confirm the effective-
    window copy explains the usable part of the selected range rather than
    drawing a fabricated value from the range start.
-5. For a range or metric that is not ready, confirm the warning identifies the
-   evidence shortfall, reports its progress in buckets/assessments where
-   applicable, and offers a shorter ready range only as an explicit link. The
-   page must not silently switch ranges.
-6. Check a line chart with a permitted missing-evidence gap. It may use a
-   dashed bridge between measured values; the absent bucket remains unknown.
-   A gap beyond the allowed threshold or too many separate gaps must show an
-   unready state instead of a continuous line.
-7. Confirm Recall Quality, Practice Rhythm, Ratings Mix, Where to Focus, and
+5. For a range or metric that is not ready, confirm the compact warning
+   identifies the evidence shortfall, reports its progress in buckets/
+   assessments where applicable, and offers a shorter ready range only as an
+   explicit link. The page must not silently switch ranges, and any available
+   chart points must remain visible.
+6. Check a line chart with missing-evidence gaps. It should use a dashed bridge
+   from one measured point to the next valid point; absent buckets remain
+   unknown and have no fabricated marker or tooltip value. A one-point chart
+   remains visible with “Not enough data for a trend yet.”
+7. In Practice Rhythm, confirm every bucket after the first supported practice
+   bucket remains in the chart. A week with no reviews has zero review volume,
+   while its correctness line remains unknown unless correctness evidence
+   exists.
+8. Confirm Recall Quality, Practice Rhythm, Ratings Mix, Where to Focus, and
    Memory Strength communicate their defined data meanings. Practice Rhythm is
    review volume plus observed correctness; it must not claim causation.
-8. Confirm Recent Overdue Backlog has a watch zone at five problems: values at
+9. Confirm Recent Overdue Backlog has a watch zone at five problems: values at
    or below five render in the healthy green treatment, values above five use
    the attention yellow treatment, and its tooltip reports the bucket's
    threshold status. Unknown/reconstructable history must not be made up.
-9. Confirm Upcoming Review Load always shows its fixed next 14 calendar days,
-   including when the selected historical range is unready.
-10. In Retention Health, hover and keyboard-focus a point to inspect the
+10. Confirm Upcoming Review Load always shows its fixed next 14 calendar days,
+    including when the selected historical range is unready.
+11. In Retention Health, hover and keyboard-focus a point to inspect the
     preview, pin its details, tab through the dialog controls, press Escape,
     and dismiss it by clicking outside. Confirm its LeetCode action opens the
     matching canonical problem in a new tab.
-11. In Fragile Knowledge, confirm exactly five rows appear per page when there
+12. In Fragile Knowledge, confirm exactly five rows appear per page when there
     are more than five rows, Previous/Next and the live row range update
     correctly, and every visible problem link opens its canonical LeetCode
     problem in a new tab.
-12. Exercise sparse and unknown history: verify readiness rather than invented
-    trends, while Retention Health, Fragile Knowledge, and Upcoming Review Load
-    remain usable. Repeat the happy path and sparse path at a narrow dashboard
+13. Exercise sparse and unknown history: verify readiness context rather than
+    invented trends, while Recall Quality, Practice Rhythm, Memory Strength,
+    Recent Overdue Backlog, Retention Health, Fragile Knowledge, and Upcoming
+    Review Load remain usable. Repeat the happy path and sparse path at a narrow dashboard
     width; charts, range controls, dialogs, table scrolling, and keyboard focus
     must remain usable.
 

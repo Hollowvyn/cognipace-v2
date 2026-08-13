@@ -218,6 +218,21 @@ describe('analytics chart-data builders', () => {
     expect(points[2]!.reviewCount).toBe(0)
   })
 
+  it('keeps every post-start practice bucket and reports no-practice buckets as zero', () => {
+    const points = buildPracticeRhythmPoints(
+      [event({ reviewedAt: new Date('2026-08-01T12:00:00.000Z') })],
+      options,
+    )
+
+    expect(points).toHaveLength(options.buckets.length)
+    expect(points.map((point) => point.reviewCount)).toEqual([1, 0, 0])
+    expect(points.map((point) => point.observedCorrectness)).toEqual([
+      1,
+      null,
+      null,
+    ])
+  })
+
   it('changes predicted recall when pre-range history is included', () => {
     const inRangeEvents = [
       event({
@@ -417,7 +432,7 @@ describe('analytics chart-data builders', () => {
     )
   })
 
-  it('trims only leading buckets according to valid historical metric evidence', () => {
+  it('keeps post-start practice buckets while other metrics trim unsupported leading buckets', () => {
     const periodEnd = new Date('2026-08-30T23:59:59.999Z')
     const buckets = buildAnalyticsBuckets({
       requestedDays: 30,

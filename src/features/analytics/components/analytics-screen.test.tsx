@@ -392,8 +392,16 @@ describe('AnalyticsScreen', () => {
       screen.getByRole('link', { name: 'Use ready 30-day view' }),
     ).toHaveAttribute('href', expect.stringContaining('range=30'))
     expect(
-      screen.queryByRole('region', { name: 'Recall quality' }),
-    ).not.toBeInTheDocument()
+      await screen.findByRole('region', { name: 'Recall quality' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('region', { name: 'Practice rhythm' }),
+    ).toBeVisible()
+    expect(
+      within(
+        screen.getByRole('status', { name: '90-day analytics readiness' }),
+      ).getByText('13 more assessments needed.'),
+    ).toBeVisible()
     expect(
       screen.getByRole('region', { name: 'Upcoming review load' }),
     ).toBeVisible()
@@ -468,8 +476,8 @@ describe('AnalyticsScreen', () => {
       screen.getByRole('heading', { level: 2, name: 'Practice rhythm' }),
     ).toBeVisible()
     expect(
-      screen.queryByRole('region', { name: 'Practice rhythm' }),
-    ).not.toBeInTheDocument()
+      screen.getByRole('region', { name: 'Practice rhythm' }),
+    ).toBeVisible()
     expect(screen.getByRole('region', { name: 'Ratings mix' })).toBeVisible()
   })
 

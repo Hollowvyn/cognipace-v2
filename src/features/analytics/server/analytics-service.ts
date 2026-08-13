@@ -186,18 +186,18 @@ export async function getAnalyticsSummary(
   })
   const ratingsMixReadiness = requestedReadiness
 
-  const recallQuality = trimHistoricalPoints(
-    buildRecallQualityPoints(analyticsReviewHistory, chartOptions),
-    recallReadiness,
+  const recallQuality = buildRecallQualityPoints(
+    analyticsReviewHistory,
+    chartOptions,
   )
   const predictedRecall = buildMetricSummary(
     buildPredictedRecallSamples(analyticsReviewHistory, chartOptions).map(
       (sample) => sample.value,
     ),
   )
-  const practiceRhythm = trimHistoricalPoints(
-    buildPracticeRhythmPoints(analyticsReviewHistory, chartOptions),
-    practiceRhythmReadiness,
+  const practiceRhythm = buildPracticeRhythmPoints(
+    analyticsReviewHistory,
+    chartOptions,
   )
   const ratingsMix = trimHistoricalPoints(
     buildRatingsMixPoints(analyticsReviewHistory, chartOptions),
@@ -248,10 +248,7 @@ export async function getAnalyticsSummary(
     ),
     bucketKeys: buckets.map((bucket) => bucket.key),
   })
-  const overdueBacklog = trimHistoricalPoints(
-    overdueBacklogResult.points,
-    overdueReadiness,
-  )
+  const overdueBacklog = overdueBacklogResult.points
   const historicalReadiness = {
     requested: requestedReadiness,
     recallQuality: recallReadiness,

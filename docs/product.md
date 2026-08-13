@@ -195,22 +195,30 @@ Historical Analytics uses adaptive presentation buckets and evidence gates:
   presentation window. Internal and trailing gaps remain unknown; it does not
   fill them with invented values. When the selected range is not ready, the
   page explains the relevant evidence shortfall and can offer the richest
-  shorter ready range as a link.
-- A dashed line bridge means two measured values are separated by a permitted
-  missing-evidence gap. It is a visual connection only, never an interpolated
-  data value. A longer or overly fragmented gap makes that historical metric
-  unready instead of presenting a misleading continuous trend.
+  shorter ready range as a link; the available chart still remains visible.
+- Practice Rhythm keeps every bucket after the first supported practice bucket.
+  A bucket with no reviews is plotted as zero review volume, while correctness
+  remains unknown unless an eligible correctness assessment exists.
+- A dashed line bridge means two measured values are separated by a missing-
+  evidence gap. It is a visual connection only, never an interpolated data
+  value. Historical line charts connect each measured point to the next valid
+  point so sparse history does not create a broken visual story; unknown
+  buckets still do not receive markers or tooltip values.
 - Readiness is metric-specific and explainable. A range or metric can be held
   back for too little usable span, too few eligible assessments or active
-  buckets, a gap that is too long, or too many gaps.
+  buckets, a gap that is too long, or too many gaps. Readiness is guidance for
+  confidence, not a reason to hide an otherwise available chart.
 
-Historical readiness does not hide useful current information. Retention Health,
-Fragile Knowledge, and the fixed 14-day Upcoming Review Load remain available
-when a historical selected range is unready. Retention Health compares each
-active problem's current FSRS retrievability with the configured target; its
-hover/focus preview can be pinned for details and provides a canonical LeetCode
-link. Fragile Knowledge highlights current cards with risk signals and shows
-five rows per page with canonical LeetCode problem links.
+Historical readiness does not hide useful analytics. Recall Quality, Practice
+Rhythm, Memory Strength, and Recent Overdue Backlog keep showing available
+points when a historical selected range is unready; a one-point series says
+that it is not enough for a trend yet. Retention Health, Fragile Knowledge, and
+the fixed 14-day Upcoming Review Load remain available as current or forecast
+views. Retention Health compares each active problem's current FSRS
+retrievability with the configured target; its hover/focus preview can be
+pinned for details and provides a canonical LeetCode link. Fragile Knowledge
+highlights current cards with risk signals and shows five rows per page with
+canonical LeetCode problem links.
 
 Observed correctness is the persisted share of eligible assessments marked
 correct. It is not FSRS-predicted recall, retention, or a record of first-try

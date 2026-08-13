@@ -37,6 +37,18 @@ function buildLineSegments<T extends Record<string, unknown>>(
     data.map((point) => getNumericValue(point[dataKey])),
     maximumGap,
   )
+  const numericIndexes = data.flatMap((point, index) =>
+    getNumericValue(point[dataKey]) === null ? [] : [index],
+  )
+  if (numericIndexes.length === 1) {
+    return [
+      {
+        kind: 'solid',
+        fromIndex: numericIndexes[0]!,
+        toIndex: numericIndexes[0]!,
+      },
+    ]
+  }
   const segments: LineSegment[] = []
   let solidStart: number | null = null
   let solidEnd: number | null = null
@@ -153,7 +165,10 @@ export function LineSegments<T extends Record<string, unknown>>({
         {...(yAxisId === undefined ? {} : { yAxisId })}
       />
       {segments.map((segment) => {
-        const segmentTestId = `${testId}-${segment.kind}-${segment.fromIndex}-${segment.toIndex}`
+        const segmentTestId =
+          segment.fromIndex === segment.toIndex
+            ? `${testId}-single-${segment.fromIndex}`
+            : `${testId}-${segment.kind}-${segment.fromIndex}-${segment.toIndex}`
 
         return (
           <Line
@@ -171,7 +186,11 @@ export function LineSegments<T extends Record<string, unknown>>({
                 Record<typeof SEGMENT_VALUE_KEY, number | null>) &
                 string
             }
-            dot={false}
+            dot={
+              segment.fromIndex === segment.toIndex
+                ? { r: 4, stroke, strokeWidth: 1 }
+                : false
+            }
             isAnimationActive={false}
             key={`${segment.kind}-${segment.fromIndex}-${segment.toIndex}`}
             legendType="none"

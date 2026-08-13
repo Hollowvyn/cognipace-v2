@@ -220,24 +220,27 @@ The owners in that flow are:
   assessments, active buckets, longest gap, gap runs, and effective buckets.
 - `src/features/analytics/domain/chart-buckets.ts` and
   `src/features/analytics/domain/chart-data.ts` aggregate each metric only from
-  eligible evidence, preserve unknown buckets as `null`, and classify solid,
-  bridgeable, and unbridgeable line continuity.
+  eligible evidence, preserve unknown buckets as `null`, and classify solid or
+  dashed next-valid-point line continuity. Practice Rhythm retains zero-volume
+  buckets after its first supported bucket.
 - `src/features/analytics/api/analytics-contracts.ts` validates the serialized
   read model with Zod before it crosses the extension runtime boundary.
 - `src/features/analytics/components/charts/chart-definitions.ts` is the typed
   chart catalogue: title, question, data meaning, eligibility, aggregation,
   semantic series, and sparse-state copy. `LineSegments` in
   `src/features/analytics/components/charts/line-segments.tsx` renders measured
-  runs and permitted dashed bridges without interpolating data.
+  runs and dashed next-valid-point bridges without interpolating data.
 - `src/lib/leetcode/domain/problem-url.ts` owns canonical problem URLs; the
   retention details and fragile-knowledge rows use `createLeetCodeProblemUrl`
   rather than constructing links in chart components.
 
 The Analytics service applies the range policy, calculates readiness separately
 for each metric's eligibility rules, trims only unsupported leading history, and
-then builds its Zod-validated summary. Current Retention Health, Fragile
-Knowledge, and the fixed 14-day Upcoming Review Load do not depend on the
-historical range being ready.
+then builds its Zod-validated summary. Historical readiness is exposed as
+confidence context; it does not suppress available Recall Quality, Practice
+Rhythm, Memory Strength, or Recent Overdue Backlog points. Current Retention
+Health, Fragile Knowledge, and the fixed 14-day Upcoming Review Load do not
+depend on the historical range being ready.
 
 Readiness diagnostics are a read-only view of that same production
 calculation—not a second implementation. They include `S/A/G/K/E`, selected

@@ -116,6 +116,20 @@ describe('LineSegments', () => {
     expect(document.querySelectorAll('circle')).toHaveLength(0)
   })
 
+  it('renders one measured point without inventing a connecting segment', () => {
+    renderSegments([null, 0.8, null])
+
+    expect(
+      screen.getByTestId('observedCorrectness-single-1'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByTestId('observedCorrectness-semantic-tooltip-source'),
+    ).toHaveAttribute('data-values', '[null,0.8,null]')
+    expect(
+      screen.queryByTestId(/observedCorrectness-(solid|bridge)/),
+    ).not.toBeInTheDocument()
+  })
+
   it('renders nothing for an empty series', () => {
     renderSegments([])
 

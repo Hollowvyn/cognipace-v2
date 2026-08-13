@@ -83,6 +83,7 @@ export function AnalyticsScreen({
       ) : null}
       {data.chartDataStatus === 'unready' ? (
         <AnalyticsReadinessState
+          compact
           readiness={data.historicalReadiness.requested}
           recommendedRange={data.historicalReadiness.recommendedRange}
         />
@@ -90,14 +91,15 @@ export function AnalyticsScreen({
       {data.chartDataStatus === 'ready' &&
       hasTrimmedLeadingHistory(data.historicalReadiness.requested) ? (
         <AnalyticsReadinessState
+          compact
           readiness={data.historicalReadiness.requested}
           recommendedRange={null}
         />
       ) : null}
-      {data.chartDataStatus === 'ready' ? (
+      {data.chartDataStatus !== 'unavailable' ? (
         <AnalyticsHistoricalStory data={data} />
       ) : null}
-      {data.chartDataStatus === 'ready' ? (
+      {data.chartDataStatus !== 'unavailable' ? (
         <AnalyticsWorkloadStory data={data} />
       ) : (
         <UpcomingLoadPanel data={data} />
@@ -125,11 +127,21 @@ function AnalyticsHistoricalStory({
           <RecallQualityChart data={data.recallQuality} />
         </AnalyticsChartPanel>
       ) : (
-        <AnalyticsReadinessState
-          readiness={data.historicalReadiness.recallQuality}
-          recommendedRange={null}
+        <AnalyticsChartPanel
+          description={metricDefinitions.recallQuality.explanation}
+          id="recall-quality"
+          question={metricDefinitions.recallQuality.question}
           title={metricDefinitions.recallQuality.label}
-        />
+          warning={metricDefinitions.recallQuality.warning}
+        >
+          <AnalyticsReadinessState
+            compact
+            readiness={data.historicalReadiness.recallQuality}
+            recommendedRange={null}
+            title={metricDefinitions.recallQuality.label}
+          />
+          <RecallQualityChart data={data.recallQuality} />
+        </AnalyticsChartPanel>
       )}
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
@@ -208,16 +220,6 @@ function HistoricalMetricPanel({
   const { chartId, definition } = historicalMetricPanels[metric]
   const readiness = data.historicalReadiness[metric]
 
-  if (!readiness.ready) {
-    return (
-      <AnalyticsReadinessState
-        readiness={readiness}
-        recommendedRange={null}
-        title={definition.label}
-      />
-    )
-  }
-
   return (
     <AnalyticsChartPanel
       description={definition.explanation}
@@ -226,6 +228,14 @@ function HistoricalMetricPanel({
       title={definition.label}
       warning={definition.warning}
     >
+      {!readiness.ready ? (
+        <AnalyticsReadinessState
+          compact
+          readiness={readiness}
+          recommendedRange={null}
+          title={definition.label}
+        />
+      ) : null}
       {render()}
     </AnalyticsChartPanel>
   )

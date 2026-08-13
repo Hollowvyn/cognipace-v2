@@ -14,6 +14,7 @@ import {
 } from 'recharts'
 
 import {
+  ChartTrendNote,
   ChartEmptyState,
   chartDimension,
   formatBucketLabel,
@@ -73,6 +74,7 @@ export function OverdueBacklogChart({
   const knownCounts = points.flatMap((point) =>
     point.overdueCount === null ? [] : [point.overdueCount],
   )
+  const knownPointCount = knownCounts.length
   const yMax = Math.max(watchZone + 1, ...knownCounts)
   const thresholdOffset = `${Math.max(0, Math.min(100, (1 - watchZone / yMax) * 100))}%`
 
@@ -253,6 +255,7 @@ export function OverdueBacklogChart({
           />
         </AreaChart>
       </ChartContainer>
+      <ChartTrendNote pointCount={knownPointCount} />
       <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
         Tooltip reports each bucket’s threshold status. Keep overdue backlog at
         or below the{' '}

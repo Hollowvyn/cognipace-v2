@@ -8,10 +8,12 @@ import { CartesianGrid, LineChart, XAxis, YAxis } from 'recharts'
 
 import {
   DASHED_LINE_EVIDENCE_LABEL,
+  ChartTrendNote,
   ChartEmptyState,
   chartDimension,
   formatBucketLabel,
   formatDays,
+  getMaximumLineBridgeGap,
   toChartLabel,
 } from './chart-shared'
 import { analyticsChartDefinitions } from './chart-definitions'
@@ -28,19 +30,22 @@ const memoryStrengthChartConfig = {
   },
 } satisfies ChartConfig
 
-function hasPermittedGap(data: readonly StabilityPoint[]): boolean {
+function hasDashedBridge(data: readonly StabilityPoint[]): boolean {
   let lastValueIndex: number | null = null
 
   return data.some((point, index) => {
     if (point.medianStabilityDays === null) return false
     const gap = lastValueIndex === null ? 0 : index - lastValueIndex - 1
     lastValueIndex = index
-    return gap > 0 && gap <= 2
+    return gap > 0
   })
 }
 
 export function MemoryStrengthChart({ data }: { data: StabilityPoint[] }) {
   const hasValues = data.some((point) => point.medianStabilityDays !== null)
+  const trendPointCount = data.filter(
+    (point) => point.medianStabilityDays !== null,
+  ).length
 
   if (!hasValues) {
     return (
@@ -117,14 +122,15 @@ export function MemoryStrengthChart({ data }: { data: StabilityPoint[] }) {
           <LineSegments
             data={data}
             dataKey="medianStabilityDays"
-            maximumGap={2}
+            maximumGap={getMaximumLineBridgeGap(data.length)}
             seriesKey={stabilitySeries.label}
             stroke={stabilitySeries.color}
             type="linear"
           />
         </LineChart>
       </ChartContainer>
-      {hasPermittedGap(data) ? (
+      <ChartTrendNote pointCount={trendPointCount} />
+      {hasDashedBridge(data) ? (
         <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
           {DASHED_LINE_EVIDENCE_LABEL}
         </p>

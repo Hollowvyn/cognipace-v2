@@ -26,12 +26,14 @@ const readinessMessages: Record<
 export interface AnalyticsReadinessStateProps {
   readiness: AnalyticsReadiness
   recommendedRange: AnalyticsRange | null
+  compact?: boolean
   title?: string
 }
 
 export function AnalyticsReadinessState({
   readiness,
   recommendedRange,
+  compact = false,
   title,
 }: AnalyticsReadinessStateProps) {
   const failures = readiness.failingReasons.map((reason) => ({
@@ -45,17 +47,23 @@ export function AnalyticsReadinessState({
   return (
     <InlineStatus
       aria-label={accessibleName}
-      className="grid gap-2"
+      className={compact ? 'grid gap-1' : 'grid gap-2'}
       role="status"
       tone="warning"
     >
-      {title ? (
+      {title && !compact ? (
         <h2 className="m-0 text-[length:var(--cp-section-title-font-size)] font-bold leading-tight text-foreground">
           {title}
         </h2>
       ) : null}
       {failures.length > 0 ? (
-        <ul className="m-0 grid list-none gap-1 p-0">
+        <ul
+          className={
+            compact
+              ? 'm-0 flex flex-wrap gap-x-3 gap-y-1 pl-4'
+              : 'm-0 grid list-none gap-1 p-0'
+          }
+        >
           {failures.map(({ message, reason }) => (
             <li key={reason}>{message}</li>
           ))}

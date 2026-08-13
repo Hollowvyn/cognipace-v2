@@ -391,47 +391,33 @@ more review volume is inherently better.
 
 ### Historical line-series continuity
 
-Readiness determines whether the overall historical interpretation is rich
-enough to display. A separate continuity policy determines how missing internal
-buckets appear inside an otherwise ready line chart.
+Readiness remains visible as confidence context. A separate continuity policy
+determines how missing internal buckets appear in an available line chart.
 
 For observed and derived historical line series:
 
 - consecutive eligible values use a solid line
-- a gap from one bucket through the range's configured `G_max` uses a dashed
-  bridge between the two measured endpoints
-- a gap longer than `G_max` makes that metric's historical range unready rather
-  than rendering a broken trend
+- any gap between measured values uses a dashed bridge to the next valid point
 - no synthetic point, carried-forward value, interpolated tooltip value, or
   false marker is created inside a dashed bridge
 - the legend or chart note explains that dashed segments cross a period with no
   eligible observation
 
-Because presentation buckets adapt with the selected range, a permitted dashed
-bridge represents at most:
-
-- one day in a 7-day view
-- two days in a 14-day view
-- two three-day buckets in a 30-day view
-- two weeks in a 90-day view
-- two selected presentation buckets for future ranges longer than seven days
-
-The `A` and `K` gates keep repeated acceptable-length gaps from producing an
-overly dashed chart. A range with several dense sessions separated by repeated
-two-bucket gaps therefore does not qualify merely because each individual gap
-is bridgeable. This keeps the chart easy to follow without fabricating
-evidence:
+The `A` and `K` gates still describe confidence and progress, but repeated gaps
+do not make the chart disappear. This keeps the chart easy to follow without
+fabricating evidence:
 
 ```text
 solid segment  = adjacent measured values
-dashed segment = a permitted missing run between measured values
-no chart       = insufficient continuity or overall evidence
+dashed segment = a missing run between measured values
+empty state    = no measured values for that metric
 ```
 
-Practice Rhythm keeps the review-volume bar for every bucket. A zero-practice
-bucket therefore has an empty bar and may be crossed by a dashed correctness
-bridge when it is the only missing bucket. Recall Quality and Memory Strength
-follow the same continuity semantics for each line independently.
+Practice Rhythm keeps the review-volume bar for every bucket after its first
+supported practice bucket. A zero-practice bucket therefore has an empty bar
+and may be crossed by a dashed correctness bridge. Recall Quality, Memory
+Strength, and Recent Overdue Backlog keep their available points and show a
+one-point “not enough data for a trend yet” note when appropriate.
 
 ## Chart catalogue and diagnostics
 

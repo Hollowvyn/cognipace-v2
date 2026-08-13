@@ -11,6 +11,18 @@ export const chartDimension = { height: 288, width: 640 } as const
 export const DASHED_LINE_EVIDENCE_LABEL =
   'Dashed line crosses a period with no eligible evidence.'
 
+export function getMaximumLineBridgeGap(dataLength: number): number {
+  return Math.max(0, dataLength)
+}
+
+export function ChartTrendNote({ pointCount }: { pointCount: number }) {
+  return pointCount === 1 ? (
+    <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
+      Not enough data for a trend yet.
+    </p>
+  ) : null
+}
+
 export function AnalyticsChartLegendItem({
   item,
 }: {

@@ -15,10 +15,12 @@ import {
 
 import {
   DASHED_LINE_EVIDENCE_LABEL,
+  ChartTrendNote,
   ChartEmptyState,
   chartDimension,
   formatBucketLabel,
   formatPercent,
+  getMaximumLineBridgeGap,
   toChartLabel,
 } from './chart-shared'
 import { analyticsChartDefinitions } from './chart-definitions'
@@ -45,7 +47,7 @@ const recallChartConfig = {
   },
 } satisfies ChartConfig
 
-function hasPermittedGap(
+function hasDashedBridge(
   data: readonly RecallQualityPoint[],
   key: 'observedRecall' | 'predictedRecall',
 ): boolean {
@@ -55,7 +57,7 @@ function hasPermittedGap(
     if (point[key] === null) return false
     const gap = lastValueIndex === null ? 0 : index - lastValueIndex - 1
     lastValueIndex = index
-    return gap > 0 && gap <= 2
+    return gap > 0
   })
 }
 
@@ -77,12 +79,20 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
   const hasValues = data.some(
     (point) => point.observedRecall !== null || point.predictedRecall !== null,
   )
+  const trendPointCount = new Set(
+    data
+      .filter(
+        (point) =>
+          point.observedRecall !== null || point.predictedRecall !== null,
+      )
+      .map((point) => point.bucketStart),
+  ).size
   const targetRetention = data.find(
     (point) => point.targetRetention !== null,
   )?.targetRetention
   const showsDashedContinuity =
-    hasPermittedGap(data, 'observedRecall') ||
-    hasPermittedGap(data, 'predictedRecall')
+    hasDashedBridge(data, 'observedRecall') ||
+    hasDashedBridge(data, 'predictedRecall')
   const latestObserved = [...data]
     .reverse()
     .find((point) => point.observedRecall !== null)
@@ -203,7 +213,7 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
           <LineSegments
             data={data}
             dataKey="observedRecall"
-            maximumGap={2}
+            maximumGap={getMaximumLineBridgeGap(data.length)}
             seriesKey={observedSeries.label}
             stroke={observedSeries.color}
             testId="recall-observed-lines"
@@ -212,7 +222,7 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
           <LineSegments
             data={data}
             dataKey="predictedRecall"
-            maximumGap={2}
+            maximumGap={getMaximumLineBridgeGap(data.length)}
             seriesKey={predictedSeries.label}
             stroke={predictedSeries.color}
             testId="recall-predicted-lines"
@@ -220,6 +230,7 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
           />
         </ComposedChart>
       </ChartContainer>
+      <ChartTrendNote pointCount={trendPointCount} />
       {showsDashedContinuity ? (
         <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
           {DASHED_LINE_EVIDENCE_LABEL}

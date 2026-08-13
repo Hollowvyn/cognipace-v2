@@ -9,10 +9,12 @@ import { Bar, CartesianGrid, ComposedChart, XAxis, YAxis } from 'recharts'
 
 import {
   DASHED_LINE_EVIDENCE_LABEL,
+  ChartTrendNote,
   ChartEmptyState,
   chartDimension,
   formatBucketLabel,
   formatPercent,
+  getMaximumLineBridgeGap,
   toChartLabel,
 } from './chart-shared'
 import { analyticsChartDefinitions } from './chart-definitions'
@@ -35,14 +37,14 @@ const practiceRhythmChartConfig = {
   },
 } satisfies ChartConfig
 
-function hasPermittedGap(data: readonly PracticeRhythmPoint[]): boolean {
+function hasDashedBridge(data: readonly PracticeRhythmPoint[]): boolean {
   let lastValueIndex: number | null = null
 
   return data.some((point, index) => {
     if (point.observedCorrectness === null) return false
     const gap = lastValueIndex === null ? 0 : index - lastValueIndex - 1
     lastValueIndex = index
-    return gap > 0 && gap <= 2
+    return gap > 0
   })
 }
 
@@ -62,6 +64,9 @@ export function PracticeRhythmChart({ data }: { data: PracticeRhythmPoint[] }) {
   const hasCorrectness = data.some(
     (point) => point.observedCorrectness !== null,
   )
+  const trendPointCount = data.filter(
+    (point) => point.observedCorrectness !== null,
+  ).length
 
   if (!hasReviews) {
     return (
@@ -169,7 +174,7 @@ export function PracticeRhythmChart({ data }: { data: PracticeRhythmPoint[] }) {
               <LineSegments
                 data={data}
                 dataKey="observedCorrectness"
-                maximumGap={2}
+                maximumGap={getMaximumLineBridgeGap(data.length)}
                 seriesKey={correctnessSeries.label}
                 stroke={correctnessSeries.color}
                 testId="practice-correctness-lines"
@@ -180,6 +185,7 @@ export function PracticeRhythmChart({ data }: { data: PracticeRhythmPoint[] }) {
           </ComposedChart>
         </ChartContainer>
       </div>
+      <ChartTrendNote pointCount={trendPointCount} />
       <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
         <span className="font-medium text-foreground">
           {practiceRhythmDefinition.interpretationWarning}
@@ -187,7 +193,7 @@ export function PracticeRhythmChart({ data }: { data: PracticeRhythmPoint[] }) {
         More reviews and stronger observed correctness can move together without
         either one proving it caused the other.
       </p>
-      {hasPermittedGap(data) ? (
+      {hasDashedBridge(data) ? (
         <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
           {DASHED_LINE_EVIDENCE_LABEL}
         </p>

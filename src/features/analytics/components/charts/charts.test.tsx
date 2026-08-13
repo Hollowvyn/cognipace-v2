@@ -407,6 +407,58 @@ describe('analytics chart components', () => {
     ).toHaveAttribute('stroke', 'transparent')
   })
 
+  it('keeps sparse line charts visible, bridges any gap, and explains one-point trends', () => {
+    const sparseRecall = [
+      {
+        ...recallQuality[0]!,
+        observedRecall: 0.72,
+        predictedRecall: null,
+      },
+      {
+        ...recallQuality[0]!,
+        bucketStart: '2026-08-02',
+        bucketEnd: '2026-08-02',
+        observedRecall: null,
+        predictedRecall: null,
+      },
+      {
+        ...recallQuality[0]!,
+        bucketStart: '2026-08-03',
+        bucketEnd: '2026-08-03',
+        observedRecall: null,
+        predictedRecall: null,
+      },
+      {
+        ...recallQuality[0]!,
+        bucketStart: '2026-08-04',
+        bucketEnd: '2026-08-04',
+        observedRecall: null,
+        predictedRecall: null,
+      },
+      {
+        ...recallQuality[0]!,
+        bucketStart: '2026-08-05',
+        bucketEnd: '2026-08-05',
+        observedRecall: 0.84,
+        predictedRecall: null,
+      },
+    ]
+
+    render(
+      <div>
+        <RecallQualityChart data={sparseRecall} />
+        <MemoryStrengthChart data={[stability[0]!]} />
+      </div>,
+    )
+
+    expect(
+      screen.getByTestId('recall-observed-lines-bridge-0-4'),
+    ).toHaveAttribute('stroke-dasharray', '5 5')
+    expect(
+      screen.getAllByText('Not enough data for a trend yet.').length,
+    ).toBeGreaterThan(0)
+  })
+
   it('pins retention details from mouse and keyboard interactions', async () => {
     const user = userEvent.setup()
 
