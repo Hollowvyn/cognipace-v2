@@ -14,6 +14,7 @@ import {
 import {
   getReviewDayStats,
   getRecentRatings,
+  getCurrentFsrsCards,
   getUpcomingCards,
   getWeakProblemCandidates,
   getRetentionScatterCandidates,
@@ -29,7 +30,9 @@ async function insertCard(
   slug: string,
   opts: {
     id?: string
+    cardKind?: string
     dueAt?: number
+    lastReviewAt?: number | null
     lapses?: number
     difficulty?: number
     stability?: number
@@ -39,7 +42,7 @@ async function insertCard(
   await db.insert(fsrsCards).values({
     id,
     problemSlug: slug,
-    cardKind: 'default',
+    cardKind: opts.cardKind ?? 'default',
     dueAt: opts.dueAt ?? BASE_TS,
     stability: opts.stability ?? 10,
     difficulty: opts.difficulty ?? 5,
@@ -49,7 +52,7 @@ async function insertCard(
     reps: 1,
     lapses: opts.lapses ?? 0,
     state: 'review',
-    lastReviewAt: BASE_TS,
+    lastReviewAt: opts.lastReviewAt === undefined ? BASE_TS : opts.lastReviewAt,
     createdAt: BASE_TS,
     updatedAt: BASE_TS,
   })
@@ -357,6 +360,75 @@ describe('getUpcomingCards', () => {
 
 // ---------------------------------------------------------------------------
 
+describe('getCurrentFsrsCards', () => {
+  it('returns default cards with identity, scheduling state, dates, and deterministic ordering', async () => {
+    const { db } = await createTestDb({ seed: false })
+    const earlierDue = new Date('2026-01-14T12:00:00.000Z')
+    const laterDue = new Date('2026-01-15T12:00:00.000Z')
+    const lastReview = new Date('2026-01-10T12:00:00.000Z')
+
+    await insertProblemWithTopics(db, 'beta-problem', 'Beta Problem')
+    await insertProblemWithTopics(db, 'alpha-problem', 'Alpha Problem')
+    await insertPractice(db, 'beta-problem', {
+      status: 'learning',
+      isSuspended: true,
+    })
+    await insertPractice(db, 'alpha-problem', { status: 'review' })
+
+    await insertCard(db, 'beta-problem', {
+      dueAt: ts(earlierDue),
+      lastReviewAt: null,
+      stability: 4.5,
+      difficulty: 7.25,
+      lapses: 3,
+    })
+    await insertCard(db, 'alpha-problem', {
+      dueAt: ts(laterDue),
+      lastReviewAt: ts(lastReview),
+      stability: 12.5,
+      difficulty: 3.75,
+      lapses: 1,
+    })
+    await insertCard(db, 'alpha-problem', {
+      id: 'alpha-problem:filtered',
+      cardKind: 'custom',
+    })
+
+    const result = await getCurrentFsrsCards(db)
+
+    expect(result).toEqual([
+      {
+        cardId: 'alpha-problem:default',
+        problemSlug: 'alpha-problem',
+        title: 'Alpha Problem',
+        stability: 12.5,
+        difficulty: 3.75,
+        lapses: 1,
+        dueAt: laterDue,
+        lastReviewAt: lastReview,
+        state: 'review',
+        practiceStatus: 'review',
+        isSuspended: false,
+      },
+      {
+        cardId: 'beta-problem:default',
+        problemSlug: 'beta-problem',
+        title: 'Beta Problem',
+        stability: 4.5,
+        difficulty: 7.25,
+        lapses: 3,
+        dueAt: earlierDue,
+        lastReviewAt: null,
+        state: 'review',
+        practiceStatus: 'learning',
+        isSuspended: true,
+      },
+    ])
+  })
+})
+
+// ---------------------------------------------------------------------------
+
 describe('getWeakProblemCandidates', () => {
   it('returns empty when no reviewed problems exist', async () => {
     const { db } = await createTestDb()
@@ -385,7 +457,11 @@ describe('getWeakProblemCandidates', () => {
   it('returns slug, title, lapseCount, difficulty, stability, lastReviewAt for a weak problem', async () => {
     const { db } = await createTestDb()
     await insertPractice(db, 'two-sum')
-    await insertCard(db, 'two-sum', { lapses: 2, difficulty: 6.5, stability: 3.0 })
+    await insertCard(db, 'two-sum', {
+      lapses: 2,
+      difficulty: 6.5,
+      stability: 3.0,
+    })
 
     const result = await getWeakProblemCandidates(db)
     expect(result).toHaveLength(1)
@@ -461,7 +537,11 @@ describe('getRetentionScatterCandidates', () => {
   it('returns slug, title, stability, difficulty, lapseCount, lastReviewAt for a reviewed problem', async () => {
     const { db } = await createTestDb()
     await insertPractice(db, 'two-sum')
-    await insertCard(db, 'two-sum', { stability: 12, difficulty: 6.5, lapses: 1 })
+    await insertCard(db, 'two-sum', {
+      stability: 12,
+      difficulty: 6.5,
+      lapses: 1,
+    })
 
     const result = await getRetentionScatterCandidates(db)
 

@@ -261,9 +261,7 @@ export async function getMemoryProfileCards(
   }))
 }
 
-export async function getCurrentFsrsCards(
-  db: Db,
-): Promise<CurrentFsrsCard[]> {
+export async function getCurrentFsrsCards(db: Db): Promise<CurrentFsrsCard[]> {
   const rows = await db
     .select({
       cardId: fsrsCards.id,
@@ -372,10 +370,7 @@ export async function getRetentionScatterCandidates(
         eq(fsrsCards.cardKind, defaultFsrsCardKind),
       ),
     )
-    .innerJoin(
-      problemPractice,
-      eq(problemPractice.problemSlug, problems.slug),
-    )
+    .innerJoin(problemPractice, eq(problemPractice.problemSlug, problems.slug))
     .where(
       and(
         ne(fsrsCards.state, 'new'),
