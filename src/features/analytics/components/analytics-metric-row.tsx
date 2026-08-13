@@ -13,8 +13,8 @@ export function AnalyticsMetricRow({
     <div className="flex min-w-0 flex-col gap-[var(--cp-surface-gap)]">
       {summary.lowSample ? (
         <InlineStatus role="status" tone="warning">
-          Observed rating quality needs more data — check back after at least
-          10 reviews in the selected {summary.range}-day period.
+          Observed rating quality needs more data — check back after at least 10
+          reviews in the selected {summary.range}-day period.
         </InlineStatus>
       ) : null}
 
