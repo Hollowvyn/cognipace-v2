@@ -44,13 +44,13 @@ export const metricDefinitions = {
     unit: '% of ratings',
     lowSampleOrEmptyState: 'No ratings were recorded in this period.',
   },
-  consistency: {
-    label: 'Consistency',
+  practiceRhythm: {
+    label: 'Practice rhythm',
     explanation:
-      'Practice days and observed correctness shown together for association only; this does not establish causation.',
-    unit: 'practice days / week',
+      'Review volume per selected adaptive time bucket and observed correctness shown together for association only; this does not establish causation.',
+    unit: 'reviews per adaptive bucket',
     lowSampleOrEmptyState:
-      'Not enough weekly assessed reviews exist for a useful comparison.',
+      'Not enough assessed reviews across the selected adaptive time buckets exist for a useful comparison.',
   },
   ratingsMix: {
     label: 'Ratings mix',

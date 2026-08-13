@@ -84,6 +84,23 @@ describe('analytics chart-data builders', () => {
     )
   })
 
+  it('defines practice rhythm by review volume in adaptive buckets', () => {
+    expect(metricDefinitions).not.toHaveProperty('consistency')
+    expect(metricDefinitions.practiceRhythm).toMatchObject({
+      label: 'Practice rhythm',
+      unit: 'reviews per adaptive bucket',
+    })
+    expect(metricDefinitions.practiceRhythm.explanation).toContain(
+      'Review volume per selected adaptive time bucket',
+    )
+    expect(metricDefinitions.practiceRhythm.explanation).toContain(
+      'does not establish causation',
+    )
+    expect(metricDefinitions.practiceRhythm.lowSampleOrEmptyState).not.toMatch(
+      /week|practice days/i,
+    )
+  })
+
   it('builds daily observed and pre-review predicted recall with null empty samples', () => {
     const points = buildRecallQualityPoints(
       [

@@ -98,9 +98,9 @@ function AnalyticsChartHierarchy({
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
         <AnalyticsChartPanel
-          description={metricDefinitions.consistency.explanation}
-          id="consistency"
-          title="Consistency vs observed correctness"
+          description={metricDefinitions.practiceRhythm.explanation}
+          id="practice-rhythm"
+          title="Practice rhythm vs observed correctness"
         >
           <ConsistencyChart data={data.practiceRhythm} />
         </AnalyticsChartPanel>

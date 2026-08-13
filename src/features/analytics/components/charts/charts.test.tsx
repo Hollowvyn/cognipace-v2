@@ -44,7 +44,7 @@ const recallQuality: RecallQualityPoint[] = [
   },
 ]
 
-const consistency: PracticeRhythmPoint[] = [
+const practiceRhythm: PracticeRhythmPoint[] = [
   {
     bucketStart: '2026-07-27',
     bucketEnd: '2026-08-02',
@@ -143,7 +143,7 @@ describe('analytics chart components', () => {
     render(
       <div>
         <RecallQualityChart data={recallQuality} />
-        <ConsistencyChart data={consistency} />
+        <ConsistencyChart data={practiceRhythm} />
         <RatingsMixChart data={ratingsMix} summary={hardAgain} />
         <WeakestTopicsChart data={topics} />
         <MemoryStrengthChart data={stability} />
@@ -223,7 +223,7 @@ describe('analytics chart components', () => {
   })
 
   it('uses adaptive-bucket copy for temporary practice rhythm chart data', () => {
-    render(<ConsistencyChart data={consistency} />)
+    render(<ConsistencyChart data={practiceRhythm} />)
 
     expect(screen.getByText('Reviews per bucket')).toBeVisible()
     expect(document.querySelector('svg desc')).toHaveTextContent(

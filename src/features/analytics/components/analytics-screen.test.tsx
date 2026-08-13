@@ -315,7 +315,7 @@ describe('AnalyticsScreen', () => {
 
     const chartRegionNames = [
       'Recall quality',
-      'Consistency vs observed correctness',
+      'Practice rhythm vs observed correctness',
       'Ratings mix',
       'Weakest topics',
       'Memory strength',
@@ -335,6 +335,18 @@ describe('AnalyticsScreen', () => {
     )
 
     expect(chartOrder).toEqual(chartRegionNames)
+    const practiceRhythm = screen.getByRole('region', {
+      name: 'Practice rhythm vs observed correctness',
+    })
+    expect(
+      within(practiceRhythm).getByText(
+        /Review volume per selected adaptive time bucket/,
+      ),
+    ).toBeVisible()
+    expect(screen.queryByText(/practice days \/ week/i)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/weekly assessed reviews/i),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('region', { name: '14-day due forecast' }),
     ).not.toBeInTheDocument()
