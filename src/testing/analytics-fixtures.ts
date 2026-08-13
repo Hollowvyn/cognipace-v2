@@ -5,7 +5,7 @@ export const analyticsChartPointFixtures = {
     {
       week: '2026-05-25',
       reviewDays: 4,
-      firstPassRecall: 0.75,
+      observedCorrectness: 0.75,
       sampleSize: 8,
       associationOnly: true,
     },
@@ -82,6 +82,7 @@ export function createSerializedAnalyticsSummary(
     topics: [],
     stability: [],
     overdueBacklog: [],
+    overdueHistoryAvailableFrom: null,
     upcomingLoad: [],
     retentionHealth: [],
     fragileKnowledge: [],

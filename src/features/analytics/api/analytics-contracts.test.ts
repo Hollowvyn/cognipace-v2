@@ -63,6 +63,7 @@ const validSummary: SerializedAnalyticsSummary = {
   topics: [],
   stability: [],
   overdueBacklog: [],
+  overdueHistoryAvailableFrom: null,
   upcomingLoad: [],
   retentionHealth: [],
   fragileKnowledge: [],
@@ -199,6 +200,7 @@ describe('analyticsSummarySchema', () => {
     const chartReadySummary = {
       ...validSummary,
       chartDataStatus: 'ready' as const,
+      overdueHistoryAvailableFrom: '2026-01-01T00:00:00.000Z',
       recallQuality: [
         {
           date: '2026-01-15',
@@ -219,7 +221,23 @@ describe('analyticsSummarySchema', () => {
       recallQuality: chartReadySummary.recallQuality,
       consistency: chartReadySummary.consistency,
       ratingsMix: chartReadySummary.ratingsMix,
+      overdueHistoryAvailableFrom: '2026-01-01T00:00:00.000Z',
     })
+  })
+
+  it('preserves a nullable overdue history boundary', () => {
+    expect(
+      analyticsSummarySchema.parse({
+        ...validSummary,
+        overdueHistoryAvailableFrom: null,
+      }).overdueHistoryAvailableFrom,
+    ).toBeNull()
+    expect(
+      analyticsSummarySchema.parse({
+        ...validSummary,
+        overdueHistoryAvailableFrom: '2026-01-01T00:00:00.000Z',
+      }).overdueHistoryAvailableFrom,
+    ).toBe('2026-01-01T00:00:00.000Z')
   })
 
   it('rejects unavailable summaries with predicted recall or chart series', () => {
@@ -459,7 +477,7 @@ describe('chart point contracts', () => {
       consistencyPointSchema.parse({
         week: '2026-01-12',
         reviewDays: 3,
-        firstPassRecall: 0.75,
+        observedCorrectness: 0.75,
         sampleSize: 4,
         associationOnly: true,
       }),

@@ -907,6 +907,7 @@ export function registerBackgroundHandlers() {
         topics: [],
         stability: [],
         overdueBacklog: [],
+        overdueHistoryAvailableFrom: null,
         upcomingLoad: [],
         retentionHealth: [],
         fragileKnowledge: [],

@@ -92,7 +92,7 @@ export const recallQualityPointSchema = z.object({
 export const consistencyPointSchema = z.object({
   week: z.string(),
   reviewDays: countSchema,
-  firstPassRecall: nullablePercentageSchema,
+  observedCorrectness: nullablePercentageSchema,
   sampleSize: countSchema,
   associationOnly: z.literal(true),
 })
@@ -182,6 +182,7 @@ export const analyticsSummarySchema = z
     topics: z.array(topicPointSchema),
     stability: z.array(stabilityPointSchema),
     overdueBacklog: z.array(overdueBacklogPointSchema),
+    overdueHistoryAvailableFrom: z.iso.datetime().nullable(),
     upcomingLoad: z.array(upcomingLoadPointSchema),
     retentionHealth: z.array(retentionHealthPointSchema),
     fragileKnowledge: z.array(fragileKnowledgeSchema),

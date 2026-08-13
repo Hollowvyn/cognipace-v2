@@ -3,9 +3,9 @@ import {
   getRetrievability,
   isReviewRating,
   parseSerializedFsrsReviewLogSnapshot,
-  scheduleReview,
-  type FsrsCardSnapshot,
+  replayReviewHistorySequence,
   type NormalizedFsrsSchedulingOptions,
+  type ReviewRating,
 } from '@/lib/fsrs'
 
 export interface AnalyticsReviewEvent {
@@ -51,7 +51,7 @@ export interface RecallQualityPoint {
 export interface ConsistencyPoint {
   week: string
   reviewDays: number
-  firstPassRecall: number | null
+  observedCorrectness: number | null
   sampleSize: number
   associationOnly: true
 }
@@ -83,6 +83,11 @@ export interface OverdueBacklogPoint {
   date: string
   overdueCount: number
   historyAvailable: boolean
+}
+
+export interface OverdueBacklogResult {
+  points: OverdueBacklogPoint[]
+  overdueHistoryAvailableFrom: string | null
 }
 
 export interface UpcomingLoadPoint {
@@ -191,10 +196,24 @@ function buildPredictedRecall(
     byCard.set(event.cardId, history)
   }
   for (const history of byCard.values()) {
-    let card: FsrsCardSnapshot | null = null
-    for (const event of [...history].sort(compareEvents)) {
-      if (!isReviewRating(event.rating)) continue
-      card ??= createInitialFsrsCard(event.reviewedAt)
+    const orderedHistory = history
+      .filter(
+        (event): event is AnalyticsReviewEvent & { rating: ReviewRating } =>
+          isReviewRating(event.rating),
+      )
+      .sort(compareEvents)
+    const replayedReviews = replayReviewHistorySequence(
+      orderedHistory.map((event) => ({
+        reviewedAt: event.reviewedAt,
+        rating: event.rating,
+      })),
+      options.fsrsOptions,
+    )
+
+    for (const [index, event] of orderedHistory.entries()) {
+      const card =
+        replayedReviews[index - 1]?.card ??
+        createInitialFsrsCard(event.reviewedAt)
       const predicted = getRetrievability(
         card,
         event.reviewedAt,
@@ -209,12 +228,6 @@ function buildPredictedRecall(
           value: predicted,
         })
       }
-      card = scheduleReview(
-        card,
-        event.rating,
-        event.reviewedAt,
-        options.fsrsOptions,
-      ).card
     }
   }
   return results
@@ -241,7 +254,7 @@ export function buildConsistencyPoints(
     .map(([week, value]) => ({
       week,
       reviewDays: value.days.size,
-      firstPassRecall: ratio(
+      observedCorrectness: ratio(
         value.correct.filter(Boolean).length,
         value.correct.length,
       ),
@@ -336,8 +349,17 @@ export function buildStabilityPoints(
 export function buildOverdueBacklogPoints(
   snapshots: readonly AnalyticsOverdueSnapshot[] | null,
   options: AnalyticsRangeOptions,
-): OverdueBacklogPoint[] {
-  if (!snapshots?.length) return []
+): OverdueBacklogResult {
+  const overdueHistoryAvailableFrom = snapshots?.length
+    ? [...snapshots]
+        .sort((a, b) => a.date.getTime() - b.date.getTime())
+        .at(0)!
+        .date.toISOString()
+    : null
+
+  if (!snapshots?.length) {
+    return { points: [], overdueHistoryAvailableFrom }
+  }
   const dates = dailyKeys(options)
   const byDate = new Map(
     snapshots.map((snapshot) => [
@@ -345,12 +367,18 @@ export function buildOverdueBacklogPoints(
       snapshot.overdueCount,
     ]),
   )
-  if (dates.some((date) => !byDate.has(date))) return []
-  return dates.map((date) => ({
-    date,
-    overdueCount: byDate.get(date) ?? 0,
-    historyAvailable: true,
-  }))
+  if (dates.some((date) => !byDate.has(date))) {
+    return { points: [], overdueHistoryAvailableFrom }
+  }
+
+  return {
+    points: dates.map((date) => ({
+      date,
+      overdueCount: byDate.get(date) ?? 0,
+      historyAvailable: true,
+    })),
+    overdueHistoryAvailableFrom,
+  }
 }
 
 export function buildUpcomingLoadPoints(

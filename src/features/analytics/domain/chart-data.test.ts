@@ -127,6 +127,35 @@ describe('analytics chart-data builders', () => {
     expect(points[2]!.reviewCount).toBe(0)
   })
 
+  it('changes predicted recall when pre-range history is included', () => {
+    const inRangeEvents = [
+      event({
+        reviewedAt: new Date('2026-08-02T12:00:00.000Z'),
+        rating: 'good',
+      }),
+      event({
+        id: '2',
+        reviewedAt: new Date('2026-08-03T12:00:00.000Z'),
+        rating: 'good',
+      }),
+    ]
+    const withPreRangeHistory = [
+      event({
+        id: '0',
+        reviewedAt: new Date('2026-07-01T12:00:00.000Z'),
+        rating: 'again',
+      }),
+      ...inRangeEvents,
+    ]
+
+    const inRangeOnly = buildRecallQualityPoints(inRangeEvents, options)
+    const replayed = buildRecallQualityPoints(withPreRangeHistory, options)
+
+    expect(replayed[2]!.predictedRecall).not.toBe(
+      inRangeOnly[2]!.predictedRecall,
+    )
+  })
+
   it('replays multiple cards with the configured normalized FSRS options', () => {
     const fsrsOptions = normalizeFsrsSchedulingOptions({
       targetRetention: 0.75,
@@ -193,7 +222,7 @@ describe('analytics chart-data builders', () => {
     )
     expect(points[0]).toMatchObject({
       reviewDays: 2,
-      firstPassRecall: 0.5,
+      observedCorrectness: 0.5,
       sampleSize: 2,
       associationOnly: true,
     })
@@ -238,7 +267,14 @@ describe('analytics chart-data builders', () => {
       options,
     )
     expect(points.map((point) => point.topic)).toEqual(['Graph', 'Array'])
-    expect(points.every((point) => point.lowSample)).toBe(false)
+    expect(points.find((point) => point.topic === 'Graph')).toMatchObject({
+      sampleSize: 1,
+      lowSample: true,
+    })
+    expect(points.find((point) => point.topic === 'Array')).toMatchObject({
+      sampleSize: 2,
+      lowSample: false,
+    })
   })
 
   it('uses only valid stored stability logs and stable weekly ordering', () => {
@@ -261,14 +297,20 @@ describe('analytics chart-data builders', () => {
   })
 
   it('returns an explicit unavailable overdue history boundary', () => {
-    expect(buildOverdueBacklogPoints(null, options)).toEqual([])
+    expect(buildOverdueBacklogPoints(null, options)).toEqual({
+      points: [],
+      overdueHistoryAvailableFrom: null,
+    })
     expect(
       buildOverdueBacklogPoints(
         [{ date: new Date('2026-08-02T12:00:00.000Z'), overdueCount: 3 }],
         options,
       ),
-    ).toEqual([])
-    const points = buildOverdueBacklogPoints(
+    ).toMatchObject({
+      points: [],
+      overdueHistoryAvailableFrom: '2026-08-02T12:00:00.000Z',
+    })
+    const result = buildOverdueBacklogPoints(
       [
         { date: new Date('2026-08-01T12:00:00.000Z'), overdueCount: 1 },
         { date: new Date('2026-08-02T12:00:00.000Z'), overdueCount: 3 },
@@ -276,8 +318,9 @@ describe('analytics chart-data builders', () => {
       ],
       options,
     )
-    expect(points).toHaveLength(3)
-    expect(points.every((point) => point.historyAvailable)).toBe(true)
+    expect(result.points).toHaveLength(3)
+    expect(result.points.every((point) => point.historyAvailable)).toBe(true)
+    expect(result.overdueHistoryAvailableFrom).toBe('2026-08-01T12:00:00.000Z')
   })
 
   it('separates overdue and upcoming due load across the 14-day range', () => {

@@ -59,6 +59,7 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
     topics: [],
     stability: [],
     overdueBacklog: [],
+    overdueHistoryAvailableFrom: null,
     upcomingLoad: [],
     retentionHealth: [],
     fragileKnowledge: [],
@@ -123,11 +124,11 @@ describe('AnalyticsScreen', () => {
     const totalReviewsTile = screen.getByLabelText('Total Reviews metric')
     expect(within(totalReviewsTile).getByText('381')).toBeVisible()
 
-    const qualityTile = screen.getByLabelText(
-      'Observed rating quality metric',
-    )
+    const qualityTile = screen.getByLabelText('Observed rating quality metric')
     expect(within(qualityTile).getByText('72%')).toBeVisible()
-    expect(within(qualityTile).getByText('58 reviews in the selected 30-day period')).toBeVisible()
+    expect(
+      within(qualityTile).getByText('58 reviews in the selected 30-day period'),
+    ).toBeVisible()
   })
 
   it('renders memory profile totals and retrievability', async () => {
@@ -235,9 +236,7 @@ describe('AnalyticsScreen', () => {
     expect(
       await screen.findByText(/Observed rating quality needs more data/),
     ).toBeVisible()
-    const qualityTile = screen.getByLabelText(
-      'Observed rating quality metric',
-    )
+    const qualityTile = screen.getByLabelText('Observed rating quality metric')
     expect(within(qualityTile).getByText('—')).toBeVisible()
     expect(
       within(qualityTile).getByText(
