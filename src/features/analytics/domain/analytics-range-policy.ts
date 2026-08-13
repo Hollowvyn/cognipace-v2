@@ -50,6 +50,10 @@ export function buildAnalyticsBuckets({
   periodEnd: Date
 }): AnalyticsBucket[] {
   const { bucketDays } = getAnalyticsRangePolicy(requestedDays)
+  if (!Number.isFinite(periodEnd.getTime())) {
+    throw new RangeError('Analytics period end must be a valid date.')
+  }
+
   const normalizedEnd = endOfLocalDay(periodEnd)
   const periodStart = startOfLocalDay(
     addLocalDays(normalizedEnd, -(requestedDays - 1)),
