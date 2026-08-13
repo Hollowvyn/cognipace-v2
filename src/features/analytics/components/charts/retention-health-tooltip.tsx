@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { createLeetCodeProblemUrl } from '@/lib/leetcode'
 import { ExternalLink, X } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useState } from 'react'
+import type { Ref } from 'react'
 
 import { formatDays, formatPercent } from './chart-shared'
 import type { RetentionHealthPoint } from './types'
@@ -106,9 +107,11 @@ export const RetentionHealthPreviewPanel = forwardRef<
 })
 
 export function RetentionHealthTooltip({
+  closeButtonRef,
   onClose,
   point,
 }: {
+  closeButtonRef?: Ref<HTMLButtonElement>
   onClose: () => void
   point: RetentionHealthPoint
 }) {
@@ -138,6 +141,7 @@ export function RetentionHealthTooltip({
           aria-label={`Close ${point.title} memory details`}
           className="shrink-0"
           onClick={onClose}
+          ref={closeButtonRef}
           size="icon"
           variant="ghost"
         >

@@ -438,16 +438,74 @@ describe('analytics chart components', () => {
 
     screen.getByRole('button', { name: /Dijkstra retention/i }).focus()
     await user.keyboard('{Enter}')
-    expect(
-      screen.getByRole('dialog', { name: 'Dijkstra memory details' }),
-    ).toBeVisible()
+    const enterDialog = screen.getByRole('dialog', {
+      name: 'Dijkstra memory details',
+    })
+    expect(enterDialog).toBeVisible()
+    await waitFor(() => {
+      expect(
+        within(enterDialog).getByRole('button', {
+          name: 'Close Dijkstra memory details',
+        }),
+      ).toHaveFocus()
+    })
 
     await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Dijkstra retention/i }),
+      ).toHaveFocus()
+    })
     screen.getByRole('button', { name: /Dijkstra retention/i }).focus()
     await user.keyboard(' ')
-    expect(
-      screen.getByRole('dialog', { name: 'Dijkstra memory details' }),
-    ).toBeVisible()
+    const spaceDialog = screen.getByRole('dialog', {
+      name: 'Dijkstra memory details',
+    })
+    expect(spaceDialog).toBeVisible()
+    await waitFor(() => {
+      expect(
+        within(spaceDialog).getByRole('button', {
+          name: 'Close Dijkstra memory details',
+        }),
+      ).toHaveFocus()
+    })
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Dijkstra retention/i }),
+      ).toHaveFocus()
+    })
+  })
+
+  it('restores focus to the trigger after outside and explicit dialog dismissal', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <RetentionHealthChart data={retentionHealth} targetRetention={0.9} />,
+    )
+
+    screen.getByRole('button', { name: /Dijkstra retention/i }).focus()
+    await user.keyboard('{Enter}')
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Dijkstra retention/i }),
+      ).toHaveFocus()
+    })
+
+    screen.getByRole('button', { name: /Dijkstra retention/i }).focus()
+    await user.keyboard('{Enter}')
+    await user.click(
+      screen.getByRole('button', { name: 'Close Dijkstra memory details' }),
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Dijkstra retention/i }),
+      ).toHaveFocus()
+    })
   })
 
   it('updates pinned retention details from the latest point data', async () => {

@@ -53,8 +53,14 @@ export function RetentionHealthChart({
 }) {
   const [pinnedSlug, setPinnedSlug] = useState<string | null>(null)
   const chartRegionRef = useRef<HTMLDivElement>(null)
+  const dialogCloseButtonRef = useRef<HTMLButtonElement>(null)
+  const originTriggerRef = useRef<SVGGElement | null>(null)
+  const originTriggerSlugRef = useRef<string | null>(null)
   const pinnedSlugRef = useRef<string | null>(null)
   const previewRef = useRef<RetentionHealthPreviewHandle>(null)
+  const restoreFocusRef = useRef<SVGGElement | null>(null)
+  const restoreFocusSlugRef = useRef<string | null>(null)
+  const suppressNextPreviewRef = useRef(false)
   const pinnedPoint = pinnedSlug
     ? (data.find((point) => point.slug === pinnedSlug) ?? null)
     : null
@@ -72,12 +78,20 @@ export function RetentionHealthChart({
   }
 
   function dismissPinnedPoint() {
+    restoreFocusRef.current = originTriggerRef.current
+    restoreFocusSlugRef.current = originTriggerSlugRef.current
+    originTriggerRef.current = null
+    originTriggerSlugRef.current = null
     pinnedSlugRef.current = null
     setPinnedSlug(null)
     previewRef.current?.clear()
   }
 
-  function pinPoint(slug: string) {
+  function pinPoint(slug: string, trigger: SVGGElement) {
+    originTriggerRef.current = trigger
+    originTriggerSlugRef.current = slug
+    restoreFocusRef.current = null
+    restoreFocusSlugRef.current = null
     pinnedSlugRef.current = slug
     previewRef.current?.clear()
     setPinnedSlug(slug)
@@ -85,6 +99,10 @@ export function RetentionHealthChart({
 
   useEffect(() => {
     if (pinnedSlug && !pinnedPoint) {
+      originTriggerRef.current = null
+      originTriggerSlugRef.current = null
+      restoreFocusRef.current = null
+      restoreFocusSlugRef.current = null
       pinnedSlugRef.current = null
       previewRef.current?.clear()
       queueMicrotask(() => {
@@ -94,6 +112,44 @@ export function RetentionHealthChart({
       })
     }
   }, [pinnedPoint, pinnedSlug])
+
+  useEffect(() => {
+    if (pinnedSlug) {
+      const focusTimer = window.setTimeout(() => {
+        dialogCloseButtonRef.current?.focus()
+      }, 0)
+
+      return () => {
+        window.clearTimeout(focusTimer)
+      }
+    }
+
+    const storedTrigger = restoreFocusRef.current
+    const slug = restoreFocusSlugRef.current
+    restoreFocusRef.current = null
+    restoreFocusSlugRef.current = null
+
+    if (!storedTrigger && !slug) return
+
+    const focusTimer = window.setTimeout(() => {
+      const trigger = slug
+        ? chartRegionRef.current?.querySelector<SVGGElement>(
+            `[data-retention-trigger-slug="${slug}"]`,
+          )
+        : storedTrigger?.isConnected
+          ? storedTrigger
+          : null
+
+      if (trigger) {
+        suppressNextPreviewRef.current = true
+        trigger.focus()
+      }
+    }, 0)
+
+    return () => {
+      window.clearTimeout(focusTimer)
+    }
+  }, [pinnedSlug])
 
   useEffect(() => {
     if (!pinnedPoint) return
@@ -166,17 +222,30 @@ export function RetentionHealthChart({
         aria-haspopup="dialog"
         aria-label={label}
         className="cursor-pointer focus-visible:[&>circle:first-of-type]:stroke-2 focus-visible:[&>circle:first-of-type]:stroke-ring"
+        data-retention-trigger-slug={point.slug}
         onBlur={() => setFocusedSlug(null)}
-        onClick={() => pinPoint(point.slug)}
-        onFocus={() => setFocusedSlug(point.slug)}
+        onClick={(event) => pinPoint(point.slug, event.currentTarget)}
+        onFocus={() => {
+          if (suppressNextPreviewRef.current) {
+            suppressNextPreviewRef.current = false
+            return
+          }
+
+          setFocusedSlug(point.slug)
+        }}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
-            pinPoint(point.slug)
+            pinPoint(point.slug, event.currentTarget)
           }
         }}
         onMouseEnter={() => setHoveredSlug(point.slug)}
         onMouseLeave={() => setHoveredSlug(null)}
+        ref={(element) => {
+          if (element && pinnedSlugRef.current === point.slug) {
+            originTriggerRef.current = element
+          }
+        }}
         role="button"
         tabIndex={0}
       >
@@ -296,6 +365,7 @@ export function RetentionHealthChart({
       <RetentionHealthPreviewPanel data={data} ref={previewRef} />
       {pinnedPoint ? (
         <RetentionHealthTooltip
+          closeButtonRef={dialogCloseButtonRef}
           onClose={dismissPinnedPoint}
           point={pinnedPoint}
         />
