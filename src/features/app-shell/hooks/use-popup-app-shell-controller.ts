@@ -27,6 +27,7 @@ export type PopupControllerStatus = {
 } | null
 
 export interface PopupAppShellActions {
+  openOverview: () => void
   openSettings: () => void
   openTracks: () => void
   openProblem: (
@@ -150,7 +151,7 @@ export function usePopupAppShellController(): PopupAppShellController {
   const canToggleStudyMode =
     hasShellData && !queryStatus?.isError && !toggleStudyModeMutation.isPending
 
-  async function openDashboard(route: DashboardRoute) {
+  async function openDashboard(route?: DashboardRoute) {
     try {
       await browser.tabs.create({ url: getDashboardUrl(route) })
     } catch (error) {
@@ -210,6 +211,9 @@ export function usePopupAppShellController(): PopupAppShellController {
     canShuffleRecommendation:
       hasShellData && data.popup.queuePreview.length > 1,
     actions: {
+      openOverview: () => {
+        void openDashboard()
+      },
       openSettings: () => {
         void openDashboard('settings')
       },

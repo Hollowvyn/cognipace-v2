@@ -168,10 +168,14 @@ describe('usePopupAppShellController', () => {
     })
 
     act(() => {
+      result.current.actions.openOverview()
       result.current.actions.openSettings()
       result.current.actions.openProblem(twoSum, 'recommendation')
     })
 
+    expect(browserMocks.tabsCreate).toHaveBeenCalledWith({
+      url: 'chrome-extension://extension-id/dashboard.html',
+    })
     expect(browserMocks.tabsCreate).toHaveBeenCalledWith({
       url: 'chrome-extension://extension-id/dashboard.html#/settings',
     })

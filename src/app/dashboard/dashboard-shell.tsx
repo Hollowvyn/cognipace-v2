@@ -1,6 +1,7 @@
-import { Outlet } from '@tanstack/react-router'
+import { Link, Outlet } from '@tanstack/react-router'
 import { createContext, useContext, useState, type ReactNode } from 'react'
 
+import { dashboardPaths } from '@/app/dashboard/navigation/route-manifest'
 import { SurfaceRoot } from '@/components/ui/surface'
 import { DashboardNav } from '@/app/dashboard/navigation/dashboard-nav'
 import { DashboardHeaderActions } from '@/app/dashboard/components/dashboard-header-actions'
@@ -76,14 +77,25 @@ export function DashboardShell() {
           <aside className="sticky top-0 z-20 min-w-0 border-b border-border bg-card/95 px-4 py-3 text-card-foreground backdrop-blur lg:h-screen lg:w-[220px] lg:shrink-0 lg:border-b-0 lg:border-r lg:bg-card lg:p-5">
             <div className="flex min-w-0 items-center gap-3 lg:block">
               <div className="flex min-w-0 shrink-0 items-center gap-2">
-                <span
-                  aria-hidden="true"
-                  className="grid size-7 shrink-0 place-items-center rounded-[var(--cp-radius-md)] bg-primary text-[0.8125rem] font-extrabold leading-none text-primary-foreground"
+                <h1
+                  aria-label="CogniPace"
+                  className="m-0 text-[1rem] font-extrabold leading-tight text-foreground lg:text-[length:var(--cp-title-font-size)]"
                 >
-                  C
-                </span>
-                <h1 className="m-0 hidden truncate text-[1rem] font-extrabold leading-tight text-foreground min-[360px]:block lg:text-[length:var(--cp-title-font-size)]">
-                  CogniPace
+                  <Link
+                    aria-label="Open Overview"
+                    className="inline-flex min-w-0 items-center gap-2 rounded-[var(--cp-radius-md)] transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    to={dashboardPaths.overview}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="grid size-7 shrink-0 place-items-center rounded-[var(--cp-radius-md)] bg-primary text-[0.8125rem] font-extrabold leading-none text-primary-foreground"
+                    >
+                      C
+                    </span>
+                    <span className="hidden truncate min-[360px]:inline">
+                      CogniPace
+                    </span>
+                  </Link>
                 </h1>
               </div>
               <div className="min-w-0 flex-1 lg:mt-6">

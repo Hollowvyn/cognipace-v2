@@ -186,6 +186,7 @@ describe('PopupShell', () => {
       screen.queryByText(/Open the current best review target/i),
     ).not.toBeInTheDocument()
 
+    await user.click(screen.getByRole('button', { name: 'Open Overview' }))
     await user.click(screen.getByRole('button', { name: 'Open Settings' }))
     await user.click(screen.getByRole('button', { name: 'Open Tracks' }))
     await user.click(screen.getByRole('button', { name: 'Open Problem' }))
@@ -197,6 +198,7 @@ describe('PopupShell', () => {
       screen.getByRole('button', { name: 'Start freestyle mode' }),
     )
 
+    expect(controller.actions.openOverview).toHaveBeenCalledTimes(1)
     expect(controller.actions.openSettings).toHaveBeenCalledTimes(1)
     expect(controller.actions.openTracks).toHaveBeenCalledTimes(1)
     expect(controller.actions.openProblem).toHaveBeenNthCalledWith(
@@ -419,6 +421,7 @@ function createController(
     canToggleStudyMode: true,
     canShuffleRecommendation: false,
     actions: {
+      openOverview: vi.fn(),
       openSettings: vi.fn(),
       openTracks: vi.fn(),
       openProblem: vi.fn(),
