@@ -161,7 +161,11 @@ describe('dashboard routes', () => {
     ['/', 'Overview', 'What should I practice now'],
     ['/tracks', 'Tracks', 'Core interview practice'],
     ['/library', 'Library', 'Total'],
-    ['/analytics', 'Analytics', 'Your local study health'],
+    [
+      '/analytics',
+      'How your memory is changing',
+      'A focused view of recall, practice patterns, weak spots, and workload',
+    ],
     ['/settings', 'Settings', 'Daily goal'],
   ])('renders the %s route', async (path, heading, expectedCopy) => {
     renderDashboard(path)
@@ -187,12 +191,36 @@ describe('dashboard routes', () => {
     ).toBeVisible()
   })
 
+  it('updates the analytics URL and runtime request when the range changes', async () => {
+    const { router, user } = renderDashboard('/analytics?range=14')
+
+    expect(
+      await screen.findByRole('button', { name: '14 days' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: '90 days' }))
+
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ range: 90 })
+      expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
+        surface: 'dashboard',
+        range: 90,
+      })
+    })
+    expect(screen.getByRole('button', { name: '90 days' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
   it.each(['14', '30', '90'])(
     'passes the numeric analytics range from %s URL search params',
     async (range) => {
       renderDashboard(`/analytics?range=${range}`)
 
-      await screen.findByRole('heading', { name: 'Analytics' })
+      await screen.findByRole('heading', {
+        name: 'How your memory is changing',
+      })
       await waitFor(() =>
         expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
           surface: 'dashboard',
@@ -207,7 +235,9 @@ describe('dashboard routes', () => {
     async (path) => {
       renderDashboard(path)
 
-      await screen.findByRole('heading', { name: 'Analytics' })
+      await screen.findByRole('heading', {
+        name: 'How your memory is changing',
+      })
       await waitFor(() =>
         expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
           surface: 'dashboard',

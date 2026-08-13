@@ -6,6 +6,8 @@ import { Surface } from '@/components/ui/surface'
 
 import { useAnalyticsSummary } from '../api/analytics-api'
 import type { AnalyticsRange } from '../api/analytics-contracts'
+import { metricDefinitions } from '../domain/metric-definitions'
+import { AnalyticsChartPanel } from './analytics-chart-panel'
 import { AnalyticsForecast } from './analytics-forecast'
 import { AnalyticsMemoryProfile } from './analytics-memory-profile'
 import { AnalyticsMetricRow } from './analytics-metric-row'
@@ -50,6 +52,16 @@ export function AnalyticsScreen({ range = 30 }: { range?: AnalyticsRange }) {
   return (
     <div className="flex min-w-0 flex-col gap-[var(--cp-surface-gap)]">
       <AnalyticsMetricRow summary={data} />
+      {data.chartDataStatus === 'unavailable' ? (
+        <AnalyticsChartPanel
+          description={metricDefinitions.recallQuality.explanation}
+          emptyMessage={
+            'Not enough valid review history to draw the selected analytics charts yet. Keep reviewing to build a useful trend.'
+          }
+          id="analytics-chart-data"
+          title="Analytics charts"
+        />
+      ) : null}
       <AnalyticsMemoryProfile profile={data.memoryProfile} />
       <AnalyticsForecast forecast={data.dueForecast14Days} />
       <AnalyticsRetentionScatter
