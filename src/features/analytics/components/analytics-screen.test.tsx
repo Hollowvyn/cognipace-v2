@@ -23,7 +23,7 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
     totalReviews: 381,
     currentStreak: 7,
     observedRecallQuality: { value: 0.72, sampleSize: 58, lowSample: false },
-    predictedRecall: { value: 0.72, sampleSize: 58, lowSample: false },
+    predictedRecall: { value: null, sampleSize: 0, lowSample: true },
     retentionSampleSize: 58,
     lowSample: false,
     memoryProfile: {
@@ -51,22 +51,8 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
       },
     ],
     targetRetention: 0.9,
-    retentionScatter: [
-      {
-        slug: 'two-sum',
-        title: 'Two Sum',
-        retrievability: 0.95,
-        daysSinceReview: 3,
-        difficulty: 0.3,
-        stability: 10.5,
-        lapseCount: 0,
-        lastReviewAt: '2026-01-12T10:00:00.000Z',
-      },
-    ],
-    retentionScatterCurve: [
-      { days: 0, retrievability: 1.0 },
-      { days: 14, retrievability: 0.9 },
-    ],
+    retentionScatter: [],
+    retentionScatterCurve: [],
     recallQuality: [],
     consistency: [],
     ratingsMix: [],
@@ -137,8 +123,11 @@ describe('AnalyticsScreen', () => {
     const totalReviewsTile = screen.getByLabelText('Total Reviews metric')
     expect(within(totalReviewsTile).getByText('381')).toBeVisible()
 
-    const retentionTile = screen.getByLabelText('Retention metric')
-    expect(within(retentionTile).getByText('72%')).toBeVisible()
+    const qualityTile = screen.getByLabelText(
+      'Observed rating quality metric',
+    )
+    expect(within(qualityTile).getByText('72%')).toBeVisible()
+    expect(within(qualityTile).getByText('58 reviews in the selected 30-day period')).toBeVisible()
   })
 
   it('renders memory profile totals and retrievability', async () => {
@@ -243,9 +232,18 @@ describe('AnalyticsScreen', () => {
 
     renderAnalyticsScreen()
 
-    expect(await screen.findByText(/Retention needs more data/)).toBeVisible()
-    const retentionTile = screen.getByLabelText('Retention metric')
-    expect(within(retentionTile).getByText('—')).toBeVisible()
+    expect(
+      await screen.findByText(/Observed rating quality needs more data/),
+    ).toBeVisible()
+    const qualityTile = screen.getByLabelText(
+      'Observed rating quality metric',
+    )
+    expect(within(qualityTile).getByText('—')).toBeVisible()
+    expect(
+      within(qualityTile).getByText(
+        'Fewer than 10 reviews in the selected 30-day period',
+      ),
+    ).toBeVisible()
   })
 
   it('renders empty-state message when there are no weak problems', async () => {
@@ -274,7 +272,27 @@ describe('AnalyticsScreen', () => {
   })
 
   it('renders retention health region when scatter data is present', async () => {
-    vi.mocked(sendMessage).mockResolvedValueOnce(createAnalyticsSummary())
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      createAnalyticsSummary({
+        chartDataStatus: 'ready',
+        retentionScatter: [
+          {
+            slug: 'two-sum',
+            title: 'Two Sum',
+            retrievability: 0.95,
+            daysSinceReview: 3,
+            difficulty: 0.3,
+            stability: 10.5,
+            lapseCount: 0,
+            lastReviewAt: '2026-01-12T10:00:00.000Z',
+          },
+        ],
+        retentionScatterCurve: [
+          { days: 0, retrievability: 1.0 },
+          { days: 14, retrievability: 0.9 },
+        ],
+      }),
+    )
 
     renderAnalyticsScreen()
 

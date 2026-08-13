@@ -893,7 +893,7 @@ export function registerBackgroundHandlers() {
       return analyticsSummarySchema.parse({
         ...summary,
         observedRecallQuality: {
-          value: summary.observedRatingQuality,
+          value: summary.lowSample ? null : summary.observedRatingQuality,
           sampleSize: summary.retentionSampleSize,
           lowSample: summary.lowSample,
         },

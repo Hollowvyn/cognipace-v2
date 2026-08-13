@@ -147,7 +147,8 @@ export const fragileKnowledgeSchema = z.object({
   topics: z.array(z.string()),
 })
 
-export const analyticsSummarySchema = z.object({
+export const analyticsSummarySchema = z
+  .object({
   chartDataStatus: z.enum(['unavailable', 'ready']),
   range: analyticsRangeSchema,
   periodStart: z.iso.datetime(),
@@ -174,7 +175,42 @@ export const analyticsSummarySchema = z.object({
   overdueBacklog: z.array(overdueBacklogPointSchema),
   upcomingLoad: z.array(upcomingLoadPointSchema),
   retentionHealth: z.array(retentionHealthPointSchema),
-  fragileKnowledge: z.array(fragileKnowledgeSchema),
-})
+    fragileKnowledge: z.array(fragileKnowledgeSchema),
+  })
+  .superRefine((summary, context) => {
+    if (summary.chartDataStatus !== 'unavailable') return
+
+    if (summary.predictedRecall.value !== null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Unavailable chart data must not include predicted recall.',
+        path: ['predictedRecall', 'value'],
+      })
+    }
+
+    const chartFields = [
+      'retentionScatter',
+      'retentionScatterCurve',
+      'recallQuality',
+      'consistency',
+      'ratingsMix',
+      'topics',
+      'stability',
+      'overdueBacklog',
+      'upcomingLoad',
+      'retentionHealth',
+      'fragileKnowledge',
+    ] as const
+
+    for (const field of chartFields) {
+      if (summary[field].length > 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Unavailable chart data must not include chart series.',
+          path: [field],
+        })
+      }
+    }
+  })
 
 export type SerializedAnalyticsSummary = z.infer<typeof analyticsSummarySchema>

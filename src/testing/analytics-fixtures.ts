@@ -13,7 +13,7 @@ export function createSerializedAnalyticsSummary(
     totalReviews: 150,
     currentStreak: 7,
     observedRecallQuality: { value: 0.85, sampleSize: 50, lowSample: false },
-    predictedRecall: { value: 0.85, sampleSize: 50, lowSample: false },
+    predictedRecall: { value: null, sampleSize: 0, lowSample: true },
     retentionSampleSize: 50,
     lowSample: false,
     dueForecast14Days: Array.from({ length: 14 }, (_, i) => {

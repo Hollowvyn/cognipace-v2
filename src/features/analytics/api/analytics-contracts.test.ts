@@ -53,57 +53,15 @@ const validSummary: SerializedAnalyticsSummary = {
   targetRetention: 0.9,
   retentionScatter: [],
   retentionScatterCurve: [],
-  recallQuality: [
-    {
-      date: '2026-01-15',
-      observedRecall: 0.75,
-      predictedRecall: null,
-      targetRetention: 0.9,
-      reviewCount: 2,
-      eligibleSampleSize: 2,
-    },
-  ],
-  consistency: [
-    { week: '2026-W02', reviewDays: 3, firstPassRecall: null, sampleSize: 0 },
-  ],
-  ratingsMix: [
-    { date: '2026-01-15', again: 1, hard: 0, good: 1, easy: 0, total: 2 },
-  ],
-  topics: [
-    { topic: 'Arrays', recallQuality: null, sampleSize: 0, lowSample: true },
-  ],
-  stability: [{ week: '2026-W02', medianStabilityDays: null, sampleSize: 0 }],
-  overdueBacklog: [
-    { date: '2026-01-15', overdueCount: 0, historyAvailable: false },
-  ],
-  upcomingLoad: [
-    { date: '2026-01-15', dueCount: 0, overdueCount: 0, today: true },
-  ],
-  retentionHealth: [
-    {
-      slug: 'two-sum',
-      title: 'Two Sum',
-      retrievability: 0.8,
-      targetRetention: 0.9,
-      daysSinceReview: 2,
-      stabilityDays: 10,
-      difficulty: 0.4,
-      lapseCount: 0,
-      overdueDays: 0,
-    },
-  ],
-  fragileKnowledge: [
-    {
-      slug: 'two-sum',
-      title: 'Two Sum',
-      retrievability: 0.8,
-      stabilityDays: 10,
-      difficulty: 0.4,
-      lapseCount: 0,
-      overdueDays: 0,
-      topics: ['Arrays'],
-    },
-  ],
+  recallQuality: [],
+  consistency: [],
+  ratingsMix: [],
+  topics: [],
+  stability: [],
+  overdueBacklog: [],
+  upcomingLoad: [],
+  retentionHealth: [],
+  fragileKnowledge: [],
 }
 
 function withoutSummaryField(field: keyof SerializedAnalyticsSummary) {
@@ -234,12 +192,51 @@ describe('analyticsSummarySchema', () => {
   })
 
   it('accepts period metadata and chart-ready payloads', () => {
-    expect(analyticsSummarySchema.parse(validSummary)).toMatchObject({
+    const chartReadySummary = {
+      ...validSummary,
+      chartDataStatus: 'ready' as const,
+      recallQuality: [
+        {
+          date: '2026-01-15',
+          observedRecall: 0.75,
+          predictedRecall: null,
+          targetRetention: 0.9,
+          reviewCount: 2,
+          eligibleSampleSize: 2,
+        },
+      ],
+    }
+
+    expect(analyticsSummarySchema.parse(chartReadySummary)).toMatchObject({
       range: 30,
       periodStart: validSummary.periodStart,
       periodEnd: validSummary.periodEnd,
-      recallQuality: validSummary.recallQuality,
+      recallQuality: chartReadySummary.recallQuality,
     })
+  })
+
+  it('rejects unavailable summaries with predicted recall or chart series', () => {
+    expect(
+      analyticsSummarySchema.safeParse({
+        ...validSummary,
+        predictedRecall: { value: 0.8, sampleSize: 20, lowSample: false },
+      }).success,
+    ).toBe(false)
+    expect(
+      analyticsSummarySchema.safeParse({
+        ...validSummary,
+        recallQuality: [
+          {
+            date: '2026-01-15',
+            observedRecall: 0.75,
+            predictedRecall: null,
+            targetRetention: 0.9,
+            reviewCount: 2,
+            eligibleSampleSize: 2,
+          },
+        ],
+      }).success,
+    ).toBe(false)
   })
 
   it('keeps low-sample metric values null instead of coercing them to zero', () => {

@@ -584,6 +584,49 @@ describe('background handler registration', () => {
     )
   })
 
+  it('does not expose low-sample observed rating quality as 0%', async () => {
+    backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
+      range: 90,
+      periodStart: '2025-10-17T12:00:00.000Z',
+      periodEnd: '2026-01-15T12:00:00.000Z',
+      generatedAt: '2026-01-15T12:00:00.000Z',
+      reviewDays: 3,
+      totalReviews: 4,
+      currentStreak: 1,
+      observedRatingQuality: 0,
+      observedRatingQualityLabel: '—',
+      retentionSampleSize: 4,
+      lowSample: true,
+      dueForecast14Days: Array.from({ length: 14 }, (_, index) => ({
+        date: `2026-01-${String(15 + index).padStart(2, '0')}`,
+        dueCount: 0,
+      })),
+      weakProblems: [],
+      memoryProfile: {
+        totalTracked: 0,
+        dueToday: 0,
+        overdue: 0,
+        learning: 0,
+        review: 0,
+        mastered: 0,
+        suspended: 0,
+        averageRetrievability: null,
+        lowSample: true,
+      },
+      targetRetention: 0.9,
+      retentionScatter: [],
+      retentionScatterCurve: [],
+    })
+
+    const response = await sendRuntimeMessage('analytics.getSummary', {
+      surface: 'dashboard',
+      range: 90,
+    })
+
+    expect(response.observedRecallQuality.value).toBeNull()
+    expect(response.observedRecallQuality.value).not.toBe(0)
+  })
+
   it('registers dev smoke handling with dashboard policy and response parsing', async () => {
     backgroundMocks.getSettings.mockResolvedValue({
       ...defaultUserSettings,

@@ -13,8 +13,8 @@ export function AnalyticsMetricRow({
     <div className="flex min-w-0 flex-col gap-[var(--cp-surface-gap)]">
       {summary.lowSample ? (
         <InlineStatus role="status" tone="warning">
-          Retention needs more data — check back after at least 10 reviews in
-          the last 30 days.
+          Observed rating quality needs more data — check back after at least
+          10 reviews in the selected {summary.range}-day period.
         </InlineStatus>
       ) : null}
 
@@ -50,11 +50,11 @@ export function AnalyticsMetricRow({
         </Surface>
 
         <Surface
-          aria-label="Retention metric"
+          aria-label="Observed rating quality metric"
           className="grid min-h-[6rem] gap-2 !p-4"
         >
           <div className="text-[length:var(--cp-kicker-font-size)] font-bold uppercase leading-none text-muted-foreground">
-            Retention
+            Observed rating quality
           </div>
           <div
             className={cn(
@@ -68,8 +68,8 @@ export function AnalyticsMetricRow({
           </div>
           <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
             {summary.lowSample
-              ? 'Fewer than 10 reviews in the last 30 days'
-              : `${summary.retentionSampleSize} reviews in the last 30 days`}
+              ? `Fewer than 10 reviews in the selected ${summary.range}-day period`
+              : `${summary.retentionSampleSize} reviews in the selected ${summary.range}-day period`}
           </p>
         </Surface>
       </div>
