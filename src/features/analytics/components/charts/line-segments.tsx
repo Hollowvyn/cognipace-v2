@@ -91,9 +91,12 @@ export function LineSegments<T extends Record<string, unknown>>({
       dot={false}
       isAnimationActive={false}
       key={`${segment.kind}-${segment.fromIndex}-${segment.toIndex}`}
+      legendType="none"
+      name={seriesKey}
       stroke={stroke}
       {...(segment.kind === 'bridge' ? { strokeDasharray: '5 5' } : {})}
       strokeWidth={strokeWidth}
+      tooltipType="none"
       type={type}
     />
   ))

@@ -4,10 +4,32 @@ import { InlineStatus } from '@/components/ui/inline-status'
 import { cn } from '@/utils/cn'
 import { formatDateTime } from '@/utils/date-format'
 
+import type { AnalyticsLegendItem } from './types'
+
 export const chartDimension = { height: 288, width: 640 } as const
 
 export const DASHED_LINE_EVIDENCE_LABEL =
   'Dashed line crosses a period with no eligible evidence.'
+
+export function AnalyticsChartLegendItem({
+  item,
+}: {
+  item: AnalyticsLegendItem
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5" role="listitem">
+      <span
+        aria-hidden="true"
+        className="h-2 w-2 shrink-0 rounded-[2px]"
+        style={{ backgroundColor: item.color }}
+      />
+      <span>{item.label}</span>
+      {item.note ? (
+        <span className="text-muted-foreground">{item.note}</span>
+      ) : null}
+    </span>
+  )
+}
 
 const dateLabelFormatter = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',

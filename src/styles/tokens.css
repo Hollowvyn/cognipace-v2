@@ -69,7 +69,7 @@
     );
     --cp-analytics-again: var(--cp-tone-review-again-fg);
     --cp-analytics-hard: var(--cp-tone-review-hard-fg);
-    --cp-analytics-good: var(--cp-tone-review-good-fg);
+    --cp-analytics-good: #0f766e;
     --cp-analytics-easy: var(--cp-tone-review-easy-fg);
     --cp-analytics-healthy: var(--cp-tone-success-fg);
     --cp-analytics-attention: var(--cp-tone-warning-fg);
@@ -177,7 +177,7 @@
     );
     --cp-analytics-again: var(--cp-tone-review-again-fg);
     --cp-analytics-hard: var(--cp-tone-review-hard-fg);
-    --cp-analytics-good: var(--cp-tone-review-good-fg);
+    --cp-analytics-good: #5ee6d0;
     --cp-analytics-easy: var(--cp-tone-review-easy-fg);
     --cp-analytics-healthy: var(--cp-tone-success-fg);
     --cp-analytics-attention: var(--cp-tone-warning-fg);
@@ -263,7 +263,7 @@
       );
       --cp-analytics-again: var(--cp-tone-review-again-fg);
       --cp-analytics-hard: var(--cp-tone-review-hard-fg);
-      --cp-analytics-good: var(--cp-tone-review-good-fg);
+      --cp-analytics-good: #5ee6d0;
       --cp-analytics-easy: var(--cp-tone-review-easy-fg);
       --cp-analytics-healthy: var(--cp-tone-success-fg);
       --cp-analytics-attention: var(--cp-tone-warning-fg);

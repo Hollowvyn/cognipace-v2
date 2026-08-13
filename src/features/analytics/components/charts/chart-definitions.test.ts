@@ -104,6 +104,15 @@ describe('analytics chart definitions', () => {
         color: 'var(--cp-analytics-easy)',
       }),
     ])
+
+    expect(analyticsChartDefinitions.memoryStrength.series).toEqual([
+      expect.objectContaining({
+        key: 'medianStabilityDays',
+        label: 'Median stability',
+        mark: 'line',
+        color: 'var(--cp-analytics-healthy)',
+      }),
+    ])
   })
 
   it('keeps definitions inspectable enough to trace their data and empty-state behavior', () => {

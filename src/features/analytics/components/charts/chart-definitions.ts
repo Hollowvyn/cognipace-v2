@@ -219,7 +219,7 @@ export const analyticsChartDefinitions = {
       {
         key: 'medianStabilityDays',
         label: 'Median stability',
-        mark: 'area',
+        mark: 'line',
         color: healthy,
       },
     ],

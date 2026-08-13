@@ -18,12 +18,14 @@ vi.mock('recharts', () => ({
         data-connect-nulls={stringifySvgAttribute(props.connectNulls ?? false)}
         data-has-connect-nulls={String(Object.hasOwn(props, 'connectNulls'))}
         data-key={stringifySvgAttribute(props.dataKey)}
+        data-legend-type={stringifySvgAttribute(props.legendType)}
         data-testid={stringifySvgAttribute(props['data-testid'])}
+        data-tooltip-type={stringifySvgAttribute(props.tooltipType)}
         data-values={JSON.stringify(props.data)}
         stroke={stringifySvgAttribute(props.stroke)}
         {...(strokeDasharray === undefined
           ? {}
-          : { 'stroke-dasharray': stringifySvgAttribute(strokeDasharray) })}
+          : { strokeDasharray: stringifySvgAttribute(strokeDasharray) })}
       />
     )
   },
@@ -54,6 +56,8 @@ describe('LineSegments', () => {
     expect(solid).not.toHaveAttribute('stroke-dasharray')
     expect(solid).toHaveAttribute('data-connect-nulls', 'false')
     expect(solid).toHaveAttribute('data-has-connect-nulls', 'false')
+    expect(solid).toHaveAttribute('data-legend-type', 'none')
+    expect(solid).toHaveAttribute('data-tooltip-type', 'none')
   })
 
   it('renders one permitted null gap as a dashed endpoint-to-endpoint bridge', () => {
@@ -63,6 +67,8 @@ describe('LineSegments', () => {
     expect(bridge).toHaveAttribute('stroke-dasharray', '5 5')
     expect(bridge).toHaveAttribute('data-connect-nulls', 'false')
     expect(bridge).toHaveAttribute('data-has-connect-nulls', 'false')
+    expect(bridge).toHaveAttribute('data-legend-type', 'none')
+    expect(bridge).toHaveAttribute('data-tooltip-type', 'none')
     expect(bridge).toHaveAttribute(
       'data-values',
       '[{"index":0,"value":0.8},{"index":2,"value":0.84}]',
