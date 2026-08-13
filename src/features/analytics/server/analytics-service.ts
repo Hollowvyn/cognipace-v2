@@ -27,6 +27,7 @@ import {
 import {
   buildConsistencyPoints,
   buildOverdueBacklogPoints,
+  buildPredictedRecallSamples,
   buildRatingsMixPoints,
   buildRecallQualityPoints,
   buildRetentionHealth,
@@ -76,7 +77,7 @@ export async function getAnalyticsSummary(
     scatterCandidates,
   ] = await Promise.all([
     getReviewDayStats(db),
-    getRecentRatings(db, periodStart),
+    getRecentRatings(db, periodStart, periodEnd),
     getReviewHistory(db),
     getCurrentFsrsCards(db),
     getUpcomingCards(db, fourteenDaysLater),
@@ -141,8 +142,8 @@ export async function getAnalyticsSummary(
     chartOptions,
   )
   const predictedRecall = buildMetricSummary(
-    recallQuality.flatMap((point) =>
-      point.predictedRecall === null ? [] : [point.predictedRecall],
+    buildPredictedRecallSamples(analyticsReviewHistory, chartOptions).map(
+      (sample) => sample.value,
     ),
   )
   const consistency = buildConsistencyPoints(
@@ -162,12 +163,7 @@ export async function getAnalyticsSummary(
   )
   const { health: retentionHealth, fragile: fragileKnowledge } =
     buildRetentionHealth(
-      buildCurrentAnalyticsCards(
-        currentFsrsCards,
-        analyticsReviewHistory,
-        now,
-        fsrsOptions,
-      ),
+      buildCurrentAnalyticsCards(currentFsrsCards, now, fsrsOptions),
       now,
       { fragileDifficultyThreshold: 7 },
     )
@@ -288,22 +284,13 @@ function buildMemoryProfileInput(
 
 function buildCurrentAnalyticsCards(
   cards: CurrentFsrsCard[],
-  events: readonly AnalyticsReviewEvent[],
   now: Date,
   fsrsOptions: ReturnType<typeof normalizeFsrsSchedulingOptions>,
 ): AnalyticsCurrentCard[] {
-  const topicsByProblem = new Map<string, Set<string>>()
-
-  for (const event of events) {
-    const topics = topicsByProblem.get(event.problemSlug) ?? new Set<string>()
-    for (const topic of event.topicLabels) topics.add(topic)
-    topicsByProblem.set(event.problemSlug, topics)
-  }
-
   return cards.map((card) => ({
     slug: card.problemSlug,
     title: card.title,
-    topics: [...(topicsByProblem.get(card.problemSlug) ?? [])].sort(),
+    topics: card.topics,
     retrievability: getRetrievability(buildCurrentCard(card), now, fsrsOptions),
     targetRetention: fsrsOptions.targetRetention,
     stabilityDays: card.stability,

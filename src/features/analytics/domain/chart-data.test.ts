@@ -10,6 +10,7 @@ import {
 import {
   buildConsistencyPoints,
   buildOverdueBacklogPoints,
+  buildPredictedRecallSamples,
   buildRatingsMixPoints,
   buildRecallQualityPoints,
   buildRetentionHealth,
@@ -208,6 +209,36 @@ describe('analytics chart-data builders', () => {
     expect(points.map((point) => point.reviewCount)).toEqual([1, 1, 1])
   })
 
+  it('returns one predicted-recall sample for every same-day review', () => {
+    const firstReview = event({
+      id: 'same-day-1',
+      reviewedAt: new Date('2026-08-02T12:00:00.000Z'),
+      rating: 'good',
+    })
+    const secondReview = event({
+      id: 'same-day-2',
+      reviewedAt: new Date('2026-08-02T12:05:00.000Z'),
+      rating: 'hard',
+    })
+
+    const samples = buildPredictedRecallSamples(
+      [firstReview, secondReview],
+      options,
+    )
+    const points = buildRecallQualityPoints(
+      [firstReview, secondReview],
+      options,
+    )
+
+    expect(samples).toHaveLength(2)
+    expect(samples.every((sample) => sample.date === '2026-08-02')).toBe(true)
+    expect(points[1]).toMatchObject({
+      date: '2026-08-02',
+      reviewCount: 2,
+    })
+    expect(points[1]?.predictedRecall).not.toBeNull()
+  })
+
   it('groups consistency by local week as association-only', () => {
     const points = buildConsistencyPoints(
       [
@@ -402,6 +433,18 @@ describe('analytics chart-data builders', () => {
           dueAt: start,
           lastReviewAt: start,
           suspended: true,
+        },
+        {
+          slug: 'new-card',
+          title: 'New Card',
+          topics: ['Graph'],
+          retrievability: 0.1,
+          targetRetention: 0.9,
+          stabilityDays: 0,
+          difficulty: 8,
+          lapseCount: 0,
+          dueAt: start,
+          lastReviewAt: null,
         },
       ],
       end,

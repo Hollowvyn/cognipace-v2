@@ -48,6 +48,11 @@ export interface RecallQualityPoint {
   eligibleSampleSize: number
 }
 
+export interface PredictedRecallSample {
+  date: string
+  value: number
+}
+
 export interface ConsistencyPoint {
   week: string
   reviewDays: number
@@ -166,7 +171,7 @@ export function buildRecallQualityPoints(
     point.reviewCount += 1
     if (event.isCorrect !== null) point.observed.push(event.isCorrect)
   }
-  for (const prediction of buildPredictedRecall(events, options)) {
+  for (const prediction of buildPredictedRecallSamples(events, options)) {
     const point = byDate.get(prediction.date)
     if (point && prediction.value !== null)
       point.predicted.push(prediction.value)
@@ -184,11 +189,11 @@ export function buildRecallQualityPoints(
   }))
 }
 
-function buildPredictedRecall(
+export function buildPredictedRecallSamples(
   events: readonly AnalyticsReviewEvent[],
   options: AnalyticsRangeOptions,
-) {
-  const results: Array<{ date: string; value: number }> = []
+): PredictedRecallSample[] {
+  const results: PredictedRecallSample[] = []
   const byCard = new Map<string, AnalyticsReviewEvent[]>()
   for (const event of events) {
     const history = byCard.get(event.cardId) ?? []
@@ -413,7 +418,12 @@ export function buildRetentionHealth(
   options: RetentionHealthOptions,
 ): { health: RetentionHealthPoint[]; fragile: FragileKnowledgeRow[] } {
   const rows = cards
-    .filter((card) => !card.suspended && Number.isFinite(card.retrievability))
+    .filter(
+      (card) =>
+        !card.suspended &&
+        card.lastReviewAt !== null &&
+        Number.isFinite(card.retrievability),
+    )
     .map((card) => {
       const daysSinceReview =
         card.lastReviewAt === null

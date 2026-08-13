@@ -139,6 +139,100 @@ describe('getAnalyticsSummary memory profile', () => {
     )
   })
 
+  it('counts same-day pre-review predictions individually in the summary', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-08-03T12:00:00.000Z')
+    const firstReview = new Date('2026-08-02T12:00:00.000Z')
+    const secondReview = new Date('2026-08-02T12:05:00.000Z')
+
+    await insertAnalyticsProblem(handle.db, 'same-day-problem', 'Same Day', [])
+    await insertAnalyticsHistory(handle.db, 'same-day-problem', {
+      id: 'same-day-card:default',
+      dates: [firstReview, secondReview],
+      ratings: ['good', 'hard'],
+      correct: [true, true],
+      dueAt: new Date('2026-08-04T12:00:00.000Z'),
+      stability: 4,
+      difficulty: 5,
+    })
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 14, now })
+    const day = summary.recallQuality.find(
+      (point) => point.date === '2026-08-02',
+    )
+
+    expect(summary.predictedRecall.sampleSize).toBe(2)
+    expect(summary.predictedRecall.lowSample).toBe(true)
+    expect(day).toMatchObject({ reviewCount: 2 })
+  })
+
+  it('excludes future-dated reviews from observed rating quality', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-01-31T12:00:00.000Z')
+    const inRangeDates = Array.from(
+      { length: 10 },
+      (_, index) =>
+        new Date(
+          `2026-01-${String(20 + index).padStart(2, '0')}T12:00:00.000Z`,
+        ),
+    )
+
+    await insertAnalyticsProblem(
+      handle.db,
+      'bounded-problem',
+      'Bounded Problem',
+      [],
+    )
+    await insertAnalyticsHistory(handle.db, 'bounded-problem', {
+      id: 'bounded-card:default',
+      dates: inRangeDates,
+      ratings: Array<ReviewRating>(10).fill('good'),
+      correct: Array<boolean>(10).fill(true),
+      dueAt: new Date('2026-02-01T12:00:00.000Z'),
+      stability: 8,
+      difficulty: 5,
+    })
+    const futureTimestamp = new Date('2026-02-01T12:00:00.001Z').getTime()
+    await handle.db.insert(reviewAttempts).values({
+      id: 'future-review',
+      problemSlug: 'bounded-problem',
+      cardId: 'bounded-card:default',
+      rating: 'again',
+      reviewMode: 'manual',
+      reviewedAt: futureTimestamp,
+      isCorrect: false,
+      fsrsReviewLog: null,
+      createdAt: futureTimestamp,
+      updatedAt: futureTimestamp,
+    })
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 14, now })
+
+    expect(summary.observedRatingQuality).toBe(1)
+    expect(summary.observedRatingSampleSize).toBe(10)
+  })
+
+  it('keeps never-reviewed cards in tracked and workload metrics, not fragile knowledge', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-01-31T12:00:00.000Z')
+
+    await insertAnalyticsProblem(handle.db, 'new-problem', 'New Problem', [
+      'Graphs',
+    ])
+    await insertNeverReviewedCard(handle.db, 'new-problem', {
+      dueAt: new Date('2026-02-01T12:00:00.000Z'),
+    })
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 14, now })
+
+    expect(summary.memoryProfile.totalTracked).toBe(1)
+    expect(
+      summary.upcomingLoad.reduce((sum, point) => sum + point.dueCount, 0),
+    ).toBe(1)
+    expect(summary.retentionHealth).toEqual([])
+    expect(summary.fragileKnowledge).toEqual([])
+  })
+
   it('derives chart metrics from full history and current FSRS state', async () => {
     const handle = await createTestDb({ seed: false })
     const now = new Date('2026-01-31T12:00:00.000Z')
@@ -189,7 +283,7 @@ describe('getAnalyticsSummary memory profile', () => {
     )
 
     expect(summary.targetRetention).toBe(0.85)
-    expect(summary.predictedRecall.sampleSize).toBe(10)
+    expect(summary.predictedRecall.sampleSize).toBe(11)
     expect(summary.predictedRecall.lowSample).toBe(false)
     expect(summary.predictedRecall.value).not.toBeNull()
     expect(recallPoint?.predictedRecall).not.toBeNull()
@@ -320,6 +414,31 @@ async function insertAnalyticsHistory(
     updatedAt: input.dates.at(-1)!.getTime(),
   })
   await db.insert(reviewAttempts).values(rows)
+}
+
+async function insertNeverReviewedCard(
+  db: Db,
+  slug: string,
+  input: { dueAt: Date },
+) {
+  const now = new Date('2026-01-01T00:00:00.000Z').getTime()
+  await db.insert(fsrsCards).values({
+    id: `${slug}:default`,
+    problemSlug: slug,
+    cardKind: defaultFsrsCardKind,
+    dueAt: input.dueAt.getTime(),
+    stability: 0,
+    difficulty: 0,
+    elapsedDays: 0,
+    scheduledDays: 0,
+    learningSteps: 0,
+    reps: 0,
+    lapses: 0,
+    state: 'new',
+    lastReviewAt: null,
+    createdAt: now,
+    updatedAt: now,
+  })
 }
 
 async function insertTrackedCard(

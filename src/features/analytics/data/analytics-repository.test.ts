@@ -190,6 +190,22 @@ describe('getRecentRatings', () => {
     expect(item?.rating).toBe('again')
     expect(item?.reviewedAt.getTime()).toBe(reviewedAt.getTime())
   })
+
+  it('supports an inclusive upper bound for the selected period', async () => {
+    const { db } = await createTestDb()
+    const since = new Date('2026-01-10T00:00:00.000Z')
+    const until = new Date('2026-01-15T12:00:00.000Z')
+    const inside = new Date('2026-01-15T12:00:00.000Z')
+    const future = new Date('2026-01-15T12:00:00.001Z')
+
+    const cardId = await insertCard(db, 'two-sum')
+    await insertAttempt(db, 'inside', 'two-sum', cardId, 'good', inside)
+    await insertAttempt(db, 'future', 'two-sum', cardId, 'again', future)
+
+    const result = await getRecentRatings(db, since, until)
+
+    expect(result.map((rating) => rating.rating)).toEqual(['good'])
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -367,8 +383,11 @@ describe('getCurrentFsrsCards', () => {
     const laterDue = new Date('2026-01-15T12:00:00.000Z')
     const lastReview = new Date('2026-01-10T12:00:00.000Z')
 
-    await insertProblemWithTopics(db, 'beta-problem', 'Beta Problem')
-    await insertProblemWithTopics(db, 'alpha-problem', 'Alpha Problem')
+    await insertProblemWithTopics(db, 'beta-problem', 'Beta Problem', ['Trees'])
+    await insertProblemWithTopics(db, 'alpha-problem', 'Alpha Problem', [
+      'Graphs',
+      'Arrays',
+    ])
     await insertPractice(db, 'beta-problem', {
       status: 'learning',
       isSuspended: true,
@@ -401,6 +420,7 @@ describe('getCurrentFsrsCards', () => {
         cardId: 'alpha-problem:default',
         problemSlug: 'alpha-problem',
         title: 'Alpha Problem',
+        topics: ['Arrays', 'Graphs'],
         stability: 12.5,
         difficulty: 3.75,
         elapsedDays: 7,
@@ -418,6 +438,7 @@ describe('getCurrentFsrsCards', () => {
         cardId: 'beta-problem:default',
         problemSlug: 'beta-problem',
         title: 'Beta Problem',
+        topics: ['Trees'],
         stability: 4.5,
         difficulty: 7.25,
         elapsedDays: 7,

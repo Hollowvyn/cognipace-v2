@@ -76,6 +76,7 @@ export interface CurrentFsrsCard {
   cardId: string
   problemSlug: string
   title: string
+  topics: string[]
   stability: number
   difficulty: number
   elapsedDays: number
@@ -116,6 +117,7 @@ export async function getReviewDayStats(db: Db): Promise<ReviewDayStats> {
 export async function getRecentRatings(
   db: Db,
   since: Date,
+  until?: Date,
 ): Promise<RecentRating[]> {
   const rows = await db
     .select({
@@ -123,7 +125,14 @@ export async function getRecentRatings(
       reviewedAt: reviewAttempts.reviewedAt,
     })
     .from(reviewAttempts)
-    .where(gte(reviewAttempts.reviewedAt, since.getTime()))
+    .where(
+      until
+        ? and(
+            gte(reviewAttempts.reviewedAt, since.getTime()),
+            lte(reviewAttempts.reviewedAt, until.getTime()),
+          )
+        : gte(reviewAttempts.reviewedAt, since.getTime()),
+    )
     .orderBy(asc(reviewAttempts.reviewedAt), asc(reviewAttempts.id))
 
   return rows.map((row) => ({
@@ -271,6 +280,7 @@ export async function getCurrentFsrsCards(db: Db): Promise<CurrentFsrsCard[]> {
       cardId: fsrsCards.id,
       problemSlug: fsrsCards.problemSlug,
       title: problems.title,
+      topicLabel: topics.label,
       stability: fsrsCards.stability,
       difficulty: fsrsCards.difficulty,
       elapsedDays: fsrsCards.elapsedDays,
@@ -290,25 +300,47 @@ export async function getCurrentFsrsCards(db: Db): Promise<CurrentFsrsCard[]> {
       problemPractice,
       eq(problemPractice.problemSlug, fsrsCards.problemSlug),
     )
+    .leftJoin(
+      problemTopics,
+      eq(problemTopics.problemSlug, fsrsCards.problemSlug),
+    )
+    .leftJoin(topics, eq(topics.id, problemTopics.topicId))
     .where(eq(fsrsCards.cardKind, defaultFsrsCardKind))
-    .orderBy(asc(fsrsCards.problemSlug), asc(fsrsCards.id))
+    .orderBy(asc(fsrsCards.problemSlug), asc(fsrsCards.id), asc(topics.label))
 
-  return rows.map((row) => ({
-    cardId: row.cardId,
-    problemSlug: row.problemSlug,
-    title: row.title,
-    stability: row.stability,
-    difficulty: row.difficulty,
-    elapsedDays: row.elapsedDays,
-    scheduledDays: row.scheduledDays,
-    learningSteps: row.learningSteps,
-    reps: row.reps,
-    lapses: row.lapses,
-    dueAt: new Date(row.dueAt),
-    lastReviewAt: row.lastReviewAt === null ? null : new Date(row.lastReviewAt),
-    state: row.state,
-    practiceStatus: row.practiceStatus,
-    isSuspended: row.isSuspended,
+  const cards = new Map<string, CurrentFsrsCard>()
+
+  for (const row of rows) {
+    const card = cards.get(row.cardId)
+    if (card) {
+      if (row.topicLabel !== null) card.topics.push(row.topicLabel)
+      continue
+    }
+
+    cards.set(row.cardId, {
+      cardId: row.cardId,
+      problemSlug: row.problemSlug,
+      title: row.title,
+      topics: row.topicLabel === null ? [] : [row.topicLabel],
+      stability: row.stability,
+      difficulty: row.difficulty,
+      elapsedDays: row.elapsedDays,
+      scheduledDays: row.scheduledDays,
+      learningSteps: row.learningSteps,
+      reps: row.reps,
+      lapses: row.lapses,
+      dueAt: new Date(row.dueAt),
+      lastReviewAt:
+        row.lastReviewAt === null ? null : new Date(row.lastReviewAt),
+      state: row.state,
+      practiceStatus: row.practiceStatus,
+      isSuspended: row.isSuspended,
+    })
+  }
+
+  return [...cards.values()].map((card) => ({
+    ...card,
+    topics: [...new Set(card.topics)].sort((a, b) => a.localeCompare(b)),
   }))
 }
 
