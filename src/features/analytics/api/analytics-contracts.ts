@@ -258,6 +258,38 @@ export const analyticsSummarySchema = z
     fragileKnowledge: z.array(fragileKnowledgeSchema),
   })
   .superRefine((summary, context) => {
+    const requestedReadiness = summary.historicalReadiness.requested
+
+    if (summary.chartDataStatus === 'ready' && !requestedReadiness.ready) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Ready chart data requires requested historical readiness to be ready.',
+        path: ['chartDataStatus'],
+      })
+    }
+
+    if (summary.chartDataStatus === 'unready' && requestedReadiness.ready) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Unready chart data requires requested historical readiness to be unready.',
+        path: ['chartDataStatus'],
+      })
+    }
+
+    if (
+      summary.chartDataStatus === 'ready' &&
+      summary.historicalReadiness.recommendedRange !== null
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Ready chart data must not include a recommended fallback range.',
+        path: ['historicalReadiness', 'recommendedRange'],
+      })
+    }
+
     if (summary.chartDataStatus !== 'unavailable') return
 
     if (

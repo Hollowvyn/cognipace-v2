@@ -36,6 +36,28 @@ const readiness: AnalyticsReadiness = {
   failingReasons: ['insufficient-assessments'],
 }
 
+const readyReadiness: AnalyticsReadiness = {
+  ...readiness,
+  ready: true,
+  failingReasons: [],
+}
+
+function withRequestedReadiness(
+  requested: AnalyticsReadiness,
+  recommendedRange: 14 | 30 | 90 | null,
+) {
+  return {
+    requested,
+    recallQuality: readiness,
+    practiceRhythm: readiness,
+    ratingsMix: readiness,
+    topics: readiness,
+    stability: readiness,
+    overdueBacklog: readiness,
+    recommendedRange,
+  }
+}
+
 const validForecast = Array.from({ length: 14 }, (_, index) => ({
   date: `2026-01-${String(15 + index).padStart(2, '0')}`,
   dueCount: index,
@@ -85,16 +107,7 @@ const validSummary: SerializedAnalyticsSummary = {
   targetRetention: 0.9,
   retentionScatter: [],
   retentionScatterCurve: [],
-  historicalReadiness: {
-    requested: readiness,
-    recallQuality: readiness,
-    practiceRhythm: readiness,
-    ratingsMix: readiness,
-    topics: readiness,
-    stability: readiness,
-    overdueBacklog: readiness,
-    recommendedRange: null,
-  },
+  historicalReadiness: withRequestedReadiness(readiness, null),
   recallQuality: [],
   practiceRhythm: [],
   ratingsMix: [],
@@ -168,16 +181,7 @@ describe('analyticsSummarySchema', () => {
 
     const parsed = analyticsSummarySchema.parse({
       ...validSummary,
-      historicalReadiness: {
-        requested: readiness,
-        recallQuality: readiness,
-        practiceRhythm: readiness,
-        ratingsMix: readiness,
-        topics: readiness,
-        stability: readiness,
-        overdueBacklog: readiness,
-        recommendedRange: 30,
-      },
+      historicalReadiness: withRequestedReadiness(readiness, 30),
     }) as { historicalReadiness?: unknown }
 
     expect(parsed.historicalReadiness).toEqual({
@@ -195,6 +199,52 @@ describe('analyticsSummarySchema', () => {
   it('accepts a valid full summary', () => {
     expect(analyticsSummarySchema.safeParse(validSummary).success).toBe(true)
   })
+
+  it.each([
+    ['unavailable', readiness, null],
+    ['unready', readiness, 14],
+    ['ready', readyReadiness, null],
+  ] as const)(
+    'accepts a valid %s status and requested-readiness combination',
+    (chartDataStatus, requested, recommendedRange) => {
+      expect(
+        analyticsSummarySchema.safeParse({
+          ...validSummary,
+          chartDataStatus,
+          historicalReadiness: withRequestedReadiness(
+            requested,
+            recommendedRange,
+          ),
+        }).success,
+      ).toBe(true)
+    },
+  )
+
+  it.each([
+    ['ready', readiness, null, ['chartDataStatus']],
+    ['unready', readyReadiness, null, ['chartDataStatus']],
+    ['ready', readyReadiness, 14, ['historicalReadiness', 'recommendedRange']],
+  ] as const)(
+    'rejects contradictory %s historical status metadata',
+    (chartDataStatus, requested, recommendedRange, issuePath) => {
+      const result = analyticsSummarySchema.safeParse({
+        ...validSummary,
+        chartDataStatus,
+        historicalReadiness: withRequestedReadiness(
+          requested,
+          recommendedRange,
+        ),
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success)
+        expect(result.error.issues).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ path: issuePath }),
+          ]),
+        )
+    },
+  )
 
   it('serializes an unready historical selection with current and forecast analytics', () => {
     const parsed = analyticsSummarySchema.parse({
@@ -264,10 +314,20 @@ describe('analyticsSummarySchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it.each(['ready', 'unready'] as const)(
+  it.each([
+    ['ready', readyReadiness, null],
+    ['unready', readiness, 14],
+  ] as const)(
     'requires exactly 14 upcoming-load entries for %s summaries',
-    (chartDataStatus) => {
-      const summary = { ...validSummary, chartDataStatus }
+    (chartDataStatus, requested, recommendedRange) => {
+      const summary = {
+        ...validSummary,
+        chartDataStatus,
+        historicalReadiness: withRequestedReadiness(
+          requested,
+          recommendedRange,
+        ),
+      }
 
       expect(analyticsSummarySchema.safeParse(summary).success).toBe(true)
       expect(
@@ -355,6 +415,7 @@ describe('analyticsSummarySchema', () => {
     const chartReadySummary = {
       ...validSummary,
       chartDataStatus: 'ready' as const,
+      historicalReadiness: withRequestedReadiness(readyReadiness, null),
       overdueHistoryAvailableFrom: '2026-01-01T00:00:00.000Z',
       recallQuality: [
         {
@@ -400,6 +461,7 @@ describe('analyticsSummarySchema', () => {
     const parsed = analyticsSummarySchema.parse({
       ...validSummary,
       chartDataStatus: 'ready',
+      historicalReadiness: withRequestedReadiness(readyReadiness, null),
       overdueBacklog: [
         {
           bucketStart: '2026-01-13',

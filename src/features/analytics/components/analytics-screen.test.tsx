@@ -51,6 +51,20 @@ function createUnreadyHistoricalReadiness() {
   }
 }
 
+function createReadyHistoricalReadiness() {
+  const historicalReadiness = createUnreadyHistoricalReadiness()
+
+  return {
+    ...historicalReadiness,
+    requested: {
+      ...historicalReadiness.requested,
+      ready: true,
+      failingReasons: [],
+    },
+    recommendedRange: null,
+  }
+}
+
 function baseAnalyticsSummary(): SerializedAnalyticsSummary {
   return {
     chartDataStatus: 'unavailable',
@@ -124,6 +138,7 @@ function readyAnalyticsSummary(
 ): SerializedAnalyticsSummary {
   return createAnalyticsSummary({
     chartDataStatus: 'ready',
+    historicalReadiness: createReadyHistoricalReadiness(),
     recallQuality: [
       {
         bucketStart: '2026-01-14',

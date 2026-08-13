@@ -45,6 +45,21 @@ import {
   serializeActiveTrack,
 } from './register-handlers'
 
+function createReadyHistoricalReadiness() {
+  const historicalReadiness =
+    createSerializedAnalyticsSummary().historicalReadiness
+
+  return {
+    ...historicalReadiness,
+    requested: {
+      ...historicalReadiness.requested,
+      ready: true,
+      failingReasons: [],
+    },
+    recommendedRange: null,
+  }
+}
+
 const backgroundMocks = vi.hoisted(() => {
   const handlers = new Map<
     string,
@@ -372,8 +387,7 @@ describe('background handler registration', () => {
         },
       ],
       retentionScatterCurve: [{ days: 0, retrievability: 1 }],
-      historicalReadiness:
-        createSerializedAnalyticsSummary().historicalReadiness,
+      historicalReadiness: createReadyHistoricalReadiness(),
       recallQuality: [],
       practiceRhythm: [],
       ratingsMix: [],
@@ -675,8 +689,7 @@ describe('background handler registration', () => {
       retentionScatter: [],
       retentionScatterCurve: [],
       chartDataStatus: 'ready',
-      historicalReadiness:
-        createSerializedAnalyticsSummary().historicalReadiness,
+      historicalReadiness: createReadyHistoricalReadiness(),
       predictedRecall: { value: null, sampleSize: 0, lowSample: true },
       recallQuality: [],
       practiceRhythm: [],

@@ -168,24 +168,20 @@ export async function getAnalyticsSummary(
     evidenceCounts: baselineEvidenceCounts,
     bucketKeys: buckets.map((bucket) => bucket.key),
   })
+  const correctnessEvidenceCounts = buildBucketEvidenceCounts(
+    analyticsReviewHistory,
+    buckets,
+    periodEnd,
+    hasObservedCorrectnessReview,
+  )
   const recallReadiness = calculateAnalyticsReadiness({
     requestedDays: range,
-    evidenceCounts: buildBucketEvidenceCounts(
-      analyticsReviewHistory,
-      buckets,
-      periodEnd,
-      hasObservedCorrectnessReview,
-    ),
+    evidenceCounts: correctnessEvidenceCounts,
     bucketKeys: buckets.map((bucket) => bucket.key),
   })
   const practiceRhythmReadiness = calculateAnalyticsReadiness({
     requestedDays: range,
-    evidenceCounts: buildBucketEvidenceCounts(
-      analyticsReviewHistory,
-      buckets,
-      periodEnd,
-      hasObservedCorrectnessReview,
-    ),
+    evidenceCounts: correctnessEvidenceCounts,
     bucketKeys: buckets.map((bucket) => bucket.key),
   })
   const ratingsMixReadiness = requestedReadiness
