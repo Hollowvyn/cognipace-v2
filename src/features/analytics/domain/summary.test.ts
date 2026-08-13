@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest'
 import type {
   ObservedRatingQualityResult,
   ForecastEntry,
+  HistoricalReadiness,
   RetentionScatterEntry,
   ReferenceCurvePoint,
 } from './summary'
+import type { AnalyticsReadiness } from './analytics-readiness'
 import {
   buildObservedRatingQuality,
   buildDueForecast,
@@ -346,6 +348,7 @@ describe('buildAnalyticsSummary', () => {
       targetRetention: 0.9,
       scatter: [],
       referenceCurve: [],
+      historicalReadiness: createHistoricalReadiness(30),
     })
 
     expect(result.generatedAt).toBe(generatedAt.toISOString())
@@ -363,7 +366,131 @@ describe('buildAnalyticsSummary', () => {
     expect(result.retentionScatter).toEqual([])
     expect(result.retentionScatterCurve).toEqual([])
   })
+
+  it('keeps selected-range evidence and metric readiness explicit in the summary', () => {
+    const result = buildAnalyticsSummary({
+      generatedAt: now,
+      reviewDays: 0,
+      totalReviews: 0,
+      currentStreak: 0,
+      observedRatingQuality: {
+        value: null,
+        label: '—',
+        sampleSize: 0,
+        lowSample: true,
+      },
+      range: 90,
+      periodStart: new Date(2025, 9, 18, 0, 0, 0),
+      periodEnd: now,
+      forecast: [],
+      weakProblems: [],
+      memoryProfile: {
+        totalTracked: 0,
+        dueToday: 0,
+        overdue: 0,
+        learning: 0,
+        review: 0,
+        mastered: 0,
+        suspended: 0,
+        averageRetrievability: null,
+        lowSample: true,
+      },
+      targetRetention: 0.9,
+      scatter: [],
+      referenceCurve: [],
+      historicalReadiness: createDetailedHistoricalReadiness(),
+    })
+
+    expect(
+      (result as { historicalReadiness?: unknown }).historicalReadiness,
+    ).toMatchObject({
+      requested: { requestedDays: 90 },
+      recallQuality: { ready: true },
+      recommendedRange: 30,
+    })
+  })
 })
+
+function createHistoricalReadiness(
+  requestedDays: 14 | 30 | 90,
+): HistoricalReadiness {
+  const bucketDays = requestedDays === 14 ? 1 : requestedDays === 30 ? 3 : 7
+  const requestedBuckets =
+    requestedDays === 14 ? 14 : requestedDays === 30 ? 10 : 13
+  const readiness: AnalyticsReadiness = {
+    ready: false,
+    requestedDays,
+    bucketDays,
+    requestedBuckets,
+    effectiveBuckets: 0,
+    effectiveStart: null,
+    assessments: 0,
+    minimumAssessments: 12,
+    activeBuckets: 0,
+    minimumActiveBuckets: 0,
+    longestGap: 0,
+    maximumGap: 2,
+    gapRuns: 0,
+    maximumGapRuns: 1,
+    failingReasons: [
+      'no-evidence',
+      'insufficient-span',
+      'insufficient-assessments',
+      'insufficient-active-buckets',
+    ],
+  }
+
+  return {
+    requested: readiness,
+    recallQuality: readiness,
+    practiceRhythm: readiness,
+    ratingsMix: readiness,
+    topics: readiness,
+    stability: readiness,
+    overdueBacklog: readiness,
+    recommendedRange: null,
+  }
+}
+
+function createDetailedHistoricalReadiness(): HistoricalReadiness {
+  const requested: AnalyticsReadiness = {
+    ready: false,
+    requestedDays: 90,
+    bucketDays: 7,
+    requestedBuckets: 13,
+    effectiveBuckets: 8,
+    effectiveStart: '2026-06-22',
+    assessments: 32,
+    minimumAssessments: 45,
+    activeBuckets: 6,
+    minimumActiveBuckets: 7,
+    longestGap: 2,
+    maximumGap: 2,
+    gapRuns: 2,
+    maximumGapRuns: 2,
+    failingReasons: ['insufficient-assessments'],
+  }
+  const recallQuality: AnalyticsReadiness = {
+    ...requested,
+    ready: true,
+    assessments: 48,
+    activeBuckets: 7,
+    longestGap: 1,
+    gapRuns: 1,
+    failingReasons: [],
+  }
+
+  return {
+    requested,
+    recallQuality,
+    practiceRhythm: { ...requested },
+    ratingsMix: { ...requested },
+    topics: { ...requested },
+    stability: { ...requested },
+    overdueBacklog: { ...requested },
+    recommendedRange: 30,
+  }
+}
 
 describe('buildRetentionScatter', () => {
   it('sorts entries ascending by daysSinceReview', () => {

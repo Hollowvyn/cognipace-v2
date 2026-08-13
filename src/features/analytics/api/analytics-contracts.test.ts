@@ -3,18 +3,38 @@ import { describe, expect, it } from 'vitest'
 import { analyticsChartPointFixtures } from '@/testing/analytics-fixtures'
 
 import {
+  analyticsReadinessSchema,
   analyticsRangeSchema,
   analyticsSummaryRequestSchema,
   analyticsSummarySchema,
-  consistencyPointSchema,
   forecastEntrySchema,
   hardAgainSummarySchema,
+  practiceRhythmPointSchema,
   ratingsMixPointSchema,
   retentionScatterEntrySchema,
   referenceCurvePointSchema,
   weakProblemSchema,
+  type AnalyticsReadiness,
   type SerializedAnalyticsSummary,
 } from './analytics-contracts'
+
+const readiness: AnalyticsReadiness = {
+  ready: false,
+  requestedDays: 90,
+  bucketDays: 7,
+  requestedBuckets: 13,
+  effectiveBuckets: 8,
+  effectiveStart: '2026-06-22',
+  assessments: 32,
+  minimumAssessments: 45,
+  activeBuckets: 6,
+  minimumActiveBuckets: 7,
+  longestGap: 2,
+  maximumGap: 2,
+  gapRuns: 2,
+  maximumGapRuns: 2,
+  failingReasons: ['insufficient-assessments'],
+}
 
 const validForecast = Array.from({ length: 14 }, (_, index) => ({
   date: `2026-01-${String(15 + index).padStart(2, '0')}`,
@@ -58,8 +78,18 @@ const validSummary: SerializedAnalyticsSummary = {
   targetRetention: 0.9,
   retentionScatter: [],
   retentionScatterCurve: [],
+  historicalReadiness: {
+    requested: readiness,
+    recallQuality: readiness,
+    practiceRhythm: readiness,
+    ratingsMix: readiness,
+    topics: readiness,
+    stability: readiness,
+    overdueBacklog: readiness,
+    recommendedRange: null,
+  },
   recallQuality: [],
-  consistency: [],
+  practiceRhythm: [],
   ratingsMix: [],
   hardAgain: {
     selectedShare: null,
@@ -126,6 +156,35 @@ describe('analyticsSummaryRequestSchema', () => {
 })
 
 describe('analyticsSummarySchema', () => {
+  it('serializes evidence readiness for the requested range and each historical metric', () => {
+    expect(analyticsReadinessSchema.parse(readiness)).toEqual(readiness)
+
+    const parsed = analyticsSummarySchema.parse({
+      ...validSummary,
+      historicalReadiness: {
+        requested: readiness,
+        recallQuality: readiness,
+        practiceRhythm: readiness,
+        ratingsMix: readiness,
+        topics: readiness,
+        stability: readiness,
+        overdueBacklog: readiness,
+        recommendedRange: 30,
+      },
+    }) as { historicalReadiness?: unknown }
+
+    expect(parsed.historicalReadiness).toEqual({
+      requested: readiness,
+      recallQuality: readiness,
+      practiceRhythm: readiness,
+      ratingsMix: readiness,
+      topics: readiness,
+      stability: readiness,
+      overdueBacklog: readiness,
+      recommendedRange: 30,
+    })
+  })
+
   it('accepts a valid full summary', () => {
     expect(analyticsSummarySchema.safeParse(validSummary).success).toBe(true)
   })
@@ -214,7 +273,8 @@ describe('analyticsSummarySchema', () => {
       overdueHistoryAvailableFrom: '2026-01-01T00:00:00.000Z',
       recallQuality: [
         {
-          date: '2026-01-15',
+          bucketStart: '2026-01-15',
+          bucketEnd: '2026-01-15',
           observedRecall: 0.75,
           predictedRecall: null,
           targetRetention: 0.9,
@@ -230,7 +290,7 @@ describe('analyticsSummarySchema', () => {
       periodStart: validSummary.periodStart,
       periodEnd: validSummary.periodEnd,
       recallQuality: chartReadySummary.recallQuality,
-      consistency: chartReadySummary.consistency,
+      practiceRhythm: chartReadySummary.practiceRhythm,
       ratingsMix: chartReadySummary.ratingsMix,
       overdueHistoryAvailableFrom: '2026-01-01T00:00:00.000Z',
     })
@@ -251,6 +311,30 @@ describe('analyticsSummarySchema', () => {
     ).toBe('2026-01-01T00:00:00.000Z')
   })
 
+  it('preserves unknown overdue buckets instead of fabricating a count', () => {
+    const parsed = analyticsSummarySchema.parse({
+      ...validSummary,
+      chartDataStatus: 'ready',
+      overdueBacklog: [
+        {
+          bucketStart: '2026-01-13',
+          bucketEnd: '2026-01-15',
+          overdueCount: null,
+          historyAvailable: false,
+        },
+      ],
+    })
+
+    expect(parsed.overdueBacklog).toEqual([
+      {
+        bucketStart: '2026-01-13',
+        bucketEnd: '2026-01-15',
+        overdueCount: null,
+        historyAvailable: false,
+      },
+    ])
+  })
+
   it('rejects unavailable summaries with predicted recall or chart series', () => {
     expect(
       analyticsSummarySchema.safeParse({
@@ -263,7 +347,8 @@ describe('analyticsSummarySchema', () => {
         ...validSummary,
         recallQuality: [
           {
-            date: '2026-01-15',
+            bucketStart: '2026-01-15',
+            bucketEnd: '2026-01-15',
             observedRecall: 0.75,
             predictedRecall: null,
             targetRetention: 0.9,
@@ -502,9 +587,10 @@ describe('analyticsSummarySchema — new scatter fields', () => {
 describe('chart point contracts', () => {
   it('preserves association semantics and Hard + Again share during serialization', () => {
     expect(
-      consistencyPointSchema.parse({
-        week: '2026-01-12',
-        reviewDays: 3,
+      practiceRhythmPointSchema.parse({
+        bucketStart: '2026-01-12',
+        bucketEnd: '2026-01-18',
+        reviewCount: 3,
         observedCorrectness: 0.75,
         sampleSize: 4,
         associationOnly: true,
@@ -512,7 +598,8 @@ describe('chart point contracts', () => {
     ).toMatchObject({ associationOnly: true })
     expect(
       ratingsMixPointSchema.parse({
-        date: '2026-01-15',
+        bucketStart: '2026-01-15',
+        bucketEnd: '2026-01-15',
         again: 1,
         hard: 1,
         good: 2,

@@ -100,8 +100,8 @@ describe('analytics chart-data builders', () => {
     )
     expect(
       points.map(
-        ({ date, reviewCount, eligibleSampleSize, observedRecall }) => ({
-          date,
+        ({ bucketStart, reviewCount, eligibleSampleSize, observedRecall }) => ({
+          bucketStart,
           reviewCount,
           eligibleSampleSize,
           observedRecall,
@@ -109,19 +109,19 @@ describe('analytics chart-data builders', () => {
       ),
     ).toEqual([
       {
-        date: '2026-08-01',
+        bucketStart: '2026-08-01',
         reviewCount: 1,
         eligibleSampleSize: 1,
         observedRecall: 1,
       },
       {
-        date: '2026-08-02',
+        bucketStart: '2026-08-02',
         reviewCount: 1,
         eligibleSampleSize: 1,
         observedRecall: 0,
       },
       {
-        date: '2026-08-03',
+        bucketStart: '2026-08-03',
         reviewCount: 0,
         eligibleSampleSize: 0,
         observedRecall: null,
@@ -164,9 +164,11 @@ describe('analytics chart-data builders', () => {
     const replayed = buildRecallQualityPoints(withPreRangeHistory, options)
 
     expect(
-      replayed.find((point) => point.date === '2026-08-03')?.predictedRecall,
+      replayed.find((point) => point.bucketStart === '2026-08-03')
+        ?.predictedRecall,
     ).not.toBe(
-      inRangeOnly.find((point) => point.date === '2026-08-03')?.predictedRecall,
+      inRangeOnly.find((point) => point.bucketStart === '2026-08-03')
+        ?.predictedRecall,
     )
   })
 
@@ -245,12 +247,15 @@ describe('analytics chart-data builders', () => {
 
     expect(samples).toHaveLength(2)
     expect(samples.every((sample) => sample.date === '2026-08-02')).toBe(true)
-    expect(points.find((point) => point.date === '2026-08-02')).toMatchObject({
-      date: '2026-08-02',
+    expect(
+      points.find((point) => point.bucketStart === '2026-08-02'),
+    ).toMatchObject({
+      bucketStart: '2026-08-02',
       reviewCount: 2,
     })
     expect(
-      points.find((point) => point.date === '2026-08-02')?.predictedRecall,
+      points.find((point) => point.bucketStart === '2026-08-02')
+        ?.predictedRecall,
     ).not.toBeNull()
   })
 
@@ -436,28 +441,24 @@ describe('analytics chart-data builders', () => {
       ).points,
     ).toEqual([
       {
-        date: '2026-08-03',
         bucketStart: '2026-08-01',
         bucketEnd: '2026-08-03',
         overdueCount: 1,
         historyAvailable: true,
       },
       {
-        date: '2026-08-06',
         bucketStart: '2026-08-04',
         bucketEnd: '2026-08-06',
         overdueCount: null,
         historyAvailable: false,
       },
       {
-        date: '2026-08-09',
         bucketStart: '2026-08-07',
         bucketEnd: '2026-08-09',
         overdueCount: 3,
         historyAvailable: true,
       },
       {
-        date: '2026-08-12',
         bucketStart: '2026-08-10',
         bucketEnd: '2026-08-12',
         overdueCount: null,
@@ -597,21 +598,18 @@ describe('analytics chart-data builders', () => {
     )
     expect(points).toEqual([
       {
-        week: '2026-08-01',
         bucketStart: '2026-08-01',
         bucketEnd: '2026-08-01',
         medianStabilityDays: 2,
         sampleSize: 1,
       },
       {
-        week: '2026-08-02',
         bucketStart: '2026-08-02',
         bucketEnd: '2026-08-02',
         medianStabilityDays: null,
         sampleSize: 0,
       },
       {
-        week: '2026-08-03',
         bucketStart: '2026-08-03',
         bucketEnd: '2026-08-03',
         medianStabilityDays: 6,
@@ -633,14 +631,12 @@ describe('analytics chart-data builders', () => {
     ).toEqual({
       points: [
         {
-          date: '2026-08-02',
           bucketStart: '2026-08-02',
           bucketEnd: '2026-08-02',
           overdueCount: 3,
           historyAvailable: true,
         },
         {
-          date: '2026-08-03',
           bucketStart: '2026-08-03',
           bucketEnd: '2026-08-03',
           overdueCount: null,
@@ -896,14 +892,12 @@ describe('analytics chart-data builders', () => {
 
     expect(result.points).toEqual([
       {
-        date: '2026-08-02',
         bucketStart: '2026-08-02',
         bucketEnd: '2026-08-02',
         overdueCount: 2,
         historyAvailable: true,
       },
       {
-        date: '2026-08-03',
         bucketStart: '2026-08-03',
         bucketEnd: '2026-08-03',
         overdueCount: null,
@@ -933,14 +927,12 @@ describe('analytics chart-data builders', () => {
       ).points,
     ).toEqual([
       {
-        date: '2026-08-06',
         bucketStart: '2026-08-04',
         bucketEnd: '2026-08-06',
         overdueCount: 2,
         historyAvailable: true,
       },
       {
-        date: '2026-08-09',
         bucketStart: '2026-08-07',
         bucketEnd: '2026-08-09',
         overdueCount: null,

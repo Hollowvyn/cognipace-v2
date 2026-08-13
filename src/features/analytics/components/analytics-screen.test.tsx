@@ -3,7 +3,10 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
-import type { SerializedAnalyticsSummary } from '@/features/analytics/api/analytics-contracts'
+import type {
+  ReadinessFailure,
+  SerializedAnalyticsSummary,
+} from '@/features/analytics/api/analytics-contracts'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import { AnalyticsScreen } from './analytics-screen'
@@ -11,6 +14,42 @@ import { AnalyticsScreen } from './analytics-screen'
 vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
 }))
+
+function createUnreadyHistoricalReadiness() {
+  const readiness = {
+    ready: false,
+    requestedDays: 30,
+    bucketDays: 3,
+    requestedBuckets: 10,
+    effectiveBuckets: 0,
+    effectiveStart: null,
+    assessments: 0,
+    minimumAssessments: 24,
+    activeBuckets: 0,
+    minimumActiveBuckets: 0,
+    longestGap: 0,
+    maximumGap: 2,
+    gapRuns: 0,
+    maximumGapRuns: 1,
+    failingReasons: [
+      'no-evidence',
+      'insufficient-span',
+      'insufficient-assessments',
+      'insufficient-active-buckets',
+    ] as ReadinessFailure[],
+  }
+
+  return {
+    requested: readiness,
+    recallQuality: readiness,
+    practiceRhythm: readiness,
+    ratingsMix: readiness,
+    topics: readiness,
+    stability: readiness,
+    overdueBacklog: readiness,
+    recommendedRange: null,
+  }
+}
 
 function baseAnalyticsSummary(): SerializedAnalyticsSummary {
   return {
@@ -45,8 +84,9 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
     targetRetention: 0.9,
     retentionScatter: [],
     retentionScatterCurve: [],
+    historicalReadiness: createUnreadyHistoricalReadiness(),
     recallQuality: [],
-    consistency: [],
+    practiceRhythm: [],
     ratingsMix: [],
     hardAgain: {
       selectedShare: null,
@@ -81,7 +121,8 @@ function readyAnalyticsSummary(
     chartDataStatus: 'ready',
     recallQuality: [
       {
-        date: '2026-01-14',
+        bucketStart: '2026-01-14',
+        bucketEnd: '2026-01-14',
         observedRecall: 0.78,
         predictedRecall: 0.84,
         targetRetention: 0.9,
@@ -89,10 +130,11 @@ function readyAnalyticsSummary(
         eligibleSampleSize: 12,
       },
     ],
-    consistency: [
+    practiceRhythm: [
       {
-        week: '2026-01-12',
-        reviewDays: 4,
+        bucketStart: '2026-01-12',
+        bucketEnd: '2026-01-14',
+        reviewCount: 4,
         observedCorrectness: 0.78,
         sampleSize: 12,
         associationOnly: true,
@@ -100,7 +142,8 @@ function readyAnalyticsSummary(
     ],
     ratingsMix: [
       {
-        date: '2026-01-14',
+        bucketStart: '2026-01-14',
+        bucketEnd: '2026-01-14',
         again: 1,
         hard: 2,
         good: 6,
@@ -118,10 +161,20 @@ function readyAnalyticsSummary(
       },
     ],
     stability: [
-      { week: '2026-01-12', medianStabilityDays: 8.2, sampleSize: 12 },
+      {
+        bucketStart: '2026-01-12',
+        bucketEnd: '2026-01-14',
+        medianStabilityDays: 8.2,
+        sampleSize: 12,
+      },
     ],
     overdueBacklog: [
-      { date: '2026-01-14', overdueCount: 3, historyAvailable: true },
+      {
+        bucketStart: '2026-01-14',
+        bucketEnd: '2026-01-14',
+        overdueCount: 3,
+        historyAvailable: true,
+      },
     ],
     overdueHistoryAvailableFrom: '2026-01-14T00:00:00.000Z',
     upcomingLoad: [

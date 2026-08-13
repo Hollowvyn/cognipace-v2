@@ -76,7 +76,7 @@ export function RatingsMixChart({
           <CartesianGrid stroke="var(--color-border)" vertical={false} />
           <XAxis
             axisLine={false}
-            dataKey="date"
+            dataKey="bucketStart"
             minTickGap={24}
             tickFormatter={formatChartDate}
             tickLine={false}

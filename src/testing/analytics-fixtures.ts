@@ -1,10 +1,11 @@
 import type { SerializedAnalyticsSummary } from '@/features/analytics/api/analytics-contracts'
 
 export const analyticsChartPointFixtures = {
-  consistency: [
+  practiceRhythm: [
     {
-      week: '2026-05-25',
-      reviewDays: 4,
+      bucketStart: '2026-05-25',
+      bucketEnd: '2026-05-27',
+      reviewCount: 4,
       observedCorrectness: 0.75,
       sampleSize: 8,
       associationOnly: true,
@@ -12,7 +13,8 @@ export const analyticsChartPointFixtures = {
   ],
   ratingsMix: [
     {
-      date: '2026-05-30',
+      bucketStart: '2026-05-28',
+      bucketEnd: '2026-05-30',
       again: 1,
       hard: 2,
       good: 4,
@@ -21,7 +23,47 @@ export const analyticsChartPointFixtures = {
       hardAgainShare: 0.375,
     },
   ],
-} satisfies Pick<SerializedAnalyticsSummary, 'consistency' | 'ratingsMix'>
+} satisfies Pick<SerializedAnalyticsSummary, 'practiceRhythm' | 'ratingsMix'>
+
+function createUnreadyReadiness(): SerializedAnalyticsSummary['historicalReadiness']['requested'] {
+  return {
+    ready: false,
+    requestedDays: 30,
+    bucketDays: 3,
+    requestedBuckets: 10,
+    effectiveBuckets: 0,
+    effectiveStart: null,
+    assessments: 0,
+    minimumAssessments: 24,
+    activeBuckets: 0,
+    minimumActiveBuckets: 0,
+    longestGap: 0,
+    maximumGap: 2,
+    gapRuns: 0,
+    maximumGapRuns: 1,
+    failingReasons: [
+      'no-evidence',
+      'insufficient-span',
+      'insufficient-assessments',
+      'insufficient-active-buckets',
+    ],
+  }
+}
+
+function createHistoricalReadiness(): SerializedAnalyticsSummary['historicalReadiness'] {
+  const readiness = createUnreadyReadiness()
+
+  return {
+    requested: readiness,
+    recallQuality: { ...readiness },
+    practiceRhythm: { ...readiness },
+    ratingsMix: { ...readiness },
+    topics: { ...readiness },
+    stability: { ...readiness },
+    overdueBacklog: { ...readiness },
+    recommendedRange: null,
+  }
+}
 
 export function createSerializedAnalyticsSummary(
   overrides?: Partial<SerializedAnalyticsSummary>,
@@ -76,8 +118,9 @@ export function createSerializedAnalyticsSummary(
     targetRetention: 0.9,
     retentionScatter: [],
     retentionScatterCurve: [],
+    historicalReadiness: createHistoricalReadiness(),
     recallQuality: [],
-    consistency: [],
+    practiceRhythm: [],
     ratingsMix: [],
     hardAgain: {
       selectedShare: null,

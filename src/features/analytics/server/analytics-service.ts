@@ -1,5 +1,6 @@
 import {
   getRetrievability,
+  isReviewRating,
   normalizeFsrsSchedulingOptions,
   parseFsrsCardState,
   type FsrsCardSnapshot,
@@ -13,7 +14,6 @@ import type { AnalyticsRange } from '../api/analytics-contracts'
 
 import {
   getReviewDayStats,
-  getRecentRatings,
   getReviewHistory,
   getCurrentFsrsCards,
   getMemoryProfileCards,
@@ -26,9 +26,9 @@ import {
 
 import {
   buildHardAgainSummary,
-  buildConsistencyPoints,
   buildOverdueBacklogPoints,
   buildPredictedRecallSamples,
+  buildPracticeRhythmPoints,
   buildRatingsMixPoints,
   buildRecallQualityPoints,
   buildRetentionHealth,
@@ -41,8 +41,14 @@ import {
   type AnalyticsReviewEvent,
 } from '../domain/chart-data'
 import {
+  calculateAnalyticsReadiness,
+  findRichestReadyRange,
+  type AnalyticsReadiness,
+} from '../domain/analytics-readiness'
+import {
   buildAnalyticsBuckets,
   getAnalyticsRangePolicy,
+  type AnalyticsBucket,
 } from '../domain/analytics-range-policy'
 
 import {
@@ -74,7 +80,6 @@ export async function getAnalyticsSummary(
 
   const [
     dayStats,
-    recentRatings,
     reviewHistory,
     currentFsrsCards,
     upcomingCards,
@@ -84,7 +89,6 @@ export async function getAnalyticsSummary(
     scatterCandidates,
   ] = await Promise.all([
     getReviewDayStats(db),
-    getRecentRatings(db, periodStart, periodEnd),
     getReviewHistory(db),
     getCurrentFsrsCards(db),
     getUpcomingCards(db, fourteenDaysLater),
@@ -97,6 +101,10 @@ export async function getAnalyticsSummary(
   const fsrsOptions = normalizeFsrsSchedulingOptions({
     targetRetention: settings.review.targetRetention,
   })
+  const recentRatings = reviewHistory.map(({ rating, reviewedAt }) => ({
+    rating,
+    reviewedAt,
+  }))
 
   const practiceProgress = await getPracticeProgressSummary(db, {
     dailyGoal: settings.practice.dailyGoal,
@@ -146,29 +154,75 @@ export async function getAnalyticsSummary(
     fsrsOptions,
   }
   const analyticsReviewHistory = reviewHistory satisfies AnalyticsReviewEvent[]
-  const recallQuality = buildRecallQualityPoints(
+  const baselineEvidenceCounts = buildBucketEvidenceCounts(
     analyticsReviewHistory,
-    chartOptions,
+    buckets,
+    periodEnd,
+    (event) => isReviewRating(event.rating),
+  )
+  const requestedReadiness = calculateAnalyticsReadiness({
+    requestedDays: range,
+    evidenceCounts: baselineEvidenceCounts,
+    bucketKeys: buckets.map((bucket) => bucket.key),
+  })
+  const recallReadiness = requestedReadiness
+  const practiceRhythmReadiness = calculateAnalyticsReadiness({
+    requestedDays: range,
+    evidenceCounts: buildBucketEvidenceCounts(
+      analyticsReviewHistory,
+      buckets,
+      periodEnd,
+      () => true,
+    ),
+    bucketKeys: buckets.map((bucket) => bucket.key),
+  })
+  const ratingsMixReadiness = requestedReadiness
+
+  const recallQuality = trimHistoricalPoints(
+    buildRecallQualityPoints(analyticsReviewHistory, chartOptions),
+    recallReadiness,
   )
   const predictedRecall = buildMetricSummary(
     buildPredictedRecallSamples(analyticsReviewHistory, chartOptions).map(
       (sample) => sample.value,
     ),
   )
-  const consistency = buildConsistencyPoints(
-    analyticsReviewHistory,
-    chartOptions,
+  const practiceRhythm = trimHistoricalPoints(
+    buildPracticeRhythmPoints(analyticsReviewHistory, chartOptions),
+    practiceRhythmReadiness,
   )
-  const ratingsMix = buildRatingsMixPoints(analyticsReviewHistory, chartOptions)
+  const ratingsMix = trimHistoricalPoints(
+    buildRatingsMixPoints(analyticsReviewHistory, chartOptions),
+    ratingsMixReadiness,
+  )
   const hardAgain = buildHardAgainSummary(analyticsReviewHistory, chartOptions)
   const topics = buildTopicPoints(analyticsReviewHistory, chartOptions)
+  const topicReadiness = calculateAnalyticsReadiness({
+    requestedDays: range,
+    evidenceCounts: buildBucketEvidenceCounts(
+      analyticsReviewHistory,
+      buckets,
+      periodEnd,
+      (event) => event.isCorrect !== null && event.topicLabels.length > 0,
+    ),
+    bucketKeys: buckets.map((bucket) => bucket.key),
+  })
   const stability = buildStabilityPoints(analyticsReviewHistory, chartOptions)
+  const stabilityReadiness = calculateAnalyticsReadiness({
+    requestedDays: range,
+    evidenceCounts: bucketCountsFromPoints(
+      buckets,
+      stability,
+      (point) => point.sampleSize,
+    ),
+    bucketKeys: buckets.map((bucket) => bucket.key),
+  })
   const analyticsCurrentCards = buildCurrentAnalyticsCards(
     currentFsrsCards,
     now,
     fsrsOptions,
   )
-  const overdueBacklog = buildOverdueBacklogPoints(
+  const overdueBacklogResult = buildOverdueBacklogPoints(
     reconstructOverdueBacklogSnapshots(
       analyticsReviewHistory,
       analyticsCurrentCards,
@@ -176,16 +230,29 @@ export async function getAnalyticsSummary(
     ),
     chartOptions,
   )
-  // TODO(Task 4): return explicit unavailable overdue-history buckets once the
-  // analytics response contract supports nullable overdueCount values.
-  const legacyOverdueBacklog = overdueBacklog.points.filter(
-    (
-      point,
-    ): point is Extract<
-      AnalyticsSummary['overdueBacklog'][number],
-      { historyAvailable: true }
-    > => point.historyAvailable,
+  const overdueReadiness = calculateAnalyticsReadiness({
+    requestedDays: range,
+    evidenceCounts: bucketCountsFromPoints(
+      buckets,
+      overdueBacklogResult.points,
+      (point) => (point.historyAvailable ? 1 : 0),
+    ),
+    bucketKeys: buckets.map((bucket) => bucket.key),
+  })
+  const overdueBacklog = trimHistoricalPoints(
+    overdueBacklogResult.points,
+    overdueReadiness,
   )
+  const historicalReadiness = {
+    requested: requestedReadiness,
+    recallQuality: recallReadiness,
+    practiceRhythm: practiceRhythmReadiness,
+    ratingsMix: ratingsMixReadiness,
+    topics: topicReadiness,
+    stability: stabilityReadiness,
+    overdueBacklog: overdueReadiness,
+    recommendedRange: findRecommendedRange(analyticsReviewHistory, now),
+  }
   const upcomingLoad = buildUpcomingLoadPoints(
     upcomingCards.map((card) => card.dueAt),
     now,
@@ -268,15 +335,17 @@ export async function getAnalyticsSummary(
     scatter,
     referenceCurve,
     chartDataStatus: 'ready',
+    historicalReadiness,
     predictedRecall,
     recallQuality,
-    consistency,
+    practiceRhythm,
     ratingsMix,
     hardAgain,
     topics,
     stability,
-    overdueBacklog: legacyOverdueBacklog,
-    overdueHistoryAvailableFrom: overdueBacklog.overdueHistoryAvailableFrom,
+    overdueBacklog,
+    overdueHistoryAvailableFrom:
+      overdueBacklogResult.overdueHistoryAvailableFrom,
     upcomingLoad,
     retentionHealth,
     fragileKnowledge,
@@ -361,6 +430,77 @@ function buildMetricSummary(
     sampleSize,
     lowSample: false,
   }
+}
+
+function buildBucketEvidenceCounts(
+  events: readonly AnalyticsReviewEvent[],
+  buckets: readonly AnalyticsBucket[],
+  periodEnd: Date,
+  isEligible: (event: AnalyticsReviewEvent) => boolean,
+): number[] {
+  return buckets.map(
+    (bucket) =>
+      events.filter(
+        (event) =>
+          event.reviewedAt >= bucket.start &&
+          event.reviewedAt <= bucket.end &&
+          event.reviewedAt <= periodEnd &&
+          isEligible(event),
+      ).length,
+  )
+}
+
+function bucketCountsFromPoints<T extends { bucketStart: string }>(
+  buckets: readonly AnalyticsBucket[],
+  points: readonly T[],
+  getCount: (point: T) => number,
+): number[] {
+  const counts = new Map(
+    points.map((point) => [point.bucketStart, getCount(point)]),
+  )
+
+  return buckets.map((bucket) => counts.get(bucket.key) ?? 0)
+}
+
+function trimHistoricalPoints<T extends { bucketStart: string }>(
+  points: readonly T[],
+  readiness: AnalyticsReadiness,
+): T[] {
+  if (readiness.effectiveStart === null) return []
+
+  const effectiveStartIndex = points.findIndex(
+    (point) => point.bucketStart === readiness.effectiveStart,
+  )
+
+  return effectiveStartIndex === -1 ? [] : points.slice(effectiveStartIndex)
+}
+
+function findRecommendedRange(
+  events: readonly AnalyticsReviewEvent[],
+  now: Date,
+): AnalyticsRange | null {
+  const ranges = ([14, 30, 90] as const).map((range) => {
+    const buckets = buildAnalyticsBuckets({
+      requestedDays: range,
+      periodEnd: now,
+    })
+    const readiness = calculateAnalyticsReadiness({
+      requestedDays: range,
+      evidenceCounts: buildBucketEvidenceCounts(events, buckets, now, (event) =>
+        isReviewRating(event.rating),
+      ),
+      bucketKeys: buckets.map((bucket) => bucket.key),
+    })
+
+    return { range, ready: readiness.ready }
+  })
+
+  const recommendedRange = findRichestReadyRange(ranges)
+  return recommendedRange === 14 ||
+    recommendedRange === 30 ||
+    recommendedRange === 90
+    ? recommendedRange
+    : null
 }
 
 function isSuspendedMemoryCard(card: MemoryProfileCard): boolean {

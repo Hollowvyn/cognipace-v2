@@ -30,6 +30,7 @@ import { analyticsSummarySchema } from '@/features/analytics/api/analytics-contr
 import { defaultUserSettings } from '@/features/settings/domain'
 import type { ActiveTrack } from '@/features/tracks/domain'
 import { createSerializedPracticeDetails } from '@/testing/practice-fixtures'
+import { createSerializedAnalyticsSummary } from '@/testing/analytics-fixtures'
 import {
   createProblemForEditResponse,
   createProblemLibraryResponse,
@@ -371,8 +372,10 @@ describe('background handler registration', () => {
         },
       ],
       retentionScatterCurve: [{ days: 0, retrievability: 1 }],
+      historicalReadiness:
+        createSerializedAnalyticsSummary().historicalReadiness,
       recallQuality: [],
-      consistency: [],
+      practiceRhythm: [],
       ratingsMix: [],
       hardAgain: {
         selectedShare: null,
@@ -672,9 +675,11 @@ describe('background handler registration', () => {
       retentionScatter: [],
       retentionScatterCurve: [],
       chartDataStatus: 'ready',
+      historicalReadiness:
+        createSerializedAnalyticsSummary().historicalReadiness,
       predictedRecall: { value: null, sampleSize: 0, lowSample: true },
       recallQuality: [],
-      consistency: [],
+      practiceRhythm: [],
       ratingsMix: [],
       hardAgain: {
         selectedShare: null,

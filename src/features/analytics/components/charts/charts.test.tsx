@@ -12,8 +12,8 @@ import {
   WeakestTopicsChart,
 } from './index'
 import type {
-  ConsistencyPoint,
   OverdueBacklogPoint,
+  PracticeRhythmPoint,
   RatingsMixPoint,
   RecallQualityPoint,
   RetentionHealthPoint,
@@ -24,7 +24,8 @@ import type {
 
 const recallQuality: RecallQualityPoint[] = [
   {
-    date: '2026-08-01',
+    bucketStart: '2026-08-01',
+    bucketEnd: '2026-08-01',
     observedRecall: 0.72,
     predictedRecall: 0.81,
     targetRetention: 0.9,
@@ -32,7 +33,8 @@ const recallQuality: RecallQualityPoint[] = [
     eligibleSampleSize: 12,
   },
   {
-    date: '2026-08-02',
+    bucketStart: '2026-08-02',
+    bucketEnd: '2026-08-02',
     observedRecall: 0.8,
     predictedRecall: 0.84,
     targetRetention: 0.9,
@@ -41,10 +43,11 @@ const recallQuality: RecallQualityPoint[] = [
   },
 ]
 
-const consistency: ConsistencyPoint[] = [
+const consistency: PracticeRhythmPoint[] = [
   {
-    week: '2026-07-27',
-    reviewDays: 4,
+    bucketStart: '2026-07-27',
+    bucketEnd: '2026-08-02',
+    reviewCount: 4,
     observedCorrectness: 0.78,
     sampleSize: 22,
     associationOnly: true,
@@ -53,7 +56,8 @@ const consistency: ConsistencyPoint[] = [
 
 const ratingsMix: RatingsMixPoint[] = [
   {
-    date: '2026-08-01',
+    bucketStart: '2026-08-01',
+    bucketEnd: '2026-08-01',
     again: 1,
     hard: 2,
     good: 6,
@@ -80,12 +84,27 @@ const topics: TopicPoint[] = [
 ]
 
 const stability: StabilityPoint[] = [
-  { week: '2026-07-27', medianStabilityDays: 4.2, sampleSize: 10 },
+  {
+    bucketStart: '2026-07-27',
+    bucketEnd: '2026-08-02',
+    medianStabilityDays: 4.2,
+    sampleSize: 10,
+  },
 ]
 
 const overdue: OverdueBacklogPoint[] = [
-  { date: '2026-08-01', overdueCount: 3, historyAvailable: true },
-  { date: '2026-08-02', overdueCount: 4, historyAvailable: true },
+  {
+    bucketStart: '2026-08-01',
+    bucketEnd: '2026-08-01',
+    overdueCount: 3,
+    historyAvailable: true,
+  },
+  {
+    bucketStart: '2026-08-02',
+    bucketEnd: '2026-08-02',
+    overdueCount: 4,
+    historyAvailable: true,
+  },
 ]
 
 const upcoming: UpcomingLoadPoint[] = [

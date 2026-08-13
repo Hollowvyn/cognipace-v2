@@ -54,7 +54,6 @@ export interface AnalyticsOverdueSnapshot {
 }
 
 export interface RecallQualityPoint {
-  date: string
   bucketStart: string
   bucketEnd: string
   observedRecall: number | null
@@ -79,17 +78,7 @@ export interface PracticeRhythmPoint {
   associationOnly: true
 }
 
-// Task 4 replaces this legacy API shape with PracticeRhythmPoint.
-export interface ConsistencyPoint {
-  week: string
-  reviewDays: number
-  observedCorrectness: number | null
-  sampleSize: number
-  associationOnly: true
-}
-
 export interface RatingsMixPoint {
-  date: string
   bucketStart: string
   bucketEnd: string
   again: number
@@ -119,7 +108,6 @@ export interface TopicPoint {
 }
 
 export interface StabilityPoint {
-  week: string
   bucketStart: string
   bucketEnd: string
   medianStabilityDays: number | null
@@ -127,7 +115,6 @@ export interface StabilityPoint {
 }
 
 interface OverdueBacklogPointBase {
-  date: string
   bucketStart: string
   bucketEnd: string
 }
@@ -226,7 +213,6 @@ export function buildRecallQualityPoints(
 
   return trimLeadingEmptyBuckets(
     points.map((point) => ({
-      date: point.bucket.key,
       ...bucketBounds(point.bucket),
       observedRecall: recomputeBucketRatio([point.observed]),
       predictedRecall: recomputeBucketRatio(
@@ -327,38 +313,6 @@ export function buildPracticeRhythmPoints(
   )
 }
 
-export function buildConsistencyPoints(
-  events: readonly AnalyticsReviewEvent[],
-  options: AnalyticsRangeOptions,
-): ConsistencyPoint[] {
-  const weeks = new Map<string, { days: Set<string>; correct: boolean[] }>()
-
-  for (const event of events) {
-    if (!isWithinRange(event.reviewedAt, options)) continue
-
-    const week = toAnalyticsWeekKey(event.reviewedAt)
-    const value = weeks.get(week) ?? { days: new Set(), correct: [] }
-    value.days.add(toAnalyticsDateKey(event.reviewedAt))
-    if (event.isCorrect !== null) value.correct.push(event.isCorrect)
-    weeks.set(week, value)
-  }
-
-  return [...weeks.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([week, value]) => ({
-      week,
-      reviewDays: value.days.size,
-      observedCorrectness: recomputeBucketRatio([
-        {
-          numerator: value.correct.filter(Boolean).length,
-          denominator: value.correct.length,
-        },
-      ]),
-      sampleSize: value.correct.length,
-      associationOnly: true,
-    }))
-}
-
 export function buildRatingsMixPoints(
   events: readonly AnalyticsReviewEvent[],
   options: AnalyticsRangeOptions,
@@ -375,7 +329,6 @@ export function buildRatingsMixPoints(
           counts[event.rating] += 1
       const total = sumBucketValues(Object.values(counts))
       return {
-        date: bucket.key,
         ...bucketBounds(bucket),
         ...counts,
         total,
@@ -489,7 +442,6 @@ export function buildStabilityPoints(
 
   return trimLeadingEmptyBuckets(
     points.map((point) => ({
-      week: point.bucket.key,
       ...bucketBounds(point.bucket),
       medianStabilityDays: medianBucketValues(point.values),
       sampleSize: point.values.length,
@@ -526,7 +478,6 @@ export function buildOverdueBacklogPoints(
         )
         if (!snapshot) {
           return {
-            date: toAnalyticsDateKey(bucket.end),
             ...bucketBounds(bucket),
             overdueCount: null,
             historyAvailable: false,
@@ -534,7 +485,6 @@ export function buildOverdueBacklogPoints(
         }
 
         return {
-          date: toAnalyticsDateKey(bucket.end),
           ...bucketBounds(bucket),
           overdueCount: snapshot.overdueCount,
           historyAvailable: true,
@@ -719,13 +669,6 @@ function isInBucket(date: Date, bucket: AnalyticsBucket): boolean {
 
 function isWithinRange(date: Date, options: AnalyticsRangeOptions): boolean {
   return date >= options.start && date <= options.end
-}
-
-function toAnalyticsWeekKey(date: Date): string {
-  const day = new Date(date)
-  const dayOfWeek = day.getDay() || 7
-  day.setDate(day.getDate() - dayOfWeek + 1)
-  return toAnalyticsDateKey(day)
 }
 
 function findBucketPoint<T extends { bucket: AnalyticsBucket }>(

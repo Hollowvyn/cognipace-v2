@@ -1,3 +1,5 @@
+import type { AnalyticsReadiness } from './analytics-readiness'
+
 export interface ObservedRatingQualityResult {
   value: number | null
   label: string
@@ -78,10 +80,11 @@ export interface AnalyticsSummaryInput {
   targetRetention: number
   scatter: RetentionScatterEntry[]
   referenceCurve: ReferenceCurvePoint[]
+  historicalReadiness: HistoricalReadiness
   chartDataStatus?: 'unavailable' | 'ready'
   predictedRecall?: AnalyticsMetricSummary
   recallQuality?: import('./chart-data').RecallQualityPoint[]
-  consistency?: import('./chart-data').ConsistencyPoint[]
+  practiceRhythm?: import('./chart-data').PracticeRhythmPoint[]
   ratingsMix?: import('./chart-data').RatingsMixPoint[]
   hardAgain?: import('./chart-data').HardAgainSummary
   topics?: import('./chart-data').TopicPoint[]
@@ -91,6 +94,17 @@ export interface AnalyticsSummaryInput {
   upcomingLoad?: import('./chart-data').UpcomingLoadPoint[]
   retentionHealth?: import('./chart-data').RetentionHealthPoint[]
   fragileKnowledge?: import('./chart-data').FragileKnowledgeRow[]
+}
+
+export interface HistoricalReadiness {
+  requested: AnalyticsReadiness
+  recallQuality: AnalyticsReadiness
+  practiceRhythm: AnalyticsReadiness
+  ratingsMix: AnalyticsReadiness
+  topics: AnalyticsReadiness
+  stability: AnalyticsReadiness
+  overdueBacklog: AnalyticsReadiness
+  recommendedRange: 14 | 30 | 90 | null
 }
 
 export interface AnalyticsSummary {
@@ -111,10 +125,11 @@ export interface AnalyticsSummary {
   targetRetention: number
   retentionScatter: RetentionScatterEntry[]
   retentionScatterCurve: ReferenceCurvePoint[]
+  historicalReadiness: HistoricalReadiness
   chartDataStatus: 'unavailable' | 'ready'
   predictedRecall: AnalyticsMetricSummary
   recallQuality: import('./chart-data').RecallQualityPoint[]
-  consistency: import('./chart-data').ConsistencyPoint[]
+  practiceRhythm: import('./chart-data').PracticeRhythmPoint[]
   ratingsMix: import('./chart-data').RatingsMixPoint[]
   hardAgain: import('./chart-data').HardAgainSummary
   topics: import('./chart-data').TopicPoint[]
@@ -240,6 +255,7 @@ export function buildAnalyticsSummary(
     targetRetention: input.targetRetention,
     retentionScatter: input.scatter,
     retentionScatterCurve: input.referenceCurve,
+    historicalReadiness: input.historicalReadiness,
     chartDataStatus: input.chartDataStatus ?? 'unavailable',
     predictedRecall: input.predictedRecall ?? {
       value: null,
@@ -247,7 +263,7 @@ export function buildAnalyticsSummary(
       lowSample: true,
     },
     recallQuality: input.recallQuality ?? [],
-    consistency: input.consistency ?? [],
+    practiceRhythm: input.practiceRhythm ?? [],
     ratingsMix: input.ratingsMix ?? [],
     hardAgain: input.hardAgain ?? {
       selectedShare: null,

@@ -62,7 +62,7 @@ export function MemoryStrengthChart({ data }: { data: StabilityPoint[] }) {
           </linearGradient>
         </defs>
         <CartesianGrid stroke="var(--color-border)" vertical={false} />
-        <XAxis axisLine={false} dataKey="week" tickLine={false} />
+        <XAxis axisLine={false} dataKey="bucketStart" tickLine={false} />
         <YAxis
           axisLine={false}
           tickFormatter={formatDays}

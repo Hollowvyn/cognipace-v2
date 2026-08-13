@@ -2,7 +2,8 @@ import type { SerializedAnalyticsSummary } from '../../api/analytics-contracts'
 
 export type RecallQualityPoint =
   SerializedAnalyticsSummary['recallQuality'][number]
-export type ConsistencyPoint = SerializedAnalyticsSummary['consistency'][number]
+export type PracticeRhythmPoint =
+  SerializedAnalyticsSummary['practiceRhythm'][number]
 export type RatingsMixPoint = SerializedAnalyticsSummary['ratingsMix'][number]
 export type HardAgainSummary = SerializedAnalyticsSummary['hardAgain']
 export type TopicPoint = SerializedAnalyticsSummary['topics'][number]

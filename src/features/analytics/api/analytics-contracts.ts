@@ -12,6 +12,36 @@ const percentageSchema = z.number().min(0).max(1)
 const countSchema = z.number().int().nonnegative()
 const nullablePercentageSchema = percentageSchema.nullable()
 
+export const readinessFailureSchema = z.enum([
+  'no-evidence',
+  'insufficient-span',
+  'insufficient-assessments',
+  'insufficient-active-buckets',
+  'gap-too-long',
+  'too-many-gaps',
+])
+
+export const analyticsReadinessSchema = z.object({
+  ready: z.boolean(),
+  requestedDays: z.number().int().positive(),
+  bucketDays: z.number().int().positive(),
+  requestedBuckets: z.number().int().positive(),
+  effectiveBuckets: countSchema,
+  effectiveStart: z.string().nullable(),
+  assessments: countSchema,
+  minimumAssessments: z.number().int().positive(),
+  activeBuckets: countSchema,
+  minimumActiveBuckets: countSchema,
+  longestGap: countSchema,
+  maximumGap: z.number().int().positive(),
+  gapRuns: countSchema,
+  maximumGapRuns: z.number().int().positive(),
+  failingReasons: z.array(readinessFailureSchema),
+})
+
+export type AnalyticsReadiness = z.infer<typeof analyticsReadinessSchema>
+export type ReadinessFailure = z.infer<typeof readinessFailureSchema>
+
 export const analyticsMetricSummarySchema = z.union([
   z.object({
     value: z.null(),
@@ -81,7 +111,8 @@ export const referenceCurvePointSchema = z.object({
 })
 
 export const recallQualityPointSchema = z.object({
-  date: z.string(),
+  bucketStart: z.string(),
+  bucketEnd: z.string(),
   observedRecall: nullablePercentageSchema,
   predictedRecall: nullablePercentageSchema,
   targetRetention: percentageSchema,
@@ -89,16 +120,18 @@ export const recallQualityPointSchema = z.object({
   eligibleSampleSize: countSchema,
 })
 
-export const consistencyPointSchema = z.object({
-  week: z.string(),
-  reviewDays: countSchema,
+export const practiceRhythmPointSchema = z.object({
+  bucketStart: z.string(),
+  bucketEnd: z.string(),
+  reviewCount: countSchema,
   observedCorrectness: nullablePercentageSchema,
   sampleSize: countSchema,
   associationOnly: z.literal(true),
 })
 
 export const ratingsMixPointSchema = z.object({
-  date: z.string(),
+  bucketStart: z.string(),
+  bucketEnd: z.string(),
   again: countSchema,
   hard: countSchema,
   good: countSchema,
@@ -126,15 +159,39 @@ export const topicPointSchema = z.object({
 })
 
 export const stabilityPointSchema = z.object({
-  week: z.string(),
+  bucketStart: z.string(),
+  bucketEnd: z.string(),
   medianStabilityDays: z.number().nonnegative().nullable(),
   sampleSize: countSchema,
 })
 
-export const overdueBacklogPointSchema = z.object({
-  date: z.string(),
-  overdueCount: countSchema,
-  historyAvailable: z.boolean(),
+export const overdueBacklogPointSchema = z.discriminatedUnion(
+  'historyAvailable',
+  [
+    z.object({
+      bucketStart: z.string(),
+      bucketEnd: z.string(),
+      overdueCount: countSchema,
+      historyAvailable: z.literal(true),
+    }),
+    z.object({
+      bucketStart: z.string(),
+      bucketEnd: z.string(),
+      overdueCount: z.null(),
+      historyAvailable: z.literal(false),
+    }),
+  ],
+)
+
+export const historicalReadinessSchema = z.object({
+  requested: analyticsReadinessSchema,
+  recallQuality: analyticsReadinessSchema,
+  practiceRhythm: analyticsReadinessSchema,
+  ratingsMix: analyticsReadinessSchema,
+  topics: analyticsReadinessSchema,
+  stability: analyticsReadinessSchema,
+  overdueBacklog: analyticsReadinessSchema,
+  recommendedRange: analyticsRangeSchema.nullable(),
 })
 
 export const upcomingLoadPointSchema = z.object({
@@ -187,8 +244,9 @@ export const analyticsSummarySchema = z
     targetRetention: percentageSchema,
     retentionScatter: z.array(retentionScatterEntrySchema),
     retentionScatterCurve: z.array(referenceCurvePointSchema),
+    historicalReadiness: historicalReadinessSchema,
     recallQuality: z.array(recallQualityPointSchema),
-    consistency: z.array(consistencyPointSchema),
+    practiceRhythm: z.array(practiceRhythmPointSchema),
     ratingsMix: z.array(ratingsMixPointSchema),
     hardAgain: hardAgainSummarySchema,
     topics: z.array(topicPointSchema),
@@ -219,7 +277,7 @@ export const analyticsSummarySchema = z
       'retentionScatter',
       'retentionScatterCurve',
       'recallQuality',
-      'consistency',
+      'practiceRhythm',
       'ratingsMix',
       'topics',
       'stability',

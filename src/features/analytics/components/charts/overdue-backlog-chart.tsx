@@ -87,7 +87,7 @@ export function OverdueBacklogChart({
           />
           <XAxis
             axisLine={false}
-            dataKey="date"
+            dataKey="bucketStart"
             minTickGap={24}
             tickFormatter={formatChartDate}
             tickLine={false}

@@ -7,7 +7,7 @@ import {
 import { CartesianGrid, Scatter, ScatterChart, XAxis, YAxis } from 'recharts'
 
 import { ChartEmptyState, chartDimension, formatPercent } from './chart-shared'
-import type { ConsistencyPoint } from './types'
+import type { PracticeRhythmPoint } from './types'
 
 const consistencyChartConfig = {
   observedCorrectness: {
@@ -16,9 +16,9 @@ const consistencyChartConfig = {
   },
 } satisfies ChartConfig
 
-export function ConsistencyChart({ data }: { data: ConsistencyPoint[] }) {
+export function ConsistencyChart({ data }: { data: PracticeRhythmPoint[] }) {
   const points = data.filter(
-    (point): point is ConsistencyPoint & { observedCorrectness: number } =>
+    (point): point is PracticeRhythmPoint & { observedCorrectness: number } =>
       point.observedCorrectness !== null,
   )
 
@@ -51,7 +51,7 @@ export function ConsistencyChart({ data }: { data: ConsistencyPoint[] }) {
         <XAxis
           allowDecimals={false}
           axisLine={false}
-          dataKey="reviewDays"
+          dataKey="reviewCount"
           domain={[0, 'dataMax + 1']}
           label={{
             value: 'Practice days / week',
@@ -74,11 +74,11 @@ export function ConsistencyChart({ data }: { data: ConsistencyPoint[] }) {
             <ChartTooltipContent
               active={false}
               formatter={(value, name) => [
-                name === 'reviewDays'
-                  ? `${String(value)} days`
+                name === 'reviewCount'
+                  ? `${String(value)} reviews`
                   : formatPercent(typeof value === 'number' ? value : null),
-                name === 'reviewDays'
-                  ? 'Practice days'
+                name === 'reviewCount'
+                  ? 'Review count'
                   : 'Observed correctness',
               ]}
               payload={[]}

@@ -102,7 +102,7 @@ function AnalyticsChartHierarchy({
           id="consistency"
           title="Consistency vs observed correctness"
         >
-          <ConsistencyChart data={data.consistency} />
+          <ConsistencyChart data={data.practiceRhythm} />
         </AnalyticsChartPanel>
         <AnalyticsChartPanel
           description={metricDefinitions.ratingsMix.explanation}
