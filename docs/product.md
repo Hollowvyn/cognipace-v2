@@ -110,9 +110,11 @@ Current behavior:
 - The dashboard header shows compact pull and push shortcuts after GitHub Gist
   sync is configured.
 - Analytics shows local review-day totals, all-time review counts, current
-  streak, a low-sample-aware retention proxy, tracked-card memory profile, due
-  today/overdue/learning/review counts, average retrievability, a 14-day due
-  forecast, and weak problems derived from local practice state.
+  streak, low-sample-aware observed rating quality (the observed share of
+  Good/Easy ratings, not FSRS-predicted retrievability or retention), tracked-
+  card memory profile, due today/overdue/learning/review counts, average
+  retrievability, a 14-day due forecast, and weak problems derived from local
+  practice state.
 - Overview currently reserves route ownership for a future guided-practice home.
 
 ### Background Service Worker
@@ -180,8 +182,11 @@ navigation and never reveals stored secret values.
 ### Analytics
 
 Analytics owns the lightweight local dashboard route for review health,
-retention proxy, memory profile, due forecast, and weak-problem inspection. The
-memory profile is based on tracked local FSRS cards and includes due
+observed rating quality, memory profile, due forecast, and weak-problem
+inspection. Observed rating quality is the observed share of Good/Easy ratings,
+not FSRS-predicted retrievability or retention. FSRS predicted recall is a
+separate metric planned for the chart-ready analytics contract. The memory
+profile is based on tracked local FSRS cards and includes due
 today/overdue/learning/review counts, average retrievability, and low-sample
 messaging when local data is sparse. Analytics is a read-only surface derived
 from local practice state and does not introduce hosted reporting or account

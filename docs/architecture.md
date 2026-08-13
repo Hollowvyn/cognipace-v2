@@ -92,8 +92,9 @@ Not every feature needs every folder. Add only the folder needed for the change.
 ## Feature Ownership
 
 - `app-shell`: popup, dashboard, and overlay shell data composition.
-- `analytics`: local dashboard review-health read models, due forecast,
-  retention proxy, and weak-problem ranking.
+- `analytics`: local dashboard review-health read models, observed rating
+  quality (the observed share of Good/Easy ratings, not FSRS-predicted
+  retrievability or retention), due forecast, and weak-problem ranking.
 - `overlay-session`: LeetCode overlay UI state, timer, draft fields, page sync,
   submission automation, and review action orchestration.
 - `practice`: FSRS-backed practice state, review logs, scheduling details,
@@ -192,11 +193,14 @@ Background mutations are serialized through the mutation queue in
 `src/platform/db/instance.ts`, which restores a matching stored snapshot or
 creates a fresh migrated and seeded database.
 
-Analytics read models include a memory profile derived from tracked local FSRS
-cards, with due today, overdue, learning, review, and retrievability fields plus
-low-sample messaging. Queue summaries expose `dueToday`, `newAvailable`,
-`queueLoad`, and `recommendationReason` aliases while preserving legacy queue
-fields for existing consumers.
+Analytics read models include observed rating quality, calculated as the
+observed share of Good/Easy ratings rather than FSRS-predicted retrievability or
+retention. FSRS predicted recall is a separate metric planned for the
+chart-ready analytics contract. They also include a memory profile derived from
+tracked local FSRS cards, with due today, overdue, learning, review, and
+retrievability fields plus low-sample messaging. Queue summaries expose
+`dueToday`, `newAvailable`, `queueLoad`, and `recommendationReason` aliases while
+preserving legacy queue fields for existing consumers.
 
 Due-review notifications are local background work. The extension declares the
 Chrome `notifications` permission so `src/extension/background/due-notification.ts`
