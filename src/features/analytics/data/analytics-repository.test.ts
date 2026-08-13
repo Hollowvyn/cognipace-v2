@@ -485,6 +485,17 @@ describe('getWeakProblemCandidates', () => {
     const result = await getWeakProblemCandidates(db)
     expect(result.map((r) => r.slug)).toEqual(['valid-parentheses', 'two-sum'])
   })
+
+  it('orders equal lapse and difficulty ties by slug ASC', async () => {
+    const { db } = await createTestDb()
+    await insertPractice(db, 'two-sum')
+    await insertPractice(db, 'valid-parentheses')
+    await insertCard(db, 'two-sum', { lapses: 2, difficulty: 6 })
+    await insertCard(db, 'valid-parentheses', { lapses: 2, difficulty: 6 })
+
+    const result = await getWeakProblemCandidates(db)
+    expect(result.map((r) => r.slug)).toEqual(['two-sum', 'valid-parentheses'])
+  })
 })
 
 // ---------------------------------------------------------------------------

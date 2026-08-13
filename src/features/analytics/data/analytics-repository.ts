@@ -328,7 +328,11 @@ export async function getWeakProblemCandidates(
         gt(fsrsCards.lapses, 0),
       ),
     )
-    .orderBy(desc(fsrsCards.lapses), desc(fsrsCards.difficulty))
+    .orderBy(
+      desc(fsrsCards.lapses),
+      desc(fsrsCards.difficulty),
+      asc(problems.slug),
+    )
     .limit(100)
 
   return rows.map((row) => ({
