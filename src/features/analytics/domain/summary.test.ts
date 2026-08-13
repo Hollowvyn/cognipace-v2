@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import type { ObservedRatingQualityResult, ForecastEntry, RetentionScatterEntry, ReferenceCurvePoint } from './summary'
+import type {
+  ObservedRatingQualityResult,
+  ForecastEntry,
+  RetentionScatterEntry,
+  ReferenceCurvePoint,
+} from './summary'
 import {
   buildObservedRatingQuality,
   buildDueForecast,
@@ -90,18 +95,32 @@ describe('buildObservedRatingQuality', () => {
     expect(result.lowSample).toBe(false)
   })
 
-  it.each([14, 30, 90] as const)('uses the selected %s-day boundary', (range) => {
-    const inside = new Date(now.getTime() - range * 24 * 60 * 60 * 1000)
-    const outside = new Date(now.getTime() - (range + 1) * 24 * 60 * 60 * 1000)
-    expect(
-      buildObservedRatingQuality(
-        Array.from({ length: 10 }, () => ({ rating: 'good', reviewedAt: inside })),
-        now,
-        range,
-      ).sampleSize,
-    ).toBe(10)
-    expect(buildObservedRatingQuality([{ rating: 'good', reviewedAt: outside }], now, range).sampleSize).toBe(0)
-  })
+  it.each([14, 30, 90] as const)(
+    'uses the selected %s-day boundary',
+    (range) => {
+      const inside = new Date(now.getTime() - range * 24 * 60 * 60 * 1000)
+      const outside = new Date(
+        now.getTime() - (range + 1) * 24 * 60 * 60 * 1000,
+      )
+      expect(
+        buildObservedRatingQuality(
+          Array.from({ length: 10 }, () => ({
+            rating: 'good',
+            reviewedAt: inside,
+          })),
+          now,
+          range,
+        ).sampleSize,
+      ).toBe(10)
+      expect(
+        buildObservedRatingQuality(
+          [{ rating: 'good', reviewedAt: outside }],
+          now,
+          range,
+        ).sampleSize,
+      ).toBe(0)
+    },
+  )
 })
 
 describe('buildDueForecast', () => {

@@ -15,10 +15,7 @@ import {
   dashboardRouteMeta,
 } from './route-manifest'
 import { AnalyticsPage } from '../screens/analytics-page'
-import {
-  analyticsRangeSchema,
-  type AnalyticsRange,
-} from '@/features/analytics/api/analytics-contracts'
+import { analyticsRangeSchema } from '@/features/analytics/api/analytics-contracts'
 import { DevSmokePage } from '../screens/dev-smoke-page'
 import { LibraryPage } from '../screens/library-page'
 import { OverviewPage } from '../screens/overview-page'
@@ -114,7 +111,7 @@ const analyticsRoute = createRoute({
     const rawRange =
       typeof search.range === 'string' ? Number(search.range) : search.range
     const parsed = analyticsRangeSchema.safeParse(rawRange)
-    return { range: (parsed.success ? parsed.data : 30) as AnalyticsRange }
+    return { range: parsed.success ? parsed.data : 30 }
   },
   staticData: dashboardRouteMeta.analytics.staticData,
 })

@@ -1,7 +1,6 @@
 // src/app/dashboard/screens/analytics-page.tsx
 import { AnalyticsScreen } from '@/features/analytics'
 import { useSearch } from '@tanstack/react-router'
-import type { AnalyticsRange } from '@/features/analytics/api/analytics-contracts'
 
 import { useDashboardChrome } from '@/app/dashboard/dashboard-shell'
 import {
@@ -13,9 +12,7 @@ import { dashboardRouteMeta } from '@/app/dashboard/navigation/route-manifest'
 
 export function AnalyticsPage() {
   const { headerActions } = useDashboardChrome()
-  const { range } = useSearch({ from: '/analytics' }) as {
-    range: AnalyticsRange
-  }
+  const { range } = useSearch({ from: '/analytics' })
 
   return (
     <DashboardPage className="mx-auto w-full max-w-[64rem]">
