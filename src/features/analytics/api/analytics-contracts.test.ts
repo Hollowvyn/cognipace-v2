@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
+import { analyticsChartPointFixtures } from '@/testing/analytics-fixtures'
+
 import {
   analyticsRangeSchema,
   analyticsSummaryRequestSchema,
   analyticsSummarySchema,
+  consistencyPointSchema,
   forecastEntrySchema,
+  ratingsMixPointSchema,
   retentionScatterEntrySchema,
   referenceCurvePointSchema,
   weakProblemSchema,
@@ -205,6 +209,7 @@ describe('analyticsSummarySchema', () => {
           eligibleSampleSize: 2,
         },
       ],
+      ...analyticsChartPointFixtures,
     }
 
     expect(analyticsSummarySchema.parse(chartReadySummary)).toMatchObject({
@@ -212,6 +217,8 @@ describe('analyticsSummarySchema', () => {
       periodStart: validSummary.periodStart,
       periodEnd: validSummary.periodEnd,
       recallQuality: chartReadySummary.recallQuality,
+      consistency: chartReadySummary.consistency,
+      ratingsMix: chartReadySummary.ratingsMix,
     })
   })
 
@@ -443,5 +450,30 @@ describe('analyticsSummarySchema — new scatter fields', () => {
         targetRetention: 1.5,
       }).success,
     ).toBe(false)
+  })
+})
+
+describe('chart point contracts', () => {
+  it('preserves association semantics and Hard + Again share during serialization', () => {
+    expect(
+      consistencyPointSchema.parse({
+        week: '2026-01-12',
+        reviewDays: 3,
+        firstPassRecall: 0.75,
+        sampleSize: 4,
+        associationOnly: true,
+      }),
+    ).toMatchObject({ associationOnly: true })
+    expect(
+      ratingsMixPointSchema.parse({
+        date: '2026-01-15',
+        again: 1,
+        hard: 1,
+        good: 2,
+        easy: 0,
+        total: 4,
+        hardAgainShare: 0.5,
+      }),
+    ).toMatchObject({ hardAgainShare: 0.5 })
   })
 })

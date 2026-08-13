@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  getRetrievability,
+  normalizeFsrsSchedulingOptions,
+  scheduleReview,
+  createInitialFsrsCard,
+} from '@/lib/fsrs'
+
+import {
   buildConsistencyPoints,
   buildOverdueBacklogPoints,
   buildRatingsMixPoints,
@@ -11,10 +18,16 @@ import {
   buildUpcomingLoadPoints,
   type AnalyticsReviewEvent,
 } from './chart-data'
+import { metricDefinitions } from './metric-definitions'
 
 const start = new Date('2026-08-01T00:00:00.000Z')
 const end = new Date('2026-08-03T23:59:59.999Z')
-const options = { start, end, targetRetention: 0.9, lowSampleThreshold: 2 }
+const options = {
+  start,
+  end,
+  fsrsOptions: normalizeFsrsSchedulingOptions(),
+  lowSampleThreshold: 2,
+}
 const validLog = (stability: number) =>
   JSON.stringify({
     rating: 'good',
@@ -47,6 +60,18 @@ function event(
 }
 
 describe('analytics chart-data builders', () => {
+  it('describes persisted correctness without inventing retry exclusion', () => {
+    expect(metricDefinitions.observedCorrectness.label).toBe(
+      'Observed correctness',
+    )
+    expect(metricDefinitions.observedCorrectness.explanation).toContain(
+      'does not identify retries',
+    )
+    expect(metricDefinitions.overdueBacklog.lowSampleOrEmptyState).toContain(
+      'not complete',
+    )
+  })
+
   it('builds daily observed and pre-review predicted recall with null empty samples', () => {
     const points = buildRecallQualityPoints(
       [
@@ -102,6 +127,58 @@ describe('analytics chart-data builders', () => {
     expect(points[2]!.reviewCount).toBe(0)
   })
 
+  it('replays multiple cards with the configured normalized FSRS options', () => {
+    const fsrsOptions = normalizeFsrsSchedulingOptions({
+      targetRetention: 0.75,
+      enableShortTerm: false,
+      learningSteps: ['1d'],
+      relearningSteps: ['2d'],
+    })
+    const configuredOptions = { ...options, fsrsOptions }
+    const firstReview = event({
+      reviewedAt: new Date('2026-08-01T12:00:00.000Z'),
+    })
+    const secondCardReview = event({
+      id: '2',
+      cardId: 'card-2',
+      reviewedAt: new Date('2026-08-02T12:00:00.000Z'),
+      rating: 'easy',
+    })
+    const repeatReview = event({
+      id: '3',
+      cardId: 'card-1',
+      reviewedAt: new Date('2026-08-03T12:00:00.000Z'),
+      rating: 'again',
+    })
+    const points = buildRecallQualityPoints(
+      [firstReview, secondCardReview, repeatReview],
+      configuredOptions,
+    )
+    let card = createInitialFsrsCard(firstReview.reviewedAt)
+    card = scheduleReview(
+      card,
+      'good',
+      firstReview.reviewedAt,
+      fsrsOptions,
+    ).card
+    const expectedBeforeRepeat = getRetrievability(
+      card,
+      repeatReview.reviewedAt,
+      fsrsOptions,
+    )
+    const expectedBeforeSecondCardReview = getRetrievability(
+      createInitialFsrsCard(secondCardReview.reviewedAt),
+      secondCardReview.reviewedAt,
+      fsrsOptions,
+    )
+
+    expect(points[2]!.predictedRecall).toBeCloseTo(expectedBeforeRepeat)
+    expect(points[1]!.predictedRecall).toBeCloseTo(
+      expectedBeforeSecondCardReview,
+    )
+    expect(points.map((point) => point.reviewCount)).toEqual([1, 1, 1])
+  })
+
   it('groups consistency by local week as association-only', () => {
     const points = buildConsistencyPoints(
       [
@@ -134,6 +211,21 @@ describe('analytics chart-data builders', () => {
       hardAgainShare: 1,
     })
     expect(points[2]!.hardAgainShare).toBeNull()
+  })
+
+  it('filters rating mix by exact start and end timestamps', () => {
+    const points = buildRatingsMixPoints(
+      [
+        event({ id: 'before', reviewedAt: new Date(start.getTime() - 1) }),
+        event({ id: 'start', reviewedAt: start, rating: 'hard' }),
+        event({ id: 'end', reviewedAt: end, rating: 'again' }),
+        event({ id: 'after', reviewedAt: new Date(end.getTime() + 1) }),
+      ],
+      options,
+    )
+
+    expect(points[0]).toMatchObject({ hard: 1, total: 1 })
+    expect(points[2]).toMatchObject({ again: 1, total: 1 })
   })
 
   it('groups weakest topics, skips missing topics, and marks low samples', () => {
@@ -170,12 +262,22 @@ describe('analytics chart-data builders', () => {
 
   it('returns an explicit unavailable overdue history boundary', () => {
     expect(buildOverdueBacklogPoints(null, options)).toEqual([])
+    expect(
+      buildOverdueBacklogPoints(
+        [{ date: new Date('2026-08-02T12:00:00.000Z'), overdueCount: 3 }],
+        options,
+      ),
+    ).toEqual([])
     const points = buildOverdueBacklogPoints(
-      [{ date: new Date('2026-08-02T12:00:00.000Z'), overdueCount: 3 }],
+      [
+        { date: new Date('2026-08-01T12:00:00.000Z'), overdueCount: 1 },
+        { date: new Date('2026-08-02T12:00:00.000Z'), overdueCount: 3 },
+        { date: new Date('2026-08-03T12:00:00.000Z'), overdueCount: 2 },
+      ],
       options,
     )
-    expect(points[0]).toMatchObject({ historyAvailable: false })
-    expect(points[1]).toMatchObject({ overdueCount: 3, historyAvailable: true })
+    expect(points).toHaveLength(3)
+    expect(points.every((point) => point.historyAvailable)).toBe(true)
   })
 
   it('separates overdue and upcoming due load across the 14-day range', () => {
@@ -210,6 +312,30 @@ describe('analytics chart-data builders', () => {
           lastReviewAt: start,
         },
         {
+          slug: 'high-difficulty',
+          title: 'High Difficulty',
+          topics: ['Dynamic Programming'],
+          retrievability: 0.95,
+          targetRetention: 0.9,
+          stabilityDays: 10,
+          difficulty: 8,
+          lapseCount: 0,
+          dueAt: new Date(end.getTime() + 1),
+          lastReviewAt: end,
+        },
+        {
+          slug: 'steady',
+          title: 'Steady',
+          topics: ['Array'],
+          retrievability: 0.95,
+          targetRetention: 0.9,
+          stabilityDays: 10,
+          difficulty: 7,
+          lapseCount: 0,
+          dueAt: new Date(end.getTime() + 1),
+          lastReviewAt: end,
+        },
+        {
           slug: 'a',
           title: 'A',
           topics: [],
@@ -236,8 +362,18 @@ describe('analytics chart-data builders', () => {
         },
       ],
       end,
+      { fragileDifficultyThreshold: 8 },
     )
-    expect(result.health.map((row) => row.slug)).toEqual(['a', 'b'])
-    expect(result.fragile.map((row) => row.slug)).toEqual(['a', 'b'])
+    expect(result.health.map((row) => row.slug)).toEqual([
+      'a',
+      'b',
+      'high-difficulty',
+      'steady',
+    ])
+    expect(result.fragile.map((row) => row.slug)).toEqual([
+      'a',
+      'b',
+      'high-difficulty',
+    ])
   })
 })

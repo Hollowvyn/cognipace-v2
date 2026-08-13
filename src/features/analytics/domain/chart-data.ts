@@ -5,6 +5,7 @@ import {
   parseSerializedFsrsReviewLogSnapshot,
   scheduleReview,
   type FsrsCardSnapshot,
+  type NormalizedFsrsSchedulingOptions,
 } from '@/lib/fsrs'
 
 export interface AnalyticsReviewEvent {
@@ -117,8 +118,12 @@ export interface FragileKnowledgeRow {
 export interface AnalyticsRangeOptions {
   start: Date
   end: Date
-  targetRetention: number
+  fsrsOptions: NormalizedFsrsSchedulingOptions
   lowSampleThreshold?: number
+}
+
+export interface RetentionHealthOptions {
+  fragileDifficultyThreshold: number
 }
 
 const dayMs = 24 * 60 * 60 * 1000
@@ -168,7 +173,7 @@ export function buildRecallQualityPoints(
       point.observed.length,
     ),
     predictedRecall: average(point.predicted),
-    targetRetention: options.targetRetention,
+    targetRetention: options.fsrsOptions.targetRetention,
     reviewCount: point.reviewCount,
     eligibleSampleSize: point.observed.length,
   }))
@@ -190,7 +195,11 @@ function buildPredictedRecall(
     for (const event of [...history].sort(compareEvents)) {
       if (!isReviewRating(event.rating)) continue
       card ??= createInitialFsrsCard(event.reviewedAt)
-      const predicted = getRetrievability(card, event.reviewedAt)
+      const predicted = getRetrievability(
+        card,
+        event.reviewedAt,
+        options.fsrsOptions,
+      )
       if (
         event.reviewedAt >= options.start &&
         event.reviewedAt <= options.end
@@ -200,7 +209,12 @@ function buildPredictedRecall(
           value: predicted,
         })
       }
-      card = scheduleReview(card, event.rating, event.reviewedAt).card
+      card = scheduleReview(
+        card,
+        event.rating,
+        event.reviewedAt,
+        options.fsrsOptions,
+      ).card
     }
   }
   return results
@@ -244,6 +258,8 @@ export function buildRatingsMixPoints(
     const counts = { again: 0, hard: 0, good: 0, easy: 0 }
     for (const event of events)
       if (
+        event.reviewedAt >= options.start &&
+        event.reviewedAt <= options.end &&
         toAnalyticsDateKey(event.reviewedAt) === date &&
         isReviewRating(event.rating)
       )
@@ -322,16 +338,18 @@ export function buildOverdueBacklogPoints(
   options: AnalyticsRangeOptions,
 ): OverdueBacklogPoint[] {
   if (!snapshots?.length) return []
+  const dates = dailyKeys(options)
   const byDate = new Map(
     snapshots.map((snapshot) => [
       toAnalyticsDateKey(snapshot.date),
       snapshot.overdueCount,
     ]),
   )
-  return dailyKeys(options).map((date) => ({
+  if (dates.some((date) => !byDate.has(date))) return []
+  return dates.map((date) => ({
     date,
     overdueCount: byDate.get(date) ?? 0,
-    historyAvailable: byDate.has(date),
+    historyAvailable: true,
   }))
 }
 
@@ -349,7 +367,6 @@ export function buildUpcomingLoadPoints(
       today: index === 0,
     }
   })
-  const todayKey = points[0]!.date
   for (const dueAt of dueDates) {
     if (dueAt < now) points[0]!.overdueCount += 1
     else {
@@ -359,12 +376,13 @@ export function buildUpcomingLoadPoints(
       if (point) point.dueCount += 1
     }
   }
-  return points.map((point) => (point.date === todayKey ? point : point))
+  return points
 }
 
 export function buildRetentionHealth(
   cards: readonly AnalyticsCurrentCard[],
   now: Date,
+  options: RetentionHealthOptions,
 ): { health: RetentionHealthPoint[]; fragile: FragileKnowledgeRow[] } {
   const rows = cards
     .filter((card) => !card.suspended && Number.isFinite(card.retrievability))
@@ -404,7 +422,8 @@ export function buildRetentionHealth(
         row.retrievability < row.targetRetention ||
         row.stabilityDays < 3 ||
         row.lapseCount > 0 ||
-        row.overdueDays > 0,
+        row.overdueDays > 0 ||
+        row.difficulty >= options.fragileDifficultyThreshold,
     )
     .map((row) => ({
       ...row,

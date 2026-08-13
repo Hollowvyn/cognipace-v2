@@ -1,5 +1,28 @@
 import type { SerializedAnalyticsSummary } from '@/features/analytics/api/analytics-contracts'
 
+export const analyticsChartPointFixtures = {
+  consistency: [
+    {
+      week: '2026-05-25',
+      reviewDays: 4,
+      firstPassRecall: 0.75,
+      sampleSize: 8,
+      associationOnly: true,
+    },
+  ],
+  ratingsMix: [
+    {
+      date: '2026-05-30',
+      again: 1,
+      hard: 2,
+      good: 4,
+      easy: 1,
+      total: 8,
+      hardAgainShare: 0.375,
+    },
+  ],
+} satisfies Pick<SerializedAnalyticsSummary, 'consistency' | 'ratingsMix'>
+
 export function createSerializedAnalyticsSummary(
   overrides?: Partial<SerializedAnalyticsSummary>,
 ): SerializedAnalyticsSummary {

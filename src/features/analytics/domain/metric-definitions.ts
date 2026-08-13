@@ -6,13 +6,13 @@ export interface AnalyticsMetricDefinition {
 }
 
 export const metricDefinitions = {
-  firstPassRecall: {
-    label: 'First-pass recall',
+  observedCorrectness: {
+    label: 'Observed correctness',
     explanation:
-      'The share of submitted assessments marked correct; persisted retries are excluded.',
+      'The share of persisted review assessments marked correct. The current history does not identify retries or hints.',
     unit: '% correct',
     lowSampleOrEmptyState:
-      'Not enough assessed reviews yet. Unassessed reviews do not count.',
+      'Not enough assessed reviews yet. Reviews without a persisted correctness value do not count.',
   },
   predictedRecall: {
     label: 'Predicted recall',
@@ -24,7 +24,7 @@ export const metricDefinitions = {
   },
   recallQuality: {
     label: 'Recall quality',
-    explanation: 'Observed first-pass recall for the selected period.',
+    explanation: 'Observed correctness for the selected period.',
     unit: '% correct',
     lowSampleOrEmptyState:
       'Recall quality is hidden until enough assessments exist.',
@@ -46,7 +46,7 @@ export const metricDefinitions = {
   consistency: {
     label: 'Consistency',
     explanation:
-      'Practice days and first-pass recall shown together for association only; this does not establish causation.',
+      'Practice days and observed correctness shown together for association only; this does not establish causation.',
     unit: 'practice days / week',
     lowSampleOrEmptyState:
       'Not enough weekly assessed reviews exist for a useful comparison.',
@@ -64,7 +64,7 @@ export const metricDefinitions = {
     explanation: 'Cards that were due before the point in time being shown.',
     unit: 'cards',
     lowSampleOrEmptyState:
-      'Historical overdue counts are not available for this period yet.',
+      'Historical overdue snapshots are not complete for this period, so no backlog values are shown.',
   },
   upcomingLoad: {
     label: 'Upcoming load',
@@ -76,7 +76,7 @@ export const metricDefinitions = {
   fragileKnowledge: {
     label: 'Fragile knowledge',
     explanation:
-      'Current cards whose predicted retrievability or stability suggests they may need attention.',
+      'Current cards whose predicted retrievability, stability, overdue gap, lapses, or configured high-difficulty threshold suggests they may need attention.',
     unit: 'problems',
     lowSampleOrEmptyState:
       'No current cards meet the fragile-knowledge signals.',
