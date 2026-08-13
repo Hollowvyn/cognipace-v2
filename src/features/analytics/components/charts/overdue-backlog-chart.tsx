@@ -229,9 +229,11 @@ export function OverdueBacklogChart({
             data-testid="backlog-healthy-range"
             fill="none"
             isAnimationActive={false}
+            legendType="none"
             name={healthySeries.label}
             stroke={healthySeries.color}
             strokeWidth={2.5}
+            tooltipType="none"
             type="linear"
           />
           <Area
@@ -242,9 +244,11 @@ export function OverdueBacklogChart({
             data-testid="backlog-attention-range"
             fill="none"
             isAnimationActive={false}
+            legendType="none"
             name={attentionSeries.label}
             stroke={attentionSeries.color}
             strokeWidth={2.5}
+            tooltipType="none"
             type="linear"
           />
         </AreaChart>

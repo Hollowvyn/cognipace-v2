@@ -114,7 +114,7 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
             {recallDefinition.question}
           </p>
         </div>
-        <p className="m-0 text-sm font-semibold text-foreground">
+        <p className="m-0 text-sm font-semibold tabular-nums text-foreground">
           Latest observed {formatPercent(latestObserved?.observedRecall)}
         </p>
       </div>

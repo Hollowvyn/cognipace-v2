@@ -1,4 +1,10 @@
-import { render, screen, within } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -449,6 +455,55 @@ describe('analytics chart components', () => {
         ),
       ).toBe(true)
     }
+  })
+
+  it('keeps visual backlog overlays out of the rendered tooltip', async () => {
+    const [firstOverdue, , thirdOverdue] = overdue
+
+    if (firstOverdue === undefined || thirdOverdue === undefined) {
+      throw new Error('The overdue chart fixture requires two known buckets.')
+    }
+
+    const dataWithUnknownHistory: OverdueBacklogPoint[] = [
+      firstOverdue,
+      {
+        bucketStart: '2026-08-02',
+        bucketEnd: '2026-08-02',
+        overdueCount: null,
+        historyAvailable: false,
+      },
+      thirdOverdue,
+    ]
+
+    render(
+      <OverdueBacklogChart
+        data={dataWithUnknownHistory}
+        historyAvailableFrom="2026-08-01T00:00:00.000Z"
+      />,
+    )
+
+    const chart = document.querySelector('.recharts-wrapper')
+
+    if (chart === null) {
+      throw new Error('The Recharts wrapper was not rendered.')
+    }
+
+    fireEvent.mouseEnter(chart, { clientX: 32, clientY: 90 })
+    fireEvent.mouseMove(chart, { clientX: 32, clientY: 90 })
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Overdue problems')).toHaveLength(1)
+      expect(screen.getByText('3 overdue · Within watch zone')).toBeVisible()
+    })
+
+    fireEvent.mouseMove(chart, { clientX: 332, clientY: 90 })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Overdue problems')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('Unknown historical backlog'),
+      ).not.toBeInTheDocument()
+    })
   })
 
   it('uses adaptive buckets, not weekly practice days, for practice rhythm', () => {
