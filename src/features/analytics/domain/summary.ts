@@ -130,7 +130,9 @@ export function buildObservedRatingQuality(
   range: 14 | 30 | 90,
 ): ObservedRatingQualityResult {
   const since = subtractDays(now, range)
-  const recent = attempts.filter((a) => a.reviewedAt >= since)
+  const recent = attempts.filter(
+    (a) => a.reviewedAt >= since && a.reviewedAt <= now,
+  )
   const sampleSize = recent.length
 
   if (sampleSize < 10) {

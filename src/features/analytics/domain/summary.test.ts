@@ -95,6 +95,23 @@ describe('buildObservedRatingQuality', () => {
     expect(result.lowSample).toBe(false)
   })
 
+  it('includes a rating at the period end and excludes one just after it', () => {
+    const atEnd = Array.from({ length: 10 }, () => ({
+      rating: 'good',
+      reviewedAt: now,
+    }))
+    const justAfterEnd = {
+      rating: 'again',
+      reviewedAt: new Date(now.getTime() + 1),
+    }
+
+    const result = buildObservedRatingQuality([...atEnd, justAfterEnd], now, 30)
+
+    expect(result.sampleSize).toBe(10)
+    expect(result.value).toBe(1)
+    expect(result.lowSample).toBe(false)
+  })
+
   it.each([14, 30, 90] as const)(
     'uses the selected %s-day boundary',
     (range) => {
