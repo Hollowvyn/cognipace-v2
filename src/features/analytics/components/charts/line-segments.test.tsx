@@ -12,16 +12,24 @@ function stringifySvgAttribute(value: unknown): string {
 vi.mock('recharts', () => ({
   Line: (props: Record<string, unknown>) => {
     const strokeDasharray = props.strokeDasharray
+    const data = Array.isArray(props.data) ? props.data : []
+    const dataKey = props.dataKey
+    const values = data.map((point) => {
+      return typeof dataKey === 'string' && point && typeof point === 'object'
+        ? (point as Record<string, unknown>)[dataKey]
+        : null
+    })
 
     return (
       <path
         data-connect-nulls={stringifySvgAttribute(props.connectNulls ?? false)}
         data-has-connect-nulls={String(Object.hasOwn(props, 'connectNulls'))}
-        data-key={stringifySvgAttribute(props.dataKey)}
+        data-key-type={typeof props.dataKey}
+        data-has-tooltip-type={String(Object.hasOwn(props, 'tooltipType'))}
         data-legend-type={stringifySvgAttribute(props.legendType)}
         data-testid={stringifySvgAttribute(props['data-testid'])}
         data-tooltip-type={stringifySvgAttribute(props.tooltipType)}
-        data-values={JSON.stringify(props.data)}
+        data-values={JSON.stringify(values)}
         stroke={stringifySvgAttribute(props.stroke)}
         {...(strokeDasharray === undefined
           ? {}
@@ -58,6 +66,7 @@ describe('LineSegments', () => {
     expect(solid).toHaveAttribute('data-has-connect-nulls', 'false')
     expect(solid).toHaveAttribute('data-legend-type', 'none')
     expect(solid).toHaveAttribute('data-tooltip-type', 'none')
+    expect(solid).toHaveAttribute('data-values', '[0.8,0.84]')
   })
 
   it('renders one permitted null gap as a dashed endpoint-to-endpoint bridge', () => {
@@ -69,10 +78,22 @@ describe('LineSegments', () => {
     expect(bridge).toHaveAttribute('data-has-connect-nulls', 'false')
     expect(bridge).toHaveAttribute('data-legend-type', 'none')
     expect(bridge).toHaveAttribute('data-tooltip-type', 'none')
-    expect(bridge).toHaveAttribute(
-      'data-values',
-      '[{"index":0,"value":0.8},{"index":2,"value":0.84}]',
+    expect(bridge).toHaveAttribute('data-values', '[0.8,null,0.84]')
+  })
+
+  it('registers one invisible semantic tooltip source for measured buckets', () => {
+    renderSegments([0.8, null, 0.84])
+
+    const semanticSource = screen.getByTestId(
+      'observedCorrectness-semantic-tooltip-source',
     )
+
+    expect(semanticSource).toHaveAttribute('data-key-type', 'string')
+    expect(semanticSource).toHaveAttribute('data-values', '[0.8,null,0.84]')
+    expect(semanticSource).toHaveAttribute('data-legend-type', 'none')
+    expect(semanticSource).toHaveAttribute('data-has-tooltip-type', 'false')
+    expect(semanticSource).toHaveAttribute('data-connect-nulls', 'false')
+    expect(semanticSource).toHaveAttribute('data-has-connect-nulls', 'false')
   })
 
   it('does not bridge a gap longer than the configured maximum', () => {
@@ -89,14 +110,18 @@ describe('LineSegments', () => {
   it('does not create a marker, tooltip datum, or segment for missing-only data', () => {
     renderSegments([null, null])
 
-    expect(screen.queryByTestId(/observedCorrectness-/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByTestId(/observedCorrectness-(solid|bridge)/),
+    ).not.toBeInTheDocument()
     expect(document.querySelectorAll('circle')).toHaveLength(0)
   })
 
   it('renders nothing for an empty series', () => {
     renderSegments([])
 
-    expect(screen.queryByTestId(/observedCorrectness-/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByTestId('observedCorrectness-semantic-tooltip-source'),
+    ).not.toBeInTheDocument()
   })
 
   it('exports a shared explanation for permitted dashed bridges', () => {
