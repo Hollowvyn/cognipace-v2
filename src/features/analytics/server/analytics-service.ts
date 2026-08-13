@@ -165,7 +165,16 @@ export async function getAnalyticsSummary(
     evidenceCounts: baselineEvidenceCounts,
     bucketKeys: buckets.map((bucket) => bucket.key),
   })
-  const recallReadiness = requestedReadiness
+  const recallReadiness = calculateAnalyticsReadiness({
+    requestedDays: range,
+    evidenceCounts: buildBucketEvidenceCounts(
+      analyticsReviewHistory,
+      buckets,
+      periodEnd,
+      (event) => event.isCorrect !== null,
+    ),
+    bucketKeys: buckets.map((bucket) => bucket.key),
+  })
   const practiceRhythmReadiness = calculateAnalyticsReadiness({
     requestedDays: range,
     evidenceCounts: buildBucketEvidenceCounts(

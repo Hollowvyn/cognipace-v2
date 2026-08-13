@@ -322,6 +322,89 @@ describe('getAnalyticsSummary memory profile', () => {
     expect(summary.overdueHistoryAvailableFrom).not.toBeNull()
   })
 
+  it('keeps recall quality unready when valid ratings have no persisted correctness', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-08-13T12:00:00.000Z')
+    const dates = Array.from({ length: 24 }, (_, index) => {
+      const date = new Date('2026-07-21T12:00:00.000Z')
+      date.setDate(date.getDate() + index)
+      return date
+    })
+
+    await insertAnalyticsProblem(
+      handle.db,
+      'ratings-without-correctness',
+      'Ratings without correctness',
+      [],
+    )
+    await insertAnalyticsHistory(handle.db, 'ratings-without-correctness', {
+      id: 'ratings-without-correctness:default',
+      dates,
+      ratings: Array<ReviewRating>(dates.length).fill('good'),
+      correct: Array<boolean | null>(dates.length).fill(null),
+      dueAt: new Date('2026-08-14T12:00:00.000Z'),
+      stability: 10,
+      difficulty: 5,
+    })
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 30, now })
+
+    expect(summary.historicalReadiness.requested).toMatchObject({
+      ready: true,
+      assessments: 24,
+    })
+    expect(summary.historicalReadiness.recallQuality).toMatchObject({
+      ready: false,
+      assessments: 0,
+      activeBuckets: 0,
+    })
+    expect(summary.historicalReadiness.recallQuality.failingReasons).toContain(
+      'no-evidence',
+    )
+    expect(summary.recallQuality).toEqual([])
+  })
+
+  it('counts only persisted correctness observations for recall quality readiness', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-08-13T12:00:00.000Z')
+    const dates = Array.from({ length: 14 }, (_, index) => {
+      const date = new Date('2026-07-31T12:00:00.000Z')
+      date.setDate(date.getDate() + index)
+      return date
+    })
+
+    await insertAnalyticsProblem(
+      handle.db,
+      'mixed-correctness',
+      'Mixed correctness',
+      [],
+    )
+    await insertAnalyticsHistory(handle.db, 'mixed-correctness', {
+      id: 'mixed-correctness:default',
+      dates,
+      ratings: Array<ReviewRating>(dates.length).fill('good'),
+      correct: dates.map((_, index) =>
+        index === 0 || index === 7 ? null : true,
+      ),
+      dueAt: new Date('2026-08-14T12:00:00.000Z'),
+      stability: 10,
+      difficulty: 5,
+    })
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 14, now })
+
+    expect(summary.historicalReadiness.requested).toMatchObject({
+      ready: true,
+      assessments: 14,
+      activeBuckets: 14,
+    })
+    expect(summary.historicalReadiness.recallQuality).toMatchObject({
+      ready: true,
+      assessments: 12,
+      activeBuckets: 12,
+    })
+  })
+
   it('returns non-empty practice rhythm data accepted by the runtime response parser', async () => {
     const handle = await createTestDb({ seed: false })
     const now = new Date('2026-01-31T12:00:00.000Z')
@@ -528,7 +611,7 @@ async function insertAnalyticsHistory(
     id: string
     dates: Date[]
     ratings: ReviewRating[]
-    correct: boolean[]
+    correct: Array<boolean | null>
     dueAt: Date
     stability: number
     difficulty: number
