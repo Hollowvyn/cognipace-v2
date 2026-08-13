@@ -43,11 +43,11 @@ export function calculateAnalyticsReadiness({
   if (evidenceCounts.length !== bucketKeys.length) {
     throw new RangeError('Analytics readiness keys and counts must align.')
   }
+  if (evidenceCounts.length === 0) {
+    throw new RangeError('Analytics readiness requires at least one bucket.')
+  }
   if (
-    evidenceCounts.some(
-      (count) =>
-        !Number.isInteger(count) || count < 0 || !Number.isFinite(count),
-    )
+    evidenceCounts.some((count) => !Number.isSafeInteger(count) || count < 0)
   ) {
     throw new RangeError(
       'Analytics readiness counts must be non-negative integers.',

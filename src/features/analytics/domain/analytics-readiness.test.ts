@@ -114,8 +114,18 @@ describe('analytics readiness', () => {
     ).toThrow(RangeError)
   })
 
-  it('rejects negative and non-integer counts', () => {
-    for (const count of [-1, 1.5]) {
+  it('rejects empty aligned evidence', () => {
+    expect(() =>
+      calculateAnalyticsReadiness({
+        requestedDays: 14,
+        evidenceCounts: [],
+        bucketKeys: [],
+      }),
+    ).toThrow(RangeError)
+  })
+
+  it('rejects negative, non-integer, and unsafe integer counts', () => {
+    for (const count of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
       expect(() =>
         calculateAnalyticsReadiness({
           requestedDays: 14,
@@ -124,5 +134,26 @@ describe('analytics readiness', () => {
         }),
       ).toThrow(RangeError)
     }
+  })
+
+  it('reports every failed gate in stable order', () => {
+    const readiness = calculateAnalyticsReadiness({
+      requestedDays: 14,
+      evidenceCounts: [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0],
+      bucketKeys: keys(14),
+    })
+
+    expect(readiness).toMatchObject({
+      effectiveBuckets: 8,
+      longestGap: 3,
+      gapRuns: 3,
+    })
+    expect(readiness.failingReasons).toEqual([
+      'insufficient-span',
+      'insufficient-assessments',
+      'insufficient-active-buckets',
+      'gap-too-long',
+      'too-many-gaps',
+    ])
   })
 })
