@@ -359,6 +359,46 @@ The readiness system encourages sustained practice by making progress visible,
 but it must not shame the user, inflate activity requirements, or imply that
 more review volume is inherently better.
 
+### Historical line-series continuity
+
+Readiness determines whether the overall historical interpretation is rich
+enough to display. A separate continuity policy determines how missing internal
+buckets appear inside an otherwise ready line chart.
+
+For observed and derived historical line series:
+
+- consecutive eligible values use a solid line
+- exactly one empty presentation bucket between eligible values uses a dashed
+  bridge between the two measured endpoints
+- two or more consecutive empty presentation buckets remain a true line break
+- no synthetic point, carried-forward value, interpolated tooltip value, or
+  false marker is created inside a dashed bridge
+- the legend or chart note explains that dashed segments cross a period with no
+  eligible observation
+
+Because presentation buckets adapt with the selected range, a permitted dashed
+bridge represents at most:
+
+- one day in a 7- or 14-day view
+- one three-day bucket in a 30-day view
+- one week in a 90-day view
+- one selected presentation bucket for future ranges
+
+Longer gaps stay visibly broken even when the overall range still passes its
+readiness gates. This distinction keeps the chart easy to follow without
+fabricating evidence:
+
+```text
+solid segment  = adjacent measured values
+dashed segment = one missing bucket between measured values
+no segment     = insufficient continuity across a longer gap
+```
+
+Practice Rhythm keeps the review-volume bar for every bucket. A zero-practice
+bucket therefore has an empty bar and may be crossed by a dashed correctness
+bridge when it is the only missing bucket. Recall Quality and Memory Strength
+follow the same continuity semantics for each line independently.
+
 ## Chart catalogue and diagnostics
 
 Every production chart has a typed, inspectable definition. The catalogue
@@ -396,6 +436,7 @@ interface AnalyticsChartDefinition {
   series: readonly ChartSeriesDefinition[]
   tooltipFields: readonly string[]
   emptyState: string
+  continuity?: 'solid' | 'solid-with-single-gap-bridge'
   interpretationWarning?: string
 }
 ```
@@ -418,6 +459,7 @@ Development diagnostics may serialize or display:
 - every readiness threshold and pass/fail result
 - metric-specific sample sizes
 - null buckets and rejection reasons
+- solid, dashed-bridge, and broken line-segment classifications
 
 If a visual diagnostics panel is added, it is development-only, is not part of
 normal user-facing Analytics, and consumes the same typed readiness result used
@@ -513,6 +555,8 @@ Domain and contract tests cover:
 - count preservation across aggregation
 - ratio recomputation from numerators and denominators
 - null and missing-observation behavior
+- deterministic single-gap dashed bridges without synthetic metric values
+- preservation of true line breaks across two or more missing buckets
 - stability medians and backlog boundary values
 - schema acceptance and rejection of the revised chart-ready shapes
 
@@ -522,6 +566,7 @@ Component tests cover:
 - effective-window copy when leading empty buckets are removed
 - continued current-state and forecast rendering when history is unready
 - chart catalogue labels and semantic series alignment
+- solid-line, dashed-bridge, and long-gap rendering semantics
 - Recall Quality hierarchy, legends, and tooltip values
 - mixed Practice Rhythm bars and correctness line
 - stable Ratings Mix semantic series
