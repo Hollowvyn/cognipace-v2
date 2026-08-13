@@ -14,12 +14,15 @@ vi.mock('@/extension/messaging', () => ({
 
 function baseAnalyticsSummary(): SerializedAnalyticsSummary {
   return {
+    range: 30,
+    periodStart: '2025-12-16T00:00:00.000Z',
+    periodEnd: '2026-01-15T12:00:00.000Z',
     generatedAt: '2026-01-15T12:00:00.000Z',
     reviewDays: 42,
     totalReviews: 381,
     currentStreak: 7,
-    retentionProxy: 0.72,
-    retentionProxyLabel: '72%',
+    observedRecallQuality: { value: 0.72, sampleSize: 58, lowSample: false },
+    predictedRecall: { value: 0.72, sampleSize: 58, lowSample: false },
     retentionSampleSize: 58,
     lowSample: false,
     memoryProfile: {
@@ -63,6 +66,15 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
       { days: 0, retrievability: 1.0 },
       { days: 14, retrievability: 0.9 },
     ],
+    recallQuality: [],
+    consistency: [],
+    ratingsMix: [],
+    topics: [],
+    stability: [],
+    overdueBacklog: [],
+    upcomingLoad: [],
+    retentionHealth: [],
+    fragileKnowledge: [],
   }
 }
 
@@ -223,7 +235,7 @@ describe('AnalyticsScreen', () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(
       createAnalyticsSummary({
         lowSample: true,
-        retentionProxyLabel: '—',
+        observedRecallQuality: { value: null, sampleSize: 7, lowSample: true },
         retentionSampleSize: 7,
       }),
     )
@@ -278,9 +290,7 @@ describe('AnalyticsScreen', () => {
     renderAnalyticsScreen()
 
     await screen.findByRole('region', { name: 'Retention health' })
-    expect(
-      screen.getByText(/No reviewed problems yet/),
-    ).toBeVisible()
+    expect(screen.getByText(/No reviewed problems yet/)).toBeVisible()
   })
 })
 

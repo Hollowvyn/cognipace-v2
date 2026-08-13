@@ -5,14 +5,15 @@ import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
 
 import { useAnalyticsSummary } from '../api/analytics-api'
+import type { AnalyticsRange } from '../api/analytics-contracts'
 import { AnalyticsForecast } from './analytics-forecast'
 import { AnalyticsMemoryProfile } from './analytics-memory-profile'
 import { AnalyticsMetricRow } from './analytics-metric-row'
 import { AnalyticsRetentionScatter } from './analytics-retention-scatter'
 import { AnalyticsWeakProblems } from './analytics-weak-problems'
 
-export function AnalyticsScreen() {
-  const query = useAnalyticsSummary()
+export function AnalyticsScreen({ range = 30 }: { range?: AnalyticsRange }) {
+  const query = useAnalyticsSummary(range)
 
   if (query.isPending) {
     return (

@@ -506,8 +506,12 @@ describe('background handler registration', () => {
   it('registers due-notification jobs and fires startup handler on startup', () => {
     registerBackgroundHandlers()
 
-    expect(backgroundMocks.dueNotification.registerJobs).toHaveBeenCalledTimes(1)
-    expect(backgroundMocks.dueNotification.handleStartup).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.dueNotification.registerJobs).toHaveBeenCalledTimes(
+      1,
+    )
+    expect(backgroundMocks.dueNotification.handleStartup).toHaveBeenCalledTimes(
+      1,
+    )
   })
 
   it('registers app-shell payload handling with policy and schema parsing', async () => {
@@ -535,6 +539,7 @@ describe('background handler registration', () => {
   it('registers analytics summary handling with dashboard policy and response parsing', async () => {
     const response = await sendRuntimeMessage('analytics.getSummary', {
       surface: 'dashboard',
+      range: 30,
       at: '2026-01-15T12:00:00.000Z',
     })
 
@@ -542,14 +547,21 @@ describe('background handler registration', () => {
     expect(backgroundMocks.getAppDb).toHaveBeenCalledTimes(1)
     expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
       backgroundMocks.db,
-      new Date('2026-01-15T12:00:00.000Z'),
+      {
+        range: 30,
+        now: new Date('2026-01-15T12:00:00.000Z'),
+      },
     )
     expect(response).toMatchObject({
       generatedAt: '2026-01-15T12:00:00.000Z',
       reviewDays: 3,
       totalReviews: 12,
       currentStreak: 2,
-      retentionProxyLabel: '75%',
+      observedRecallQuality: {
+        value: 0.75,
+        sampleSize: 12,
+        lowSample: false,
+      },
       weakProblems: [],
       memoryProfile: {
         averageRetrievability: 0.8,

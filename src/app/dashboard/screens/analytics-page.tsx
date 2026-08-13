@@ -1,5 +1,7 @@
 // src/app/dashboard/screens/analytics-page.tsx
 import { AnalyticsScreen } from '@/features/analytics'
+import { useSearch } from '@tanstack/react-router'
+import type { AnalyticsRange } from '@/features/analytics/api/analytics-contracts'
 
 import { useDashboardChrome } from '@/app/dashboard/dashboard-shell'
 import {
@@ -11,6 +13,9 @@ import { dashboardRouteMeta } from '@/app/dashboard/navigation/route-manifest'
 
 export function AnalyticsPage() {
   const { headerActions } = useDashboardChrome()
+  const { range } = useSearch({ from: '/analytics' }) as {
+    range: AnalyticsRange
+  }
 
   return (
     <DashboardPage className="mx-auto w-full max-w-[64rem]">
@@ -21,7 +26,7 @@ export function AnalyticsPage() {
         Your local study health — reviews, retention, and upcoming workload.
       </DashboardPageHeader>
       <DashboardPageBody>
-        <AnalyticsScreen />
+        <AnalyticsScreen range={range} />
       </DashboardPageBody>
     </DashboardPage>
   )

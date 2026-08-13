@@ -884,14 +884,37 @@ export function registerBackgroundHandlers() {
       sender,
     )
 
-    return getAppDb().then(async ({ db }) =>
-      analyticsSummarySchema.parse(
-        await getAnalyticsSummary(
-          db,
-          request.at ? new Date(request.at) : undefined,
-        ),
-      ),
-    )
+    return getAppDb().then(async ({ db }) => {
+      const summaryOptions = request.at
+        ? { range: request.range, now: new Date(request.at) }
+        : { range: request.range }
+      const summary = await getAnalyticsSummary(db, summaryOptions)
+
+      return analyticsSummarySchema.parse({
+        ...summary,
+        range: request.range,
+        periodStart: new Date(
+          new Date(summary.generatedAt).getTime() -
+            request.range * 24 * 60 * 60 * 1000,
+        ).toISOString(),
+        periodEnd: summary.generatedAt,
+        observedRecallQuality: {
+          value: summary.retentionProxy,
+          sampleSize: summary.retentionSampleSize,
+          lowSample: summary.lowSample,
+        },
+        predictedRecall: { value: null, sampleSize: 0, lowSample: true },
+        recallQuality: [],
+        consistency: [],
+        ratingsMix: [],
+        topics: [],
+        stability: [],
+        overdueBacklog: [],
+        upcomingLoad: [],
+        retentionHealth: [],
+        fragileKnowledge: [],
+      })
+    })
   })
 
   onMessage('devSmoke.run', ({ data, sender }) => {

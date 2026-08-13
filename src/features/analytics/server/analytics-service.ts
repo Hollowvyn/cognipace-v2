@@ -8,6 +8,7 @@ import type { Db } from '@/platform/db'
 
 import { getPracticeProgressSummary } from '@/features/practice/server/practice-service'
 import { getSettings } from '@/features/settings/server/settings-service'
+import type { AnalyticsRange } from '../api/analytics-contracts'
 
 import {
   getReviewDayStats,
@@ -33,8 +34,12 @@ import {
 
 export async function getAnalyticsSummary(
   db: Db,
-  now = new Date(),
+  nowOrOptions: Date | { range: AnalyticsRange; now?: Date } = new Date(),
 ): Promise<AnalyticsSummary> {
+  const now =
+    nowOrOptions instanceof Date
+      ? nowOrOptions
+      : (nowOrOptions.now ?? new Date())
   const thirtyDaysAgo = subtractDays(now, 30)
   const fourteenDaysLater = addDays(now, 14)
 
@@ -92,34 +97,57 @@ export async function getAnalyticsSummary(
 
   const dayMs = 24 * 60 * 60 * 1000
 
-  const enrichedScatter: RetentionScatterEntry[] = scatterCandidates.map((c) => ({
-    slug: c.slug,
-    title: c.title,
-    retrievability: getRetrievability(
-      buildMinimalCard(c.stability, c.difficulty, c.lapseCount, c.lastReviewAt),
-      now,
-    ),
-    daysSinceReview: Math.round((now.getTime() - c.lastReviewAt.getTime()) / dayMs),
-    difficulty: c.difficulty,
-    stability: c.stability,
-    lapseCount: c.lapseCount,
-    lastReviewAt: c.lastReviewAt.toISOString(),
-  }))
+  const enrichedScatter: RetentionScatterEntry[] = scatterCandidates.map(
+    (c) => ({
+      slug: c.slug,
+      title: c.title,
+      retrievability: getRetrievability(
+        buildMinimalCard(
+          c.stability,
+          c.difficulty,
+          c.lapseCount,
+          c.lastReviewAt,
+        ),
+        now,
+      ),
+      daysSinceReview: Math.round(
+        (now.getTime() - c.lastReviewAt.getTime()) / dayMs,
+      ),
+      difficulty: c.difficulty,
+      stability: c.stability,
+      lapseCount: c.lapseCount,
+      lastReviewAt: c.lastReviewAt.toISOString(),
+    }),
+  )
 
-  const medianStability = computeMedianStability(scatterCandidates.map((c) => c.stability))
-  const maxDays = Math.max(14, ...enrichedScatter.map((e) => e.daysSinceReview), 0)
+  const medianStability = computeMedianStability(
+    scatterCandidates.map((c) => c.stability),
+  )
+  const maxDays = Math.max(
+    14,
+    ...enrichedScatter.map((e) => e.daysSinceReview),
+    0,
+  )
   const precomputedCurve: ReferenceCurvePoint[] = Array.from(
     { length: maxDays + 1 },
     (_, day) => ({
       days: day,
       retrievability: getRetrievability(
-        buildMinimalCard(medianStability, 5, 0, new Date(now.getTime() - day * dayMs)),
+        buildMinimalCard(
+          medianStability,
+          5,
+          0,
+          new Date(now.getTime() - day * dayMs),
+        ),
         now,
       ),
     }),
   )
 
-  const { scatter, referenceCurve } = buildRetentionScatter(enrichedScatter, precomputedCurve)
+  const { scatter, referenceCurve } = buildRetentionScatter(
+    enrichedScatter,
+    precomputedCurve,
+  )
 
   // Step 5: assemble
   return buildAnalyticsSummary({

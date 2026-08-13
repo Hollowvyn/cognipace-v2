@@ -1,13 +1,13 @@
 // src/features/analytics/components/analytics-metric-row.tsx
 import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
-import type { AnalyticsSummary } from '@/features/analytics'
+import type { SerializedAnalyticsSummary } from '../api/analytics-contracts'
 import { cn } from '@/utils/cn'
 
 export function AnalyticsMetricRow({
   summary,
 }: {
-  summary: AnalyticsSummary
+  summary: SerializedAnalyticsSummary
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-[var(--cp-surface-gap)]">
@@ -62,7 +62,9 @@ export function AnalyticsMetricRow({
               summary.lowSample ? 'text-muted-foreground' : 'text-foreground',
             )}
           >
-            {summary.retentionProxyLabel}
+            {summary.observedRecallQuality.value === null
+              ? '—'
+              : `${Math.round(summary.observedRecallQuality.value * 100)}%`}
           </div>
           <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
             {summary.lowSample

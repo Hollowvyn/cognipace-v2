@@ -187,6 +187,36 @@ describe('dashboard routes', () => {
     ).toBeVisible()
   })
 
+  it.each(['14', '30', '90'])(
+    'passes the numeric analytics range from %s URL search params',
+    async (range) => {
+      renderDashboard(`/analytics?range=${range}`)
+
+      await screen.findByRole('heading', { name: 'Analytics' })
+      await waitFor(() =>
+        expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
+          surface: 'dashboard',
+          range: Number(range),
+        }),
+      )
+    },
+  )
+
+  it.each(['/analytics', '/analytics?range=7', '/analytics?range='])(
+    'defaults malformed analytics range URL %s to 30',
+    async (path) => {
+      renderDashboard(path)
+
+      await screen.findByRole('heading', { name: 'Analytics' })
+      await waitFor(() =>
+        expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
+          surface: 'dashboard',
+          range: 30,
+        }),
+      )
+    },
+  )
+
   it('renders the hidden dev smoke route without adding it to primary navigation', async () => {
     vi.mocked(sendMessage).mockImplementation((method) => {
       if (method === 'devSmoke.run') {

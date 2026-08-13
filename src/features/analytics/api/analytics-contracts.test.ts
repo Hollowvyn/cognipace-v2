@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  analyticsRangeSchema,
   analyticsSummaryRequestSchema,
   analyticsSummarySchema,
   forecastEntrySchema,
@@ -16,12 +17,23 @@ const validForecast = Array.from({ length: 14 }, (_, index) => ({
 }))
 
 const validSummary: SerializedAnalyticsSummary = {
+  range: 30,
+  periodStart: '2025-12-16T00:00:00.000Z',
+  periodEnd: '2026-01-15T12:00:00.000Z',
   generatedAt: '2026-01-15T12:00:00.000Z',
   reviewDays: 10,
   totalReviews: 42,
   currentStreak: 3,
-  retentionProxy: 0.75,
-  retentionProxyLabel: '75%',
+  observedRecallQuality: {
+    value: 0.75,
+    sampleSize: 20,
+    lowSample: false,
+  },
+  predictedRecall: {
+    value: null,
+    sampleSize: 0,
+    lowSample: true,
+  },
   retentionSampleSize: 20,
   lowSample: false,
   dueForecast14Days: validForecast,
@@ -40,6 +52,57 @@ const validSummary: SerializedAnalyticsSummary = {
   targetRetention: 0.9,
   retentionScatter: [],
   retentionScatterCurve: [],
+  recallQuality: [
+    {
+      date: '2026-01-15',
+      observedRecall: 0.75,
+      predictedRecall: null,
+      targetRetention: 0.9,
+      reviewCount: 2,
+      eligibleSampleSize: 2,
+    },
+  ],
+  consistency: [
+    { week: '2026-W02', reviewDays: 3, firstPassRecall: null, sampleSize: 0 },
+  ],
+  ratingsMix: [
+    { date: '2026-01-15', again: 1, hard: 0, good: 1, easy: 0, total: 2 },
+  ],
+  topics: [
+    { topic: 'Arrays', recallQuality: null, sampleSize: 0, lowSample: true },
+  ],
+  stability: [{ week: '2026-W02', medianStabilityDays: null, sampleSize: 0 }],
+  overdueBacklog: [
+    { date: '2026-01-15', overdueCount: 0, historyAvailable: false },
+  ],
+  upcomingLoad: [
+    { date: '2026-01-15', dueCount: 0, overdueCount: 0, today: true },
+  ],
+  retentionHealth: [
+    {
+      slug: 'two-sum',
+      title: 'Two Sum',
+      retrievability: 0.8,
+      targetRetention: 0.9,
+      daysSinceReview: 2,
+      stabilityDays: 10,
+      difficulty: 0.4,
+      lapseCount: 0,
+      overdueDays: 0,
+    },
+  ],
+  fragileKnowledge: [
+    {
+      slug: 'two-sum',
+      title: 'Two Sum',
+      retrievability: 0.8,
+      stabilityDays: 10,
+      difficulty: 0.4,
+      lapseCount: 0,
+      overdueDays: 0,
+      topics: ['Arrays'],
+    },
+  ],
 }
 
 function withoutSummaryField(field: keyof SerializedAnalyticsSummary) {
@@ -52,18 +115,36 @@ describe('analyticsSummaryRequestSchema', () => {
   it('requires the dashboard surface', () => {
     expect(() => analyticsSummaryRequestSchema.parse({})).toThrow()
     expect(
-      analyticsSummaryRequestSchema.parse({ surface: 'dashboard' }),
-    ).toEqual({ surface: 'dashboard' })
+      analyticsSummaryRequestSchema.parse({ surface: 'dashboard', range: 30 }),
+    ).toEqual({ surface: 'dashboard', range: 30 })
+  })
+
+  it.each([14, 30, 90] as const)('accepts range %s', (range) => {
+    expect(
+      analyticsSummaryRequestSchema.parse({ surface: 'dashboard', range }),
+    ).toEqual({
+      surface: 'dashboard',
+      range,
+    })
+  })
+
+  it.each([undefined, 7, '30'])('rejects invalid range %s', (range) => {
+    expect(
+      analyticsSummaryRequestSchema.safeParse({ surface: 'dashboard', range })
+        .success,
+    ).toBe(false)
   })
 
   it('accepts optional ISO at', () => {
     expect(
       analyticsSummaryRequestSchema.parse({
         surface: 'dashboard',
+        range: 30,
         at: '2026-01-15T12:00:00.000Z',
       }),
     ).toEqual({
       surface: 'dashboard',
+      range: 30,
       at: '2026-01-15T12:00:00.000Z',
     })
   })
@@ -149,6 +230,52 @@ describe('analyticsSummarySchema', () => {
         },
       }),
     ).toThrow()
+  })
+
+  it('accepts period metadata and chart-ready payloads', () => {
+    expect(analyticsSummarySchema.parse(validSummary)).toMatchObject({
+      range: 30,
+      periodStart: validSummary.periodStart,
+      periodEnd: validSummary.periodEnd,
+      recallQuality: validSummary.recallQuality,
+    })
+  })
+
+  it('keeps low-sample metric values null instead of coercing them to zero', () => {
+    expect(validSummary.predictedRecall.value).toBeNull()
+    expect(analyticsSummarySchema.parse(validSummary).predictedRecall).toEqual({
+      value: null,
+      sampleSize: 0,
+      lowSample: true,
+    })
+  })
+
+  it('rejects percentages outside 0..1 and negative chart counts', () => {
+    expect(
+      analyticsSummarySchema.safeParse({
+        ...validSummary,
+        observedRecallQuality: {
+          ...validSummary.observedRecallQuality,
+          value: 1.01,
+        },
+      }).success,
+    ).toBe(false)
+    expect(
+      analyticsSummarySchema.safeParse({
+        ...validSummary,
+        ratingsMix: [{ ...validSummary.ratingsMix[0], again: -1 }],
+      }).success,
+    ).toBe(false)
+  })
+})
+
+describe('analyticsRangeSchema', () => {
+  it('accepts only the supported numeric ranges', () => {
+    expect(
+      [14, 30, 90].every(
+        (range) => analyticsRangeSchema.safeParse(range).success,
+      ),
+    ).toBe(true)
   })
 })
 
