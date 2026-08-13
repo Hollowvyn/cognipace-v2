@@ -1,9 +1,25 @@
 import { describe, expect, it } from 'vitest'
 
-import { defaultFsrsCardKind } from '@/lib/fsrs'
+import {
+  createInitialFsrsCard,
+  defaultFsrsCardKind,
+  scheduleReview,
+  serializeFsrsReviewLogSnapshot,
+  type ReviewRating,
+} from '@/lib/fsrs'
 
+import type { Db } from '@/platform/db'
 import { createTestDb } from '@/platform/db/test-db'
-import { fsrsCards, problemPractice } from '@/platform/db/schema'
+import {
+  fsrsCards,
+  problemPractice,
+  problemTopics,
+  problems,
+  reviewAttempts,
+  topics,
+} from '@/platform/db/schema'
+
+import { updateSettings } from '@/features/settings/server/settings-service'
 
 import { getAnalyticsSummary } from './analytics-service'
 
@@ -22,6 +38,15 @@ describe('getAnalyticsSummary memory profile', () => {
         new Date(now.getTime() - range * 24 * 60 * 60 * 1000).toISOString(),
       )
       expect(summary.observedRatingQuality).toBeNull()
+      expect(summary.chartDataStatus).toBe('ready')
+      expect(summary.predictedRecall).toEqual({
+        value: null,
+        sampleSize: 0,
+        lowSample: true,
+      })
+      expect(summary.recallQuality).toHaveLength(range + 1)
+      expect(summary.ratingsMix).toHaveLength(range + 1)
+      expect(summary.upcomingLoad).toHaveLength(14)
     },
   )
 
@@ -88,7 +113,214 @@ describe('getAnalyticsSummary memory profile', () => {
     )
     expect(summary.memoryProfile.averageRetrievability).toBeLessThanOrEqual(1)
   })
+
+  it('returns truthful chart payloads for an empty database', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-01-15T12:00:00.000Z')
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 30, now })
+
+    expect(summary.chartDataStatus).toBe('ready')
+    expect(summary.predictedRecall).toEqual({
+      value: null,
+      sampleSize: 0,
+      lowSample: true,
+    })
+    expect(
+      summary.recallQuality.every((point) => point.observedRecall === null),
+    ).toBe(true)
+    expect(summary.topics).toEqual([])
+    expect(summary.stability).toEqual([])
+    expect(summary.overdueBacklog).toEqual([])
+    expect(summary.overdueHistoryAvailableFrom).toBeNull()
+    expect(summary.upcomingLoad).toHaveLength(14)
+    expect(summary.upcomingLoad.every((point) => point.dueCount === 0)).toBe(
+      true,
+    )
+  })
+
+  it('derives chart metrics from full history and current FSRS state', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-01-31T12:00:00.000Z')
+    const selectedDates = Array.from(
+      { length: 10 },
+      (_, index) =>
+        new Date(
+          `2026-01-${String(20 + index).padStart(2, '0')}T12:00:00.000Z`,
+        ),
+    )
+
+    await insertAnalyticsProblem(
+      handle.db,
+      'graphs-problem',
+      'Graphs Problem',
+      ['Graphs'],
+    )
+    await insertAnalyticsProblem(
+      handle.db,
+      'arrays-problem',
+      'Arrays Problem',
+      ['Arrays'],
+    )
+    await insertAnalyticsHistory(handle.db, 'graphs-problem', {
+      id: 'graphs-card:default',
+      dates: [new Date('2026-01-10T12:00:00.000Z'), ...selectedDates],
+      ratings: ['again', 'again', ...Array<ReviewRating>(9).fill('good')],
+      correct: [false, ...Array<boolean>(10).fill(true)],
+      dueAt: new Date('2026-02-01T12:00:00.000Z'),
+      stability: 12,
+      difficulty: 8,
+    })
+    await insertAnalyticsHistory(handle.db, 'arrays-problem', {
+      id: 'arrays-card:default',
+      dates: [new Date('2026-01-25T12:00:00.000Z')],
+      ratings: ['good'],
+      correct: [true],
+      dueAt: new Date('2026-02-03T12:00:00.000Z'),
+      stability: 4,
+      difficulty: 4,
+    })
+    await updateSettings(handle.db, { review: { targetRetention: 0.85 } })
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 14, now })
+    const graphsPoint = summary.topics.find((topic) => topic.topic === 'Graphs')
+    const recallPoint = summary.recallQuality.find(
+      (point) => point.date === '2026-01-20',
+    )
+
+    expect(summary.targetRetention).toBe(0.85)
+    expect(summary.predictedRecall.sampleSize).toBe(10)
+    expect(summary.predictedRecall.lowSample).toBe(false)
+    expect(summary.predictedRecall.value).not.toBeNull()
+    expect(recallPoint?.predictedRecall).not.toBeNull()
+    expect(graphsPoint).toMatchObject({
+      topic: 'Graphs',
+      recallQuality: 1,
+      sampleSize: 10,
+      lowSample: false,
+    })
+    expect(summary.stability.length).toBeGreaterThan(0)
+    expect(
+      summary.stability.some((point) => point.medianStabilityDays !== null),
+    ).toBe(true)
+    expect(
+      summary.ratingsMix.reduce((sum, point) => sum + point.again, 0),
+    ).toBe(1)
+    expect(summary.upcomingLoad[0]?.overdueCount).toBe(0)
+    expect(summary.upcomingLoad[1]?.dueCount).toBe(1)
+    expect(summary.retentionHealth).toHaveLength(2)
+    expect(
+      summary.fragileKnowledge.some((row) => row.topics.includes('Graphs')),
+    ).toBe(true)
+    expect(summary.overdueBacklog).toEqual([])
+    expect(summary.overdueHistoryAvailableFrom).toBeNull()
+  })
+
+  it('keeps the serialized summary deterministic for the same range and time', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-01-15T12:00:00.000Z')
+
+    const first = await getAnalyticsSummary(handle.db, { range: 90, now })
+    const second = await getAnalyticsSummary(handle.db, { range: 90, now })
+
+    expect(second).toEqual(first)
+  })
 })
+
+async function insertAnalyticsProblem(
+  db: Db,
+  slug: string,
+  title: string,
+  topicLabels: string[],
+) {
+  const timestamp = new Date('2026-01-01T00:00:00.000Z').getTime()
+  await db.insert(problems).values({
+    slug,
+    title,
+    difficulty: 'medium',
+    isPremium: false,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  })
+  await db.insert(problemPractice).values({
+    problemSlug: slug,
+    status: 'review',
+    firstSeenAt: timestamp,
+    lastSeenAt: timestamp,
+    lastReviewedAt: timestamp,
+    solvedCount: 1,
+    attemptCount: 1,
+    isSuspended: false,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  })
+  for (const label of topicLabels) {
+    const topicId = `${slug}:${label.toLowerCase()}`
+    await db.insert(topics).values({
+      id: topicId,
+      label,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+    await db.insert(problemTopics).values({ problemSlug: slug, topicId })
+  }
+}
+
+async function insertAnalyticsHistory(
+  db: Db,
+  slug: string,
+  input: {
+    id: string
+    dates: Date[]
+    ratings: ReviewRating[]
+    correct: boolean[]
+    dueAt: Date
+    stability: number
+    difficulty: number
+  },
+) {
+  const initialCard = createInitialFsrsCard(input.dates[0])
+  let card = initialCard
+  const rows = []
+
+  for (const [index, reviewedAt] of input.dates.entries()) {
+    const scheduled = scheduleReview(card, input.ratings[index]!, reviewedAt, {
+      targetRetention: 0.85,
+    })
+    rows.push({
+      id: `${input.id}:${index}`,
+      problemSlug: slug,
+      cardId: input.id,
+      rating: input.ratings[index]!,
+      reviewMode: 'manual',
+      reviewedAt: reviewedAt.getTime(),
+      isCorrect: input.correct[index]!,
+      fsrsReviewLog: serializeFsrsReviewLogSnapshot(scheduled.log),
+      createdAt: reviewedAt.getTime(),
+      updatedAt: reviewedAt.getTime(),
+    })
+    card = scheduled.card
+  }
+
+  await db.insert(fsrsCards).values({
+    id: input.id,
+    problemSlug: slug,
+    cardKind: defaultFsrsCardKind,
+    dueAt: input.dueAt.getTime(),
+    stability: input.stability,
+    difficulty: input.difficulty,
+    elapsedDays: card.elapsedDays,
+    scheduledDays: card.scheduledDays,
+    learningSteps: card.learningSteps,
+    reps: card.reps,
+    lapses: card.lapses,
+    state: card.state,
+    lastReviewAt: card.lastReviewAt?.getTime() ?? null,
+    createdAt: input.dates[0]!.getTime(),
+    updatedAt: input.dates.at(-1)!.getTime(),
+  })
+  await db.insert(reviewAttempts).values(rows)
+}
 
 async function insertTrackedCard(
   db: Awaited<ReturnType<typeof createTestDb>>['db'],

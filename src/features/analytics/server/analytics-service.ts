@@ -1,5 +1,6 @@
 import {
   getRetrievability,
+  normalizeFsrsSchedulingOptions,
   parseFsrsCardState,
   type FsrsCardSnapshot,
 } from '@/lib/fsrs'
@@ -13,12 +14,30 @@ import type { AnalyticsRange } from '../api/analytics-contracts'
 import {
   getReviewDayStats,
   getRecentRatings,
+  getReviewHistory,
+  getCurrentFsrsCards,
   getMemoryProfileCards,
   getUpcomingCards,
   getWeakProblemCandidates,
   getRetentionScatterCandidates,
+  type CurrentFsrsCard,
   type MemoryProfileCard,
 } from '../data/analytics-repository'
+
+import {
+  buildConsistencyPoints,
+  buildOverdueBacklogPoints,
+  buildRatingsMixPoints,
+  buildRecallQualityPoints,
+  buildRetentionHealth,
+  buildStabilityPoints,
+  buildTopicPoints,
+  buildUpcomingLoadPoints,
+  type AnalyticsCurrentCard,
+  type AnalyticsOverdueSnapshot,
+  type AnalyticsRangeOptions,
+  type AnalyticsReviewEvent,
+} from '../domain/chart-data'
 
 import {
   buildObservedRatingQuality,
@@ -45,10 +64,11 @@ export async function getAnalyticsSummary(
   const periodEnd = now
   const fourteenDaysLater = addDays(now, 14)
 
-  // Step 1: run all reads in parallel
   const [
     dayStats,
     recentRatings,
+    reviewHistory,
+    currentFsrsCards,
     upcomingCards,
     weakCandidates,
     memoryProfileCards,
@@ -57,6 +77,8 @@ export async function getAnalyticsSummary(
   ] = await Promise.all([
     getReviewDayStats(db),
     getRecentRatings(db, periodStart),
+    getReviewHistory(db),
+    getCurrentFsrsCards(db),
     getUpcomingCards(db, fourteenDaysLater),
     getWeakProblemCandidates(db),
     getMemoryProfileCards(db),
@@ -64,12 +86,14 @@ export async function getAnalyticsSummary(
     getRetentionScatterCandidates(db),
   ])
 
-  // Step 2: get streak (needs dailyGoal from settings)
+  const fsrsOptions = normalizeFsrsSchedulingOptions({
+    targetRetention: settings.review.targetRetention,
+  })
+
   const practiceProgress = await getPracticeProgressSummary(db, {
     dailyGoal: settings.practice.dailyGoal,
   })
 
-  // Step 3: enrich weak candidates with retrievability (needs `now`)
   const enrichedCandidates = weakCandidates.flatMap((candidate) => {
     if (candidate.lastReviewAt === null) return []
     return [
@@ -86,6 +110,7 @@ export async function getAnalyticsSummary(
             candidate.lastReviewAt,
           ),
           now,
+          fsrsOptions,
         ),
       },
     ]
@@ -99,7 +124,53 @@ export async function getAnalyticsSummary(
   )
   const forecast = buildDueForecast(upcomingCards, now)
   const weakProblems = buildWeakProblems(enrichedCandidates)
-  const memoryProfile = buildMemoryProfileInput(memoryProfileCards, now)
+  const memoryProfile = buildMemoryProfileInput(
+    memoryProfileCards,
+    now,
+    fsrsOptions,
+  )
+
+  const chartOptions: AnalyticsRangeOptions = {
+    start: periodStart,
+    end: periodEnd,
+    fsrsOptions,
+  }
+  const analyticsReviewHistory = reviewHistory satisfies AnalyticsReviewEvent[]
+  const recallQuality = buildRecallQualityPoints(
+    analyticsReviewHistory,
+    chartOptions,
+  )
+  const predictedRecall = buildMetricSummary(
+    recallQuality.flatMap((point) =>
+      point.predictedRecall === null ? [] : [point.predictedRecall],
+    ),
+  )
+  const consistency = buildConsistencyPoints(
+    analyticsReviewHistory,
+    chartOptions,
+  )
+  const ratingsMix = buildRatingsMixPoints(analyticsReviewHistory, chartOptions)
+  const topics = buildTopicPoints(analyticsReviewHistory, chartOptions)
+  const stability = buildStabilityPoints(analyticsReviewHistory, chartOptions)
+  const overdueBacklog = buildOverdueBacklogPoints(
+    readOverdueHistoryFallback(),
+    chartOptions,
+  )
+  const upcomingLoad = buildUpcomingLoadPoints(
+    upcomingCards.map((card) => card.dueAt),
+    now,
+  )
+  const { health: retentionHealth, fragile: fragileKnowledge } =
+    buildRetentionHealth(
+      buildCurrentAnalyticsCards(
+        currentFsrsCards,
+        analyticsReviewHistory,
+        now,
+        fsrsOptions,
+      ),
+      now,
+      { fragileDifficultyThreshold: 7 },
+    )
 
   const dayMs = 24 * 60 * 60 * 1000
 
@@ -115,6 +186,7 @@ export async function getAnalyticsSummary(
           c.lastReviewAt,
         ),
         now,
+        fsrsOptions,
       ),
       daysSinceReview: Math.round(
         (now.getTime() - c.lastReviewAt.getTime()) / dayMs,
@@ -146,6 +218,7 @@ export async function getAnalyticsSummary(
           new Date(now.getTime() - day * dayMs),
         ),
         now,
+        fsrsOptions,
       ),
     }),
   )
@@ -168,13 +241,29 @@ export async function getAnalyticsSummary(
     forecast,
     weakProblems,
     memoryProfile,
-    targetRetention: settings.review.targetRetention,
+    targetRetention: fsrsOptions.targetRetention,
     scatter,
     referenceCurve,
+    chartDataStatus: 'ready',
+    predictedRecall,
+    recallQuality,
+    consistency,
+    ratingsMix,
+    topics,
+    stability,
+    overdueBacklog: overdueBacklog.points,
+    overdueHistoryAvailableFrom: overdueBacklog.overdueHistoryAvailableFrom,
+    upcomingLoad,
+    retentionHealth,
+    fragileKnowledge,
   })
 }
 
-function buildMemoryProfileInput(cards: MemoryProfileCard[], now: Date) {
+function buildMemoryProfileInput(
+  cards: MemoryProfileCard[],
+  now: Date,
+  fsrsOptions: ReturnType<typeof normalizeFsrsSchedulingOptions>,
+) {
   const activeCards = cards.filter((card) => !isSuspendedMemoryCard(card))
   const todayKey = toLocalDateKey(now)
 
@@ -190,9 +279,77 @@ function buildMemoryProfileInput(cards: MemoryProfileCard[], now: Date) {
       .length,
     suspended: cards.filter(isSuspendedMemoryCard).length,
     retrievabilities: activeCards.flatMap((card) =>
-      card.lastReviewAt ? [getRetrievability(buildMemoryCard(card), now)] : [],
+      card.lastReviewAt
+        ? [getRetrievability(buildMemoryCard(card), now, fsrsOptions)]
+        : [],
     ),
   })
+}
+
+function buildCurrentAnalyticsCards(
+  cards: CurrentFsrsCard[],
+  events: readonly AnalyticsReviewEvent[],
+  now: Date,
+  fsrsOptions: ReturnType<typeof normalizeFsrsSchedulingOptions>,
+): AnalyticsCurrentCard[] {
+  const topicsByProblem = new Map<string, Set<string>>()
+
+  for (const event of events) {
+    const topics = topicsByProblem.get(event.problemSlug) ?? new Set<string>()
+    for (const topic of event.topicLabels) topics.add(topic)
+    topicsByProblem.set(event.problemSlug, topics)
+  }
+
+  return cards.map((card) => ({
+    slug: card.problemSlug,
+    title: card.title,
+    topics: [...(topicsByProblem.get(card.problemSlug) ?? [])].sort(),
+    retrievability: getRetrievability(buildCurrentCard(card), now, fsrsOptions),
+    targetRetention: fsrsOptions.targetRetention,
+    stabilityDays: card.stability,
+    difficulty: card.difficulty,
+    lapseCount: card.lapses,
+    dueAt: card.dueAt,
+    lastReviewAt: card.lastReviewAt,
+    suspended: card.isSuspended || card.practiceStatus === 'suspended',
+  }))
+}
+
+function buildCurrentCard(card: CurrentFsrsCard): FsrsCardSnapshot {
+  return {
+    dueAt: card.dueAt,
+    stability: card.stability,
+    difficulty: card.difficulty,
+    elapsedDays: card.elapsedDays,
+    scheduledDays: card.scheduledDays,
+    learningSteps: card.learningSteps,
+    reps: card.reps,
+    lapses: card.lapses,
+    state: parseFsrsCardState(card.state),
+    lastReviewAt: card.lastReviewAt,
+  }
+}
+
+function buildMetricSummary(
+  values: readonly number[],
+  lowSampleThreshold = 10,
+): { value: number | null; sampleSize: number; lowSample: boolean } {
+  const sampleSize = values.length
+  if (sampleSize < lowSampleThreshold) {
+    return { value: null, sampleSize, lowSample: true }
+  }
+
+  return {
+    value: values.reduce((sum, value) => sum + value, 0) / sampleSize,
+    sampleSize,
+    lowSample: false,
+  }
+}
+
+function readOverdueHistoryFallback():
+  | readonly AnalyticsOverdueSnapshot[]
+  | null {
+  return null
 }
 
 function isSuspendedMemoryCard(card: MemoryProfileCard): boolean {

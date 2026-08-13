@@ -356,6 +356,8 @@ describe('background handler registration', () => {
         lowSample: false,
       },
       targetRetention: 0.9,
+      chartDataStatus: 'ready',
+      predictedRecall: { value: 0.86, sampleSize: 12, lowSample: false },
       retentionScatter: [
         {
           slug: 'two-sum',
@@ -369,6 +371,16 @@ describe('background handler registration', () => {
         },
       ],
       retentionScatterCurve: [{ days: 0, retrievability: 1 }],
+      recallQuality: [],
+      consistency: [],
+      ratingsMix: [],
+      topics: [],
+      stability: [],
+      overdueBacklog: [],
+      overdueHistoryAvailableFrom: null,
+      upcomingLoad: [],
+      retentionHealth: [],
+      fragileKnowledge: [],
     })
     backgroundMocks.backupExportFullBackup.mockResolvedValue(validBackup)
     backgroundMocks.backupResetLocalData.mockResolvedValue(null)
@@ -581,8 +593,27 @@ describe('background handler registration', () => {
       memoryProfile: {
         averageRetrievability: 0.8,
       },
-      retentionScatter: [],
-      retentionScatterCurve: [],
+      chartDataStatus: 'ready',
+      retentionScatter: [
+        {
+          slug: 'two-sum',
+          title: 'Two Sum',
+          retrievability: 0.8,
+          daysSinceReview: 3,
+          difficulty: 5,
+          stability: 10,
+          lapseCount: 0,
+          lastReviewAt: '2026-01-12T12:00:00.000Z',
+        },
+      ],
+      retentionScatterCurve: [{ days: 0, retrievability: 1 }],
+    })
+    const parsedResponse = analyticsSummarySchema.parse(response)
+    expect(parsedResponse.chartDataStatus).toBe('ready')
+    expect(parsedResponse.predictedRecall).toEqual({
+      value: 0.86,
+      sampleSize: 12,
+      lowSample: false,
     })
   })
 
@@ -630,6 +661,18 @@ describe('background handler registration', () => {
       targetRetention: 0.9,
       retentionScatter: [],
       retentionScatterCurve: [],
+      chartDataStatus: 'ready',
+      predictedRecall: { value: null, sampleSize: 0, lowSample: true },
+      recallQuality: [],
+      consistency: [],
+      ratingsMix: [],
+      topics: [],
+      stability: [],
+      overdueBacklog: [],
+      overdueHistoryAvailableFrom: null,
+      upcomingLoad: [],
+      retentionHealth: [],
+      fragileKnowledge: [],
     })
 
     const response = analyticsSummarySchema.parse(

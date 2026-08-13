@@ -897,20 +897,6 @@ export function registerBackgroundHandlers() {
           sampleSize: summary.observedRatingSampleSize,
           lowSample: summary.lowSample,
         },
-        chartDataStatus: 'unavailable',
-        predictedRecall: { value: null, sampleSize: 0, lowSample: true },
-        retentionScatter: [],
-        retentionScatterCurve: [],
-        recallQuality: [],
-        consistency: [],
-        ratingsMix: [],
-        topics: [],
-        stability: [],
-        overdueBacklog: [],
-        overdueHistoryAvailableFrom: null,
-        upcomingLoad: [],
-        retentionHealth: [],
-        fragileKnowledge: [],
       })
     })
   })

@@ -5,6 +5,12 @@ export interface ObservedRatingQualityResult {
   lowSample: boolean
 }
 
+export interface AnalyticsMetricSummary {
+  value: number | null
+  sampleSize: number
+  lowSample: boolean
+}
+
 export interface ForecastEntry {
   date: string
   dueCount: number
@@ -72,6 +78,18 @@ export interface AnalyticsSummaryInput {
   targetRetention: number
   scatter: RetentionScatterEntry[]
   referenceCurve: ReferenceCurvePoint[]
+  chartDataStatus?: 'unavailable' | 'ready'
+  predictedRecall?: AnalyticsMetricSummary
+  recallQuality?: import('./chart-data').RecallQualityPoint[]
+  consistency?: import('./chart-data').ConsistencyPoint[]
+  ratingsMix?: import('./chart-data').RatingsMixPoint[]
+  topics?: import('./chart-data').TopicPoint[]
+  stability?: import('./chart-data').StabilityPoint[]
+  overdueBacklog?: import('./chart-data').OverdueBacklogPoint[]
+  overdueHistoryAvailableFrom?: string | null
+  upcomingLoad?: import('./chart-data').UpcomingLoadPoint[]
+  retentionHealth?: import('./chart-data').RetentionHealthPoint[]
+  fragileKnowledge?: import('./chart-data').FragileKnowledgeRow[]
 }
 
 export interface AnalyticsSummary {
@@ -92,6 +110,18 @@ export interface AnalyticsSummary {
   targetRetention: number
   retentionScatter: RetentionScatterEntry[]
   retentionScatterCurve: ReferenceCurvePoint[]
+  chartDataStatus: 'unavailable' | 'ready'
+  predictedRecall: AnalyticsMetricSummary
+  recallQuality: import('./chart-data').RecallQualityPoint[]
+  consistency: import('./chart-data').ConsistencyPoint[]
+  ratingsMix: import('./chart-data').RatingsMixPoint[]
+  topics: import('./chart-data').TopicPoint[]
+  stability: import('./chart-data').StabilityPoint[]
+  overdueBacklog: import('./chart-data').OverdueBacklogPoint[]
+  overdueHistoryAvailableFrom: string | null
+  upcomingLoad: import('./chart-data').UpcomingLoadPoint[]
+  retentionHealth: import('./chart-data').RetentionHealthPoint[]
+  fragileKnowledge: import('./chart-data').FragileKnowledgeRow[]
 }
 
 export function buildObservedRatingQuality(
@@ -206,6 +236,22 @@ export function buildAnalyticsSummary(
     targetRetention: input.targetRetention,
     retentionScatter: input.scatter,
     retentionScatterCurve: input.referenceCurve,
+    chartDataStatus: input.chartDataStatus ?? 'unavailable',
+    predictedRecall: input.predictedRecall ?? {
+      value: null,
+      sampleSize: 0,
+      lowSample: true,
+    },
+    recallQuality: input.recallQuality ?? [],
+    consistency: input.consistency ?? [],
+    ratingsMix: input.ratingsMix ?? [],
+    topics: input.topics ?? [],
+    stability: input.stability ?? [],
+    overdueBacklog: input.overdueBacklog ?? [],
+    overdueHistoryAvailableFrom: input.overdueHistoryAvailableFrom ?? null,
+    upcomingLoad: input.upcomingLoad ?? [],
+    retentionHealth: input.retentionHealth ?? [],
+    fragileKnowledge: input.fragileKnowledge ?? [],
   }
 }
 
