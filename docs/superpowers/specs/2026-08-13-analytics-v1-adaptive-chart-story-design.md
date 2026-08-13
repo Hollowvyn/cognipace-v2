@@ -251,6 +251,7 @@ Calculate readiness only across the effective window:
 S = sum(s_i) from f through N
 A = sum(a_i) from f through N
 G = longest consecutive run where a_i = 0 from f through N
+K = number of separate empty-bucket runs from f through N
 ```
 
 Where:
@@ -258,6 +259,7 @@ Where:
 - `S` is total eligible baseline assessments
 - `A` is the number of active effective buckets
 - `G` is the longest internal or trailing empty-bucket gap
+- `K` is the number of separate internal or trailing gaps
 
 Example:
 
@@ -268,6 +270,7 @@ Effective evidence:       [4, 2, 0, 3, 0, 0, 5, 1]
 S = 15
 A = 5
 G = 2
+K = 2
 E = 8
 ```
 
@@ -292,10 +295,26 @@ C(R) = clamp(0.76 - 0.06 * log2(R / 7), 0.55, 0.80)
 A_min = ceil(C(R) * E)
 ```
 
-Maximum consecutive empty-bucket gap:
+Maximum bridgeable consecutive empty-bucket gap:
 
 ```text
-G_max = min(3, max(1, floor(0.20 * E) + indicator(R >= 60)))
+G_max(R) = 1 when R <= 7, otherwise 2
+```
+
+This resolves to:
+
+| Requested range | Bucket size | `G_max` | Maximum bridged time |
+| --------------- | ----------- | ------- | -------------------- |
+| 7 days          | 1 day       | 1       | 1 day                |
+| 14 days         | 1 day       | 2       | 2 days               |
+| 30 days         | 3 days      | 2       | 6 days               |
+| 90 days         | 7 days      | 2       | 14 days              |
+| 120 days        | 14 days     | 2       | 28 days              |
+
+Maximum separate gap runs:
+
+```text
+K_max = max(1, ceil(0.20 * E))
 ```
 
 A historical range is ready when every gate passes:
@@ -306,7 +325,16 @@ Ready(R) =
   AND S >= S_min
   AND A >= A_min
   AND G <= G_max
+  AND K <= K_max
 ```
+
+The gates are complementary:
+
+- `S` prevents conclusions from too few total assessments
+- `A` prevents a few dense sessions from standing in for sustained coverage
+- `G` prevents any one unbridgeably long interruption
+- `K` prevents many individually acceptable gaps from producing a fragmented
+  chart
 
 The system returns the individual gate results rather than only an opaque
 combined score:
@@ -325,6 +353,8 @@ interface AnalyticsReadiness {
   minimumActiveBuckets: number
   longestGap: number
   maximumGap: number
+  gapRuns: number
+  maximumGapRuns: number
   failingReasons: ReadinessFailure[]
 }
 ```
@@ -368,9 +398,10 @@ buckets appear inside an otherwise ready line chart.
 For observed and derived historical line series:
 
 - consecutive eligible values use a solid line
-- exactly one empty presentation bucket between eligible values uses a dashed
+- a gap from one bucket through the range's configured `G_max` uses a dashed
   bridge between the two measured endpoints
-- two or more consecutive empty presentation buckets remain a true line break
+- a gap longer than `G_max` makes that metric's historical range unready rather
+  than rendering a broken trend
 - no synthetic point, carried-forward value, interpolated tooltip value, or
   false marker is created inside a dashed bridge
 - the legend or chart note explains that dashed segments cross a period with no
@@ -379,19 +410,22 @@ For observed and derived historical line series:
 Because presentation buckets adapt with the selected range, a permitted dashed
 bridge represents at most:
 
-- one day in a 7- or 14-day view
-- one three-day bucket in a 30-day view
-- one week in a 90-day view
-- one selected presentation bucket for future ranges
+- one day in a 7-day view
+- two days in a 14-day view
+- two three-day buckets in a 30-day view
+- two weeks in a 90-day view
+- two selected presentation buckets for future ranges longer than seven days
 
-Longer gaps stay visibly broken even when the overall range still passes its
-readiness gates. This distinction keeps the chart easy to follow without
-fabricating evidence:
+The `A` and `K` gates keep repeated acceptable-length gaps from producing an
+overly dashed chart. A range with several dense sessions separated by repeated
+two-bucket gaps therefore does not qualify merely because each individual gap
+is bridgeable. This keeps the chart easy to follow without fabricating
+evidence:
 
 ```text
 solid segment  = adjacent measured values
-dashed segment = one missing bucket between measured values
-no segment     = insufficient continuity across a longer gap
+dashed segment = a permitted missing run between measured values
+no chart       = insufficient continuity or overall evidence
 ```
 
 Practice Rhythm keeps the review-volume bar for every bucket. A zero-practice
@@ -436,7 +470,7 @@ interface AnalyticsChartDefinition {
   series: readonly ChartSeriesDefinition[]
   tooltipFields: readonly string[]
   emptyState: string
-  continuity?: 'solid' | 'solid-with-single-gap-bridge'
+  continuity?: 'solid' | 'solid-with-permitted-gap-bridge'
   interpretationWarning?: string
 }
 ```
@@ -547,6 +581,7 @@ Domain and contract tests cover:
 
 - generic bucket selection for current and future example ranges
 - exact `S`, `A`, `G`, `E`, and readiness-gate results
+- exact `K` and maximum-gap-run readiness results
 - leading-empty trimming without removal of internal or trailing gaps
 - richest passing configured-range selection
 - explainable readiness failure reasons
@@ -555,8 +590,9 @@ Domain and contract tests cover:
 - count preservation across aggregation
 - ratio recomputation from numerators and denominators
 - null and missing-observation behavior
-- deterministic single-gap dashed bridges without synthetic metric values
-- preservation of true line breaks across two or more missing buckets
+- deterministic permitted-gap dashed bridges without synthetic metric values
+- metric-specific unready behavior for gaps longer than the configured bridge
+  threshold
 - stability medians and backlog boundary values
 - schema acceptance and rejection of the revised chart-ready shapes
 
