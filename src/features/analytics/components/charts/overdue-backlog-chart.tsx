@@ -166,6 +166,7 @@ export function OverdueBacklogChart({
             y={watchZone}
           />
           <XAxis
+            allowDuplicatedCategory={false}
             axisLine={false}
             dataKey="bucketStart"
             minTickGap={32}

@@ -70,6 +70,7 @@ export function UpcomingReviewLoadChart({
         >
           <CartesianGrid stroke="var(--color-border)" vertical={false} />
           <XAxis
+            allowDuplicatedCategory={false}
             axisLine={false}
             dataKey="date"
             minTickGap={24}

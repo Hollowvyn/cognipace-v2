@@ -223,6 +223,15 @@ describe('analytics chart components', () => {
       screen.getByRole('group', { name: 'Retention health chart' }),
     ).toBeVisible()
     expect(document.querySelectorAll('svg')).toHaveLength(10)
+
+    const recallChart = screen.getByRole('img', {
+      name: 'Recall quality chart',
+    })
+    const recallAxisLabels = Array.from(
+      recallChart.querySelectorAll('tspan'),
+      (tick) => tick.textContent,
+    ).filter((label): label is string => label?.startsWith('Aug') ?? false)
+    expect(recallAxisLabels).toEqual(['Aug 1', 'Aug 2', 'Aug 3'])
   })
 
   it('tells the adaptive historical story with explicit, semantic chart marks', () => {

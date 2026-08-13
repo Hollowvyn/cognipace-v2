@@ -145,6 +145,7 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
         >
           <CartesianGrid stroke="var(--color-border)" vertical={false} />
           <XAxis
+            allowDuplicatedCategory={false}
             axisLine={false}
             dataKey="bucketStart"
             minTickGap={32}

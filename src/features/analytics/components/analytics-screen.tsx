@@ -286,7 +286,7 @@ function AnalyticsCurrentStateStory({
   const retentionDefinition = metricDefinitions.retentionHealth
 
   return (
-    <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+    <div className="grid min-w-0 gap-4">
       <AnalyticsChartPanel
         description={retentionDefinition.explanation}
         id="retention-health"

@@ -104,6 +104,7 @@ export function RatingsMixChart({
         >
           <CartesianGrid stroke="var(--color-border)" vertical={false} />
           <XAxis
+            allowDuplicatedCategory={false}
             axisLine={false}
             dataKey="bucketStart"
             minTickGap={24}
