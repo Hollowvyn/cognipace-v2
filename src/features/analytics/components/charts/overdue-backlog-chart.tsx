@@ -8,7 +8,6 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  ReferenceArea,
   ReferenceLine,
   XAxis,
   YAxis,
@@ -17,7 +16,7 @@ import {
 import {
   ChartEmptyState,
   chartDimension,
-  formatChartDate,
+  formatBucketLabel,
   formatHistoryBoundary,
   toChartLabel,
 } from './chart-shared'
@@ -26,14 +25,34 @@ import type { OverdueBacklogPoint } from './types'
 const overdueBacklogChartConfig = {
   overdueCount: {
     label: 'Overdue problems',
-    color: 'var(--chart-4)',
+    color: 'var(--cp-analytics-healthy)',
   },
 } satisfies ChartConfig
 
+type BacklogChartPoint = OverdueBacklogPoint & {
+  attentionRange: number | null
+  healthyRange: number | null
+}
+
 export function buildOverdueBacklogChartSeries(
   data: readonly OverdueBacklogPoint[],
-): OverdueBacklogPoint[] {
-  return Array.from(data)
+  watchZone = 5,
+): BacklogChartPoint[] {
+  return data.map((point) => ({
+    ...point,
+    attentionRange:
+      point.overdueCount !== null && point.overdueCount > watchZone
+        ? point.overdueCount
+        : null,
+    healthyRange:
+      point.overdueCount !== null && point.overdueCount <= watchZone
+        ? point.overdueCount
+        : null,
+  }))
+}
+
+function formatBacklogStatus(value: number, watchZone: number): string {
+  return value <= watchZone ? 'Within watch zone' : 'Above watch zone'
 }
 
 export function OverdueBacklogChart({
@@ -45,7 +64,12 @@ export function OverdueBacklogChart({
   historyAvailableFrom: string | null
   watchZone?: number
 }) {
-  const points = buildOverdueBacklogChartSeries(data)
+  const points = buildOverdueBacklogChartSeries(data, watchZone)
+  const knownCounts = points.flatMap((point) =>
+    point.overdueCount === null ? [] : [point.overdueCount],
+  )
+  const yMax = Math.max(watchZone + 1, ...knownCounts)
+  const attentionStart = `${Math.max(0, Math.min(100, (1 - watchZone / yMax) * 100))}%`
 
   if (!points.some((point) => point.historyAvailable)) {
     return (
@@ -59,10 +83,10 @@ export function OverdueBacklogChart({
   return (
     <div className="grid min-w-0 gap-3">
       <ChartContainer
-        accessibleDescription={`Overdue backlog over time with a watch zone below ${watchZone} overdue problems.`}
+        accessibleDescription={`Overdue backlog across adaptive presentation buckets. Values at or below ${watchZone} are healthy; values above it need attention. Unknown historical buckets remain gaps.`}
         accessibleName="Recent overdue backlog chart"
         aria-label="Recent overdue backlog chart"
-        aria-roledescription="area chart"
+        aria-roledescription="line and area chart"
         className="aspect-auto h-64 min-h-[16rem]"
         config={overdueBacklogChartConfig}
         initialDimension={chartDimension}
@@ -73,34 +97,80 @@ export function OverdueBacklogChart({
           data={points}
           margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
         >
+          <defs>
+            <linearGradient
+              id="backlog-line-gradient"
+              x1="0"
+              x2="0"
+              y1="1"
+              y2="0"
+            >
+              <stop
+                offset={attentionStart}
+                stopColor="var(--cp-analytics-attention)"
+              />
+              <stop
+                offset={attentionStart}
+                stopColor="var(--cp-analytics-healthy)"
+              />
+            </linearGradient>
+            <linearGradient
+              id="backlog-area-gradient"
+              x1="0"
+              x2="0"
+              y1="1"
+              y2="0"
+            >
+              <stop
+                offset={attentionStart}
+                stopColor="var(--cp-analytics-attention)"
+                stopOpacity={0.2}
+              />
+              <stop
+                offset={attentionStart}
+                stopColor="var(--cp-analytics-healthy)"
+                stopOpacity={0.2}
+              />
+              <stop
+                offset="0%"
+                stopColor="var(--cp-analytics-healthy)"
+                stopOpacity={0.02}
+              />
+              <stop
+                offset="100%"
+                stopColor="var(--cp-analytics-healthy)"
+                stopOpacity={0.03}
+              />
+            </linearGradient>
+          </defs>
           <CartesianGrid stroke="var(--color-border)" vertical={false} />
-          <ReferenceArea
-            fill="var(--cp-tone-warning-bg)"
-            fillOpacity={0.35}
-            y1={0}
-            y2={watchZone}
-          />
           <ReferenceLine
             label={{
-              fill: 'var(--chart-4)',
+              fill: 'var(--cp-analytics-attention)',
               fontSize: 11,
               position: 'insideTopRight',
-              value: 'Watch zone',
+              value: `Watch zone · ${watchZone}`,
             }}
-            stroke="var(--chart-4)"
+            stroke="var(--cp-analytics-attention)"
             strokeDasharray="4 4"
             y={watchZone}
           />
           <XAxis
             axisLine={false}
             dataKey="bucketStart"
-            minTickGap={24}
-            tickFormatter={formatChartDate}
+            minTickGap={32}
+            tickFormatter={(value) => {
+              const point = points.find((item) => item.bucketStart === value)
+              return point
+                ? formatBucketLabel(point.bucketStart, point.bucketEnd)
+                : toChartLabel(value)
+            }}
             tickLine={false}
           />
           <YAxis
-            axisLine={false}
             allowDecimals={false}
+            axisLine={false}
+            domain={[0, yMax]}
             tickLine={false}
             width={32}
           />
@@ -108,26 +178,62 @@ export function OverdueBacklogChart({
             content={
               <ChartTooltipContent
                 active={false}
-                formatter={(value) => [`${String(value)} overdue`, 'Backlog']}
-                labelFormatter={(label) => formatChartDate(toChartLabel(label))}
+                formatter={(value) => {
+                  const count = typeof value === 'number' ? value : null
+                  return [
+                    count === null
+                      ? 'Unknown historical backlog'
+                      : `${count} overdue · ${formatBacklogStatus(count, watchZone)}`,
+                    'Backlog',
+                  ]
+                }}
+                labelFormatter={(label, payload) => {
+                  const point = payload?.[0]?.payload as
+                    | BacklogChartPoint
+                    | undefined
+                  return point
+                    ? formatBucketLabel(point.bucketStart, point.bucketEnd)
+                    : toChartLabel(label)
+                }}
                 payload={[]}
               />
             }
           />
           <Area
             dataKey="overdueCount"
-            fill="var(--color-overdueCount)"
-            fillOpacity={0.22}
+            fill="url(#backlog-area-gradient)"
+            fillOpacity={1}
             isAnimationActive={false}
             name="Overdue problems"
-            stroke="var(--color-overdueCount)"
+            stroke="url(#backlog-line-gradient)"
             strokeWidth={2.5}
-            type="monotone"
+            type="linear"
+          />
+          <Area
+            dataKey="healthyRange"
+            data-testid="backlog-healthy-range"
+            fill="none"
+            isAnimationActive={false}
+            name="Healthy backlog range"
+            stroke="var(--cp-analytics-healthy)"
+            strokeWidth={2.5}
+            type="linear"
+          />
+          <Area
+            dataKey="attentionRange"
+            data-testid="backlog-attention-range"
+            fill="none"
+            isAnimationActive={false}
+            name="Attention backlog range"
+            stroke="var(--cp-analytics-attention)"
+            strokeWidth={2.5}
+            type="linear"
           />
         </AreaChart>
       </ChartContainer>
       <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
-        Keep overdue backlog below the{' '}
+        Tooltip reports each bucket’s threshold status. Keep overdue backlog at
+        or below the{' '}
         <span className="font-semibold text-foreground">
           {watchZone}-problem watch zone
         </span>

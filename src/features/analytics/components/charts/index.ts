@@ -1,4 +1,4 @@
-export { ConsistencyChart } from './consistency-chart'
+export { ConsistencyChart, PracticeRhythmChart } from './consistency-chart'
 export { MemoryStrengthChart } from './memory-strength-chart'
 export { OverdueBacklogChart } from './overdue-backlog-chart'
 export { RatingsMixChart } from './ratings-mix-chart'

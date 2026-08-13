@@ -2,7 +2,6 @@ import type { ChartConfig } from '@/components/ui/chart'
 import {
   ChartContainer,
   ChartLegend,
-  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart'
@@ -11,7 +10,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import {
   ChartEmptyState,
   chartDimension,
-  formatChartDate,
+  formatBucketLabel,
   formatPercentagePoints,
   formatPercent,
   toChartLabel,
@@ -21,21 +20,42 @@ import type { HardAgainSummary, RatingsMixPoint } from './types'
 const ratingsMixChartConfig = {
   again: {
     label: 'Again',
-    color: 'var(--chart-5)',
+    color: 'var(--cp-analytics-again)',
   },
   hard: {
     label: 'Hard',
-    color: 'var(--chart-4)',
+    color: 'var(--cp-analytics-hard)',
   },
   good: {
     label: 'Good',
-    color: 'var(--chart-1)',
+    color: 'var(--cp-analytics-good)',
   },
   easy: {
     label: 'Easy',
-    color: 'var(--chart-3)',
+    color: 'var(--cp-analytics-easy)',
   },
 } satisfies ChartConfig
+
+export const ratingsMixStackOffset = 'expand' as const
+
+function RatingsLegend() {
+  const items = [
+    ['Again', 'var(--cp-analytics-again)'],
+    ['Hard', 'var(--cp-analytics-hard)'],
+    ['Good', 'var(--cp-analytics-good)'],
+    ['Easy', 'var(--cp-analytics-easy)'],
+  ] as const
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
+      {items.map(([label, color]) => (
+        <span key={label} style={{ color }}>
+          {label}
+        </span>
+      ))}
+    </div>
+  )
+}
 
 export function RatingsMixChart({
   data,
@@ -71,14 +91,19 @@ export function RatingsMixChart({
           accessibilityLayer
           data={data}
           margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
-          stackOffset="expand"
+          stackOffset={ratingsMixStackOffset}
         >
           <CartesianGrid stroke="var(--color-border)" vertical={false} />
           <XAxis
             axisLine={false}
             dataKey="bucketStart"
             minTickGap={24}
-            tickFormatter={formatChartDate}
+            tickFormatter={(value) => {
+              const point = data.find((item) => item.bucketStart === value)
+              return point
+                ? formatBucketLabel(point.bucketStart, point.bucketEnd)
+                : toChartLabel(value)
+            }}
             tickLine={false}
           />
           <YAxis
@@ -96,12 +121,19 @@ export function RatingsMixChart({
                   `${String(value)} reviews`,
                   String(name ?? ''),
                 ]}
-                labelFormatter={(label) => formatChartDate(toChartLabel(label))}
+                labelFormatter={(label, payload) => {
+                  const point = payload?.[0]?.payload as
+                    | RatingsMixPoint
+                    | undefined
+                  return point
+                    ? formatBucketLabel(point.bucketStart, point.bucketEnd)
+                    : toChartLabel(label)
+                }}
                 payload={[]}
               />
             }
           />
-          <ChartLegend content={<ChartLegendContent />} />
+          <ChartLegend content={<RatingsLegend />} />
           <Bar
             dataKey="again"
             fill="var(--color-again)"

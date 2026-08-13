@@ -20,6 +20,7 @@ export interface LineSegmentsProps<T extends Record<string, unknown>> {
   stroke: string
   strokeWidth?: number
   type?: 'linear' | 'monotone'
+  yAxisId?: string
 }
 
 function getNumericValue(value: unknown): number | null {
@@ -125,6 +126,7 @@ export function LineSegments<T extends Record<string, unknown>>({
   stroke,
   strokeWidth = 2.5,
   type = 'monotone',
+  yAxisId,
 }: LineSegmentsProps<T>) {
   const segments = buildLineSegments(data, dataKey, maximumGap)
 
@@ -145,6 +147,7 @@ export function LineSegments<T extends Record<string, unknown>>({
         stroke="transparent"
         strokeWidth={0}
         type={type}
+        {...(yAxisId === undefined ? {} : { yAxisId })}
       />
       {segments.map((segment) => {
         const testId = `${seriesKey}-${segment.kind}-${segment.fromIndex}-${segment.toIndex}`
@@ -180,6 +183,7 @@ export function LineSegments<T extends Record<string, unknown>>({
             strokeWidth={strokeWidth}
             tooltipType="none"
             type={type}
+            {...(yAxisId === undefined ? {} : { yAxisId })}
           />
         )
       })}

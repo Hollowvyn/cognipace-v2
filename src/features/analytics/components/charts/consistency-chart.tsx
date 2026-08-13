@@ -1,98 +1,191 @@
 import type { ChartConfig } from '@/components/ui/chart'
 import {
   ChartContainer,
+  ChartLegend,
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart'
-import { CartesianGrid, Scatter, ScatterChart, XAxis, YAxis } from 'recharts'
+import { Bar, CartesianGrid, ComposedChart, XAxis, YAxis } from 'recharts'
 
-import { ChartEmptyState, chartDimension, formatPercent } from './chart-shared'
+import {
+  DASHED_LINE_EVIDENCE_LABEL,
+  ChartEmptyState,
+  chartDimension,
+  formatBucketLabel,
+  formatPercent,
+  toChartLabel,
+} from './chart-shared'
+import { LineSegments } from './line-segments'
 import type { PracticeRhythmPoint } from './types'
 
-const consistencyChartConfig = {
+const practiceRhythmChartConfig = {
+  reviewCount: {
+    label: 'Reviews',
+    color: 'var(--cp-analytics-practice-volume)',
+  },
   observedCorrectness: {
     label: 'Observed correctness',
-    color: 'var(--chart-1)',
+    color: 'var(--cp-analytics-observed)',
   },
 } satisfies ChartConfig
 
-export function ConsistencyChart({ data }: { data: PracticeRhythmPoint[] }) {
-  const points = data.filter(
-    (point): point is PracticeRhythmPoint & { observedCorrectness: number } =>
-      point.observedCorrectness !== null,
+function hasPermittedGap(data: readonly PracticeRhythmPoint[]): boolean {
+  let lastValueIndex: number | null = null
+
+  return data.some((point, index) => {
+    if (point.observedCorrectness === null) return false
+    const gap = lastValueIndex === null ? 0 : index - lastValueIndex - 1
+    lastValueIndex = index
+    return gap > 0 && gap <= 2
+  })
+}
+
+function PracticeRhythmLegend() {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      <span style={{ color: 'var(--cp-analytics-practice-volume)' }}>
+        Reviews
+      </span>
+      <span style={{ color: 'var(--cp-analytics-observed)' }}>
+        Observed correctness
+      </span>
+    </div>
+  )
+}
+
+export function PracticeRhythmChart({ data }: { data: PracticeRhythmPoint[] }) {
+  const hasReviews = data.some((point) => point.reviewCount > 0)
+  const hasCorrectness = data.some(
+    (point) => point.observedCorrectness !== null,
   )
 
-  if (points.length === 0) {
+  if (!hasReviews) {
     return (
       <ChartEmptyState
-        detail="Adaptive buckets with no eligible correctness observations are left out instead of being shown as zero."
-        message="Not enough observed correctness data for a practice rhythm comparison yet."
+        detail="Adaptive buckets with no eligible correctness observations stay blank instead of becoming zero."
+        message="Not enough review data for a practice rhythm comparison yet."
       />
     )
   }
 
   return (
-    <ChartContainer
-      accessibleDescription="Each point represents an adaptive time bucket. Reviews per bucket are shown against observed correctness; this is an association, not proof of causation."
-      accessibleName="Practice rhythm versus observed correctness chart"
-      aria-label="Practice rhythm versus observed correctness chart"
-      aria-roledescription="scatter plot"
-      className="aspect-auto h-64 min-h-[16rem]"
-      config={consistencyChartConfig}
-      initialDimension={chartDimension}
-      role="img"
-    >
-      <ScatterChart
-        accessibilityLayer
-        data={points}
-        margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
-      >
-        <CartesianGrid stroke="var(--color-border)" />
-        <XAxis
-          allowDecimals={false}
-          axisLine={false}
-          dataKey="reviewCount"
-          domain={[0, 'dataMax + 1']}
-          label={{
-            value: 'Reviews per bucket',
-            position: 'insideBottom',
-            offset: -2,
-          }}
-          tickLine={false}
-          type="number"
-          width={42}
-        />
-        <YAxis
-          axisLine={false}
-          domain={[0, 1]}
-          tickFormatter={formatPercent}
-          tickLine={false}
-          width={42}
-        />
-        <ChartTooltip
-          content={
-            <ChartTooltipContent
-              active={false}
-              formatter={(value, name) => [
-                name === 'reviewCount'
-                  ? `${String(value)} reviews in this bucket`
-                  : formatPercent(typeof value === 'number' ? value : null),
-                name === 'reviewCount'
-                  ? 'Reviews per bucket'
-                  : 'Observed correctness',
-              ]}
-              payload={[]}
+    <div className="grid min-w-0 gap-3">
+      <div data-testid="practice-correctness-lines">
+        <ChartContainer
+          accessibleDescription="Each adaptive time bucket shows review volume and, when eligible assessments exist, observed correctness. This describes an association, not proof of causation."
+          accessibleName="Practice rhythm chart"
+          aria-label="Practice rhythm chart"
+          aria-roledescription="composed bar and line chart"
+          className="aspect-auto h-72 min-h-[18rem]"
+          config={practiceRhythmChartConfig}
+          initialDimension={chartDimension}
+          role="img"
+        >
+          <ComposedChart
+            accessibilityLayer
+            data={data}
+            margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+          >
+            <CartesianGrid stroke="var(--color-border)" vertical={false} />
+            <XAxis
+              axisLine={false}
+              dataKey="bucketStart"
+              minTickGap={32}
+              tickFormatter={(value) => {
+                const point = data.find((item) => item.bucketStart === value)
+                return point
+                  ? formatBucketLabel(point.bucketStart, point.bucketEnd)
+                  : toChartLabel(value)
+              }}
+              tickLine={false}
             />
-          }
-        />
-        <Scatter
-          data={points}
-          dataKey="observedCorrectness"
-          fill="var(--color-observedCorrectness)"
-          isAnimationActive={false}
-          name="Observed correctness"
-        />
-      </ScatterChart>
-    </ChartContainer>
+            <YAxis
+              allowDecimals={false}
+              axisLine={false}
+              label={{ value: 'Reviews', angle: -90, position: 'insideLeft' }}
+              tickLine={false}
+              width={42}
+              yAxisId="reviews"
+            />
+            <YAxis
+              axisLine={false}
+              domain={[0, 1]}
+              label={{
+                value: 'Correctness',
+                angle: 90,
+                position: 'insideRight',
+              }}
+              orientation="right"
+              tickFormatter={formatPercent}
+              tickLine={false}
+              width={42}
+              yAxisId="correctness"
+            />
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  active={false}
+                  formatter={(value, name, item) => {
+                    const point = item.payload as PracticeRhythmPoint
+                    const reviews = name === 'Reviews'
+                    return [
+                      reviews
+                        ? `${String(value)} reviews`
+                        : `${formatPercent(typeof value === 'number' ? value : null)} · ${point.sampleSize} eligible review${point.sampleSize === 1 ? '' : 's'}`,
+                      reviews ? 'Reviews' : 'Observed correctness',
+                    ]
+                  }}
+                  labelFormatter={(label, payload) => {
+                    const point = payload?.[0]?.payload as
+                      | PracticeRhythmPoint
+                      | undefined
+                    return point
+                      ? formatBucketLabel(point.bucketStart, point.bucketEnd)
+                      : toChartLabel(label)
+                  }}
+                  payload={[]}
+                />
+              }
+            />
+            <ChartLegend content={<PracticeRhythmLegend />} />
+            <Bar
+              dataKey="reviewCount"
+              data-testid="practice-review-bars"
+              fill="var(--cp-analytics-practice-volume)"
+              isAnimationActive={false}
+              name="Reviews"
+              radius={[3, 3, 0, 0]}
+              yAxisId="reviews"
+            />
+            {hasCorrectness ? (
+              <LineSegments
+                data={data}
+                dataKey="observedCorrectness"
+                maximumGap={2}
+                seriesKey="Observed correctness"
+                stroke="var(--cp-analytics-observed)"
+                type="linear"
+                yAxisId="correctness"
+              />
+            ) : null}
+          </ComposedChart>
+        </ChartContainer>
+      </div>
+      <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
+        <span className="font-medium text-foreground">
+          Association, not causation.
+        </span>{' '}
+        More reviews and stronger observed correctness can move together without
+        either one proving it caused the other.
+      </p>
+      {hasPermittedGap(data) ? (
+        <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
+          {DASHED_LINE_EVIDENCE_LABEL}
+        </p>
+      ) : null}
+    </div>
   )
 }
+
+/** @deprecated Use PracticeRhythmChart. */
+export const ConsistencyChart = PracticeRhythmChart

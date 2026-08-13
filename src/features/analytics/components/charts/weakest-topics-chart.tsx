@@ -12,19 +12,31 @@ import type { TopicPoint } from './types'
 const weakestTopicsChartConfig = {
   recallQuality: {
     label: 'Recall quality',
-    color: 'var(--chart-1)',
+    color: 'var(--cp-analytics-attention)',
   },
 } satisfies ChartConfig
 
 export function WeakestTopicsChart({ data }: { data: TopicPoint[] }) {
-  const points = data.filter((point) => point.recallQuality !== null)
-  const lowSampleTopics = points.filter((point) => point.lowSample)
+  const lowSampleTopics = data.filter(
+    (point) => point.recallQuality !== null && point.lowSample,
+  )
+  const points = data
+    .filter(
+      (point): point is TopicPoint & { recallQuality: number } =>
+        point.recallQuality !== null && !point.lowSample,
+    )
+    .sort((left, right) => left.recallQuality - right.recallQuality)
+    .slice(0, 5)
 
   if (points.length === 0) {
     return (
       <ChartEmptyState
-        detail="Topics become comparable after reviewed problems have topic labels and eligible correctness observations."
-        message="No topic-level recall data yet."
+        detail={
+          lowSampleTopics.length > 0
+            ? `Low sample: ${lowSampleTopics.map((point) => `${point.topic} (${point.sampleSize})`).join(', ')}. These are not ranked as weak yet.`
+            : 'Topics become comparable after reviewed problems have topic labels and eligible correctness observations.'
+        }
+        message="No sufficiently sampled topics to rank yet."
       />
     )
   }
@@ -32,9 +44,9 @@ export function WeakestTopicsChart({ data }: { data: TopicPoint[] }) {
   return (
     <div className="grid min-w-0 gap-3">
       <ChartContainer
-        accessibleDescription="Topics are ordered from weakest to strongest by observed recall quality. Low-sample topics are labeled below the chart and use the attention color."
-        accessibleName="Weakest topics chart"
-        aria-label="Weakest topics chart"
+        accessibleDescription="The five weakest sufficiently sampled topics are ordered by observed correctness. Low-sample topics are excluded from the confident ranking and qualified below."
+        accessibleName="Where to focus chart"
+        aria-label="Where to focus chart"
         aria-roledescription="horizontal bar chart"
         className="aspect-auto h-72 min-h-[18rem]"
         config={weakestTopicsChartConfig}
@@ -66,10 +78,13 @@ export function WeakestTopicsChart({ data }: { data: TopicPoint[] }) {
             content={
               <ChartTooltipContent
                 active={false}
-                formatter={(value) => [
-                  formatPercent(typeof value === 'number' ? value : null),
-                  'Recall quality',
-                ]}
+                formatter={(value, _name, item) => {
+                  const point = item.payload as TopicPoint
+                  return [
+                    `${formatPercent(typeof value === 'number' ? value : null)} · ${point.sampleSize} eligible review${point.sampleSize === 1 ? '' : 's'}`,
+                    'Observed correctness',
+                  ]
+                }}
                 payload={[]}
               />
             }
@@ -81,22 +96,16 @@ export function WeakestTopicsChart({ data }: { data: TopicPoint[] }) {
             radius={[0, 3, 3, 0]}
           >
             {points.map((point) => (
-              <Cell
-                fill={
-                  point.lowSample
-                    ? 'var(--chart-4)'
-                    : 'var(--color-recallQuality)'
-                }
-                key={point.topic}
-              />
+              <Cell fill="var(--color-recallQuality)" key={point.topic} />
             ))}
           </Bar>
         </BarChart>
       </ChartContainer>
       <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
+        Showing the five weakest sufficiently sampled topics.
         {lowSampleTopics.length > 0
-          ? `Low sample: ${lowSampleTopics.map((point) => `${point.topic} (${point.sampleSize})`).join(', ')}. Treat these comparisons carefully.`
-          : 'Each topic has enough observations for the selected low-sample threshold.'}
+          ? ` Low-sample topics excluded: ${lowSampleTopics.map((point) => `${point.topic} (${point.sampleSize})`).join(', ')}.`
+          : ' Low-sample topics are excluded from this confident ranking.'}
       </p>
     </div>
   )

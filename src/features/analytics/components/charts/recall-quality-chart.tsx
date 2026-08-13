@@ -2,40 +2,83 @@ import type { ChartConfig } from '@/components/ui/chart'
 import {
   ChartContainer,
   ChartLegend,
-  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart'
-import { CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts'
+import {
+  CartesianGrid,
+  ComposedChart,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from 'recharts'
 
 import {
+  DASHED_LINE_EVIDENCE_LABEL,
   ChartEmptyState,
   chartDimension,
-  formatChartDate,
+  formatBucketLabel,
   formatPercent,
   toChartLabel,
 } from './chart-shared'
+import { LineSegments } from './line-segments'
 import type { RecallQualityPoint } from './types'
 
 const recallChartConfig = {
   observedRecall: {
     label: 'Observed correctness',
-    color: 'var(--chart-1)',
+    color: 'var(--cp-analytics-observed)',
   },
   predictedRecall: {
     label: 'Predicted recall',
-    color: 'var(--chart-2)',
+    color: 'var(--cp-analytics-predicted)',
   },
   targetRetention: {
     label: 'Target retention',
-    color: 'var(--chart-4)',
+    color: 'var(--cp-analytics-target)',
   },
 } satisfies ChartConfig
+
+function hasPermittedGap(
+  data: readonly RecallQualityPoint[],
+  key: 'observedRecall' | 'predictedRecall',
+): boolean {
+  let lastValueIndex: number | null = null
+
+  return data.some((point, index) => {
+    if (point[key] === null) return false
+    const gap = lastValueIndex === null ? 0 : index - lastValueIndex - 1
+    lastValueIndex = index
+    return gap > 0 && gap <= 2
+  })
+}
+
+function RecallLegend() {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      <span style={{ color: 'var(--cp-analytics-observed)' }}>
+        Observed correctness
+      </span>
+      <span style={{ color: 'var(--cp-analytics-predicted)' }}>
+        Predicted recall
+      </span>
+      <span style={{ color: 'var(--cp-analytics-target)' }}>
+        Target retention
+      </span>
+    </div>
+  )
+}
 
 export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
   const hasValues = data.some(
     (point) => point.observedRecall !== null || point.predictedRecall !== null,
   )
+  const targetRetention = data.find(
+    (point) => point.targetRetention !== null,
+  )?.targetRetention
+  const showsDashedContinuity =
+    hasPermittedGap(data, 'observedRecall') ||
+    hasPermittedGap(data, 'predictedRecall')
 
   if (!hasValues) {
     return (
@@ -49,11 +92,11 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
   return (
     <div className="grid min-w-0 gap-3">
       <ChartContainer
-        accessibleDescription="Observed correctness is based on review outcomes. Predicted recall is the FSRS estimate before each review."
+        accessibleDescription="Observed correctness is based on eligible persisted review outcomes. Predicted recall is the FSRS estimate immediately before review."
         accessibleName="Recall quality chart"
         aria-label="Recall quality chart"
         aria-roledescription="line chart"
-        className="aspect-auto h-72 min-h-[18rem]"
+        className="aspect-auto h-80 min-h-[20rem]"
         config={recallChartConfig}
         initialDimension={chartDimension}
         role="img"
@@ -67,8 +110,13 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
           <XAxis
             axisLine={false}
             dataKey="bucketStart"
-            minTickGap={24}
-            tickFormatter={formatChartDate}
+            minTickGap={32}
+            tickFormatter={(value) => {
+              const point = data.find((item) => item.bucketStart === value)
+              return point
+                ? formatBucketLabel(point.bucketStart, point.bucketEnd)
+                : toChartLabel(value)
+            }}
             tickLine={false}
           />
           <YAxis
@@ -84,65 +132,73 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
                 active={false}
                 formatter={(value, name, item) => {
                   const point = item.payload as RecallQualityPoint
-                  const isObserved = name === 'Observed correctness'
-                  const sampleSize = isObserved
+                  const observed = name === 'Observed correctness'
+                  const label = observed
+                    ? 'Observed correctness'
+                    : 'Predicted recall (FSRS estimate)'
+                  const sampleSize = observed
                     ? point.eligibleSampleSize
                     : point.reviewCount
-                  const label = isObserved
-                    ? 'Observed correctness'
-                    : name === 'Predicted recall'
-                      ? 'Predicted recall (FSRS estimate)'
-                      : String(name ?? '')
 
                   return [
-                    `${formatPercent(typeof value === 'number' ? value : null)} · n=${sampleSize}`,
+                    `${formatPercent(typeof value === 'number' ? value : null)} · ${sampleSize} eligible review${sampleSize === 1 ? '' : 's'}`,
                     label,
                   ]
                 }}
-                labelFormatter={(label) => formatChartDate(toChartLabel(label))}
+                labelFormatter={(label, payload) => {
+                  const point = payload?.[0]?.payload as
+                    | RecallQualityPoint
+                    | undefined
+                  return point
+                    ? formatBucketLabel(point.bucketStart, point.bucketEnd)
+                    : toChartLabel(label)
+                }}
                 payload={[]}
               />
             }
           />
-          <ChartLegend content={<ChartLegendContent />} />
-          <Line
-            activeDot={{ r: 5 }}
-            connectNulls
+          <ChartLegend content={<RecallLegend />} />
+          {targetRetention === undefined ? null : (
+            <ReferenceLine
+              ifOverflow="extendDomain"
+              label={{
+                fill: 'var(--cp-analytics-target)',
+                fontSize: 11,
+                position: 'insideTopRight',
+                value: 'Target retention',
+              }}
+              stroke="var(--cp-analytics-target)"
+              strokeDasharray="5 5"
+              y={targetRetention}
+            />
+          )}
+          <LineSegments
+            data={data}
             dataKey="observedRecall"
-            dot={{ r: 3, strokeWidth: 0 }}
-            isAnimationActive={false}
-            name="Observed correctness"
-            stroke="var(--color-observedRecall)"
-            strokeWidth={2.5}
-            type="monotone"
+            maximumGap={2}
+            seriesKey="Observed correctness"
+            stroke="var(--cp-analytics-observed)"
+            type="linear"
           />
-          <Line
-            activeDot={{ r: 5 }}
-            connectNulls
+          <LineSegments
+            data={data}
             dataKey="predictedRecall"
-            dot={{ r: 3, strokeWidth: 0 }}
-            isAnimationActive={false}
-            name="Predicted recall"
-            stroke="var(--color-predictedRecall)"
-            strokeWidth={2.5}
-            type="monotone"
-          />
-          <Line
-            dataKey="targetRetention"
-            dot={false}
-            isAnimationActive={false}
-            name="Target retention"
-            stroke="var(--color-targetRetention)"
-            strokeDasharray="5 5"
-            strokeWidth={1.5}
-            type="monotone"
+            maximumGap={2}
+            seriesKey="Predicted recall"
+            stroke="var(--cp-analytics-predicted)"
+            type="linear"
           />
         </ComposedChart>
       </ChartContainer>
+      {showsDashedContinuity ? (
+        <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
+          {DASHED_LINE_EVIDENCE_LABEL}
+        </p>
+      ) : null}
       <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
-        Predicted recall is an FSRS estimate immediately before each review;
-        each time bucket's sample sizes distinguish review volume from eligible
-        observed correctness.
+        Predicted recall is an FSRS estimate immediately before each review, not
+        an observed result or guarantee. Tooltips show the eligible review
+        sample for every presentation bucket.
       </p>
     </div>
   )

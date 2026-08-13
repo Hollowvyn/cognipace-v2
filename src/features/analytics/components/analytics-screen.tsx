@@ -14,9 +14,9 @@ import { AnalyticsChartPanel } from './analytics-chart-panel'
 import { AnalyticsMemoryProfile } from './analytics-memory-profile'
 import { AnalyticsMetricRow } from './analytics-metric-row'
 import {
-  ConsistencyChart,
   MemoryStrengthChart,
   OverdueBacklogChart,
+  PracticeRhythmChart,
   RatingsMixChart,
   RecallQualityChart,
   RetentionHealthChart,
@@ -102,7 +102,7 @@ function AnalyticsChartHierarchy({
           id="practice-rhythm"
           title="Practice rhythm vs observed correctness"
         >
-          <ConsistencyChart data={data.practiceRhythm} />
+          <PracticeRhythmChart data={data.practiceRhythm} />
         </AnalyticsChartPanel>
         <AnalyticsChartPanel
           description={metricDefinitions.ratingsMix.explanation}

@@ -41,6 +41,15 @@ export function formatChartDate(value: string): string {
   return dateLabelFormatter.format(new Date(`${value}T00:00:00.000Z`))
 }
 
+export function formatBucketLabel(
+  bucketStart: string,
+  bucketEnd: string,
+): string {
+  if (bucketStart === bucketEnd) return formatChartDate(bucketStart)
+
+  return `${formatChartDate(bucketStart)}–${formatChartDate(bucketEnd)}`
+}
+
 export function toChartLabel(value: unknown): string {
   return typeof value === 'string' || typeof value === 'number'
     ? String(value)

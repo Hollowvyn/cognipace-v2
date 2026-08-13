@@ -1,10 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import {
-  ConsistencyChart,
   MemoryStrengthChart,
   OverdueBacklogChart,
+  PracticeRhythmChart,
   RatingsMixChart,
   RecallQualityChart,
   RetentionHealthChart,
@@ -12,6 +12,7 @@ import {
   WeakestTopicsChart,
 } from './index'
 import { buildOverdueBacklogChartSeries } from './overdue-backlog-chart'
+import { ratingsMixStackOffset } from './ratings-mix-chart'
 import type {
   OverdueBacklogPoint,
   PracticeRhythmPoint,
@@ -36,6 +37,15 @@ const recallQuality: RecallQualityPoint[] = [
   {
     bucketStart: '2026-08-02',
     bucketEnd: '2026-08-02',
+    observedRecall: null,
+    predictedRecall: 0.84,
+    targetRetention: 0.9,
+    reviewCount: 14,
+    eligibleSampleSize: 14,
+  },
+  {
+    bucketStart: '2026-08-03',
+    bucketEnd: '2026-08-03',
     observedRecall: 0.8,
     predictedRecall: 0.84,
     targetRetention: 0.9,
@@ -82,6 +92,8 @@ const hardAgain = {
 const topics: TopicPoint[] = [
   { topic: 'Graphs', recallQuality: 0.61, sampleSize: 14, lowSample: false },
   { topic: 'Trees', recallQuality: 0.74, sampleSize: 18, lowSample: false },
+  { topic: 'Arrays', recallQuality: 0.79, sampleSize: 16, lowSample: false },
+  { topic: 'Design', recallQuality: 0.63, sampleSize: 3, lowSample: true },
 ]
 
 const stability: StabilityPoint[] = [
@@ -103,7 +115,7 @@ const overdue: OverdueBacklogPoint[] = [
   {
     bucketStart: '2026-08-02',
     bucketEnd: '2026-08-02',
-    overdueCount: 4,
+    overdueCount: 7,
     historyAvailable: true,
   },
 ]
@@ -143,7 +155,7 @@ describe('analytics chart components', () => {
     render(
       <div>
         <RecallQualityChart data={recallQuality} />
-        <ConsistencyChart data={practiceRhythm} />
+        <PracticeRhythmChart data={practiceRhythm} />
         <RatingsMixChart data={ratingsMix} summary={hardAgain} />
         <WeakestTopicsChart data={topics} />
         <MemoryStrengthChart data={stability} />
@@ -161,12 +173,12 @@ describe('analytics chart components', () => {
     ).toBeVisible()
     expect(
       screen.getByRole('img', {
-        name: 'Practice rhythm versus observed correctness chart',
+        name: 'Practice rhythm chart',
       }),
     ).toBeVisible()
     expect(screen.getByRole('img', { name: 'Ratings mix chart' })).toBeVisible()
     expect(
-      screen.getByRole('img', { name: 'Weakest topics chart' }),
+      screen.getByRole('img', { name: 'Where to focus chart' }),
     ).toBeVisible()
     expect(
       screen.getByRole('img', { name: 'Memory strength chart' }),
@@ -180,27 +192,64 @@ describe('analytics chart components', () => {
     expect(
       screen.getByRole('img', { name: 'Retention health chart' }),
     ).toBeVisible()
-    expect(document.querySelectorAll('svg')).toHaveLength(8)
+    expect(document.querySelectorAll('svg')).toHaveLength(10)
   })
 
-  it('surfaces the Hard + Again share and overdue watch zone in plain language', () => {
+  it('tells the adaptive historical story with explicit, semantic chart marks', () => {
     render(
       <div>
+        <RecallQualityChart data={recallQuality} />
+        <PracticeRhythmChart data={practiceRhythm} />
         <RatingsMixChart data={ratingsMix} summary={hardAgain} />
+        <WeakestTopicsChart data={topics} />
+        <MemoryStrengthChart data={stability} />
         <OverdueBacklogChart
           data={overdue}
           historyAvailableFrom="2026-08-01T00:00:00.000Z"
         />
+        <UpcomingReviewLoadChart data={upcoming} />
       </div>,
     )
 
+    expect(
+      within(
+        screen.getByRole('img', { name: 'Practice rhythm chart' }),
+      ).getByText('Observed correctness'),
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('practice-review-bars')).toBeInTheDocument()
+    expect(screen.getByTestId('practice-correctness-lines')).toBeInTheDocument()
+    expect(screen.getByText('Association, not causation.')).toBeVisible()
+    expect(screen.getByText('Again')).toHaveStyle({
+      color: 'var(--cp-analytics-again)',
+    })
+    expect(screen.getByText('Hard')).toHaveStyle({
+      color: 'var(--cp-analytics-hard)',
+    })
+    expect(screen.getByText('Good')).toHaveStyle({
+      color: 'var(--cp-analytics-good)',
+    })
+    expect(screen.getByText('Easy')).toHaveStyle({
+      color: 'var(--cp-analytics-easy)',
+    })
+    expect(ratingsMixStackOffset).toBe('expand')
+    expect(
+      screen.getByText(/^Showing the five weakest sufficiently sampled topics/),
+    ).toBeVisible()
+    expect(screen.getByText(/Dashed line crosses a period/)).toBeVisible()
+    expect(
+      screen.getByText('Target retention', { selector: 'span' }),
+    ).toBeVisible()
+    expect(screen.getByText('Watch zone · 5')).toBeVisible()
+    expect(screen.getAllByTestId('backlog-healthy-range')).not.toHaveLength(0)
+    expect(screen.getAllByTestId('backlog-attention-range')).not.toHaveLength(0)
+    expect(screen.getByText(/Next 14 days/)).toBeVisible()
     expect(screen.getByText(/Hard \+ Again this period:/)).toHaveTextContent(
       '25%',
     )
     expect(screen.getByText(/Hard \+ Again this period:/)).toHaveTextContent(
       'down 9 points',
     )
-    expect(screen.getByText(/5-problem watch zone/)).toBeVisible()
+    expect(screen.getByText(/threshold status/i)).toBeVisible()
   })
 
   it('keeps unknown overdue buckets as nullable chart gaps', () => {
@@ -222,12 +271,12 @@ describe('analytics chart components', () => {
     })
   })
 
-  it('uses adaptive-bucket copy for temporary practice rhythm chart data', () => {
-    render(<ConsistencyChart data={practiceRhythm} />)
+  it('uses adaptive buckets, not weekly practice days, for practice rhythm', () => {
+    render(<PracticeRhythmChart data={practiceRhythm} />)
 
-    expect(screen.getByText('Reviews per bucket')).toBeVisible()
+    expect(screen.getByText('Reviews', { selector: 'span' })).toBeVisible()
     expect(document.querySelector('svg desc')).toHaveTextContent(
-      'Each point represents an adaptive time bucket.',
+      'Each adaptive time bucket',
     )
   })
 
@@ -251,7 +300,9 @@ describe('analytics chart components', () => {
     expect(
       screen.getByText(/Predicted recall is an FSRS estimate/),
     ).toBeVisible()
-    expect(screen.getByText(/Low sample: Graphs \(2\)/)).toBeVisible()
+    expect(
+      screen.getByText('No sufficiently sampled topics to rank yet.'),
+    ).toBeVisible()
   })
 
   it('uses bucket-aware copy for adaptive historical charts', () => {
@@ -263,7 +314,9 @@ describe('analytics chart components', () => {
       </div>,
     )
 
-    expect(screen.getByText(/each time bucket's sample sizes/i)).toBeVisible()
+    expect(
+      screen.getByText(/Tooltips show the eligible review sample/i),
+    ).toBeVisible()
     const descriptions = Array.from(document.querySelectorAll('svg desc'))
       .map((description) => description.textContent)
       .join(' ')
@@ -276,7 +329,7 @@ describe('analytics chart components', () => {
     render(
       <div>
         <RecallQualityChart data={[]} />
-        <ConsistencyChart data={[]} />
+        <PracticeRhythmChart data={[]} />
         <RatingsMixChart
           data={[]}
           summary={{
@@ -303,13 +356,15 @@ describe('analytics chart components', () => {
     ).toBeVisible()
     expect(
       screen.getByText(
-        'Not enough observed correctness data for a practice rhythm comparison yet.',
+        'Not enough review data for a practice rhythm comparison yet.',
       ),
     ).toBeVisible()
     expect(
       screen.getByText('No review ratings in this period yet.'),
     ).toBeVisible()
-    expect(screen.getByText('No topic-level recall data yet.')).toBeVisible()
+    expect(
+      screen.getByText('No sufficiently sampled topics to rank yet.'),
+    ).toBeVisible()
     expect(
       screen.getByText('No memory strength trend available yet.'),
     ).toBeVisible()

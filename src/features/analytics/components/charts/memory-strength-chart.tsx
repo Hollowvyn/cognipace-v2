@@ -4,25 +4,41 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart'
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, LineChart, XAxis, YAxis } from 'recharts'
 
-import { ChartEmptyState, chartDimension, formatDays } from './chart-shared'
+import {
+  DASHED_LINE_EVIDENCE_LABEL,
+  ChartEmptyState,
+  chartDimension,
+  formatBucketLabel,
+  formatDays,
+  toChartLabel,
+} from './chart-shared'
+import { LineSegments } from './line-segments'
 import type { StabilityPoint } from './types'
 
 const memoryStrengthChartConfig = {
   medianStabilityDays: {
     label: 'Median stability',
-    color: 'var(--chart-1)',
+    color: 'var(--cp-analytics-observed)',
   },
 } satisfies ChartConfig
 
-export function MemoryStrengthChart({ data }: { data: StabilityPoint[] }) {
-  const points = data.filter(
-    (point): point is StabilityPoint & { medianStabilityDays: number } =>
-      point.medianStabilityDays !== null,
-  )
+function hasPermittedGap(data: readonly StabilityPoint[]): boolean {
+  let lastValueIndex: number | null = null
 
-  if (points.length === 0) {
+  return data.some((point, index) => {
+    if (point.medianStabilityDays === null) return false
+    const gap = lastValueIndex === null ? 0 : index - lastValueIndex - 1
+    lastValueIndex = index
+    return gap > 0 && gap <= 2
+  })
+}
+
+export function MemoryStrengthChart({ data }: { data: StabilityPoint[] }) {
+  const hasValues = data.some((point) => point.medianStabilityDays !== null)
+
+  if (!hasValues) {
     return (
       <ChartEmptyState
         detail="FSRS stability becomes useful here after review logs provide a reliable interval history."
@@ -32,66 +48,83 @@ export function MemoryStrengthChart({ data }: { data: StabilityPoint[] }) {
   }
 
   return (
-    <ChartContainer
-      accessibleDescription="Median FSRS stability in each selected time bucket. Higher stability generally means the problem can go longer between reviews."
-      accessibleName="Memory strength chart"
-      aria-label="Memory strength chart"
-      aria-roledescription="area chart"
-      className="aspect-auto h-64 min-h-[16rem]"
-      config={memoryStrengthChartConfig}
-      initialDimension={chartDimension}
-      role="img"
-    >
-      <AreaChart
-        accessibilityLayer
-        data={points}
-        margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+    <div className="grid min-w-0 gap-3">
+      <ChartContainer
+        accessibleDescription="Median FSRS stability in each selected adaptive presentation bucket. Higher stability generally means the problem can go longer between reviews."
+        accessibleName="Memory strength chart"
+        aria-label="Memory strength chart"
+        aria-roledescription="line chart"
+        className="aspect-auto h-64 min-h-[16rem]"
+        config={memoryStrengthChartConfig}
+        initialDimension={chartDimension}
+        role="img"
       >
-        <defs>
-          <linearGradient id="memory-strength-fill" x1="0" x2="0" y1="0" y2="1">
-            <stop
-              offset="5%"
-              stopColor="var(--color-medianStabilityDays)"
-              stopOpacity={0.3}
-            />
-            <stop
-              offset="95%"
-              stopColor="var(--color-medianStabilityDays)"
-              stopOpacity={0}
-            />
-          </linearGradient>
-        </defs>
-        <CartesianGrid stroke="var(--color-border)" vertical={false} />
-        <XAxis axisLine={false} dataKey="bucketStart" tickLine={false} />
-        <YAxis
-          axisLine={false}
-          tickFormatter={formatDays}
-          tickLine={false}
-          width={42}
-        />
-        <ChartTooltip
-          content={
-            <ChartTooltipContent
-              active={false}
-              formatter={(value) => [
-                formatDays(typeof value === 'number' ? value : null),
-                'Median stability',
-              ]}
-              payload={[]}
-            />
-          }
-        />
-        <Area
-          dataKey="medianStabilityDays"
-          fill="url(#memory-strength-fill)"
-          fillOpacity={1}
-          isAnimationActive={false}
-          name="Median stability"
-          stroke="var(--color-medianStabilityDays)"
-          strokeWidth={2.5}
-          type="monotone"
-        />
-      </AreaChart>
-    </ChartContainer>
+        <LineChart
+          accessibilityLayer
+          data={data}
+          margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+        >
+          <CartesianGrid stroke="var(--color-border)" vertical={false} />
+          <XAxis
+            axisLine={false}
+            dataKey="bucketStart"
+            minTickGap={32}
+            tickFormatter={(value) => {
+              const point = data.find((item) => item.bucketStart === value)
+              return point
+                ? formatBucketLabel(point.bucketStart, point.bucketEnd)
+                : toChartLabel(value)
+            }}
+            tickLine={false}
+          />
+          <YAxis
+            axisLine={false}
+            tickFormatter={formatDays}
+            tickLine={false}
+            width={42}
+          />
+          <ChartTooltip
+            content={
+              <ChartTooltipContent
+                active={false}
+                formatter={(value, _name, item) => {
+                  const point = item.payload as StabilityPoint
+                  return [
+                    `${formatDays(typeof value === 'number' ? value : null)} · ${point.sampleSize} stability sample${point.sampleSize === 1 ? '' : 's'}`,
+                    'Median stability',
+                  ]
+                }}
+                labelFormatter={(label, payload) => {
+                  const point = payload?.[0]?.payload as
+                    | StabilityPoint
+                    | undefined
+                  return point
+                    ? formatBucketLabel(point.bucketStart, point.bucketEnd)
+                    : toChartLabel(label)
+                }}
+                payload={[]}
+              />
+            }
+          />
+          <LineSegments
+            data={data}
+            dataKey="medianStabilityDays"
+            maximumGap={2}
+            seriesKey="Median stability"
+            stroke="var(--cp-analytics-observed)"
+            type="linear"
+          />
+        </LineChart>
+      </ChartContainer>
+      {hasPermittedGap(data) ? (
+        <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
+          {DASHED_LINE_EVIDENCE_LABEL}
+        </p>
+      ) : null}
+      <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
+        Longer stability generally means less frequent review, not a guarantee
+        of recall.
+      </p>
+    </div>
   )
 }
