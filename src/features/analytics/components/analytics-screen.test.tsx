@@ -14,6 +14,7 @@ vi.mock('@/extension/messaging', () => ({
 
 function baseAnalyticsSummary(): SerializedAnalyticsSummary {
   return {
+    chartDataStatus: 'unavailable',
     range: 30,
     periodStart: '2025-12-16T00:00:00.000Z',
     periodEnd: '2026-01-15T12:00:00.000Z',

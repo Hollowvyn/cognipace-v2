@@ -327,12 +327,15 @@ describe('background handler registration', () => {
     vi.clearAllMocks()
     backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
     backgroundMocks.getAnalyticsSummary.mockResolvedValue({
+      range: 30,
+      periodStart: '2025-12-16T12:00:00.000Z',
+      periodEnd: '2026-01-15T12:00:00.000Z',
       generatedAt: '2026-01-15T12:00:00.000Z',
       reviewDays: 3,
       totalReviews: 12,
       currentStreak: 2,
-      retentionProxy: 0.75,
-      retentionProxyLabel: '75%',
+      observedRatingQuality: 0.75,
+      observedRatingQualityLabel: '75%',
       retentionSampleSize: 12,
       lowSample: false,
       dueForecast14Days: Array.from({ length: 14 }, (_, index) => ({
@@ -567,6 +570,18 @@ describe('background handler registration', () => {
         averageRetrievability: 0.8,
       },
     })
+  })
+
+  it('passes range without an undefined now option when at is absent', async () => {
+    await sendRuntimeMessage('analytics.getSummary', {
+      surface: 'dashboard',
+      range: 14,
+    })
+
+    expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      { range: 14 },
+    )
   })
 
   it('registers dev smoke handling with dashboard policy and response parsing', async () => {

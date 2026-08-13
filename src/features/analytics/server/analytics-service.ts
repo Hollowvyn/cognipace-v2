@@ -21,7 +21,7 @@ import {
 } from '../data/analytics-repository'
 
 import {
-  buildRetentionProxy,
+  buildObservedRatingQuality,
   buildDueForecast,
   buildWeakProblems,
   buildMemoryProfile,
@@ -40,7 +40,9 @@ export async function getAnalyticsSummary(
     nowOrOptions instanceof Date
       ? nowOrOptions
       : (nowOrOptions.now ?? new Date())
-  const thirtyDaysAgo = subtractDays(now, 30)
+  const range = nowOrOptions instanceof Date ? 30 : nowOrOptions.range
+  const periodStart = subtractDays(now, range)
+  const periodEnd = now
   const fourteenDaysLater = addDays(now, 14)
 
   // Step 1: run all reads in parallel
@@ -54,7 +56,7 @@ export async function getAnalyticsSummary(
     scatterCandidates,
   ] = await Promise.all([
     getReviewDayStats(db),
-    getRecentRatings(db, thirtyDaysAgo),
+    getRecentRatings(db, periodStart),
     getUpcomingCards(db, fourteenDaysLater),
     getWeakProblemCandidates(db),
     getMemoryProfileCards(db),
@@ -90,7 +92,11 @@ export async function getAnalyticsSummary(
   })
 
   // Step 4: build domain objects
-  const retention = buildRetentionProxy(recentRatings, now)
+  const observedRatingQuality = buildObservedRatingQuality(
+    recentRatings,
+    now,
+    range,
+  )
   const forecast = buildDueForecast(upcomingCards, now)
   const weakProblems = buildWeakProblems(enrichedCandidates)
   const memoryProfile = buildMemoryProfileInput(memoryProfileCards, now)
@@ -155,7 +161,10 @@ export async function getAnalyticsSummary(
     reviewDays: dayStats.reviewDays,
     totalReviews: dayStats.totalReviews,
     currentStreak: practiceProgress.currentStreak,
-    retention,
+    observedRatingQuality,
+    range,
+    periodStart,
+    periodEnd,
     forecast,
     weakProblems,
     memoryProfile,

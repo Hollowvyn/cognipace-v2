@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import type { RetentionProxyResult, ForecastEntry, RetentionScatterEntry, ReferenceCurvePoint } from './summary'
+import type { ObservedRatingQualityResult, ForecastEntry, RetentionScatterEntry, ReferenceCurvePoint } from './summary'
 import {
-  buildRetentionProxy,
+  buildObservedRatingQuality,
   buildDueForecast,
   buildWeakProblems,
   buildAnalyticsSummary,
@@ -14,14 +14,14 @@ const now = new Date(2026, 0, 15, 12, 0, 0)
 const recentDate = new Date(2026, 0, 14, 12, 0, 0)
 const oldDate = new Date(2025, 11, 14, 12, 0, 0) // > 30 days before now
 
-describe('buildRetentionProxy', () => {
+describe('buildObservedRatingQuality', () => {
   it('returns lowSample when fewer than 10 ratings in the 30-day window', () => {
     const attempts = Array.from({ length: 9 }, () => ({
       rating: 'good',
       reviewedAt: recentDate,
     }))
 
-    const result = buildRetentionProxy(attempts, now)
+    const result = buildObservedRatingQuality(attempts, now, 30)
 
     expect(result.lowSample).toBe(true)
     expect(result.value).toBe(0)
@@ -41,7 +41,7 @@ describe('buildRetentionProxy', () => {
       })),
     ]
 
-    const result = buildRetentionProxy(attempts, now)
+    const result = buildObservedRatingQuality(attempts, now, 30)
 
     expect(result.lowSample).toBe(false)
     expect(result.value).toBeCloseTo(0.7)
@@ -61,7 +61,7 @@ describe('buildRetentionProxy', () => {
       })),
     ]
 
-    const result = buildRetentionProxy(attempts, now)
+    const result = buildObservedRatingQuality(attempts, now, 30)
 
     expect(result.value).toBeCloseTo(0.8)
     expect(result.label).toBe('80%')
@@ -73,7 +73,7 @@ describe('buildRetentionProxy', () => {
       reviewedAt: oldDate,
     }))
 
-    const result = buildRetentionProxy(attempts, now)
+    const result = buildObservedRatingQuality(attempts, now, 30)
 
     expect(result.lowSample).toBe(true)
     expect(result.sampleSize).toBe(0)
@@ -85,9 +85,22 @@ describe('buildRetentionProxy', () => {
       reviewedAt: recentDate,
     }))
 
-    const result = buildRetentionProxy(attempts, now)
+    const result = buildObservedRatingQuality(attempts, now, 30)
 
     expect(result.lowSample).toBe(false)
+  })
+
+  it.each([14, 30, 90] as const)('uses the selected %s-day boundary', (range) => {
+    const inside = new Date(now.getTime() - range * 24 * 60 * 60 * 1000)
+    const outside = new Date(now.getTime() - (range + 1) * 24 * 60 * 60 * 1000)
+    expect(
+      buildObservedRatingQuality(
+        Array.from({ length: 10 }, () => ({ rating: 'good', reviewedAt: inside })),
+        now,
+        range,
+      ).sampleSize,
+    ).toBe(10)
+    expect(buildObservedRatingQuality([{ rating: 'good', reviewedAt: outside }], now, range).sampleSize).toBe(0)
   })
 })
 
@@ -260,7 +273,7 @@ describe('buildMemoryProfile', () => {
 describe('buildAnalyticsSummary', () => {
   it('assembles all fields into the summary shape', () => {
     const generatedAt = new Date(2026, 0, 15, 12, 0, 0)
-    const retention: RetentionProxyResult = {
+    const retention: ObservedRatingQualityResult = {
       value: 0.75,
       label: '75%',
       sampleSize: 20,
@@ -287,7 +300,10 @@ describe('buildAnalyticsSummary', () => {
       reviewDays: 10,
       totalReviews: 42,
       currentStreak: 3,
-      retention,
+      observedRatingQuality: retention,
+      range: 30,
+      periodStart: new Date(2025, 11, 16, 12),
+      periodEnd: generatedAt,
       forecast,
       weakProblems: [],
       memoryProfile,
@@ -300,8 +316,8 @@ describe('buildAnalyticsSummary', () => {
     expect(result.reviewDays).toBe(10)
     expect(result.totalReviews).toBe(42)
     expect(result.currentStreak).toBe(3)
-    expect(result.retentionProxy).toBe(0.75)
-    expect(result.retentionProxyLabel).toBe('75%')
+    expect(result.observedRatingQuality).toBe(0.75)
+    expect(result.observedRatingQualityLabel).toBe('75%')
     expect(result.retentionSampleSize).toBe(20)
     expect(result.lowSample).toBe(false)
     expect(result.dueForecast14Days).toBe(forecast)

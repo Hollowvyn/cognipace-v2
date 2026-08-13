@@ -8,6 +8,22 @@ import { fsrsCards, problemPractice } from '@/platform/db/schema'
 import { getAnalyticsSummary } from './analytics-service'
 
 describe('getAnalyticsSummary memory profile', () => {
+  it.each([14, 30, 90] as const)(
+    'retains the selected %s-day range in summary metadata',
+    async (range) => {
+      const handle = await createTestDb()
+      const now = new Date('2026-01-15T12:00:00.000Z')
+
+      const summary = await getAnalyticsSummary(handle.db, { range, now })
+
+      expect(summary.range).toBe(range)
+      expect(summary.periodEnd).toBe(now.toISOString())
+      expect(summary.periodStart).toBe(
+        new Date(now.getTime() - range * 24 * 60 * 60 * 1000).toISOString(),
+      )
+    },
+  )
+
   it('counts real tracked cards instead of weak-problem candidates', async () => {
     const handle = await createTestDb()
     const now = new Date('2026-01-15T12:00:00.000Z')

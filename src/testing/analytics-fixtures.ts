@@ -4,6 +4,7 @@ export function createSerializedAnalyticsSummary(
   overrides?: Partial<SerializedAnalyticsSummary>,
 ): SerializedAnalyticsSummary {
   return {
+    chartDataStatus: 'unavailable',
     range: 30,
     periodStart: '2026-04-30T00:00:00.000Z',
     periodEnd: '2026-05-30T00:00:00.000Z',

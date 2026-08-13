@@ -892,17 +892,12 @@ export function registerBackgroundHandlers() {
 
       return analyticsSummarySchema.parse({
         ...summary,
-        range: request.range,
-        periodStart: new Date(
-          new Date(summary.generatedAt).getTime() -
-            request.range * 24 * 60 * 60 * 1000,
-        ).toISOString(),
-        periodEnd: summary.generatedAt,
         observedRecallQuality: {
-          value: summary.retentionProxy,
+          value: summary.observedRatingQuality,
           sampleSize: summary.retentionSampleSize,
           lowSample: summary.lowSample,
         },
+        chartDataStatus: 'unavailable',
         predictedRecall: { value: null, sampleSize: 0, lowSample: true },
         recallQuality: [],
         consistency: [],

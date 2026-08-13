@@ -148,6 +148,7 @@ export const fragileKnowledgeSchema = z.object({
 })
 
 export const analyticsSummarySchema = z.object({
+  chartDataStatus: z.enum(['unavailable', 'ready']),
   range: analyticsRangeSchema,
   periodStart: z.iso.datetime(),
   periodEnd: z.iso.datetime(),

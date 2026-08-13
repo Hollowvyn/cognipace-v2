@@ -1,4 +1,4 @@
-export interface RetentionProxyResult {
+export interface ObservedRatingQualityResult {
   value: number
   label: string
   sampleSize: number
@@ -62,7 +62,10 @@ export interface AnalyticsSummaryInput {
   reviewDays: number
   totalReviews: number
   currentStreak: number
-  retention: RetentionProxyResult
+  observedRatingQuality: ObservedRatingQualityResult
+  range: 14 | 30 | 90
+  periodStart: Date
+  periodEnd: Date
   forecast: ForecastEntry[]
   weakProblems: WeakProblem[]
   memoryProfile: MemoryProfile
@@ -76,8 +79,11 @@ export interface AnalyticsSummary {
   reviewDays: number
   totalReviews: number
   currentStreak: number
-  retentionProxy: number
-  retentionProxyLabel: string
+  observedRatingQuality: number
+  observedRatingQualityLabel: string
+  range: 14 | 30 | 90
+  periodStart: string
+  periodEnd: string
   retentionSampleSize: number
   lowSample: boolean
   dueForecast14Days: ForecastEntry[]
@@ -88,11 +94,12 @@ export interface AnalyticsSummary {
   retentionScatterCurve: ReferenceCurvePoint[]
 }
 
-export function buildRetentionProxy(
+export function buildObservedRatingQuality(
   attempts: Array<{ rating: string; reviewedAt: Date }>,
   now: Date,
-): RetentionProxyResult {
-  const since = subtractDays(now, 30)
+  range: 14 | 30 | 90,
+): ObservedRatingQualityResult {
+  const since = subtractDays(now, range)
   const recent = attempts.filter((a) => a.reviewedAt >= since)
   const sampleSize = recent.length
 
@@ -186,10 +193,13 @@ export function buildAnalyticsSummary(
     reviewDays: input.reviewDays,
     totalReviews: input.totalReviews,
     currentStreak: input.currentStreak,
-    retentionProxy: input.retention.value,
-    retentionProxyLabel: input.retention.label,
-    retentionSampleSize: input.retention.sampleSize,
-    lowSample: input.retention.lowSample,
+    observedRatingQuality: input.observedRatingQuality.value,
+    observedRatingQualityLabel: input.observedRatingQuality.label,
+    retentionSampleSize: input.observedRatingQuality.sampleSize,
+    lowSample: input.observedRatingQuality.lowSample,
+    range: input.range,
+    periodStart: input.periodStart.toISOString(),
+    periodEnd: input.periodEnd.toISOString(),
     dueForecast14Days: input.forecast,
     weakProblems: input.weakProblems,
     memoryProfile: input.memoryProfile,
