@@ -189,6 +189,62 @@ describe('analyticsSummarySchema', () => {
     expect(analyticsSummarySchema.safeParse(validSummary).success).toBe(true)
   })
 
+  it('serializes an unready historical selection with current and forecast analytics', () => {
+    const parsed = analyticsSummarySchema.parse({
+      ...validSummary,
+      chartDataStatus: 'unready',
+      range: 90,
+      historicalReadiness: {
+        ...validSummary.historicalReadiness,
+        requested: {
+          ...readiness,
+          requestedDays: 90,
+          ready: false,
+        },
+      },
+      upcomingLoad: [
+        {
+          date: '2026-01-15',
+          dueCount: 3,
+          overdueCount: 1,
+          today: true,
+        },
+      ],
+      retentionHealth: [
+        {
+          slug: 'two-sum',
+          title: 'Two Sum',
+          retrievability: 0.82,
+          targetRetention: 0.9,
+          daysSinceReview: 2,
+          stabilityDays: 5,
+          difficulty: 5,
+          lapseCount: 0,
+          overdueDays: 0,
+        },
+      ],
+      fragileKnowledge: [
+        {
+          slug: 'add-binary',
+          title: 'Add Binary',
+          retrievability: 0.74,
+          stabilityDays: 2,
+          difficulty: 7,
+          lapseCount: 1,
+          overdueDays: 1,
+          topics: ['Bit manipulation'],
+        },
+      ],
+    })
+
+    expect(parsed.chartDataStatus).toBe('unready')
+    expect(parsed.range).toBe(90)
+    expect(parsed.historicalReadiness.requested.ready).toBe(false)
+    expect(parsed.upcomingLoad).toHaveLength(1)
+    expect(parsed.retentionHealth).toHaveLength(1)
+    expect(parsed.fragileKnowledge).toHaveLength(1)
+  })
+
   it('rejects a forecast with fewer than 14 entries', () => {
     const result = analyticsSummarySchema.safeParse({
       ...validSummary,

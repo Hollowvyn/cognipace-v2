@@ -25,7 +25,7 @@ export function ConsistencyChart({ data }: { data: PracticeRhythmPoint[] }) {
   if (points.length === 0) {
     return (
       <ChartEmptyState
-        detail="Weeks with no eligible correctness observations are left out instead of being shown as zero."
+        detail="Adaptive buckets with no eligible correctness observations are left out instead of being shown as zero."
         message="Not enough observed correctness data for a practice rhythm comparison yet."
       />
     )
@@ -33,9 +33,9 @@ export function ConsistencyChart({ data }: { data: PracticeRhythmPoint[] }) {
 
   return (
     <ChartContainer
-      accessibleDescription="Each point represents a week. More practice days are shown against observed correctness; this is an association, not proof of causation."
-      accessibleName="Consistency versus observed correctness chart"
-      aria-label="Consistency versus observed correctness chart"
+      accessibleDescription="Each point represents an adaptive time bucket. Reviews per bucket are shown against observed correctness; this is an association, not proof of causation."
+      accessibleName="Practice rhythm versus observed correctness chart"
+      aria-label="Practice rhythm versus observed correctness chart"
       aria-roledescription="scatter plot"
       className="aspect-auto h-64 min-h-[16rem]"
       config={consistencyChartConfig}
@@ -54,7 +54,7 @@ export function ConsistencyChart({ data }: { data: PracticeRhythmPoint[] }) {
           dataKey="reviewCount"
           domain={[0, 'dataMax + 1']}
           label={{
-            value: 'Practice days / week',
+            value: 'Reviews per bucket',
             position: 'insideBottom',
             offset: -2,
           }}
@@ -75,10 +75,10 @@ export function ConsistencyChart({ data }: { data: PracticeRhythmPoint[] }) {
               active={false}
               formatter={(value, name) => [
                 name === 'reviewCount'
-                  ? `${String(value)} reviews`
+                  ? `${String(value)} reviews in this bucket`
                   : formatPercent(typeof value === 'number' ? value : null),
                 name === 'reviewCount'
-                  ? 'Review count'
+                  ? 'Reviews per bucket'
                   : 'Observed correctness',
               ]}
               payload={[]}

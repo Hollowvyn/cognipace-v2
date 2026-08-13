@@ -42,7 +42,7 @@ describe('getAnalyticsSummary memory profile', () => {
       expect(summary.periodEnd).toBe(now.toISOString())
       expect(summary.periodStart).toBe(buckets[0]!.start.toISOString())
       expect(summary.observedRatingQuality).toBeNull()
-      expect(summary.chartDataStatus).toBe('ready')
+      expect(summary.chartDataStatus).toBe('unready')
       expect(summary.predictedRecall).toEqual({
         value: null,
         sampleSize: 0,
@@ -124,7 +124,7 @@ describe('getAnalyticsSummary memory profile', () => {
 
     const summary = await getAnalyticsSummary(handle.db, { range: 30, now })
 
-    expect(summary.chartDataStatus).toBe('ready')
+    expect(summary.chartDataStatus).toBe('unready')
     expect(summary.predictedRecall).toEqual({
       value: null,
       sampleSize: 0,
@@ -393,6 +393,7 @@ describe('getAnalyticsSummary memory profile', () => {
     }
 
     expect(readiness.range).toBe(90)
+    expect(summary.chartDataStatus).toBe('unready')
     expect(readiness.historicalReadiness.requested).toMatchObject({
       requestedDays: 90,
       bucketDays: 7,
@@ -441,6 +442,7 @@ describe('getAnalyticsSummary memory profile', () => {
     }
 
     expect(readiness.historicalReadiness.requested.ready).toBe(true)
+    expect(summary.chartDataStatus).toBe('ready')
     expect(readiness.historicalReadiness.topics.ready).toBe(false)
     expect(readiness.historicalReadiness.topics.failingReasons).toContain(
       'no-evidence',

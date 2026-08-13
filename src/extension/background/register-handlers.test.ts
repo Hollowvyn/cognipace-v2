@@ -711,6 +711,69 @@ describe('background handler registration', () => {
     expect(response.observedRatingQuality.value).not.toBe(0)
   })
 
+  it('serializes current and forecast analytics when the selected historical range is unready', async () => {
+    const fixture = createSerializedAnalyticsSummary({
+      chartDataStatus: 'unready',
+      range: 90,
+      historicalReadiness: {
+        ...createSerializedAnalyticsSummary().historicalReadiness,
+        requested: {
+          ...createSerializedAnalyticsSummary().historicalReadiness.requested,
+          requestedDays: 90,
+          ready: false,
+        },
+      },
+      upcomingLoad: [
+        { date: '2026-01-15', dueCount: 4, overdueCount: 1, today: true },
+      ],
+      retentionHealth: [
+        {
+          slug: 'two-sum',
+          title: 'Two Sum',
+          retrievability: 0.82,
+          targetRetention: 0.9,
+          daysSinceReview: 2,
+          stabilityDays: 5,
+          difficulty: 5,
+          lapseCount: 0,
+          overdueDays: 0,
+        },
+      ],
+      fragileKnowledge: [
+        {
+          slug: 'add-binary',
+          title: 'Add Binary',
+          retrievability: 0.74,
+          stabilityDays: 2,
+          difficulty: 7,
+          lapseCount: 1,
+          overdueDays: 1,
+          topics: ['Bit manipulation'],
+        },
+      ],
+    })
+    backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
+      ...fixture,
+      observedRatingQuality: null,
+      observedRatingQualityLabel: '—',
+      lowSample: true,
+    })
+
+    const response = analyticsSummarySchema.parse(
+      await sendRuntimeMessage('analytics.getSummary', {
+        surface: 'dashboard',
+        range: 90,
+      }),
+    )
+
+    expect(response.chartDataStatus).toBe('unready')
+    expect(response.range).toBe(90)
+    expect(response.historicalReadiness.requested.ready).toBe(false)
+    expect(response.upcomingLoad).toHaveLength(1)
+    expect(response.retentionHealth).toHaveLength(1)
+    expect(response.fragileKnowledge).toHaveLength(1)
+  })
+
   it('registers dev smoke handling with dashboard policy and response parsing', async () => {
     backgroundMocks.getSettings.mockResolvedValue({
       ...defaultUserSettings,

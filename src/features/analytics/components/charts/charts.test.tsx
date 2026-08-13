@@ -11,6 +11,7 @@ import {
   UpcomingReviewLoadChart,
   WeakestTopicsChart,
 } from './index'
+import { buildOverdueBacklogChartSeries } from './overdue-backlog-chart'
 import type {
   OverdueBacklogPoint,
   PracticeRhythmPoint,
@@ -160,7 +161,7 @@ describe('analytics chart components', () => {
     ).toBeVisible()
     expect(
       screen.getByRole('img', {
-        name: 'Consistency versus observed correctness chart',
+        name: 'Practice rhythm versus observed correctness chart',
       }),
     ).toBeVisible()
     expect(screen.getByRole('img', { name: 'Ratings mix chart' })).toBeVisible()
@@ -200,6 +201,34 @@ describe('analytics chart components', () => {
       'down 9 points',
     )
     expect(screen.getByText(/5-problem watch zone/)).toBeVisible()
+  })
+
+  it('keeps unknown overdue buckets as nullable chart gaps', () => {
+    const chartData = buildOverdueBacklogChartSeries([
+      overdue[0]!,
+      {
+        bucketStart: '2026-08-02',
+        bucketEnd: '2026-08-02',
+        overdueCount: null,
+        historyAvailable: false,
+      },
+      overdue[1]!,
+    ])
+
+    expect(chartData).toHaveLength(3)
+    expect(chartData[1]).toMatchObject({
+      overdueCount: null,
+      historyAvailable: false,
+    })
+  })
+
+  it('uses adaptive-bucket copy for temporary practice rhythm chart data', () => {
+    render(<ConsistencyChart data={consistency} />)
+
+    expect(screen.getByText('Reviews per bucket')).toBeVisible()
+    expect(document.querySelector('svg desc')).toHaveTextContent(
+      'Each point represents an adaptive time bucket.',
+    )
   })
 
   it('explains recall samples and low-sample topic labels', () => {

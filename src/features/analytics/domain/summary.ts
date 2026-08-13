@@ -81,7 +81,7 @@ export interface AnalyticsSummaryInput {
   scatter: RetentionScatterEntry[]
   referenceCurve: ReferenceCurvePoint[]
   historicalReadiness: HistoricalReadiness
-  chartDataStatus?: 'unavailable' | 'ready'
+  chartDataStatus?: 'unavailable' | 'unready' | 'ready'
   predictedRecall?: AnalyticsMetricSummary
   recallQuality?: import('./chart-data').RecallQualityPoint[]
   practiceRhythm?: import('./chart-data').PracticeRhythmPoint[]
@@ -126,7 +126,7 @@ export interface AnalyticsSummary {
   retentionScatter: RetentionScatterEntry[]
   retentionScatterCurve: ReferenceCurvePoint[]
   historicalReadiness: HistoricalReadiness
-  chartDataStatus: 'unavailable' | 'ready'
+  chartDataStatus: 'unavailable' | 'unready' | 'ready'
   predictedRecall: AnalyticsMetricSummary
   recallQuality: import('./chart-data').RecallQualityPoint[]
   practiceRhythm: import('./chart-data').PracticeRhythmPoint[]

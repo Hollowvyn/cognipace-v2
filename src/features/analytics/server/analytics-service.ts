@@ -334,7 +334,7 @@ export async function getAnalyticsSummary(
     targetRetention: fsrsOptions.targetRetention,
     scatter,
     referenceCurve,
-    chartDataStatus: 'ready',
+    chartDataStatus: requestedReadiness.ready ? 'ready' : 'unready',
     historicalReadiness,
     predictedRecall,
     recallQuality,

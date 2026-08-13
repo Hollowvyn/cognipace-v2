@@ -30,6 +30,12 @@ const overdueBacklogChartConfig = {
   },
 } satisfies ChartConfig
 
+export function buildOverdueBacklogChartSeries(
+  data: readonly OverdueBacklogPoint[],
+): OverdueBacklogPoint[] {
+  return Array.from(data)
+}
+
 export function OverdueBacklogChart({
   data,
   historyAvailableFrom,
@@ -39,9 +45,9 @@ export function OverdueBacklogChart({
   historyAvailableFrom: string | null
   watchZone?: number
 }) {
-  const points = data.filter((point) => point.historyAvailable)
+  const points = buildOverdueBacklogChartSeries(data)
 
-  if (points.length === 0) {
+  if (!points.some((point) => point.historyAvailable)) {
     return (
       <ChartEmptyState
         detail={formatHistoryBoundary(historyAvailableFrom)}
