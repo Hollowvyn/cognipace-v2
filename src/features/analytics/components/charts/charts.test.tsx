@@ -450,6 +450,65 @@ describe('analytics chart components', () => {
     ).toBeVisible()
   })
 
+  it('updates pinned retention details from the latest point data', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <RetentionHealthChart data={retentionHealth} targetRetention={0.9} />,
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: /Dijkstra retention/i }),
+    )
+
+    const updatedRetentionHealth = retentionHealth.map((point) =>
+      point.slug === 'graphs-dijkstra'
+        ? { ...point, retrievability: 0.82, stabilityDays: 12 }
+        : point,
+    )
+    rerender(
+      <RetentionHealthChart
+        data={updatedRetentionHealth}
+        targetRetention={0.9}
+      />,
+    )
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'Dijkstra memory details',
+    })
+    expect(dialog).toHaveTextContent('82%')
+    expect(dialog).toHaveTextContent('12d')
+    expect(
+      within(dialog).getByRole('link', {
+        name: 'Open Dijkstra on LeetCode',
+      }),
+    ).toHaveAttribute('href', 'https://leetcode.com/problems/graphs-dijkstra/')
+  })
+
+  it('closes pinned retention details when the pinned point disappears', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <RetentionHealthChart data={retentionHealth} targetRetention={0.9} />,
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: /Dijkstra retention/i }),
+    )
+    expect(
+      screen.getByRole('dialog', { name: 'Dijkstra memory details' }),
+    ).toBeVisible()
+
+    rerender(
+      <RetentionHealthChart
+        data={retentionHealth.filter(
+          (point) => point.slug !== 'graphs-dijkstra',
+        )}
+        targetRetention={0.9}
+      />,
+    )
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('previews retention details on hover and focus without exposing actions', async () => {
     render(
       <RetentionHealthChart data={retentionHealth} targetRetention={0.9} />,
@@ -487,6 +546,40 @@ describe('analytics chart components', () => {
     ).not.toBeInTheDocument()
 
     fireEvent.blur(dijkstraPoint)
+    expect(
+      screen.queryByRole('status', { name: 'Dijkstra memory preview' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps the preview visible until both hover and focus leave a point', () => {
+    render(
+      <RetentionHealthChart data={retentionHealth} targetRetention={0.9} />,
+    )
+
+    const dijkstraPoint = screen.getByRole('button', {
+      name: /Dijkstra retention/i,
+    })
+
+    fireEvent.mouseEnter(dijkstraPoint)
+    fireEvent.focus(dijkstraPoint)
+    fireEvent.mouseLeave(dijkstraPoint)
+    expect(
+      screen.getByRole('status', { name: 'Dijkstra memory preview' }),
+    ).toHaveTextContent('Dijkstra retention: 74% predicted recall')
+
+    fireEvent.blur(dijkstraPoint)
+    expect(
+      screen.queryByRole('status', { name: 'Dijkstra memory preview' }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.mouseEnter(dijkstraPoint)
+    fireEvent.focus(dijkstraPoint)
+    fireEvent.blur(dijkstraPoint)
+    expect(
+      screen.getByRole('status', { name: 'Dijkstra memory preview' }),
+    ).toHaveTextContent('Dijkstra retention: 74% predicted recall')
+
+    fireEvent.mouseLeave(dijkstraPoint)
     expect(
       screen.queryByRole('status', { name: 'Dijkstra memory preview' }),
     ).not.toBeInTheDocument()

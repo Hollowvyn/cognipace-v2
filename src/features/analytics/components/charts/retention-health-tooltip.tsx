@@ -74,20 +74,30 @@ export function RetentionHealthPreview({
 
 export type RetentionHealthPreviewHandle = {
   clear: () => void
-  show: (point: RetentionHealthPoint) => void
+  setFocusedSlug: (slug: string | null) => void
+  setHoveredSlug: (slug: string | null) => void
 }
 
 export const RetentionHealthPreviewPanel = forwardRef<
   RetentionHealthPreviewHandle,
-  object
->(function RetentionHealthPreviewPanel(_, ref) {
-  const [point, setPoint] = useState<RetentionHealthPoint | null>(null)
+  { data: RetentionHealthPoint[] }
+>(function RetentionHealthPreviewPanel({ data }, ref) {
+  const [focusedSlug, setFocusedSlug] = useState<string | null>(null)
+  const [hoveredSlug, setHoveredSlug] = useState<string | null>(null)
+  const previewSlug = focusedSlug ?? hoveredSlug
+  const point = previewSlug
+    ? (data.find((candidate) => candidate.slug === previewSlug) ?? null)
+    : null
 
   useImperativeHandle(
     ref,
     () => ({
-      clear: () => setPoint(null),
-      show: (nextPoint) => setPoint(nextPoint),
+      clear: () => {
+        setFocusedSlug(null)
+        setHoveredSlug(null)
+      },
+      setFocusedSlug,
+      setHoveredSlug,
     }),
     [],
   )

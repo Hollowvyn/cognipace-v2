@@ -51,36 +51,49 @@ export function RetentionHealthChart({
   data: RetentionHealthPoint[]
   targetRetention: number
 }) {
-  const [pinnedPoint, setPinnedPoint] = useState<RetentionHealthPoint | null>(
-    null,
-  )
+  const [pinnedSlug, setPinnedSlug] = useState<string | null>(null)
   const chartRegionRef = useRef<HTMLDivElement>(null)
-  const pinnedPointRef = useRef<RetentionHealthPoint | null>(null)
+  const pinnedSlugRef = useRef<string | null>(null)
   const previewRef = useRef<RetentionHealthPreviewHandle>(null)
+  const pinnedPoint = pinnedSlug
+    ? (data.find((point) => point.slug === pinnedSlug) ?? null)
+    : null
 
-  function clearPreview() {
-    if (!pinnedPointRef.current) {
-      previewRef.current?.clear()
+  function setHoveredSlug(slug: string | null) {
+    if (!pinnedSlugRef.current) {
+      previewRef.current?.setHoveredSlug(slug)
     }
   }
 
-  function showPreview(point: RetentionHealthPoint) {
-    if (!pinnedPointRef.current) {
-      previewRef.current?.show(point)
+  function setFocusedSlug(slug: string | null) {
+    if (!pinnedSlugRef.current) {
+      previewRef.current?.setFocusedSlug(slug)
     }
   }
 
   function dismissPinnedPoint() {
-    pinnedPointRef.current = null
-    setPinnedPoint(null)
+    pinnedSlugRef.current = null
+    setPinnedSlug(null)
     previewRef.current?.clear()
   }
 
-  function pinPoint(point: RetentionHealthPoint) {
-    pinnedPointRef.current = point
+  function pinPoint(slug: string) {
+    pinnedSlugRef.current = slug
     previewRef.current?.clear()
-    setPinnedPoint(point)
+    setPinnedSlug(slug)
   }
+
+  useEffect(() => {
+    if (pinnedSlug && !pinnedPoint) {
+      pinnedSlugRef.current = null
+      previewRef.current?.clear()
+      queueMicrotask(() => {
+        setPinnedSlug((currentSlug) =>
+          currentSlug === pinnedSlug ? null : currentSlug,
+        )
+      })
+    }
+  }, [pinnedPoint, pinnedSlug])
 
   useEffect(() => {
     if (!pinnedPoint) return
@@ -149,21 +162,21 @@ export function RetentionHealthChart({
     return (
       <g
         aria-controls="retention-health-details"
-        aria-expanded={pinnedPoint?.slug === point.slug}
+        aria-expanded={pinnedSlug === point.slug}
         aria-haspopup="dialog"
         aria-label={label}
         className="cursor-pointer focus-visible:[&>circle:first-of-type]:stroke-2 focus-visible:[&>circle:first-of-type]:stroke-ring"
-        onBlur={clearPreview}
-        onClick={() => pinPoint(point)}
-        onFocus={() => showPreview(point)}
+        onBlur={() => setFocusedSlug(null)}
+        onClick={() => pinPoint(point.slug)}
+        onFocus={() => setFocusedSlug(point.slug)}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
-            pinPoint(point)
+            pinPoint(point.slug)
           }
         }}
-        onMouseEnter={() => showPreview(point)}
-        onMouseLeave={clearPreview}
+        onMouseEnter={() => setHoveredSlug(point.slug)}
+        onMouseLeave={() => setHoveredSlug(null)}
         role="button"
         tabIndex={0}
       >
@@ -280,7 +293,7 @@ export function RetentionHealthChart({
           />
         </ScatterChart>
       </ChartContainer>
-      <RetentionHealthPreviewPanel ref={previewRef} />
+      <RetentionHealthPreviewPanel data={data} ref={previewRef} />
       {pinnedPoint ? (
         <RetentionHealthTooltip
           onClose={dismissPinnedPoint}
