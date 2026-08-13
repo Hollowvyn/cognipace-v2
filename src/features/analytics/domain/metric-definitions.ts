@@ -110,6 +110,8 @@ export const metricDefinitions = {
     unit: 'problems',
     lowSampleOrEmptyState:
       'No current cards meet the fragile-knowledge signals.',
+    warning:
+      'These are signals to investigate, not a diagnosis. Suspended problems are excluded.',
   },
   retentionHealth: {
     label: 'Retention health',

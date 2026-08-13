@@ -2,6 +2,8 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
+import { metricDefinitions } from '../domain/metric-definitions'
+
 import { FragileKnowledgeTable } from './fragile-knowledge-table'
 
 const rows = [
@@ -25,9 +27,18 @@ describe('FragileKnowledgeTable', () => {
     const table = within(region).getByRole('table')
 
     expect(
-      within(region).getByText(
-        /predicted retrievability, stability, overdue gap/,
-      ),
+      within(region).getByRole('heading', {
+        name: metricDefinitions.fragileKnowledge.label,
+      }),
+    ).toBeVisible()
+    expect(
+      within(region).getByText(metricDefinitions.fragileKnowledge.question),
+    ).toBeVisible()
+    expect(
+      within(region).getByText(metricDefinitions.fragileKnowledge.explanation),
+    ).toBeVisible()
+    expect(
+      within(region).getByText(metricDefinitions.fragileKnowledge.warning),
     ).toBeVisible()
     expect(
       within(table).getByRole('row', { name: /Graph Traversal/ }),

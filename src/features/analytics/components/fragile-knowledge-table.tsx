@@ -20,6 +20,7 @@ export function FragileKnowledgeTable({
 }: {
   rows: FragileKnowledgeRow[]
 }) {
+  const definition = metricDefinitions.fragileKnowledge
   const [pageIndex, setPageIndex] = useState(0)
   const [previousRows, setPreviousRows] = useState(rows)
   const pageCount = Math.ceil(rows.length / pageSize)
@@ -40,12 +41,13 @@ export function FragileKnowledgeTable({
   const visibleStart = visiblePageIndex * pageSize + 1
   const visibleEnd = visibleStart + visibleRows.length - 1
   const titleId = 'fragile-knowledge-title'
+  const questionId = 'fragile-knowledge-question'
   const descriptionId = 'fragile-knowledge-description'
   const pageStatusId = 'fragile-knowledge-page-status'
 
   return (
     <Surface
-      aria-describedby={descriptionId}
+      aria-describedby={`${questionId} ${descriptionId}`}
       aria-labelledby={titleId}
       className="grid min-w-0 gap-4"
       role="region"
@@ -55,13 +57,19 @@ export function FragileKnowledgeTable({
           className="m-0 text-[length:var(--cp-section-title-font-size)] font-bold leading-tight text-foreground"
           id={titleId}
         >
-          Fragile knowledge
+          {definition.label}
         </h2>
+        <p
+          className="m-0 text-[length:var(--cp-copy-font-size)] font-medium leading-relaxed text-foreground"
+          id={questionId}
+        >
+          {definition.question}
+        </p>
         <p
           className="m-0 max-w-3xl text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground"
           id={descriptionId}
         >
-          {metricDefinitions.fragileKnowledge.explanation}
+          {definition.explanation}
         </p>
       </header>
 
@@ -152,8 +160,7 @@ export function FragileKnowledgeTable({
       ) : null}
 
       <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
-        These are signals to investigate, not a diagnosis. Suspended problems
-        are excluded.
+        {definition.warning}
       </p>
     </Surface>
   )
