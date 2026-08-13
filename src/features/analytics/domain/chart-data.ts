@@ -21,6 +21,7 @@ export interface AnalyticsReviewEvent {
 }
 
 export interface AnalyticsCurrentCard {
+  cardId: string
   slug: string
   title: string
   topics: string[]
@@ -30,6 +31,7 @@ export interface AnalyticsCurrentCard {
   difficulty: number
   lapseCount: number
   dueAt: Date
+  createdAt: Date
   lastReviewAt: Date | null
   suspended?: boolean
 }
@@ -69,6 +71,17 @@ export interface RatingsMixPoint {
   easy: number
   total: number
   hardAgainShare: number | null
+}
+
+export interface HardAgainSummary {
+  selectedShare: number | null
+  previousShare: number | null
+  delta: number | null
+  direction: 'up' | 'down' | 'flat' | null
+  sampleSize: number
+  previousSampleSize: number
+  lowSample: boolean
+  previousLowSample: boolean
 }
 
 export interface TopicPoint {
@@ -292,6 +305,50 @@ export function buildRatingsMixPoints(
   })
 }
 
+export function buildHardAgainSummary(
+  events: readonly AnalyticsReviewEvent[],
+  options: AnalyticsRangeOptions,
+  lowSampleThreshold = 10,
+): HardAgainSummary {
+  const periodLength = options.end.getTime() - options.start.getTime()
+  const previousStart = new Date(options.start.getTime() - periodLength)
+  const selectedRatings = events.filter(
+    (event) =>
+      event.reviewedAt >= options.start &&
+      event.reviewedAt <= options.end &&
+      isReviewRating(event.rating),
+  )
+  const previousRatings = events.filter(
+    (event) =>
+      event.reviewedAt >= previousStart &&
+      event.reviewedAt < options.start &&
+      isReviewRating(event.rating),
+  )
+  const selectedShare = calculateHardAgainShare(selectedRatings)
+  const previousShare = calculateHardAgainShare(previousRatings)
+  const lowSample = selectedRatings.length < lowSampleThreshold
+  const previousLowSample = previousRatings.length < lowSampleThreshold
+  const delta =
+    lowSample ||
+    previousLowSample ||
+    selectedShare === null ||
+    previousShare === null
+      ? null
+      : selectedShare - previousShare
+
+  return {
+    selectedShare: lowSample ? null : selectedShare,
+    previousShare: previousLowSample ? null : previousShare,
+    delta,
+    direction:
+      delta === null ? null : delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat',
+    sampleSize: selectedRatings.length,
+    previousSampleSize: previousRatings.length,
+    lowSample,
+    previousLowSample,
+  }
+}
+
 export function buildTopicPoints(
   events: readonly AnalyticsReviewEvent[],
   options: AnalyticsRangeOptions,
@@ -365,25 +422,68 @@ export function buildOverdueBacklogPoints(
   if (!snapshots?.length) {
     return { points: [], overdueHistoryAvailableFrom }
   }
-  const dates = dailyKeys(options)
   const byDate = new Map(
-    snapshots.map((snapshot) => [
-      toAnalyticsDateKey(snapshot.date),
-      snapshot.overdueCount,
-    ]),
+    snapshots
+      .filter(
+        (snapshot) =>
+          snapshot.date >= options.start && snapshot.date <= options.end,
+      )
+      .map((snapshot) => [toAnalyticsDateKey(snapshot.date), snapshot]),
   )
-  if (dates.some((date) => !byDate.has(date))) {
-    return { points: [], overdueHistoryAvailableFrom }
-  }
 
   return {
-    points: dates.map((date) => ({
-      date,
-      overdueCount: byDate.get(date) ?? 0,
-      historyAvailable: true,
-    })),
+    points: [...byDate.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([date, snapshot]) => ({
+        date,
+        overdueCount: snapshot.overdueCount,
+        historyAvailable: true,
+      })),
     overdueHistoryAvailableFrom,
   }
+}
+
+export function reconstructOverdueBacklogSnapshots(
+  events: readonly AnalyticsReviewEvent[],
+  cards: readonly AnalyticsCurrentCard[],
+  options: AnalyticsRangeOptions,
+): AnalyticsOverdueSnapshot[] {
+  const activeCards = cards.filter((card) => !card.suspended)
+  if (activeCards.length === 0) return []
+
+  const eventsByCard = new Map<string, AnalyticsReviewEvent[]>()
+  for (const event of events) {
+    const history = eventsByCard.get(event.cardId) ?? []
+    history.push(event)
+    eventsByCard.set(event.cardId, history)
+  }
+
+  const intervalsByCard = activeCards.map((card) => ({
+    card,
+    intervals: buildKnownOverdueIntervals(
+      card,
+      eventsByCard.get(card.cardId) ?? [],
+      options.end,
+    ),
+  }))
+
+  return dailyKeys(options).flatMap((date) => {
+    const observationAt = observationDateForKey(date, options.end)
+    let overdueCount = 0
+
+    for (const { card, intervals } of intervalsByCard) {
+      if (observationAt < card.createdAt) continue
+      const interval = intervals.find(
+        (candidate) =>
+          observationAt >= candidate.start &&
+          observationAt < candidate.endExclusive,
+      )
+      if (!interval) return []
+      if (interval.dueAt <= observationAt) overdueCount += 1
+    }
+
+    return [{ date: observationAt, overdueCount }]
+  })
 }
 
 export function buildUpcomingLoadPoints(
@@ -501,6 +601,99 @@ function average(values: readonly number[]): number | null {
     ? null
     : values.reduce((sum, value) => sum + value, 0) / values.length
 }
+
+function calculateHardAgainShare(
+  events: readonly AnalyticsReviewEvent[],
+): number | null {
+  if (events.length === 0) return null
+  return (
+    events.filter(
+      (event) => event.rating === 'again' || event.rating === 'hard',
+    ).length / events.length
+  )
+}
+
+interface KnownOverdueInterval {
+  start: Date
+  endExclusive: Date
+  dueAt: Date
+}
+
+function buildKnownOverdueIntervals(
+  card: AnalyticsCurrentCard,
+  events: readonly AnalyticsReviewEvent[],
+  end: Date,
+): KnownOverdueInterval[] {
+  const ordered = [...events].sort(compareEvents)
+  const intervals: KnownOverdueInterval[] = []
+  let segmentStart: Date | null = card.createdAt
+  let lastKnownReviewAt: Date | null = null
+
+  for (const event of ordered) {
+    const log = parseReviewLog(event.fsrsReviewLog)
+    if (!log || !isReviewRating(event.rating)) {
+      segmentStart = null
+      continue
+    }
+
+    if (segmentStart !== null && segmentStart <= event.reviewedAt) {
+      intervals.push({
+        start: segmentStart,
+        endExclusive: event.reviewedAt,
+        dueAt: new Date(log.dueAt),
+      })
+    }
+    segmentStart = event.reviewedAt
+    lastKnownReviewAt = event.reviewedAt
+  }
+
+  if (
+    card.lastReviewAt === null &&
+    ordered.length === 0 &&
+    card.createdAt <= end
+  ) {
+    intervals.push({
+      start: card.createdAt,
+      endExclusive: new Date(end.getTime() + 1),
+      dueAt: card.dueAt,
+    })
+  } else if (
+    lastKnownReviewAt !== null &&
+    card.lastReviewAt?.getTime() === lastKnownReviewAt.getTime()
+  ) {
+    intervals.push({
+      start: lastKnownReviewAt,
+      endExclusive: new Date(end.getTime() + 1),
+      dueAt: card.dueAt,
+    })
+  }
+
+  return intervals
+}
+
+function parseReviewLog(serialized: string | null) {
+  if (!serialized) return null
+  try {
+    return parseSerializedFsrsReviewLogSnapshot(serialized)
+  } catch {
+    return null
+  }
+}
+
+function observationDateForKey(dateKey: string, end: Date): Date {
+  const [year, month, day] = dateKey.split('-')
+  const date = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    23,
+    59,
+    59,
+    999,
+  )
+  return date > end ? end : date
+}
+
 function median(values: readonly number[]): number | null {
   if (!values.length) return null
   const sorted = [...values].sort((a, b) => a - b)

@@ -197,6 +197,9 @@ describe('dashboard routes', () => {
     expect(
       await screen.findByRole('button', { name: '14 days' }),
     ).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      screen.getByRole('group', { name: 'Analytics time range' }),
+    ).toHaveClass('w-full', 'flex-wrap')
 
     await user.click(screen.getByRole('button', { name: '90 days' }))
 

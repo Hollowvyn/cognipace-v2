@@ -1,8 +1,11 @@
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
 import type { SerializedAnalyticsSummary } from '@/features/analytics/api/analytics-contracts'
+import { metricDefinitions } from '@/features/analytics/domain/metric-definitions'
 import { cn } from '@/utils/cn'
+import { useState } from 'react'
 
 import { formatDays, formatPercent } from './charts/chart-shared'
 
@@ -14,6 +17,8 @@ export function FragileKnowledgeTable({
 }: {
   rows: FragileKnowledgeRow[]
 }) {
+  const [showAll, setShowAll] = useState(false)
+  const visibleRows = showAll ? rows : rows.slice(0, 10)
   const titleId = 'fragile-knowledge-title'
   const descriptionId = 'fragile-knowledge-description'
 
@@ -35,8 +40,7 @@ export function FragileKnowledgeTable({
           className="m-0 max-w-3xl text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground"
           id={descriptionId}
         >
-          Reviewed problems that may need attention because their predicted
-          recall, stability, difficulty, lapses, or overdue gap looks fragile.
+          {metricDefinitions.fragileKnowledge.explanation}
         </p>
       </header>
 
@@ -77,13 +81,31 @@ export function FragileKnowledgeTable({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {visibleRows.map((row) => (
                 <FragileKnowledgeTableRow key={row.slug} row={row} />
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      {rows.length > 10 ? (
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+          <p className="m-0 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
+            Showing {visibleRows.length} of {rows.length} fragile problems.
+          </p>
+          <Button
+            aria-expanded={showAll}
+            onClick={() => {
+              setShowAll((current) => !current)
+            }}
+            size="sm"
+            variant="outline"
+          >
+            {showAll ? 'Show fewer' : `Show ${rows.length - 10} more`}
+          </Button>
+        </div>
+      ) : null}
 
       <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
         These are signals to investigate, not a diagnosis. Suspended problems

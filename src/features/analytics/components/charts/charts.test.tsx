@@ -63,6 +63,17 @@ const ratingsMix: RatingsMixPoint[] = [
   },
 ]
 
+const hardAgain = {
+  selectedShare: 0.25,
+  previousShare: 0.34,
+  delta: -0.09,
+  direction: 'down' as const,
+  sampleSize: 12,
+  previousSampleSize: 20,
+  lowSample: false,
+  previousLowSample: false,
+}
+
 const topics: TopicPoint[] = [
   { topic: 'Graphs', recallQuality: 0.61, sampleSize: 14, lowSample: false },
   { topic: 'Trees', recallQuality: 0.74, sampleSize: 18, lowSample: false },
@@ -113,7 +124,7 @@ describe('analytics chart components', () => {
       <div>
         <RecallQualityChart data={recallQuality} />
         <ConsistencyChart data={consistency} />
-        <RatingsMixChart data={ratingsMix} />
+        <RatingsMixChart data={ratingsMix} summary={hardAgain} />
         <WeakestTopicsChart data={topics} />
         <MemoryStrengthChart data={stability} />
         <OverdueBacklogChart
@@ -155,7 +166,7 @@ describe('analytics chart components', () => {
   it('surfaces the Hard + Again share and overdue watch zone in plain language', () => {
     render(
       <div>
-        <RatingsMixChart data={ratingsMix} />
+        <RatingsMixChart data={ratingsMix} summary={hardAgain} />
         <OverdueBacklogChart
           data={overdue}
           historyAvailableFrom="2026-08-01T00:00:00.000Z"
@@ -163,8 +174,36 @@ describe('analytics chart components', () => {
       </div>,
     )
 
-    expect(screen.getByText(/Hard \+ Again share:/)).toHaveTextContent('25%')
+    expect(screen.getByText(/Hard \+ Again this period:/)).toHaveTextContent(
+      '25%',
+    )
+    expect(screen.getByText(/Hard \+ Again this period:/)).toHaveTextContent(
+      'down 9 points',
+    )
     expect(screen.getByText(/5-problem watch zone/)).toBeVisible()
+  })
+
+  it('explains recall samples and low-sample topic labels', () => {
+    render(
+      <div>
+        <RecallQualityChart data={recallQuality} />
+        <WeakestTopicsChart
+          data={[
+            {
+              topic: 'Graphs',
+              recallQuality: 0.61,
+              sampleSize: 2,
+              lowSample: true,
+            },
+          ]}
+        />
+      </div>,
+    )
+
+    expect(
+      screen.getByText(/Predicted recall is an FSRS estimate/),
+    ).toBeVisible()
+    expect(screen.getByText(/Low sample: Graphs \(2\)/)).toBeVisible()
   })
 
   it('does not fabricate chart values when the source data is empty', () => {
@@ -172,7 +211,19 @@ describe('analytics chart components', () => {
       <div>
         <RecallQualityChart data={[]} />
         <ConsistencyChart data={[]} />
-        <RatingsMixChart data={[]} />
+        <RatingsMixChart
+          data={[]}
+          summary={{
+            selectedShare: null,
+            previousShare: null,
+            delta: null,
+            direction: null,
+            sampleSize: 0,
+            previousSampleSize: 0,
+            lowSample: true,
+            previousLowSample: true,
+          }}
+        />
         <WeakestTopicsChart data={[]} />
         <MemoryStrengthChart data={[]} />
         <OverdueBacklogChart data={[]} historyAvailableFrom={null} />

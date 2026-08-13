@@ -89,7 +89,7 @@ function AnalyticsChartHierarchy({
   return (
     <div className="grid min-w-0 gap-4">
       <AnalyticsChartPanel
-        description="Observed correctness shows the share of review outcomes marked correct. Predicted recall is FSRS's estimate immediately before reviews, not a guaranteed result."
+        description={`${metricDefinitions.observedCorrectness.explanation} ${metricDefinitions.predictedRecall.explanation}`}
         id="recall-quality"
         title="Recall quality"
       >
@@ -105,17 +105,17 @@ function AnalyticsChartHierarchy({
           <ConsistencyChart data={data.consistency} />
         </AnalyticsChartPanel>
         <AnalyticsChartPanel
-          description="See how your Again, Hard, Good, and Easy ratings mix over time. Hard + Again is the share of ratings that signal friction or failure."
+          description={metricDefinitions.ratingsMix.explanation}
           id="ratings-mix"
           title="Ratings mix"
         >
-          <RatingsMixChart data={data.ratingsMix} />
+          <RatingsMixChart data={data.ratingsMix} summary={data.hardAgain} />
         </AnalyticsChartPanel>
       </div>
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
         <AnalyticsChartPanel
-          description="Topics are ordered by observed correctness so you can see where practice needs attention first."
+          description={metricDefinitions.weakestTopics.explanation}
           id="weakest-topics"
           title="Weakest topics"
         >
@@ -132,7 +132,7 @@ function AnalyticsChartHierarchy({
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
         <AnalyticsChartPanel
-          description="A recent view of how overdue work has been building. The watch zone helps keep the backlog from quietly growing."
+          description={metricDefinitions.overdueBacklog.explanation}
           id="overdue-backlog"
           title="Recent overdue backlog"
         >
@@ -152,7 +152,7 @@ function AnalyticsChartHierarchy({
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
         <AnalyticsChartPanel
-          description="Retention health shows each reviewed problem's current FSRS retrievability against your target. Retrievability is the model's estimate of recall right now."
+          description={`${metricDefinitions.retentionHealth.explanation} ${metricDefinitions.predictedRecall.explanation}`}
           id="retention-health"
           title="Retention health"
         >

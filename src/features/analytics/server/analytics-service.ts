@@ -25,6 +25,7 @@ import {
 } from '../data/analytics-repository'
 
 import {
+  buildHardAgainSummary,
   buildConsistencyPoints,
   buildOverdueBacklogPoints,
   buildPredictedRecallSamples,
@@ -34,8 +35,8 @@ import {
   buildStabilityPoints,
   buildTopicPoints,
   buildUpcomingLoadPoints,
+  reconstructOverdueBacklogSnapshots,
   type AnalyticsCurrentCard,
-  type AnalyticsOverdueSnapshot,
   type AnalyticsRangeOptions,
   type AnalyticsReviewEvent,
 } from '../domain/chart-data'
@@ -151,10 +152,20 @@ export async function getAnalyticsSummary(
     chartOptions,
   )
   const ratingsMix = buildRatingsMixPoints(analyticsReviewHistory, chartOptions)
+  const hardAgain = buildHardAgainSummary(analyticsReviewHistory, chartOptions)
   const topics = buildTopicPoints(analyticsReviewHistory, chartOptions)
   const stability = buildStabilityPoints(analyticsReviewHistory, chartOptions)
+  const analyticsCurrentCards = buildCurrentAnalyticsCards(
+    currentFsrsCards,
+    now,
+    fsrsOptions,
+  )
   const overdueBacklog = buildOverdueBacklogPoints(
-    readOverdueHistoryFallback(),
+    reconstructOverdueBacklogSnapshots(
+      analyticsReviewHistory,
+      analyticsCurrentCards,
+      chartOptions,
+    ),
     chartOptions,
   )
   const upcomingLoad = buildUpcomingLoadPoints(
@@ -162,11 +173,9 @@ export async function getAnalyticsSummary(
     now,
   )
   const { health: retentionHealth, fragile: fragileKnowledge } =
-    buildRetentionHealth(
-      buildCurrentAnalyticsCards(currentFsrsCards, now, fsrsOptions),
-      now,
-      { fragileDifficultyThreshold: 7 },
-    )
+    buildRetentionHealth(analyticsCurrentCards, now, {
+      fragileDifficultyThreshold: 7,
+    })
 
   const dayMs = 24 * 60 * 60 * 1000
 
@@ -245,6 +254,7 @@ export async function getAnalyticsSummary(
     recallQuality,
     consistency,
     ratingsMix,
+    hardAgain,
     topics,
     stability,
     overdueBacklog: overdueBacklog.points,
@@ -288,6 +298,7 @@ function buildCurrentAnalyticsCards(
   fsrsOptions: ReturnType<typeof normalizeFsrsSchedulingOptions>,
 ): AnalyticsCurrentCard[] {
   return cards.map((card) => ({
+    cardId: card.cardId,
     slug: card.problemSlug,
     title: card.title,
     topics: card.topics,
@@ -297,6 +308,7 @@ function buildCurrentAnalyticsCards(
     difficulty: card.difficulty,
     lapseCount: card.lapses,
     dueAt: card.dueAt,
+    createdAt: card.createdAt,
     lastReviewAt: card.lastReviewAt,
     suspended: card.isSuspended || card.practiceStatus === 'suspended',
   }))
@@ -331,12 +343,6 @@ function buildMetricSummary(
     sampleSize,
     lowSample: false,
   }
-}
-
-function readOverdueHistoryFallback():
-  | readonly AnalyticsOverdueSnapshot[]
-  | null {
-  return null
 }
 
 function isSuspendedMemoryCard(card: MemoryProfileCard): boolean {

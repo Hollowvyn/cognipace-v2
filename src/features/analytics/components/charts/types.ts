@@ -4,6 +4,7 @@ export type RecallQualityPoint =
   SerializedAnalyticsSummary['recallQuality'][number]
 export type ConsistencyPoint = SerializedAnalyticsSummary['consistency'][number]
 export type RatingsMixPoint = SerializedAnalyticsSummary['ratingsMix'][number]
+export type HardAgainSummary = SerializedAnalyticsSummary['hardAgain']
 export type TopicPoint = SerializedAnalyticsSummary['topics'][number]
 export type StabilityPoint = SerializedAnalyticsSummary['stability'][number]
 export type OverdueBacklogPoint =

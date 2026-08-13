@@ -85,6 +85,7 @@ export interface CurrentFsrsCard {
   reps: number
   lapses: number
   dueAt: Date
+  createdAt: Date
   lastReviewAt: Date | null
   state: string
   practiceStatus: string
@@ -289,6 +290,7 @@ export async function getCurrentFsrsCards(db: Db): Promise<CurrentFsrsCard[]> {
       reps: fsrsCards.reps,
       lapses: fsrsCards.lapses,
       dueAt: fsrsCards.dueAt,
+      createdAt: fsrsCards.createdAt,
       lastReviewAt: fsrsCards.lastReviewAt,
       state: fsrsCards.state,
       practiceStatus: problemPractice.status,
@@ -330,6 +332,7 @@ export async function getCurrentFsrsCards(db: Db): Promise<CurrentFsrsCard[]> {
       reps: row.reps,
       lapses: row.lapses,
       dueAt: new Date(row.dueAt),
+      createdAt: new Date(row.createdAt),
       lastReviewAt:
         row.lastReviewAt === null ? null : new Date(row.lastReviewAt),
       state: row.state,

@@ -83,6 +83,7 @@ export interface AnalyticsSummaryInput {
   recallQuality?: import('./chart-data').RecallQualityPoint[]
   consistency?: import('./chart-data').ConsistencyPoint[]
   ratingsMix?: import('./chart-data').RatingsMixPoint[]
+  hardAgain?: import('./chart-data').HardAgainSummary
   topics?: import('./chart-data').TopicPoint[]
   stability?: import('./chart-data').StabilityPoint[]
   overdueBacklog?: import('./chart-data').OverdueBacklogPoint[]
@@ -115,6 +116,7 @@ export interface AnalyticsSummary {
   recallQuality: import('./chart-data').RecallQualityPoint[]
   consistency: import('./chart-data').ConsistencyPoint[]
   ratingsMix: import('./chart-data').RatingsMixPoint[]
+  hardAgain: import('./chart-data').HardAgainSummary
   topics: import('./chart-data').TopicPoint[]
   stability: import('./chart-data').StabilityPoint[]
   overdueBacklog: import('./chart-data').OverdueBacklogPoint[]
@@ -247,6 +249,16 @@ export function buildAnalyticsSummary(
     recallQuality: input.recallQuality ?? [],
     consistency: input.consistency ?? [],
     ratingsMix: input.ratingsMix ?? [],
+    hardAgain: input.hardAgain ?? {
+      selectedShare: null,
+      previousShare: null,
+      delta: null,
+      direction: null,
+      sampleSize: 0,
+      previousSampleSize: 0,
+      lowSample: true,
+      previousLowSample: true,
+    },
     topics: input.topics ?? [],
     stability: input.stability ?? [],
     overdueBacklog: input.overdueBacklog ?? [],

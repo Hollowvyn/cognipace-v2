@@ -12,10 +12,11 @@ import {
   ChartEmptyState,
   chartDimension,
   formatChartDate,
+  formatPercentagePoints,
   formatPercent,
   toChartLabel,
 } from './chart-shared'
-import type { RatingsMixPoint } from './types'
+import type { HardAgainSummary, RatingsMixPoint } from './types'
 
 const ratingsMixChartConfig = {
   again: {
@@ -36,11 +37,14 @@ const ratingsMixChartConfig = {
   },
 } satisfies ChartConfig
 
-export function RatingsMixChart({ data }: { data: RatingsMixPoint[] }) {
+export function RatingsMixChart({
+  data,
+  summary,
+}: {
+  data: RatingsMixPoint[]
+  summary: HardAgainSummary
+}) {
   const totalReviews = data.reduce((sum, point) => sum + point.total, 0)
-  const latestWithShare = [...data]
-    .reverse()
-    .find((point) => point.hardAgainShare !== null)
 
   if (totalReviews === 0) {
     return (
@@ -54,7 +58,7 @@ export function RatingsMixChart({ data }: { data: RatingsMixPoint[] }) {
   return (
     <div className="grid min-w-0 gap-3">
       <ChartContainer
-        accessibleDescription="Stacked daily rating proportions for Again, Hard, Good, and Easy."
+        accessibleDescription="Stacked daily rating proportions for Again, Hard, Good, and Easy. The Hard plus Again summary compares the selected period with the immediately preceding comparable period."
         accessibleName="Ratings mix chart"
         aria-label="Ratings mix chart"
         aria-roledescription="stacked bar chart"
@@ -129,13 +133,26 @@ export function RatingsMixChart({ data }: { data: RatingsMixPoint[] }) {
         </BarChart>
       </ChartContainer>
       <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
-        Hard + Again share:{' '}
+        Hard + Again this period:{' '}
         <span className="font-semibold text-foreground">
-          {latestWithShare
-            ? formatPercent(latestWithShare.hardAgainShare)
-            : '—'}
+          {formatPercent(summary.selectedShare)}
         </span>{' '}
-        on the latest day with reviews.
+        ({summary.sampleSize} ratings).
+        {summary.lowSample ? (
+          <> Need at least 10 ratings to compare periods.</>
+        ) : summary.direction !== null && summary.delta !== null ? (
+          <>
+            {' '}
+            <span className="font-semibold text-foreground">
+              {summary.direction}{' '}
+              {formatPercentagePoints(Math.abs(summary.delta))}
+            </span>{' '}
+            from the previous period ({formatPercent(summary.previousShare)};{' '}
+            {summary.previousSampleSize} ratings).
+          </>
+        ) : (
+          <> The previous period does not have enough ratings to compare.</>
+        )}
       </p>
     </div>
   )

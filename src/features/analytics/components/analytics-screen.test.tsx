@@ -48,6 +48,16 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
     recallQuality: [],
     consistency: [],
     ratingsMix: [],
+    hardAgain: {
+      selectedShare: null,
+      previousShare: null,
+      delta: null,
+      direction: null,
+      sampleSize: 0,
+      previousSampleSize: 0,
+      lowSample: true,
+      previousLowSample: true,
+    },
     topics: [],
     stability: [],
     overdueBacklog: [],
@@ -241,8 +251,8 @@ describe('AnalyticsScreen', () => {
       await screen.findByRole('region', { name: 'Recall quality' }),
     ).toBeVisible()
     expect(
-      screen.getByText(
-        /Predicted recall is FSRS's estimate immediately before reviews/,
+      within(screen.getByRole('region', { name: 'Recall quality' })).getByText(
+        /FSRS model estimate of retrievability immediately before a review/,
       ),
     ).toBeVisible()
     expect(

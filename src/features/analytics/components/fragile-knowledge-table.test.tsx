@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
 import { FragileKnowledgeTable } from './fragile-knowledge-table'
@@ -24,7 +25,9 @@ describe('FragileKnowledgeTable', () => {
     const table = within(region).getByRole('table')
 
     expect(
-      within(region).getByText(/predicted recall, stability, difficulty/),
+      within(region).getByText(
+        /predicted retrievability, stability, overdue gap/,
+      ),
     ).toBeVisible()
     expect(
       within(table).getByRole('row', { name: /Graph Traversal/ }),
@@ -58,5 +61,28 @@ describe('FragileKnowledgeTable', () => {
       within(region).getByText(/No fragile knowledge detected/),
     ).toBeVisible()
     expect(within(region).queryByRole('table')).not.toBeInTheDocument()
+  })
+
+  it('shows a compact initial list with an accessible expansion control', async () => {
+    const user = userEvent.setup()
+    const manyRows = Array.from({ length: 11 }, (_, index) => ({
+      ...rows[0]!,
+      slug: `graph-${index}`,
+      title: `Graph ${index}`,
+    }))
+
+    render(<FragileKnowledgeTable rows={manyRows} />)
+
+    const region = screen.getByRole('region', { name: 'Fragile knowledge' })
+    expect(
+      within(region).getByText('Showing 10 of 11 fragile problems.'),
+    ).toBeVisible()
+    expect(within(region).queryByText('Graph 10')).not.toBeInTheDocument()
+
+    const button = within(region).getByRole('button', { name: 'Show 1 more' })
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    await user.click(button)
+    expect(within(region).getByText('Graph 10')).toBeVisible()
+    expect(button).toHaveAttribute('aria-expanded', 'true')
   })
 })

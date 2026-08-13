@@ -107,6 +107,17 @@ export const ratingsMixPointSchema = z.object({
   hardAgainShare: nullablePercentageSchema,
 })
 
+export const hardAgainSummarySchema = z.object({
+  selectedShare: nullablePercentageSchema,
+  previousShare: nullablePercentageSchema,
+  delta: z.number().min(-1).max(1).nullable(),
+  direction: z.enum(['up', 'down', 'flat']).nullable(),
+  sampleSize: countSchema,
+  previousSampleSize: countSchema,
+  lowSample: z.boolean(),
+  previousLowSample: z.boolean(),
+})
+
 export const topicPointSchema = z.object({
   topic: z.string(),
   recallQuality: nullablePercentageSchema,
@@ -179,6 +190,7 @@ export const analyticsSummarySchema = z
     recallQuality: z.array(recallQualityPointSchema),
     consistency: z.array(consistencyPointSchema),
     ratingsMix: z.array(ratingsMixPointSchema),
+    hardAgain: hardAgainSummarySchema,
     topics: z.array(topicPointSchema),
     stability: z.array(stabilityPointSchema),
     overdueBacklog: z.array(overdueBacklogPointSchema),

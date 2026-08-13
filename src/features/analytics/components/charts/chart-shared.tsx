@@ -28,6 +28,14 @@ export function formatPercent(value: number | null | undefined): string {
     : `${Math.round(value * 100)}%`
 }
 
+export function formatPercentagePoints(
+  value: number | null | undefined,
+): string {
+  return value === null || value === undefined
+    ? '—'
+    : `${Math.round(value * 100)} points`
+}
+
 export function formatDays(value: number | null | undefined): string {
   return value === null || value === undefined
     ? '—'

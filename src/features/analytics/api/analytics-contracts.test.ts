@@ -8,6 +8,7 @@ import {
   analyticsSummarySchema,
   consistencyPointSchema,
   forecastEntrySchema,
+  hardAgainSummarySchema,
   ratingsMixPointSchema,
   retentionScatterEntrySchema,
   referenceCurvePointSchema,
@@ -60,6 +61,16 @@ const validSummary: SerializedAnalyticsSummary = {
   recallQuality: [],
   consistency: [],
   ratingsMix: [],
+  hardAgain: {
+    selectedShare: null,
+    previousShare: null,
+    delta: null,
+    direction: null,
+    sampleSize: 0,
+    previousSampleSize: 0,
+    lowSample: true,
+    previousLowSample: true,
+  },
   topics: [],
   stability: [],
   overdueBacklog: [],
@@ -312,6 +323,23 @@ describe('analyticsSummarySchema', () => {
         ratingsMix: [{ ...validSummary.ratingsMix[0], again: -1 }],
       }).success,
     ).toBe(false)
+  })
+})
+
+describe('hardAgainSummarySchema', () => {
+  it('preserves valid period comparison semantics', () => {
+    expect(
+      hardAgainSummarySchema.parse({
+        selectedShare: 0.18,
+        previousShare: 0.27,
+        delta: -0.09,
+        direction: 'down',
+        sampleSize: 50,
+        previousSampleSize: 48,
+        lowSample: false,
+        previousLowSample: false,
+      }),
+    ).toMatchObject({ direction: 'down', sampleSize: 50 })
   })
 })
 

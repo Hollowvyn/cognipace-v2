@@ -16,7 +16,7 @@ export function AnalyticsRangeControl({ range }: { range: AnalyticsRange }) {
   return (
     <div
       aria-labelledby="analytics-range-control-label"
-      className="inline-flex min-w-0 items-center rounded-[var(--cp-control-radius)] border border-border bg-card p-1"
+      className="flex w-full min-w-0 max-w-full flex-wrap items-center rounded-[var(--cp-control-radius)] border border-border bg-card p-1 sm:inline-flex sm:w-auto"
       role="group"
     >
       <span className="sr-only" id="analytics-range-control-label">
@@ -29,7 +29,7 @@ export function AnalyticsRangeControl({ range }: { range: AnalyticsRange }) {
           <Button
             aria-pressed={selected}
             className={cn(
-              'min-w-[4.75rem] border-transparent px-3 text-muted-foreground',
+              'min-w-0 flex-1 whitespace-nowrap border-transparent px-2 text-muted-foreground sm:min-w-[4.75rem] sm:flex-none sm:px-3',
               selected && 'bg-muted text-foreground',
             )}
             key={option.value}

@@ -286,6 +286,14 @@ describe('getAnalyticsSummary memory profile', () => {
     expect(summary.predictedRecall.sampleSize).toBe(11)
     expect(summary.predictedRecall.lowSample).toBe(false)
     expect(summary.predictedRecall.value).not.toBeNull()
+    expect(summary.hardAgain).toMatchObject({
+      selectedShare: 1 / 11,
+      sampleSize: 11,
+      previousShare: null,
+      previousSampleSize: 1,
+      previousLowSample: true,
+      direction: null,
+    })
     expect(recallPoint?.predictedRecall).not.toBeNull()
     expect(graphsPoint).toMatchObject({
       topic: 'Graphs',
@@ -306,8 +314,8 @@ describe('getAnalyticsSummary memory profile', () => {
     expect(
       summary.fragileKnowledge.some((row) => row.topics.includes('Graphs')),
     ).toBe(true)
-    expect(summary.overdueBacklog).toEqual([])
-    expect(summary.overdueHistoryAvailableFrom).toBeNull()
+    expect(summary.overdueBacklog.length).toBeGreaterThan(0)
+    expect(summary.overdueHistoryAvailableFrom).not.toBeNull()
   })
 
   it('keeps the serialized summary deterministic for the same range and time', async () => {

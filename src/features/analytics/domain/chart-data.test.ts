@@ -9,6 +9,7 @@ import {
 
 import {
   buildConsistencyPoints,
+  buildHardAgainSummary,
   buildOverdueBacklogPoints,
   buildPredictedRecallSamples,
   buildRatingsMixPoints,
@@ -17,6 +18,9 @@ import {
   buildStabilityPoints,
   buildTopicPoints,
   buildUpcomingLoadPoints,
+  reconstructOverdueBacklogSnapshots,
+  toAnalyticsDateKey,
+  type AnalyticsCurrentCard,
   type AnalyticsReviewEvent,
 } from './chart-data'
 import { metricDefinitions } from './metric-definitions'
@@ -69,7 +73,7 @@ describe('analytics chart-data builders', () => {
       'does not identify retries',
     )
     expect(metricDefinitions.overdueBacklog.lowSampleOrEmptyState).toContain(
-      'not complete',
+      'unknown dates stay blank',
     )
   })
 
@@ -273,6 +277,49 @@ describe('analytics chart-data builders', () => {
     expect(points[2]!.hardAgainShare).toBeNull()
   })
 
+  it('compares Hard + Again across exact comparable periods', () => {
+    const periodOptions = {
+      ...options,
+      start: new Date('2026-08-03T00:00:00.000Z'),
+      end: new Date('2026-08-05T00:00:00.000Z'),
+    }
+    const previous = Array.from({ length: 10 }, (_, index) =>
+      event({
+        id: `previous-${index}`,
+        reviewedAt: new Date(`2026-08-01T0${index}:00:00.000Z`),
+        rating: 'good',
+      }),
+    )
+    const selected = Array.from({ length: 10 }, (_, index) =>
+      event({
+        id: `selected-${index}`,
+        reviewedAt: new Date(`2026-08-03T0${index}:00:00.000Z`),
+        rating: index < 5 ? 'hard' : 'good',
+      }),
+    )
+    const boundary = event({
+      id: 'selected-boundary',
+      reviewedAt: periodOptions.start,
+      rating: 'again',
+    })
+
+    expect(
+      buildHardAgainSummary(
+        [...previous, ...selected, boundary],
+        periodOptions,
+      ),
+    ).toEqual({
+      selectedShare: 6 / 11,
+      previousShare: 0,
+      delta: 6 / 11,
+      direction: 'up',
+      sampleSize: 11,
+      previousSampleSize: 10,
+      lowSample: false,
+      previousLowSample: false,
+    })
+  })
+
   it('filters rating mix by exact start and end timestamps', () => {
     const points = buildRatingsMixPoints(
       [
@@ -338,7 +385,7 @@ describe('analytics chart-data builders', () => {
         options,
       ),
     ).toMatchObject({
-      points: [],
+      points: [{ date: '2026-08-02', overdueCount: 3, historyAvailable: true }],
       overdueHistoryAvailableFrom: '2026-08-02T12:00:00.000Z',
     })
     const result = buildOverdueBacklogPoints(
@@ -352,6 +399,60 @@ describe('analytics chart-data builders', () => {
     expect(result.points).toHaveLength(3)
     expect(result.points.every((point) => point.historyAvailable)).toBe(true)
     expect(result.overdueHistoryAvailableFrom).toBe('2026-08-01T12:00:00.000Z')
+  })
+
+  it('reconstructs only daily overdue counts proven by FSRS due dates', () => {
+    const reviewAt = new Date('2026-08-03T12:00:00.000Z')
+    const card: AnalyticsCurrentCard = {
+      cardId: 'card-1',
+      slug: 'two-sum',
+      title: 'Two Sum',
+      topics: ['Array'],
+      retrievability: 0.8,
+      targetRetention: 0.9,
+      stabilityDays: 4,
+      difficulty: 5,
+      lapseCount: 0,
+      createdAt: new Date('2026-08-01T00:00:00.000Z'),
+      dueAt: new Date('2026-08-05T12:00:00.000Z'),
+      lastReviewAt: reviewAt,
+    }
+    const snapshots = reconstructOverdueBacklogSnapshots(
+      [
+        event({
+          cardId: 'card-1',
+          reviewedAt: reviewAt,
+          fsrsReviewLog: validLog(4).replace(
+            '2026-08-01T12:00:00.000Z',
+            '2026-08-02T12:00:00.000Z',
+          ),
+        }),
+      ],
+      [card],
+      options,
+    )
+
+    expect(
+      snapshots.map((snapshot) => [
+        toAnalyticsDateKey(snapshot.date),
+        snapshot.overdueCount,
+      ]),
+    ).toEqual([
+      ['2026-08-01', 0],
+      ['2026-08-02', 1],
+      ['2026-08-03', 0],
+    ])
+  })
+
+  it('keeps partial overdue history instead of fabricating missing dates', () => {
+    const result = buildOverdueBacklogPoints(
+      [{ date: new Date('2026-08-02T12:00:00.000Z'), overdueCount: 2 }],
+      options,
+    )
+
+    expect(result.points).toEqual([
+      { date: '2026-08-02', overdueCount: 2, historyAvailable: true },
+    ])
   })
 
   it('separates overdue and upcoming due load across the 14-day range', () => {
@@ -374,6 +475,7 @@ describe('analytics chart-data builders', () => {
     const result = buildRetentionHealth(
       [
         {
+          cardId: 'b-card',
           slug: 'b',
           title: 'B',
           topics: ['Graph'],
@@ -383,9 +485,11 @@ describe('analytics chart-data builders', () => {
           difficulty: 5,
           lapseCount: 1,
           dueAt: start,
+          createdAt: start,
           lastReviewAt: start,
         },
         {
+          cardId: 'high-difficulty-card',
           slug: 'high-difficulty',
           title: 'High Difficulty',
           topics: ['Dynamic Programming'],
@@ -395,9 +499,11 @@ describe('analytics chart-data builders', () => {
           difficulty: 8,
           lapseCount: 0,
           dueAt: new Date(end.getTime() + 1),
+          createdAt: start,
           lastReviewAt: end,
         },
         {
+          cardId: 'steady-card',
           slug: 'steady',
           title: 'Steady',
           topics: ['Array'],
@@ -407,9 +513,11 @@ describe('analytics chart-data builders', () => {
           difficulty: 7,
           lapseCount: 0,
           dueAt: new Date(end.getTime() + 1),
+          createdAt: start,
           lastReviewAt: end,
         },
         {
+          cardId: 'a-card',
           slug: 'a',
           title: 'A',
           topics: [],
@@ -419,9 +527,11 @@ describe('analytics chart-data builders', () => {
           difficulty: 3,
           lapseCount: 0,
           dueAt: start,
+          createdAt: start,
           lastReviewAt: start,
         },
         {
+          cardId: 'z-card',
           slug: 'z',
           title: 'Z',
           topics: [],
@@ -431,10 +541,12 @@ describe('analytics chart-data builders', () => {
           difficulty: 3,
           lapseCount: 0,
           dueAt: start,
+          createdAt: start,
           lastReviewAt: start,
           suspended: true,
         },
         {
+          cardId: 'new-card-id',
           slug: 'new-card',
           title: 'New Card',
           topics: ['Graph'],
@@ -444,6 +556,7 @@ describe('analytics chart-data builders', () => {
           difficulty: 8,
           lapseCount: 0,
           dueAt: start,
+          createdAt: start,
           lastReviewAt: null,
         },
       ],

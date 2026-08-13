@@ -39,7 +39,8 @@ export const metricDefinitions = {
   },
   hardAgain: {
     label: 'Hard + Again',
-    explanation: 'The share of ratings that signal friction or failure.',
+    explanation:
+      'The selected-period share of ratings that signal friction or failure, compared with the immediately preceding comparable period.',
     unit: '% of ratings',
     lowSampleOrEmptyState: 'No ratings were recorded in this period.',
   },
@@ -50,6 +51,21 @@ export const metricDefinitions = {
     unit: 'practice days / week',
     lowSampleOrEmptyState:
       'Not enough weekly assessed reviews exist for a useful comparison.',
+  },
+  ratingsMix: {
+    label: 'Ratings mix',
+    explanation:
+      'Daily proportions of Again, Hard, Good, and Easy ratings, with the selected-period Hard + Again share summarized below.',
+    unit: '% of ratings',
+    lowSampleOrEmptyState: 'Rating proportions appear after the next review.',
+  },
+  weakestTopics: {
+    label: 'Weakest topics',
+    explanation:
+      'Topics are ranked by observed correctness so lower-performing areas are easier to focus on first.',
+    unit: '% correct',
+    lowSampleOrEmptyState:
+      'Topics need labeled reviews with persisted correctness observations.',
   },
   targetRetention: {
     label: 'Target retention',
@@ -64,7 +80,7 @@ export const metricDefinitions = {
     explanation: 'Cards that were due before the point in time being shown.',
     unit: 'cards',
     lowSampleOrEmptyState:
-      'Historical overdue snapshots are not complete for this period, so no backlog values are shown.',
+      'Only dates that can be reconstructed from persisted FSRS due dates are shown; unknown dates stay blank.',
   },
   upcomingLoad: {
     label: 'Upcoming load',
@@ -80,6 +96,14 @@ export const metricDefinitions = {
     unit: 'problems',
     lowSampleOrEmptyState:
       'No current cards meet the fragile-knowledge signals.',
+  },
+  retentionHealth: {
+    label: 'Retention health',
+    explanation:
+      "Each reviewed problem's current FSRS retrievability compared with your configured target.",
+    unit: '% estimated retrievability',
+    lowSampleOrEmptyState:
+      'Reviewed cards will appear after their first review.',
   },
 } satisfies Record<string, AnalyticsMetricDefinition>
 
