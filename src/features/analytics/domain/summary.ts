@@ -1,5 +1,5 @@
 export interface ObservedRatingQualityResult {
-  value: number
+  value: number | null
   label: string
   sampleSize: number
   lowSample: boolean
@@ -79,7 +79,7 @@ export interface AnalyticsSummary {
   reviewDays: number
   totalReviews: number
   currentStreak: number
-  observedRatingQuality: number
+  observedRatingQuality: number | null
   observedRatingQualityLabel: string
   range: 14 | 30 | 90
   periodStart: string
@@ -104,7 +104,7 @@ export function buildObservedRatingQuality(
   const sampleSize = recent.length
 
   if (sampleSize < 10) {
-    return { value: 0, label: '—', sampleSize, lowSample: true }
+    return { value: null, label: '—', sampleSize, lowSample: true }
   }
 
   const positive = recent.filter(

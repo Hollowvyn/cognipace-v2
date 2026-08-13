@@ -26,6 +26,7 @@ import {
   backupSchemaVersion,
   createBackupSummary,
 } from '@/features/backup/api/backup-contracts'
+import { analyticsSummarySchema } from '@/features/analytics/api/analytics-contracts'
 import { defaultUserSettings } from '@/features/settings/domain'
 import type { ActiveTrack } from '@/features/tracks/domain'
 import { createSerializedPracticeDetails } from '@/testing/practice-fixtures'
@@ -355,8 +356,19 @@ describe('background handler registration', () => {
         lowSample: false,
       },
       targetRetention: 0.9,
-      retentionScatter: [],
-      retentionScatterCurve: [],
+      retentionScatter: [
+        {
+          slug: 'two-sum',
+          title: 'Two Sum',
+          retrievability: 0.8,
+          daysSinceReview: 3,
+          difficulty: 5,
+          stability: 10,
+          lapseCount: 0,
+          lastReviewAt: '2026-01-12T12:00:00.000Z',
+        },
+      ],
+      retentionScatterCurve: [{ days: 0, retrievability: 1 }],
     })
     backgroundMocks.backupExportFullBackup.mockResolvedValue(validBackup)
     backgroundMocks.backupResetLocalData.mockResolvedValue(null)
@@ -569,6 +581,8 @@ describe('background handler registration', () => {
       memoryProfile: {
         averageRetrievability: 0.8,
       },
+      retentionScatter: [],
+      retentionScatterCurve: [],
     })
   })
 
@@ -593,7 +607,7 @@ describe('background handler registration', () => {
       reviewDays: 3,
       totalReviews: 4,
       currentStreak: 1,
-      observedRatingQuality: 0,
+      observedRatingQuality: null,
       observedRatingQualityLabel: '—',
       retentionSampleSize: 4,
       lowSample: true,
@@ -618,10 +632,12 @@ describe('background handler registration', () => {
       retentionScatterCurve: [],
     })
 
-    const response = await sendRuntimeMessage('analytics.getSummary', {
-      surface: 'dashboard',
-      range: 90,
-    })
+    const response = analyticsSummarySchema.parse(
+      await sendRuntimeMessage('analytics.getSummary', {
+        surface: 'dashboard',
+        range: 90,
+      }),
+    )
 
     expect(response.observedRecallQuality.value).toBeNull()
     expect(response.observedRecallQuality.value).not.toBe(0)

@@ -899,6 +899,8 @@ export function registerBackgroundHandlers() {
         },
         chartDataStatus: 'unavailable',
         predictedRecall: { value: null, sampleSize: 0, lowSample: true },
+        retentionScatter: [],
+        retentionScatterCurve: [],
         recallQuality: [],
         consistency: [],
         ratingsMix: [],

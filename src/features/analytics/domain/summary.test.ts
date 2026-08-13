@@ -29,7 +29,7 @@ describe('buildObservedRatingQuality', () => {
     const result = buildObservedRatingQuality(attempts, now, 30)
 
     expect(result.lowSample).toBe(true)
-    expect(result.value).toBe(0)
+    expect(result.value).toBeNull()
     expect(result.label).toBe('—')
     expect(result.sampleSize).toBe(9)
   })

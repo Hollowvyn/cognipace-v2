@@ -21,6 +21,7 @@ describe('getAnalyticsSummary memory profile', () => {
       expect(summary.periodStart).toBe(
         new Date(now.getTime() - range * 24 * 60 * 60 * 1000).toISOString(),
       )
+      expect(summary.observedRatingQuality).toBeNull()
     },
   )
 
