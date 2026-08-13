@@ -33,7 +33,7 @@ export function MemoryStrengthChart({ data }: { data: StabilityPoint[] }) {
 
   return (
     <ChartContainer
-      accessibleDescription="Median FSRS stability by week. Higher stability generally means the problem can go longer between reviews."
+      accessibleDescription="Median FSRS stability in each selected time bucket. Higher stability generally means the problem can go longer between reviews."
       accessibleName="Memory strength chart"
       aria-label="Memory strength chart"
       aria-roledescription="area chart"

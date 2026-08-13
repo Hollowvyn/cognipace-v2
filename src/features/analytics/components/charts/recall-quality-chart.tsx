@@ -141,8 +141,8 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
       </ChartContainer>
       <p className="m-0 text-[length:var(--cp-badge-font-size)] leading-snug text-muted-foreground">
         Predicted recall is an FSRS estimate immediately before each review;
-        daily sample sizes distinguish review volume from eligible observed
-        correctness.
+        each time bucket's sample sizes distinguish review volume from eligible
+        observed correctness.
       </p>
     </div>
   )

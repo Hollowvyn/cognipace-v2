@@ -101,6 +101,13 @@ describe('analytics chart-data builders', () => {
     )
   })
 
+  it('describes ratings mix with selected time buckets', () => {
+    expect(metricDefinitions.ratingsMix.explanation).toContain(
+      'selected time buckets',
+    )
+    expect(metricDefinitions.ratingsMix.explanation).not.toMatch(/daily|week/i)
+  })
+
   it('builds daily observed and pre-review predicted recall with null empty samples', () => {
     const points = buildRecallQualityPoints(
       [

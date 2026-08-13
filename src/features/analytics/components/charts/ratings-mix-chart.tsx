@@ -58,7 +58,7 @@ export function RatingsMixChart({
   return (
     <div className="grid min-w-0 gap-3">
       <ChartContainer
-        accessibleDescription="Stacked daily rating proportions for Again, Hard, Good, and Easy. The Hard plus Again summary compares the selected period with the immediately preceding comparable period."
+        accessibleDescription="Stacked rating proportions in each selected time bucket for Again, Hard, Good, and Easy. The Hard plus Again summary compares the selected period with the immediately preceding comparable period."
         accessibleName="Ratings mix chart"
         aria-label="Ratings mix chart"
         aria-roledescription="stacked bar chart"

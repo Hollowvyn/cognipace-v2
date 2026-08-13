@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { eq } from 'drizzle-orm'
+
 import {
   createInitialFsrsCard,
   defaultFsrsCardKind,
@@ -320,6 +322,90 @@ describe('getAnalyticsSummary memory profile', () => {
     ).toBe(true)
     expect(summary.overdueBacklog.length).toBeGreaterThan(0)
     expect(summary.overdueHistoryAvailableFrom).not.toBeNull()
+  })
+
+  it.each([30, 90] as const)(
+    'marks %s-day overdue backlog readiness when reconstructed daily history is complete',
+    async (range) => {
+      const handle = await createTestDb({ seed: false })
+      const now = new Date('2026-08-13T12:00:00.000Z')
+      const dates = Array.from({ length: range }, (_, index) => {
+        const date = new Date(now)
+        date.setDate(date.getDate() - (range - 1 - index))
+        return date
+      })
+
+      await insertAnalyticsProblem(
+        handle.db,
+        `complete-overdue-${range}`,
+        `Complete overdue ${range}`,
+        [],
+      )
+      await insertAnalyticsHistory(handle.db, `complete-overdue-${range}`, {
+        id: `complete-overdue-${range}:default`,
+        dates,
+        ratings: Array<ReviewRating>(dates.length).fill('good'),
+        correct: Array<boolean>(dates.length).fill(true),
+        dueAt: new Date('2026-08-14T12:00:00.000Z'),
+        stability: 10,
+        difficulty: 5,
+      })
+
+      const summary = await getAnalyticsSummary(handle.db, { range, now })
+
+      expect(summary.historicalReadiness.overdueBacklog).toMatchObject({
+        ready: true,
+        assessments: range,
+        activeBuckets:
+          summary.historicalReadiness.overdueBacklog.requestedBuckets,
+      })
+      expect(
+        summary.overdueBacklog.every((point) => point.historyAvailable),
+      ).toBe(true)
+    },
+  )
+
+  it('keeps sparse reconstructed overdue history unready and preserves null bucket gaps', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-08-13T12:00:00.000Z')
+    const dates = Array.from({ length: 30 }, (_, index) => {
+      const date = new Date('2026-07-15T12:00:00.000Z')
+      date.setDate(date.getDate() + index)
+      return date
+    })
+
+    await insertAnalyticsProblem(
+      handle.db,
+      'sparse-overdue-history',
+      'Sparse overdue history',
+      [],
+    )
+    await insertAnalyticsHistory(handle.db, 'sparse-overdue-history', {
+      id: 'sparse-overdue-history:default',
+      dates,
+      ratings: Array<ReviewRating>(dates.length).fill('good'),
+      correct: Array<boolean>(dates.length).fill(true),
+      dueAt: new Date('2026-08-14T12:00:00.000Z'),
+      stability: 10,
+      difficulty: 5,
+    })
+    await handle.db
+      .update(reviewAttempts)
+      .set({ fsrsReviewLog: 'invalid review log' })
+      .where(eq(reviewAttempts.id, 'sparse-overdue-history:default:3'))
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 30, now })
+
+    expect(summary.historicalReadiness.overdueBacklog).toMatchObject({
+      ready: false,
+      assessments: 3,
+    })
+    expect(
+      summary.overdueBacklog.some(
+        (point) =>
+          point.historyAvailable === false && point.overdueCount === null,
+      ),
+    ).toBe(true)
   })
 
   it('keeps recall quality unready when valid ratings have no persisted correctness', async () => {

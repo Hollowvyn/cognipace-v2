@@ -55,7 +55,7 @@ export const metricDefinitions = {
   ratingsMix: {
     label: 'Ratings mix',
     explanation:
-      'Daily proportions of Again, Hard, Good, and Easy ratings, with the selected-period Hard + Again share summarized below.',
+      'Proportions of Again, Hard, Good, and Easy ratings across selected time buckets, with the selected-period Hard + Again share summarized below.',
     unit: '% of ratings',
     lowSampleOrEmptyState: 'Rating proportions appear after the next review.',
   },

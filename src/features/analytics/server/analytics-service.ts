@@ -231,20 +231,20 @@ export async function getAnalyticsSummary(
     now,
     fsrsOptions,
   )
+  const overdueSnapshots = reconstructOverdueBacklogSnapshots(
+    analyticsReviewHistory,
+    analyticsCurrentCards,
+    chartOptions,
+  )
   const overdueBacklogResult = buildOverdueBacklogPoints(
-    reconstructOverdueBacklogSnapshots(
-      analyticsReviewHistory,
-      analyticsCurrentCards,
-      chartOptions,
-    ),
+    overdueSnapshots,
     chartOptions,
   )
   const overdueReadiness = calculateAnalyticsReadiness({
     requestedDays: range,
-    evidenceCounts: bucketCountsFromPoints(
+    evidenceCounts: bucketCountsFromDatedObservations(
       buckets,
-      overdueBacklogResult.points,
-      (point) => (point.historyAvailable ? 1 : 0),
+      overdueSnapshots,
     ),
     bucketKeys: buckets.map((bucket) => bucket.key),
   })
@@ -469,6 +469,19 @@ function bucketCountsFromPoints<T extends { bucketStart: string }>(
   )
 
   return buckets.map((bucket) => counts.get(bucket.key) ?? 0)
+}
+
+function bucketCountsFromDatedObservations<T extends { date: Date }>(
+  buckets: readonly AnalyticsBucket[],
+  observations: readonly T[],
+): number[] {
+  return buckets.map(
+    (bucket) =>
+      observations.filter(
+        (observation) =>
+          observation.date >= bucket.start && observation.date <= bucket.end,
+      ).length,
+  )
 }
 
 function trimHistoricalPoints<T extends { bucketStart: string }>(

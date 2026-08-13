@@ -254,6 +254,24 @@ describe('analytics chart components', () => {
     expect(screen.getByText(/Low sample: Graphs \(2\)/)).toBeVisible()
   })
 
+  it('uses bucket-aware copy for adaptive historical charts', () => {
+    render(
+      <div>
+        <RecallQualityChart data={recallQuality} />
+        <RatingsMixChart data={ratingsMix} summary={hardAgain} />
+        <MemoryStrengthChart data={stability} />
+      </div>,
+    )
+
+    expect(screen.getByText(/each time bucket's sample sizes/i)).toBeVisible()
+    const descriptions = Array.from(document.querySelectorAll('svg desc'))
+      .map((description) => description.textContent)
+      .join(' ')
+    expect(descriptions).toContain('selected time bucket')
+    expect(descriptions).toContain('each selected time bucket')
+    expect(descriptions).not.toMatch(/daily|by week/i)
+  })
+
   it('does not fabricate chart values when the source data is empty', () => {
     render(
       <div>
