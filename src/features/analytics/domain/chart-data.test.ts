@@ -433,8 +433,37 @@ describe('analytics chart-data builders', () => {
           { date: new Date('2026-08-08T12:00:00.000Z'), overdueCount: 3 },
         ],
         bucketOptions,
-      ).points.map((point) => point.bucketStart),
-    ).toEqual(['2026-08-01', '2026-08-07'])
+      ).points,
+    ).toEqual([
+      {
+        date: '2026-08-03',
+        bucketStart: '2026-08-01',
+        bucketEnd: '2026-08-03',
+        overdueCount: 1,
+        historyAvailable: true,
+      },
+      {
+        date: '2026-08-06',
+        bucketStart: '2026-08-04',
+        bucketEnd: '2026-08-06',
+        overdueCount: null,
+        historyAvailable: false,
+      },
+      {
+        date: '2026-08-09',
+        bucketStart: '2026-08-07',
+        bucketEnd: '2026-08-09',
+        overdueCount: 3,
+        historyAvailable: true,
+      },
+      {
+        date: '2026-08-12',
+        bucketStart: '2026-08-10',
+        bucketEnd: '2026-08-12',
+        overdueCount: null,
+        historyAvailable: false,
+      },
+    ])
   })
 
   it('builds rating mix, including null Hard + Again on empty days', () => {
@@ -601,8 +630,23 @@ describe('analytics chart-data builders', () => {
         [{ date: new Date('2026-08-02T12:00:00.000Z'), overdueCount: 3 }],
         options,
       ),
-    ).toMatchObject({
-      points: [{ date: '2026-08-02', overdueCount: 3, historyAvailable: true }],
+    ).toEqual({
+      points: [
+        {
+          date: '2026-08-02',
+          bucketStart: '2026-08-02',
+          bucketEnd: '2026-08-02',
+          overdueCount: 3,
+          historyAvailable: true,
+        },
+        {
+          date: '2026-08-03',
+          bucketStart: '2026-08-03',
+          bucketEnd: '2026-08-03',
+          overdueCount: null,
+          historyAvailable: false,
+        },
+      ],
       overdueHistoryAvailableFrom: '2026-08-02T12:00:00.000Z',
     })
     const result = buildOverdueBacklogPoints(
@@ -858,6 +902,13 @@ describe('analytics chart-data builders', () => {
         overdueCount: 2,
         historyAvailable: true,
       },
+      {
+        date: '2026-08-03',
+        bucketStart: '2026-08-03',
+        bucketEnd: '2026-08-03',
+        overdueCount: null,
+        historyAvailable: false,
+      },
     ])
   })
 
@@ -887,6 +938,13 @@ describe('analytics chart-data builders', () => {
         bucketEnd: '2026-08-06',
         overdueCount: 2,
         historyAvailable: true,
+      },
+      {
+        date: '2026-08-09',
+        bucketStart: '2026-08-07',
+        bucketEnd: '2026-08-09',
+        overdueCount: null,
+        historyAvailable: false,
       },
     ])
   })

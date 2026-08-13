@@ -126,13 +126,21 @@ export interface StabilityPoint {
   sampleSize: number
 }
 
-export interface OverdueBacklogPoint {
+interface OverdueBacklogPointBase {
   date: string
   bucketStart: string
   bucketEnd: string
-  overdueCount: number
-  historyAvailable: boolean
 }
+
+export type OverdueBacklogPoint =
+  | (OverdueBacklogPointBase & {
+      overdueCount: number
+      historyAvailable: true
+    })
+  | (OverdueBacklogPointBase & {
+      overdueCount: null
+      historyAvailable: false
+    })
 
 export interface OverdueBacklogResult {
   points: OverdueBacklogPoint[]
@@ -516,7 +524,14 @@ export function buildOverdueBacklogPoints(
             isInBucket(candidate.date, bucket),
           ),
         )
-        if (!snapshot) return null
+        if (!snapshot) {
+          return {
+            date: toAnalyticsDateKey(bucket.end),
+            ...bucketBounds(bucket),
+            overdueCount: null,
+            historyAvailable: false,
+          }
+        }
 
         return {
           date: toAnalyticsDateKey(bucket.end),
@@ -525,8 +540,8 @@ export function buildOverdueBacklogPoints(
           historyAvailable: true,
         }
       }),
-      (point) => point !== null,
-    ).flatMap((point) => (point ? [point] : [])),
+      (point) => point.historyAvailable,
+    ),
     overdueHistoryAvailableFrom,
   }
 }

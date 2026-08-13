@@ -176,6 +176,16 @@ export async function getAnalyticsSummary(
     ),
     chartOptions,
   )
+  // TODO(Task 4): return explicit unavailable overdue-history buckets once the
+  // analytics response contract supports nullable overdueCount values.
+  const legacyOverdueBacklog = overdueBacklog.points.filter(
+    (
+      point,
+    ): point is Extract<
+      AnalyticsSummary['overdueBacklog'][number],
+      { historyAvailable: true }
+    > => point.historyAvailable,
+  )
   const upcomingLoad = buildUpcomingLoadPoints(
     upcomingCards.map((card) => card.dueAt),
     now,
@@ -265,7 +275,7 @@ export async function getAnalyticsSummary(
     hardAgain,
     topics,
     stability,
-    overdueBacklog: overdueBacklog.points,
+    overdueBacklog: legacyOverdueBacklog,
     overdueHistoryAvailableFrom: overdueBacklog.overdueHistoryAvailableFrom,
     upcomingLoad,
     retentionHealth,
