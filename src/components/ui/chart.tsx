@@ -44,50 +44,81 @@ export interface ChartContainerProps extends React.ComponentProps<'div'> {
   initialDimension?: React.ComponentProps<
     typeof RechartsPrimitive.ResponsiveContainer
   >['initialDimension']
+  accessibleName?: string
+  accessibleDescription?: string
 }
 
 export const ChartContainer = React.forwardRef<
   HTMLDivElement,
   ChartContainerProps
->(({ id, className, children, config, initialDimension, ...props }, ref) => {
-  const uniqueId = React.useId()
-  const chartId = `chart-${id ?? uniqueId.replace(/:/g, '')}`
+>(
+  (
+    {
+      id,
+      className,
+      children,
+      config,
+      initialDimension,
+      accessibleName,
+      accessibleDescription,
+      ...props
+    },
+    ref,
+  ) => {
+    const uniqueId = React.useId()
+    const chartId = `chart-${id ?? uniqueId.replace(/:/g, '')}`
+    const chartChildren =
+      React.isValidElement(children) &&
+      (accessibleName !== undefined || accessibleDescription !== undefined)
+        ? React.cloneElement(
+            children as React.ReactElement<{ desc?: string; title?: string }>,
+            {
+              ...(accessibleName !== undefined
+                ? { title: accessibleName }
+                : {}),
+              ...(accessibleDescription !== undefined
+                ? { desc: accessibleDescription }
+                : {}),
+            },
+          )
+        : children
 
-  return (
-    <ChartContext.Provider value={{ config }}>
-      <div
-        {...props}
-        ref={ref}
-        data-chart={chartId}
-        className={cn(
-          'relative flex aspect-video min-h-48 w-full min-w-0 justify-center text-xs',
-          '[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground',
-          '[&_.recharts-cartesian-grid_line[stroke="#ccc"]]:stroke-border/50',
-          '[&_.recharts-curve.recharts-tooltip-cursor]:stroke-border',
-          '[&_.recharts-dot[stroke="#fff"]]:stroke-transparent',
-          '[&_.recharts-layer]:outline-none',
-          '[&_.recharts-polar-grid_[stroke="#ccc"]]:stroke-border',
-          '[&_.recharts-radial-bar-background-sector]:fill-muted',
-          '[&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted',
-          '[&_.recharts-reference-line_[stroke="#ccc"]]:stroke-border',
-          '[&_.recharts-sector[stroke="#fff"]]:stroke-transparent',
-          '[&_.recharts-surface]:outline-none',
-          className,
-        )}
-      >
-        <ChartStyle config={config} id={chartId} />
-        <RechartsPrimitive.ResponsiveContainer
-          height="100%"
-          minHeight="12rem"
-          width="100%"
-          {...(initialDimension ? { initialDimension } : {})}
+    return (
+      <ChartContext.Provider value={{ config }}>
+        <div
+          {...props}
+          ref={ref}
+          data-chart={chartId}
+          className={cn(
+            'relative flex aspect-video min-h-48 w-full min-w-0 justify-center text-xs',
+            '[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground',
+            '[&_.recharts-cartesian-grid_line[stroke="#ccc"]]:stroke-border/50',
+            '[&_.recharts-curve.recharts-tooltip-cursor]:stroke-border',
+            '[&_.recharts-dot[stroke="#fff"]]:stroke-transparent',
+            '[&_.recharts-layer]:outline-none',
+            '[&_.recharts-polar-grid_[stroke="#ccc"]]:stroke-border',
+            '[&_.recharts-radial-bar-background-sector]:fill-muted',
+            '[&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted',
+            '[&_.recharts-reference-line_[stroke="#ccc"]]:stroke-border',
+            '[&_.recharts-sector[stroke="#fff"]]:stroke-transparent',
+            '[&_.recharts-surface]:outline-none',
+            className,
+          )}
         >
-          {children}
-        </RechartsPrimitive.ResponsiveContainer>
-      </div>
-    </ChartContext.Provider>
-  )
-})
+          <ChartStyle config={config} id={chartId} />
+          <RechartsPrimitive.ResponsiveContainer
+            height="100%"
+            minHeight="12rem"
+            width="100%"
+            {...(initialDimension ? { initialDimension } : {})}
+          >
+            {chartChildren}
+          </RechartsPrimitive.ResponsiveContainer>
+        </div>
+      </ChartContext.Provider>
+    )
+  },
+)
 ChartContainer.displayName = 'Chart'
 
 function ChartStyle({ config, id }: { config: ChartConfig; id: string }) {
@@ -126,12 +157,24 @@ ${colorConfig
 
 export const ChartTooltip = RechartsPrimitive.Tooltip
 
+type ChartTooltipFormatter = (
+  value: RechartsPrimitive.TooltipValueType,
+  name: string | number | undefined,
+  item: RechartsPrimitive.TooltipPayloadEntry,
+  index: number,
+  payload: ReadonlyArray<RechartsPrimitive.TooltipPayloadEntry>,
+) => React.ReactNode | [React.ReactNode, React.ReactNode] | null
+
 type ChartTooltipContentProps = React.ComponentProps<'div'> &
-  Pick<
-    RechartsPrimitive.TooltipContentProps,
-    'active' | 'label' | 'labelFormatter' | 'payload' | 'formatter'
+  Omit<
+    Pick<
+      RechartsPrimitive.TooltipContentProps,
+      'active' | 'label' | 'labelFormatter' | 'payload'
+    >,
+    'formatter'
   > & {
     color?: string
+    formatter?: ChartTooltipFormatter
     hideIndicator?: boolean
     hideLabel?: boolean
     indicator?: 'line' | 'dot' | 'dashed'
@@ -228,12 +271,25 @@ export const ChartTooltipContent = React.forwardRef<
               const indicatorColor =
                 color ?? getPayloadFill(item.payload as unknown) ?? item.color
               const Icon = itemConfig?.icon
-              const value =
+              const formatted =
                 item.value != null
-                  ? formatter
-                    ? formatter(item.value, item.name, item, index, payload)
-                    : item.value.toLocaleString()
-                  : null
+                  ? formatter?.(item.value, item.name, item, index, payload)
+                  : undefined
+
+              if (formatted === null) {
+                return null
+              }
+
+              const isTuple = isChartTooltipTuple(formatted)
+              const value = isTuple ? formatted[0] : formatted
+              const formattedName = isTuple ? formatted[1] : undefined
+              const displayValue = formatter
+                ? value
+                : item.value?.toLocaleString()
+              const displayName =
+                formatter && isTuple
+                  ? formattedName
+                  : (itemConfig?.label ?? item.name)
 
               return (
                 <div
@@ -277,12 +333,12 @@ export const ChartTooltipContent = React.forwardRef<
                     <div className="grid gap-1.5">
                       {nestLabel ? tooltipLabel : null}
                       <span className="text-muted-foreground">
-                        {itemConfig?.label ?? item.name}
+                        {displayName}
                       </span>
                     </div>
-                    {value != null && (
+                    {displayValue != null && (
                       <span className="font-mono font-medium tabular-nums text-foreground">
-                        {value}
+                        {displayValue}
                       </span>
                     )}
                   </div>
@@ -399,6 +455,16 @@ function getPayloadFill(payload: unknown): string | undefined {
 
   const fill = payload.fill
   return typeof fill === 'string' ? fill : undefined
+}
+
+function isChartTooltipTuple(
+  value:
+    | React.ReactNode
+    | [React.ReactNode, React.ReactNode]
+    | null
+    | undefined,
+): value is [React.ReactNode, React.ReactNode] {
+  return Array.isArray(value) && value.length === 2
 }
 
 export { ChartStyle }
