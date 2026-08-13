@@ -55,7 +55,8 @@ describe('AnalyticsReadinessState', () => {
       name: '90-day analytics readiness',
     })
 
-    expect(status).toHaveTextContent('2 more active buckets needed.')
+    expect(status).toHaveTextContent('2 more buckets of history needed.')
+    expect(status).toHaveTextContent('1 more active buckets needed.')
     expect(status).toHaveTextContent('13 more assessments needed.')
     expect(status).toHaveTextContent(
       'A practice gap is longer than this trend can bridge.',
@@ -83,7 +84,26 @@ describe('AnalyticsReadinessState', () => {
 
     expect(
       screen.getByRole('status', { name: '90-day analytics readiness' }),
-    ).toHaveTextContent('1 more active buckets needed.')
+    ).toHaveTextContent('1 more buckets of history needed.')
+  })
+
+  it('uses a chart-level heading when it replaces a historical chart panel', () => {
+    render(
+      <AnalyticsReadinessState
+        readiness={createReadiness({
+          failingReasons: ['insufficient-assessments'],
+        })}
+        recommendedRange={null}
+        title="Practice rhythm"
+      />,
+    )
+
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Practice rhythm' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('status', { name: 'Practice rhythm readiness' }),
+    ).toBeVisible()
   })
 
   it('describes the usable effective window without changing the selected range', () => {

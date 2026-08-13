@@ -465,6 +465,9 @@ describe('AnalyticsScreen', () => {
       await screen.findByRole('status', { name: 'Practice rhythm readiness' }),
     ).toHaveTextContent('12 more assessments needed.')
     expect(
+      screen.getByRole('heading', { level: 2, name: 'Practice rhythm' }),
+    ).toBeVisible()
+    expect(
       screen.queryByRole('region', { name: 'Practice rhythm' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Ratings mix' })).toBeVisible()

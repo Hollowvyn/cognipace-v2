@@ -14,7 +14,7 @@ const readinessMessages: Record<
   'no-evidence': () =>
     'Complete your first eligible review to begin this view.',
   'insufficient-span': (readiness) =>
-    `${deficit(getMinimumEffectiveBuckets(readiness.requestedBuckets), readiness.effectiveBuckets)} more active buckets needed.`,
+    `${deficit(getMinimumEffectiveBuckets(readiness.requestedBuckets), readiness.effectiveBuckets)} more buckets of history needed.`,
   'insufficient-assessments': (readiness) =>
     `${deficit(readiness.minimumAssessments, readiness.assessments)} more assessments needed.`,
   'insufficient-active-buckets': (readiness) =>
@@ -34,9 +34,10 @@ export function AnalyticsReadinessState({
   recommendedRange,
   title,
 }: AnalyticsReadinessStateProps) {
-  const messages = readiness.failingReasons.map((reason) =>
-    readinessMessages[reason](readiness),
-  )
+  const failures = readiness.failingReasons.map((reason) => ({
+    message: readinessMessages[reason](readiness),
+    reason,
+  }))
   const accessibleName = title
     ? `${title} readiness`
     : `${readiness.requestedDays}-day analytics readiness`
@@ -49,12 +50,14 @@ export function AnalyticsReadinessState({
       tone="warning"
     >
       {title ? (
-        <strong className="font-semibold text-foreground">{title}</strong>
+        <h2 className="m-0 text-[length:var(--cp-section-title-font-size)] font-bold leading-tight text-foreground">
+          {title}
+        </h2>
       ) : null}
-      {messages.length > 0 ? (
+      {failures.length > 0 ? (
         <ul className="m-0 grid list-none gap-1 p-0">
-          {messages.map((message) => (
-            <li key={message}>{message}</li>
+          {failures.map(({ message, reason }) => (
+            <li key={reason}>{message}</li>
           ))}
         </ul>
       ) : null}
