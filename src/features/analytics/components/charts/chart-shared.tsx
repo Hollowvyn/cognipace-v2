@@ -6,6 +6,9 @@ import { formatDateTime } from '@/utils/date-format'
 
 export const chartDimension = { height: 288, width: 640 } as const
 
+export const DASHED_LINE_EVIDENCE_LABEL =
+  'Dashed line crosses a period with no eligible evidence.'
+
 const dateLabelFormatter = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
   month: 'short',
