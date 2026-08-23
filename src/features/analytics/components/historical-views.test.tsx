@@ -199,11 +199,21 @@ describe('Phase 2 historical analytics views', () => {
       />,
     )
 
-    expect(
-      screen.getByRole('img', { name: 'Topic Performance chart' }),
-    ).toHaveAttribute('aria-roledescription', 'ranked horizontal bar chart')
+    const topicChartContainer = screen.getByRole('img', {
+      name: 'Topic Performance chart',
+    })
+    expect(topicChartContainer).toHaveAttribute(
+      'aria-roledescription',
+      'ranked horizontal bar chart',
+    )
     const topicChart = screen.getByTestId('topic-performance-keyboard-chart')
-    expect(topicChart.closest('svg')).toHaveAttribute('tabindex', '0')
+    const topicChartSvg = topicChart.closest('svg')
+    expect(topicChartSvg).toHaveAttribute('tabindex', '0')
+    expect(
+      within(topicChart).getByText(
+        'Ranked Topic Review Success for the selected period. Scale: 0%–100%. 1 of 1,001 qualifying topics shown.',
+      ),
+    ).toBeInTheDocument()
     expect(within(topicChart).getByText('60%')).toBeVisible()
     expect(
       screen.getByText(/1,000 stronger qualifying topics omitted/),

@@ -472,7 +472,7 @@ export function TopicPerformanceView({
         chart={
           hasTopics ? (
             <ChartContainer
-              accessibleDescription={`Ranked Topic Review Success for the selected period. Scale: 0%–100%. ${formatCount(qualifyingTopicCount(view))} qualifying topics shown.`}
+              accessibleDescription={`Ranked Topic Review Success for the selected period. Scale: 0%–100%. ${formatCount(view.rows.length)} of ${formatCount(qualifyingTopicCount(view))} qualifying topics shown.`}
               accessibleName="Topic Performance chart"
               aria-label="Topic Performance chart"
               aria-roledescription="ranked horizontal bar chart"

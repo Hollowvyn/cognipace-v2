@@ -10,7 +10,11 @@ import {
   type HistoricalPresentationOptions,
   type HistoricalAnalyticsReviewEvent,
 } from './historical-presentation'
-import { buildAnalyticsTimeFrame } from './analytics-time'
+import {
+  buildAnalyticsTimeFrame,
+  shiftAnalyticsCalendarDays,
+} from './analytics-time'
+import { buildAnalyticsBucketsFromTimeFrame } from './analytics-range-policy'
 
 const options: HistoricalPresentationOptions = {
   buckets: [
@@ -215,75 +219,85 @@ describe('buildHistoricalAnalyticsViews', () => {
     })
   })
 
-  it('exposes an equivalent eligible prior-period Hard + Again comparison only when both periods qualify', () => {
-    const selected = Array.from({ length: 10 }, (_, index) =>
+  it('exposes an equivalent eligible prior-period Hard + Again comparison through the shifted as-of boundary', () => {
+    const asOf = new Date('2026-08-22T12:00:00.000Z')
+    const comparisonOptions = optionsForComparison(asOf, 'UTC')
+    const previousAsOf = shiftAnalyticsCalendarDays(asOf, -14, 'UTC')
+    const previousBuckets = buildAnalyticsBucketsFromTimeFrame(
+      buildAnalyticsTimeFrame({
+        asOf: previousAsOf,
+        requestedDays: 14,
+        timeZone: 'UTC',
+      }),
+    )
+    const selected = comparisonOptions.buckets.map((bucket, index) =>
       event({
         id: `selected-${index}`,
-        rating: index < 2 ? 'again' : 'good',
-        reviewedAt: new Date(`2026-08-0${index < 5 ? 1 : 2}T12:00:00.000Z`),
+        rating: index < 3 ? 'again' : 'good',
+        reviewedAt:
+          index === comparisonOptions.buckets.length - 1
+            ? asOf
+            : new Date(bucket.start.getTime() + 12 * 60 * 60 * 1000),
       }),
     )
-    const previous = Array.from({ length: 10 }, (_, index) =>
+    const previous = previousBuckets.map((bucket, index) =>
       event({
         id: `previous-${index}`,
-        rating: index < 5 ? 'again' : 'good',
-        reviewedAt: new Date(`2026-07-1${index < 5 ? 8 : 9}T12:00:00.000Z`),
+        rating: index < 7 ? 'again' : 'good',
+        reviewedAt:
+          index === previousBuckets.length - 1
+            ? previousAsOf
+            : new Date(bucket.start.getTime() + 12 * 60 * 60 * 1000),
       }),
     )
 
-    const views = buildHistoricalAnalyticsViews([...selected, ...previous], {
-      ...options,
-      end: new Date('2026-08-02T23:59:59.999Z'),
-      start: new Date('2026-08-01T00:00:00.000Z'),
-    })
+    const views = buildHistoricalAnalyticsViews(
+      [...selected, ...previous],
+      comparisonOptions,
+    )
 
-    expect(views).toMatchObject({
-      ratingsMix: {
-        comparison: {
-          direction: 'down',
-          difference: -0.3,
-          previousHardAgainShare: 0.5,
-          previousValidRatings: 10,
-        },
-      },
+    expect(views.ratingsMix.comparison).toMatchObject({
+      direction: 'down',
+      previousHardAgainShare: 0.5,
+      previousValidRatings: 14,
     })
+    expect(views.ratingsMix.comparison.difference).toBeCloseTo(-2 / 7)
   })
 
   it('uses calendar-day shifting for an equivalent prior period across daylight saving time', () => {
     const asOf = new Date('2026-03-10T16:00:00.000Z')
-    const timeFrame = buildAnalyticsTimeFrame({
+    const timeFrameOptions = optionsForComparison(asOf, 'America/New_York')
+    const previousAsOf = shiftAnalyticsCalendarDays(
       asOf,
-      requestedDays: 14,
-      timeZone: 'America/New_York',
-    })
-    const timeFrameOptions = {
-      ...options,
-      buckets: [
-        {
-          key: 'selected',
-          start: new Date(timeFrame.periodStart),
-          end: asOf,
-          label: 'selected',
-        },
-      ],
-      end: asOf,
-      start: new Date(timeFrame.periodStart),
-      timeFrame,
-      timeZone: 'America/New_York',
-    }
-    const selected = Array.from({ length: 10 }, (_, index) =>
-      event({
-        id: `selected-dst-${index}`,
-        rating: index < 2 ? 'again' : 'good',
-        reviewedAt: new Date('2026-03-10T15:00:00.000Z'),
+      -14,
+      'America/New_York',
+    )
+    const previousBuckets = buildAnalyticsBucketsFromTimeFrame(
+      buildAnalyticsTimeFrame({
+        asOf: previousAsOf,
+        requestedDays: 14,
+        timeZone: 'America/New_York',
       }),
     )
-    const prior = Array.from({ length: 10 }, (_, index) =>
+    const selected = timeFrameOptions.buckets.map((bucket, index) =>
+      event({
+        id: `selected-dst-${index}`,
+        rating: index < 3 ? 'again' : 'good',
+        reviewedAt:
+          index === timeFrameOptions.buckets.length - 1
+            ? asOf
+            : new Date(bucket.start.getTime() + 12 * 60 * 60 * 1000),
+      }),
+    )
+    const prior = previousBuckets.map((bucket, index) =>
       event({
         id: `prior-dst-${index}`,
-        rating: index < 5 ? 'again' : 'good',
-        // 11:30 AM EST is eligible through the equivalent 12:00 PM cutoff.
-        reviewedAt: new Date('2026-02-24T16:30:00.000Z'),
+        rating: index < 7 ? 'again' : 'good',
+        // The exact prior local-time cutoff stays eligible across the DST shift.
+        reviewedAt:
+          index === previousBuckets.length - 1
+            ? previousAsOf
+            : new Date(bucket.start.getTime() + 12 * 60 * 60 * 1000),
       }),
     )
 
@@ -295,7 +309,48 @@ describe('buildHistoricalAnalyticsViews', () => {
     expect(views.ratingsMix.comparison).toMatchObject({
       direction: 'down',
       previousHardAgainShare: 0.5,
+      previousValidRatings: 14,
+    })
+  })
+
+  it('withholds the prior-period direction when either period fails the Ratings Mix span, activity, or gap gate', () => {
+    const asOf = new Date('2026-08-22T12:00:00.000Z')
+    const comparisonOptions = optionsForComparison(asOf, 'UTC')
+    const previousAsOf = shiftAnalyticsCalendarDays(asOf, -14, 'UTC')
+    const previousBuckets = buildAnalyticsBucketsFromTimeFrame(
+      buildAnalyticsTimeFrame({
+        asOf: previousAsOf,
+        requestedDays: 14,
+        timeZone: 'UTC',
+      }),
+    )
+    const selected = comparisonOptions.buckets
+      .slice(0, 10)
+      .map((bucket, index) =>
+        event({
+          id: `selected-gapped-${index}`,
+          rating: 'good',
+          reviewedAt: new Date(bucket.start.getTime() + 12 * 60 * 60 * 1000),
+        }),
+      )
+    const prior = previousBuckets.slice(0, 10).map((bucket, index) =>
+      event({
+        id: `prior-gapped-${index}`,
+        rating: 'again',
+        reviewedAt: new Date(bucket.start.getTime() + 12 * 60 * 60 * 1000),
+      }),
+    )
+
+    const views = buildHistoricalAnalyticsViews(
+      [...selected, ...prior],
+      comparisonOptions,
+    )
+
+    expect(views.ratingsMix.comparison).toEqual({
+      previousHardAgainShare: null,
       previousValidRatings: 10,
+      difference: null,
+      direction: null,
     })
   })
 
@@ -402,3 +457,23 @@ describe('buildHistoricalAnalyticsViews', () => {
     expect(views.topicPerformance.strongerQualifyingTopics).toBe(1)
   })
 })
+
+function optionsForComparison(
+  asOf: Date,
+  timeZone: string,
+): HistoricalPresentationOptions {
+  const timeFrame = buildAnalyticsTimeFrame({
+    asOf,
+    requestedDays: 14,
+    timeZone,
+  })
+
+  return {
+    ...options,
+    buckets: buildAnalyticsBucketsFromTimeFrame(timeFrame),
+    end: asOf,
+    start: new Date(timeFrame.periodStart),
+    timeFrame,
+    timeZone,
+  }
+}

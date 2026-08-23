@@ -11,8 +11,16 @@ import {
   normalizeTopicLookupKey,
 } from '@/features/problems/domain/topic-taxonomy'
 
-import type { AnalyticsBucket } from './analytics-range-policy'
 import {
+  buildAnalyticsBucketsFromTimeFrame,
+  type AnalyticsBucket,
+} from './analytics-range-policy'
+import {
+  calculateAnalyticsReadiness,
+  type AnalyticsReadiness,
+} from './analytics-readiness'
+import {
+  buildAnalyticsTimeFrame,
   shiftAnalyticsCalendarDays,
   type AnalyticsTimeFrame,
 } from './analytics-time'
@@ -352,17 +360,35 @@ function buildRatingsMixComparison(
     -options.timeFrame.requestedDays,
     options.timeFrame.timeZone,
   )
+  const previousBuckets = buildAnalyticsBucketsFromTimeFrame(
+    buildAnalyticsTimeFrame({
+      asOf: previousEnd,
+      requestedDays: options.timeFrame.requestedDays,
+      timeZone: options.timeFrame.timeZone,
+    }),
+  )
   const previousRatings = events.filter(
     (event) =>
       event.reviewedAt >= previousStart &&
-      event.reviewedAt < previousEnd &&
+      event.reviewedAt <= previousEnd &&
       isReviewRating(event.rating),
   )
   const previousHardAgain = previousRatings.filter(
     (event) => event.rating === 'again' || event.rating === 'hard',
   ).length
   const previousValidRatings = previousRatings.length
-  const qualifies = selectedValidRatings >= 10 && previousValidRatings >= 10
+  const qualifies =
+    isRatingsMixComparisonReady(
+      selectedValidRatings,
+      calculateRatingsMixReadiness(events, options.buckets, options),
+    ) &&
+    isRatingsMixComparisonReady(
+      previousValidRatings,
+      calculateRatingsMixReadiness(events, previousBuckets, {
+        ...options,
+        end: previousEnd,
+      }),
+    )
   const selectedShare =
     selectedValidRatings === 0 ? null : selectedHardAgain / selectedValidRatings
   const previousHardAgainShare =
@@ -387,6 +413,34 @@ function buildRatingsMixComparison(
             ? 'down'
             : 'flat',
   }
+}
+
+function calculateRatingsMixReadiness(
+  events: readonly HistoricalAnalyticsReviewEvent[],
+  buckets: readonly AnalyticsBucket[],
+  options: Pick<HistoricalPresentationOptions, 'end' | 'timeFrame'>,
+): AnalyticsReadiness {
+  return calculateAnalyticsReadiness({
+    requestedDays: options.timeFrame.requestedDays,
+    evidenceCounts: buckets.map(
+      (bucket) =>
+        events.filter(
+          (event) =>
+            event.reviewedAt >= bucket.start &&
+            event.reviewedAt <= bucket.end &&
+            event.reviewedAt <= options.end &&
+            isReviewRating(event.rating),
+        ).length,
+    ),
+    bucketKeys: buckets.map((bucket) => bucket.key),
+  })
+}
+
+function isRatingsMixComparisonReady(
+  validRatings: number,
+  readiness: AnalyticsReadiness,
+): boolean {
+  return validRatings >= 10 && readiness.ready
 }
 
 function buildTopicPerformance(
