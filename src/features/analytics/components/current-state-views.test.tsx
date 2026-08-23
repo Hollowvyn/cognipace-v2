@@ -218,7 +218,7 @@ describe('current-state analytics views', () => {
     expect(screen.getByRole('rowheader', { name: 'Refreshed 1' })).toBeVisible()
   })
 
-  it('keeps scatter keyboard order aligned with retained rank across statuses', () => {
+  it('keeps one roving chart tab stop in retained rank order across statuses', async () => {
     render(
       <RetentionMapView
         view={{
@@ -248,11 +248,40 @@ describe('current-state analytics views', () => {
       />,
     )
 
+    const region = screen.getByRole('region', { name: 'Retention Map chart' })
+    const summaryId = region.getAttribute('aria-describedby')
+    expect(summaryId).toBeTruthy()
+    expect(document.getElementById(summaryId!)).toHaveTextContent(
+      /Scope: active, non-suspended, reviewed problems.*watch band spans 10 percentage points.*vertical reference is 7 days.*model-estimated/i,
+    )
+
+    const points = screen
+      .getAllByRole('button')
+      .filter((button) => button.hasAttribute('data-retention-map-point'))
+    expect(
+      points.map((point) => point.getAttribute('data-retention-map-point')),
+    ).toEqual(['graph-traversal', 'watch', 'on-target'])
+    expect(points.map((point) => point.getAttribute('tabindex'))).toEqual([
+      '0',
+      '-1',
+      '-1',
+    ])
+
+    fireEvent.keyDown(points[0]!, { key: 'ArrowRight' })
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole('button')
+          .filter((button) =>
+            button.hasAttribute('data-retention-map-point'),
+          )[1],
+      ).toHaveFocus(),
+    )
     expect(
       screen
         .getAllByRole('button')
         .filter((button) => button.hasAttribute('data-retention-map-point'))
-        .map((button) => button.getAttribute('data-retention-map-point')),
-    ).toEqual(['graph-traversal', 'watch', 'on-target'])
+        .map((point) => point.getAttribute('tabindex')),
+    ).toEqual(['-1', '0', '-1'])
   })
 })

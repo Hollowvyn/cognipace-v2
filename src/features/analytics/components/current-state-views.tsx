@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react'
 import {
   CartesianGrid,
   ReferenceArea,
@@ -90,6 +97,8 @@ function RetentionMapChart({
 }) {
   const [pinnedSlug, setPinnedSlug] = useState<string | null>(null)
   const [transientSlug, setTransientSlug] = useState<string | null>(null)
+  const [activeSlug, setActiveSlug] = useState(() => view.rows[0]?.slug ?? null)
+  const chartSummaryId = useId()
   const regionRef = useRef<HTMLDivElement>(null)
   const triggerRefs = useRef(new Map<string, SVGGElement>())
   const activeTimerRef = useRef<number | null>(null)
@@ -99,6 +108,9 @@ function RetentionMapChart({
   const pinnedSlugRef = useRef<string | null>(null)
   const pinned = view.rows.find((row) => row.slug === pinnedSlug) ?? null
   const transient = view.rows.find((row) => row.slug === transientSlug) ?? null
+  const activePointSlug = view.rows.some((row) => row.slug === activeSlug)
+    ? activeSlug
+    : (view.rows[0]?.slug ?? null)
   const watchFloor = Math.max(0, view.targetRetention - 0.1)
 
   useEffect(() => {
@@ -210,7 +222,9 @@ function RetentionMapChart({
     (slug: string, offset: number) => {
       const index = view.rows.findIndex((row) => row.slug === slug)
       const target = view.rows[index + offset]
-      if (target) triggerRefs.current.get(target.slug)?.focus()
+      if (!target) return
+      setActiveSlug(target.slug)
+      window.setTimeout(() => triggerRefs.current.get(target.slug)?.focus())
     },
     [view.rows],
   )
@@ -235,7 +249,10 @@ function RetentionMapChart({
           data-retention-map-point={row.slug}
           onBlur={scheduleTransientClose}
           onClick={() => togglePinned(row.slug)}
-          onFocus={() => openTransient(row.slug)}
+          onFocus={() => {
+            setActiveSlug(row.slug)
+            openTransient(row.slug)
+          }}
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault()
@@ -257,7 +274,7 @@ function RetentionMapChart({
             else triggerRefs.current.delete(row.slug)
           }}
           role="button"
-          tabIndex={0}
+          tabIndex={activePointSlug === row.slug ? 0 : -1}
         >
           <title>{label}</title>
           <PointMark cx={cx} cy={cy} color={color} status={row.status} />
@@ -266,6 +283,7 @@ function RetentionMapChart({
       )
     },
     [
+      activePointSlug,
       moveFocus,
       openTransient,
       pinnedSlug,
@@ -276,10 +294,24 @@ function RetentionMapChart({
 
   return (
     <div className="relative grid gap-2" ref={regionRef}>
+      <p className="sr-only" id={chartSummaryId}>
+        Scope: active, non-suspended, reviewed problems with eligible current
+        FSRS data. X-axis is total target-crossing duration in days on a
+        logarithmic scale from {formatDuration(view.durationScale.domain[0])} to{' '}
+        {formatDuration(view.durationScale.domain[1])}. Y-axis is current FSRS
+        recall from {formatPercent(view.recallScale.domain[0])} to{' '}
+        {formatPercent(view.recallScale.domain[1])}. Target is{' '}
+        {formatPercent(view.targetRetention)}; the watch band spans 10
+        percentage points from {formatPercent(watchFloor)} to below{' '}
+        {formatPercent(view.targetRetention)}. The vertical reference is 7 days.
+        Values are model-estimated current FSRS memory status, not observed
+        recall.
+      </p>
       <ChartContainer
         accessibleDescription={`Each point is one active reviewed problem. X is total target-crossing duration in days on a logarithmic scale from ${formatDuration(view.durationScale.domain[0])} to ${formatDuration(view.durationScale.domain[1])}; Y is current FSRS recall from ${formatPercent(view.recallScale.domain[0])} to ${formatPercent(view.recallScale.domain[1])}.`}
         accessibleName="Retention Map chart"
         aria-label="Retention Map chart"
+        aria-describedby={chartSummaryId}
         aria-roledescription="interactive scatter plot"
         className="aspect-auto h-80 min-h-[20rem]"
         config={{
