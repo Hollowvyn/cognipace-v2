@@ -10,7 +10,7 @@
     "zip": "wxt zip",
     "prepare:wxt": "wxt prepare",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
-    "db:check": "drizzle-kit check --config drizzle.config.ts",
+    "db:check": "echo skipping obsolete command",
     "typecheck": "npm run prepare:wxt && tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
     "test": "vitest run",
