@@ -344,17 +344,16 @@ describe('getUpcomingCards', () => {
     expect(result).toEqual([])
   })
 
-  it('includes cards due on or before until and excludes cards due after', async () => {
+  it('keeps the forecast end exclusive so the fixed 14-day window has no fifteenth-day card', async () => {
     const { db } = await createTestDb()
     const before = new Date('2026-01-15T00:00:00.000Z')
     const exactly = new Date('2026-01-20T00:00:00.000Z')
-    const after = new Date('2026-01-21T00:00:00.000Z')
 
     await insertPractice(db, 'two-sum')
     await insertPractice(db, 'valid-parentheses')
 
     await insertCard(db, 'two-sum', { dueAt: ts(before) })
-    await insertCard(db, 'valid-parentheses', { dueAt: ts(after) })
+    await insertCard(db, 'valid-parentheses', { dueAt: ts(exactly) })
 
     const result = await getUpcomingCards(db, exactly)
     expect(result).toHaveLength(1)

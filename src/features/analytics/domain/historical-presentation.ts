@@ -20,6 +20,7 @@ import {
   type AnalyticsReadiness,
 } from './analytics-readiness'
 import {
+  addAnalyticsCalendarDays,
   buildAnalyticsTimeFrame,
   shiftAnalyticsCalendarDays,
   type AnalyticsTimeFrame,
@@ -31,6 +32,7 @@ import {
   type AnalyticsScale,
 } from './analytics-scales'
 import type { CurrentStateAnalyticsViews } from './current-state-presentation'
+import type { WorkloadAnalyticsViews } from './workload-presentation'
 
 export interface HistoricalAnalyticsReviewEvent {
   id: string
@@ -163,6 +165,8 @@ export interface HistoricalAnalyticsViews {
   }
   retentionMap: CurrentStateAnalyticsViews['retentionMap']
   memorySignals: CurrentStateAnalyticsViews['memorySignals']
+  overdueBacklog: WorkloadAnalyticsViews['overdueBacklog']
+  upcomingReviewLoad: WorkloadAnalyticsViews['upcomingReviewLoad']
 }
 
 export interface RatingsMixComparison {
@@ -353,6 +357,28 @@ export function buildHistoricalAnalyticsViews(
       targetRetention: options.fsrsOptions.targetRetention,
     },
     memorySignals: { rows: [], totalQualifying: 0 },
+    overdueBacklog: {
+      rows: [],
+      knownDays: 0,
+      withinWatchDays: 0,
+      aboveWatchDays: 0,
+      selectedDays: 0,
+      currentBacklog: null,
+      peak: null,
+      scale: { domain: [0, 5], ticks: [0, 5] },
+    },
+    upcomingReviewLoad: {
+      rows: Array.from({ length: 14 }, (_, index) => ({
+        date: addAnalyticsCalendarDays(
+          options.timeFrame.buckets.at(-1)?.endKey ?? '1970-01-01',
+          index,
+        ),
+        dueCount: 0,
+        overdueCount: 0,
+        today: index === 0,
+      })),
+      scale: { domain: [0, 1], ticks: [0, 1] },
+    },
   }
 }
 

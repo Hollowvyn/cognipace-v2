@@ -7,6 +7,7 @@ import {
   gte,
   gt,
   isNotNull,
+  lt,
   lte,
   ne,
   sql,
@@ -224,7 +225,7 @@ export async function getUpcomingCards(
     .where(
       and(
         eq(fsrsCards.cardKind, defaultFsrsCardKind),
-        lte(fsrsCards.dueAt, until.getTime()),
+        lt(fsrsCards.dueAt, until.getTime()),
         eq(problemPractice.isSuspended, false),
       ),
     )

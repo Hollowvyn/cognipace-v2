@@ -172,6 +172,25 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
         targetRetention: 0.9,
       },
       memorySignals: { rows: [], totalQualifying: 0 },
+      overdueBacklog: {
+        rows: [],
+        knownDays: 0,
+        withinWatchDays: 0,
+        aboveWatchDays: 0,
+        selectedDays: 0,
+        currentBacklog: null,
+        peak: null,
+        scale: { domain: [0, 5], ticks: [0, 5] },
+      },
+      upcomingReviewLoad: {
+        rows: Array.from({ length: 14 }, (_, index) => ({
+          date: `1970-01-${String(index + 1).padStart(2, '0')}`,
+          dueCount: 0,
+          overdueCount: 0,
+          today: index === 0,
+        })),
+        scale: { domain: [0, 1], ticks: [0, 1] },
+      },
     },
     retentionScatter: [],
     retentionScatterCurve: [],
@@ -464,6 +483,25 @@ describe('AnalyticsScreen', () => {
             targetRetention: 0.9,
           },
           memorySignals: { rows: [], totalQualifying: 0 },
+          overdueBacklog: {
+            rows: [],
+            knownDays: 0,
+            withinWatchDays: 0,
+            aboveWatchDays: 0,
+            selectedDays: 0,
+            currentBacklog: null,
+            peak: null,
+            scale: { domain: [0, 5], ticks: [0, 5] },
+          },
+          upcomingReviewLoad: {
+            rows: Array.from({ length: 14 }, (_, index) => ({
+              date: `1970-01-${String(index + 1).padStart(2, '0')}`,
+              dueCount: 0,
+              overdueCount: 0,
+              today: index === 0,
+            })),
+            scale: { domain: [0, 1], ticks: [0, 1] },
+          },
         },
       }),
     )
@@ -475,8 +513,8 @@ describe('AnalyticsScreen', () => {
         name: 'Observed Recall vs FSRS Estimate',
       }),
     ).toBeVisible()
-    expect(screen.getAllByRole('tab', { name: 'Chart' })).toHaveLength(5)
-    expect(screen.getAllByRole('tab', { name: 'Table' })).toHaveLength(5)
+    expect(screen.getAllByRole('tab', { name: 'Chart' })).toHaveLength(7)
+    expect(screen.getAllByRole('tab', { name: 'Table' })).toHaveLength(7)
     expect(screen.getByRole('region', { name: 'Ratings Mix' })).toBeVisible()
   })
 
@@ -491,8 +529,8 @@ describe('AnalyticsScreen', () => {
     expect(
       screen.getByRole('region', { name: 'Topic Performance' }),
     ).toBeVisible()
-    expect(screen.getAllByRole('tab', { name: 'Chart' })).toHaveLength(5)
-    expect(screen.getAllByRole('tab', { name: 'Table' })).toHaveLength(5)
+    expect(screen.getAllByRole('tab', { name: 'Chart' })).toHaveLength(7)
+    expect(screen.getAllByRole('tab', { name: 'Table' })).toHaveLength(7)
   })
 
   it('uses Topic Performance qualifying evidence instead of legacy correctness readiness', async () => {

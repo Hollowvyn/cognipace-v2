@@ -20,6 +20,10 @@ import {
   TopicPerformanceView,
 } from './historical-views'
 import { MemorySignalsView, RetentionMapView } from './current-state-views'
+import {
+  RecentOverdueBacklogView,
+  UpcomingReviewLoadView,
+} from './workload-views'
 
 export function AnalyticsScreen({
   range = 30,
@@ -81,6 +85,34 @@ export function AnalyticsScreen({
       ) : null}
       <AnalyticsHistoricalStory data={data} />
       <AnalyticsCurrentStateStory data={data} />
+      <AnalyticsWorkloadStory data={data} />
+    </div>
+  )
+}
+
+function AnalyticsWorkloadStory({
+  data,
+}: {
+  data: SerializedAnalyticsSummary
+}) {
+  return (
+    <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+      <AnalyticsChartPanel
+        description="Daily local overdue counts reconstructed from known persisted FSRS review intervals and current card state. Unknown days are deliberately not estimated."
+        id="recent-overdue-backlog"
+        question="How has the known overdue backlog changed across this selected period?"
+        title="Recent Overdue Backlog"
+      >
+        <RecentOverdueBacklogView view={data.views.overdueBacklog} />
+      </AnalyticsChartPanel>
+      <AnalyticsChartPanel
+        description="A fixed local-date schedule for active, non-suspended FSRS cards due today and over the next 13 days."
+        id="upcoming-review-load"
+        question="What review load is scheduled for the next 14 days?"
+        title="Upcoming Review Load"
+      >
+        <UpcomingReviewLoadView view={data.views.upcomingReviewLoad} />
+      </AnalyticsChartPanel>
     </div>
   )
 }

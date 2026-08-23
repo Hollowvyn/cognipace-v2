@@ -591,7 +591,7 @@ export function reconstructOverdueBacklogSnapshots(
           observationAt < candidate.endExclusive,
       )
       if (!interval) return []
-      if (interval.dueAt <= observationAt) overdueCount += 1
+      if (interval.dueAt < observationAt) overdueCount += 1
     }
 
     return [{ date: observationAt, overdueCount }]

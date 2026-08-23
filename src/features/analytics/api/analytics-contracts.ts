@@ -307,6 +307,17 @@ const memorySignalRowSchema = z.object({
   title: z.string(),
   reasons: z.array(memorySignalReasonSchema).min(1).max(3),
 })
+const overdueBacklogViewRowSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  overdueCount: countSchema.nullable(),
+  inProgress: z.boolean(),
+})
+const upcomingReviewLoadViewRowSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  dueCount: countSchema,
+  overdueCount: countSchema,
+  today: z.boolean(),
+})
 
 export const analyticsViewsSchema = z.object({
   observedRecallVsFsrs: z.object({
@@ -346,6 +357,20 @@ export const analyticsViewsSchema = z.object({
   memorySignals: z.object({
     rows: z.array(memorySignalRowSchema).max(25),
     totalQualifying: countSchema,
+  }),
+  overdueBacklog: z.object({
+    rows: z.array(overdueBacklogViewRowSchema),
+    knownDays: countSchema,
+    withinWatchDays: countSchema,
+    aboveWatchDays: countSchema,
+    selectedDays: countSchema,
+    currentBacklog: countSchema.nullable(),
+    peak: countSchema.nullable(),
+    scale: analyticsScaleSchema,
+  }),
+  upcomingReviewLoad: z.object({
+    rows: z.array(upcomingReviewLoadViewRowSchema).length(14),
+    scale: analyticsScaleSchema,
   }),
 })
 

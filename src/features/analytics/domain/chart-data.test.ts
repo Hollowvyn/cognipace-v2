@@ -1133,6 +1133,16 @@ describe('analytics chart-data builders', () => {
     expect(points[7]).toMatchObject({ dueCount: 1 })
   })
 
+  it('keeps a card due exactly at as-of in today due rather than overdue', () => {
+    const now = new Date('2026-08-13T12:00:00.000Z')
+
+    expect(buildUpcomingLoadPoints([now], now)[0]).toMatchObject({
+      dueCount: 1,
+      overdueCount: 0,
+      today: true,
+    })
+  })
+
   it('sorts retention health deterministically and excludes suspended cards', () => {
     const result = buildRetentionHealth(
       [

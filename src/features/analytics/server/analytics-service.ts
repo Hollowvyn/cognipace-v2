@@ -60,6 +60,7 @@ import {
 } from '../domain/analytics-time'
 import { buildHistoricalAnalyticsViews } from '../domain/historical-presentation'
 import { buildCurrentStateAnalyticsViews } from '../domain/current-state-presentation'
+import { buildWorkloadAnalyticsViews } from '../domain/workload-presentation'
 
 import {
   buildObservedRatingQuality,
@@ -227,7 +228,7 @@ export async function getAnalyticsSummary(
       timeZone: presentationTimeFrame.timeZone,
     },
   )
-  const views = { ...historicalViews, ...currentStateViews }
+  const baseViews = { ...historicalViews, ...currentStateViews }
   const baselineEvidenceCounts = buildBucketEvidenceCounts(
     analyticsReviewHistory,
     buckets,
@@ -337,6 +338,12 @@ export async function getAnalyticsSummary(
     now,
     presentationTimeFrame.timeZone,
   )
+  const workloadViews = buildWorkloadAnalyticsViews({
+    overdueSnapshots,
+    timeFrame: presentationTimeFrame,
+    upcomingLoad,
+  })
+  const views = { ...baseViews, ...workloadViews }
   const { health: retentionHealth, fragile: fragileKnowledge } =
     buildRetentionHealth(analyticsCurrentCards, now, {
       fragileDifficultyThreshold: 7,
