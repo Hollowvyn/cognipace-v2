@@ -1,7 +1,11 @@
 import { isReviewRating } from '@/lib/fsrs'
 
 import type { AnalyticsReadiness } from './analytics-readiness'
-import { addAnalyticsCalendarDays, getAnalyticsDateKey } from './analytics-time'
+import {
+  addAnalyticsCalendarDays,
+  getAnalyticsDateKey,
+  type AnalyticsTimeFrame,
+} from './analytics-time'
 
 export interface ObservedRatingQualityResult {
   value: number | null
@@ -75,6 +79,7 @@ export interface ReferenceCurvePoint {
 
 export interface AnalyticsSummaryInput {
   generatedAt: Date
+  timeFrame: AnalyticsTimeFrame
   reviewDays: number
   totalReviews: number
   currentStreak: number
@@ -114,6 +119,7 @@ export interface HistoricalReadiness {
 
 export interface AnalyticsSummary {
   generatedAt: string
+  timeFrame: AnalyticsTimeFrame
   reviewDays: number
   totalReviews: number
   currentStreak: number
@@ -256,6 +262,7 @@ export function buildAnalyticsSummary(
 ): AnalyticsSummary {
   return {
     generatedAt: input.generatedAt.toISOString(),
+    timeFrame: input.timeFrame,
     reviewDays: input.reviewDays,
     totalReviews: input.totalReviews,
     currentStreak: input.currentStreak,

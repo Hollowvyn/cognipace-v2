@@ -89,6 +89,24 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
   return {
     range: 30,
     generatedAt: '2026-01-15T12:00:00.000Z',
+    timeFrame: {
+      asOf: '2026-01-15T12:00:00.000Z',
+      timeZone: 'UTC',
+      timeZoneFallback: false,
+      requestedDays: 30,
+      periodStart: '2025-12-17T00:00:00.000Z',
+      periodEnd: '2026-01-16T00:00:00.000Z',
+      buckets: [
+        {
+          key: '2025-12-17',
+          start: '2025-12-17T00:00:00.000Z',
+          end: '2025-12-20T00:00:00.000Z',
+          startKey: '2025-12-17',
+          endKey: '2025-12-19',
+          isPartial: false,
+        },
+      ],
+    },
     reviewDays: 42,
     totalReviews: 381,
     currentStreak: 7,

@@ -71,6 +71,24 @@ export function createSerializedAnalyticsSummary(
   return {
     range: 30,
     generatedAt: '2026-05-30T00:00:00.000Z',
+    timeFrame: {
+      asOf: '2026-05-30T00:00:00.000Z',
+      timeZone: 'UTC',
+      timeZoneFallback: false,
+      requestedDays: 30,
+      periodStart: '2026-05-01T00:00:00.000Z',
+      periodEnd: '2026-05-31T00:00:00.000Z',
+      buckets: [
+        {
+          key: '2026-05-01',
+          start: '2026-05-01T00:00:00.000Z',
+          end: '2026-05-04T00:00:00.000Z',
+          startKey: '2026-05-01',
+          endKey: '2026-05-03',
+          isPartial: false,
+        },
+      ],
+    },
     reviewDays: 30,
     totalReviews: 150,
     currentStreak: 7,

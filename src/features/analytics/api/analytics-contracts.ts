@@ -8,6 +8,27 @@ export const analyticsRangeSchema = z.union([
 
 export type AnalyticsRange = z.infer<typeof analyticsRangeSchema>
 
+export const analyticsTimeBucketSchema = z.object({
+  key: z.string(),
+  start: z.iso.datetime(),
+  end: z.iso.datetime(),
+  startKey: z.string(),
+  endKey: z.string(),
+  isPartial: z.boolean(),
+})
+
+export const analyticsTimeFrameSchema = z.object({
+  asOf: z.iso.datetime(),
+  timeZone: z.string().min(1),
+  timeZoneFallback: z.boolean(),
+  requestedDays: analyticsRangeSchema,
+  periodStart: z.iso.datetime(),
+  periodEnd: z.iso.datetime(),
+  buckets: z.array(analyticsTimeBucketSchema).min(1),
+})
+
+export type AnalyticsTimeFrame = z.infer<typeof analyticsTimeFrameSchema>
+
 const percentageSchema = z.number().min(0).max(1)
 const countSchema = z.number().int().nonnegative()
 const nullablePercentageSchema = percentageSchema.nullable()
@@ -225,9 +246,11 @@ export const fragileKnowledgeSchema = z.object({
   topics: z.array(z.string()),
 })
 
-export const analyticsSummarySchema = z.object({
+export const analyticsSummarySchema = z
+  .object({
     range: analyticsRangeSchema,
     generatedAt: z.iso.datetime(),
+    timeFrame: analyticsTimeFrameSchema,
     reviewDays: countSchema,
     totalReviews: countSchema,
     currentStreak: countSchema,

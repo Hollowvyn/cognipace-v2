@@ -73,6 +73,24 @@ const validUpcomingLoad = Array.from({ length: 14 }, (_, index) => ({
 const validSummary: SerializedAnalyticsSummary = {
   range: 30,
   generatedAt: '2026-01-15T12:00:00.000Z',
+  timeFrame: {
+    asOf: '2026-01-15T12:00:00.000Z',
+    timeZone: 'America/New_York',
+    timeZoneFallback: false,
+    requestedDays: 30,
+    periodStart: '2025-12-17T05:00:00.000Z',
+    periodEnd: '2026-01-16T05:00:00.000Z',
+    buckets: [
+      {
+        key: '2025-12-17',
+        start: '2025-12-17T05:00:00.000Z',
+        end: '2025-12-20T05:00:00.000Z',
+        startKey: '2025-12-17',
+        endKey: '2025-12-19',
+        isPartial: false,
+      },
+    ],
+  },
   reviewDays: 10,
   totalReviews: 42,
   currentStreak: 3,
@@ -201,6 +219,17 @@ describe('analyticsSummaryRequestSchema', () => {
 })
 
 describe('analyticsSummarySchema', () => {
+  it('requires explicit local-time metadata and preserves partial bucket state', () => {
+    expect(analyticsSummarySchema.safeParse(validSummary).success).toBe(true)
+    expect(
+      analyticsSummarySchema.safeParse(withoutSummaryField('timeFrame'))
+        .success,
+    ).toBe(false)
+    expect(analyticsSummarySchema.parse(validSummary).timeFrame).toEqual(
+      validSummary.timeFrame,
+    )
+  })
+
   it('serializes a summary without duplicate presentation metadata', () => {
     expect(
       analyticsSummarySchema.safeParse(withoutSummaryField('generatedAt'))

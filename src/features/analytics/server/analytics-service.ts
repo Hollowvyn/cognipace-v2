@@ -361,6 +361,7 @@ export async function getAnalyticsSummary(
   // Step 5: assemble
   return buildAnalyticsSummary({
     generatedAt: now,
+    timeFrame: presentationTimeFrame,
     reviewDays: dayStats.reviewDays,
     totalReviews: dayStats.totalReviews,
     currentStreak: practiceProgress.currentStreak,

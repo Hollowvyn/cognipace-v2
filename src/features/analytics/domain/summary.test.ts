@@ -392,6 +392,11 @@ describe('buildAnalyticsSummary', () => {
 
     const result = buildAnalyticsSummary({
       generatedAt,
+      timeFrame: buildAnalyticsTimeFrame({
+        asOf: generatedAt,
+        requestedDays: 30,
+        timeZone: 'UTC',
+      }),
       reviewDays: 10,
       totalReviews: 42,
       currentStreak: 3,
@@ -425,6 +430,11 @@ describe('buildAnalyticsSummary', () => {
   it('keeps selected-range evidence and metric readiness explicit in the summary', () => {
     const result = buildAnalyticsSummary({
       generatedAt: now,
+      timeFrame: buildAnalyticsTimeFrame({
+        asOf: now,
+        requestedDays: 90,
+        timeZone: 'UTC',
+      }),
       reviewDays: 0,
       totalReviews: 0,
       currentStreak: 0,
