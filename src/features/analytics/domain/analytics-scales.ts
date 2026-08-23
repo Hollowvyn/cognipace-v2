@@ -49,9 +49,10 @@ export function buildMagnitudeScale(
   const peak = Math.max(0, requiredReference, ...finiteValues(values))
   if (peak === 0) return { domain: [0, 1], ticks: [0, 1] }
 
-  const minimumUpper = niceCeil(Math.max(1, peak) * 1.1)
-  const step = Math.max(1, selectMagnitudeTickStep(minimumUpper))
-  const upper = Math.max(minimumUpper, step * targetTickIntervals)
+  const upper = niceCeil(Math.max(1, peak) * 1.1)
+  // The approved upper formula leaves peak 1 at 0..2. Preserve that truthful
+  // small-count domain and prefer its integer ticks over extra empty space.
+  const step = Math.max(1, selectMagnitudeTickStep(upper))
 
   return {
     domain: [0, upper],

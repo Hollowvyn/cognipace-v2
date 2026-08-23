@@ -35,10 +35,10 @@ describe('analytics scales', () => {
     })
   })
 
-  it('expands small count scales to use whole-number ticks', () => {
+  it('keeps the approved small-count domain with whole-number ticks', () => {
     expect(buildMagnitudeScale([1])).toEqual({
-      domain: [0, 4],
-      ticks: [0, 1, 2, 3, 4],
+      domain: [0, 2],
+      ticks: [0, 1, 2],
     })
     expect(buildMagnitudeScale([2])).toEqual({
       domain: [0, 5],
