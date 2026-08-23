@@ -2,10 +2,27 @@ import { Bar, BarChart, type TooltipPayloadEntry } from 'recharts'
 import { render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+const { tooltipSpy } = vi.hoisted(() => ({
+  tooltipSpy: vi.fn<(props: { isAnimationActive?: boolean }) => void>(),
+}))
+
+vi.mock('recharts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('recharts')>()
+
+  return {
+    ...actual,
+    Tooltip: (props: { isAnimationActive?: boolean }) => {
+      tooltipSpy(props)
+      return null
+    },
+  }
+})
+
 import {
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
+  ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from './chart'
@@ -145,6 +162,30 @@ describe('Chart primitive', () => {
     expect(matchMedia).toHaveBeenCalledWith('(prefers-reduced-motion: reduce)')
   })
 
+  it('clones Recharts tooltip children with animation disabled for reduced motion', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockReturnValue({
+        addEventListener: vi.fn(),
+        matches: true,
+        removeEventListener: vi.fn(),
+      }),
+    )
+
+    render(
+      <ChartContainer config={chartConfig} id="reduced-motion-tooltip-chart">
+        <BarChart data={[{ day: 'Monday', reviews: 3 }]} responsive>
+          <Bar dataKey="reviews" fill="var(--color-reviews)" />
+          <ChartTooltip />
+        </BarChart>
+      </ChartContainer>,
+    )
+
+    expect(tooltipSpy.mock.calls.map(([props]) => props)).toContainEqual(
+      expect.objectContaining({ isAnimationActive: false }),
+    )
+  })
+
   it('uses deterministic initial dimensions when no size is supplied', () => {
     render(
       <ChartContainer config={chartConfig} id="default-dimensions-chart">
@@ -168,5 +209,6 @@ describe('Chart primitive', () => {
 })
 
 afterEach(() => {
+  tooltipSpy.mockClear()
   vi.unstubAllGlobals()
 })

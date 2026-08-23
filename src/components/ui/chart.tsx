@@ -19,6 +19,7 @@ const ANIMATED_CHART_COMPONENTS = new Set<unknown>([
   RechartsPrimitive.Radar,
   RechartsPrimitive.RadialBar,
   RechartsPrimitive.Scatter,
+  RechartsPrimitive.Tooltip,
 ])
 
 export type ChartConfig = Record<
