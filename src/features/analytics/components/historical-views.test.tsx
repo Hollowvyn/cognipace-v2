@@ -139,14 +139,20 @@ describe('Phase 2 historical analytics views', () => {
       />,
     )
 
-    expect(
-      screen.getByRole('img', { name: 'Ratings Mix chart' }),
-    ).toHaveAttribute('aria-roledescription', '100% stacked column chart')
+    const ratingsChartContainer = screen.getByRole('img', {
+      name: 'Ratings Mix chart',
+    })
+    expect(ratingsChartContainer).toHaveAttribute(
+      'aria-roledescription',
+      '100% stacked column chart',
+    )
     const ratingsChart = screen.getByTestId('ratings-mix-keyboard-chart')
     expect(ratingsChart.closest('svg')).toHaveAttribute('tabindex', '0')
-    expect(
-      screen.getByRole('list', { name: 'Ratings Mix categories' }),
-    ).toHaveTextContent('AgainHardGoodEasy')
+    const ratingsLegend = screen.getByRole('list', {
+      name: 'Ratings Mix categories',
+    })
+    expect(ratingsLegend).toHaveTextContent('AgainHardGoodEasy')
+    expect(ratingsChartContainer).not.toContainElement(ratingsLegend)
     expect(
       screen.getByText(
         /This period's rating mix is based on 1,000 valid ratings/,

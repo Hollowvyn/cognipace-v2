@@ -335,82 +335,96 @@ export function RatingsMixView({
       <ChartTable
         chart={
           hasRatings ? (
-            <ChartContainer
-              accessibleDescription={`Again, Hard, Good, and Easy shares for valid ratings in each selected-period bucket. Scale: 0%–100%. ${formatCount(view.selectedValidRatings)} valid ratings in the selected period.`}
-              accessibleName="Ratings Mix chart"
-              aria-label="Ratings Mix chart"
-              aria-roledescription="100% stacked column chart"
-              className="aspect-auto h-72 min-h-[18rem]"
-              config={{
-                againShare: {
-                  label: 'Again',
-                  color: 'var(--cp-analytics-again)',
-                },
-                hardShare: { label: 'Hard', color: 'var(--cp-analytics-hard)' },
-                goodShare: { label: 'Good', color: 'var(--cp-analytics-good)' },
-                easyShare: { label: 'Easy', color: 'var(--cp-analytics-easy)' },
-              }}
-              initialDimension={chartDimension}
-              role="img"
-            >
-              <BarChart
-                accessibilityLayer
-                data={view.rows}
-                data-testid="ratings-mix-keyboard-chart"
-                margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+            <div className="grid gap-2">
+              <ChartContainer
+                accessibleDescription={`Again, Hard, Good, and Easy shares for valid ratings in each selected-period bucket. Scale: 0%–100%. ${formatCount(view.selectedValidRatings)} valid ratings in the selected period.`}
+                accessibleName="Ratings Mix chart"
+                aria-label="Ratings Mix chart"
+                aria-roledescription="100% stacked column chart"
+                className="aspect-auto h-72 min-h-[18rem]"
+                config={{
+                  againShare: {
+                    label: 'Again',
+                    color: 'var(--cp-analytics-again)',
+                  },
+                  hardShare: {
+                    label: 'Hard',
+                    color: 'var(--cp-analytics-hard)',
+                  },
+                  goodShare: {
+                    label: 'Good',
+                    color: 'var(--cp-analytics-good)',
+                  },
+                  easyShare: {
+                    label: 'Easy',
+                    color: 'var(--cp-analytics-easy)',
+                  },
+                }}
+                initialDimension={chartDimension}
+                role="img"
               >
-                <CartesianGrid stroke="var(--color-border)" vertical={false} />
-                <XAxis
-                  axisLine={false}
-                  dataKey="bucketStart"
-                  minTickGap={32}
-                  tickFormatter={(value) =>
-                    formatRowBucket(
-                      view.rows.find((row) => row.bucketStart === value),
-                    )
-                  }
-                  tickLine={false}
-                />
-                <YAxis
-                  axisLine={false}
-                  domain={[0, 1]}
-                  tickFormatter={formatPercent}
-                  ticks={[0, 0.25, 0.5, 0.75, 1]}
-                  tickLine={false}
-                  width={44}
-                />
-                <ChartTooltip content={<RatingsMixTooltip />} />
-                <Bar
-                  dataKey="againShare"
-                  fill="var(--cp-analytics-again)"
-                  isAnimationActive={false}
-                  name="Again"
-                  stackId="ratings"
-                />
-                <Bar
-                  dataKey="hardShare"
-                  fill="var(--cp-analytics-hard)"
-                  isAnimationActive={false}
-                  name="Hard"
-                  stackId="ratings"
-                />
-                <Bar
-                  dataKey="goodShare"
-                  fill="var(--cp-analytics-good)"
-                  isAnimationActive={false}
-                  name="Good"
-                  stackId="ratings"
-                />
-                <Bar
-                  dataKey="easyShare"
-                  fill="var(--cp-analytics-easy)"
-                  isAnimationActive={false}
-                  name="Easy"
-                  stackId="ratings"
-                />
-              </BarChart>
+                <BarChart
+                  accessibilityLayer
+                  data={view.rows}
+                  data-testid="ratings-mix-keyboard-chart"
+                  margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+                >
+                  <CartesianGrid
+                    stroke="var(--color-border)"
+                    vertical={false}
+                  />
+                  <XAxis
+                    axisLine={false}
+                    dataKey="bucketStart"
+                    minTickGap={32}
+                    tickFormatter={(value) =>
+                      formatRowBucket(
+                        view.rows.find((row) => row.bucketStart === value),
+                      )
+                    }
+                    tickLine={false}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    domain={[0, 1]}
+                    tickFormatter={formatPercent}
+                    ticks={[0, 0.25, 0.5, 0.75, 1]}
+                    tickLine={false}
+                    width={44}
+                  />
+                  <ChartTooltip content={<RatingsMixTooltip />} />
+                  <Bar
+                    dataKey="againShare"
+                    fill="var(--cp-analytics-again)"
+                    isAnimationActive={false}
+                    name="Again"
+                    stackId="ratings"
+                  />
+                  <Bar
+                    dataKey="hardShare"
+                    fill="var(--cp-analytics-hard)"
+                    isAnimationActive={false}
+                    name="Hard"
+                    stackId="ratings"
+                  />
+                  <Bar
+                    dataKey="goodShare"
+                    fill="var(--cp-analytics-good)"
+                    isAnimationActive={false}
+                    name="Good"
+                    stackId="ratings"
+                  />
+                  <Bar
+                    dataKey="easyShare"
+                    fill="var(--cp-analytics-easy)"
+                    isAnimationActive={false}
+                    name="Easy"
+                    stackId="ratings"
+                  />
+                </BarChart>
+              </ChartContainer>
               <RatingsMixLegend />
-            </ChartContainer>
+            </div>
           ) : (
             <Empty message="No valid review ratings are available in this period." />
           )
