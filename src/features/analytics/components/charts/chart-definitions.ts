@@ -30,7 +30,6 @@ const good = 'var(--cp-analytics-good)' as const
 const easy = 'var(--cp-analytics-easy)' as const
 const healthy = 'var(--cp-analytics-healthy)' as const
 const attention = 'var(--cp-analytics-attention)' as const
-const risk = 'var(--cp-analytics-risk)' as const
 
 export const analyticsChartDefinitions = {
   recallQuality: {
