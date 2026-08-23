@@ -58,5 +58,4 @@ Use these files to understand why work was shaped a certain way. Before changing
 
 ## Audits
 
-- [`audits/2026-08-22-analytics-nine-chart-working-decisions.md`](./audits/2026-08-22-analytics-nine-chart-working-decisions.md): completed chart-by-chart decision record underlying the approved nine-view Analytics dashboard specification.
 - [`audits/2026-06-07-closed-issues-1-6-11-17.md`](./audits/2026-06-07-closed-issues-1-6-11-17.md): closed-issue rescue audit for issues 1, 6, 11, and 17.

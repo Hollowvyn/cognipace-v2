@@ -23,38 +23,21 @@ import {
 
 import { updateSettings } from '@/features/settings/server/settings-service'
 import { analyticsSummarySchema } from '../api/analytics-contracts'
-import { buildAnalyticsBuckets } from '../domain/analytics-range-policy'
-
 import { getAnalyticsSummary } from './analytics-service'
 
 describe('getAnalyticsSummary memory profile', () => {
   it.each([14, 30, 90] as const)(
-    'retains the selected %s-day range in summary metadata',
+    'retains the selected %s-day range in the readiness contract',
     async (range) => {
       const handle = await createTestDb()
       const now = new Date('2026-01-15T12:00:00.000Z')
-      const buckets = buildAnalyticsBuckets({
-        requestedDays: range,
-        periodEnd: now,
-      })
 
       const summary = await getAnalyticsSummary(handle.db, { range, now })
 
       expect(summary.range).toBe(range)
-      expect(summary.periodEnd).toBe(now.toISOString())
-      expect(summary.periodStart).toBe(buckets[0]!.start.toISOString())
-      expect(summary).toMatchObject({
-        presentationMeta: {
-          asOf: now.toISOString(),
-          timeZone: 'UTC',
-          timeZoneFallback: false,
-          range,
-          periodEnd: '2026-01-16T00:00:00.000Z',
-          isPartial: true,
-        },
-      })
+      expect(summary.historicalReadiness.requested.requestedDays).toBe(range)
       expect(summary.observedRatingQuality).toBeNull()
-      expect(summary.chartDataStatus).toBe('unready')
+      expect(summary.historicalReadiness.requested.ready).toBe(false)
       expect(summary.predictedRecall).toEqual({
         value: null,
         sampleSize: 0,
@@ -136,7 +119,7 @@ describe('getAnalyticsSummary memory profile', () => {
 
     const summary = await getAnalyticsSummary(handle.db, { range: 30, now })
 
-    expect(summary.chartDataStatus).toBe('unready')
+    expect(summary.historicalReadiness.requested.ready).toBe(false)
     expect(summary.predictedRecall).toEqual({
       value: null,
       sampleSize: 0,
@@ -779,7 +762,7 @@ describe('getAnalyticsSummary memory profile', () => {
     }
 
     expect(readiness.range).toBe(90)
-    expect(summary.chartDataStatus).toBe('unready')
+    expect(readiness.historicalReadiness.requested.ready).toBe(false)
     expect(readiness.historicalReadiness.requested).toMatchObject({
       requestedDays: 90,
       bucketDays: 7,
@@ -920,7 +903,7 @@ describe('getAnalyticsSummary memory profile', () => {
     }
 
     expect(readiness.historicalReadiness.requested.ready).toBe(true)
-    expect(summary.chartDataStatus).toBe('ready')
+    expect(readiness.historicalReadiness.requested.ready).toBe(true)
     expect(readiness.historicalReadiness.recommendedRange).toBeNull()
     expect(readiness.historicalReadiness.topics.ready).toBe(false)
     expect(readiness.historicalReadiness.topics.failingReasons).toContain(
@@ -987,11 +970,6 @@ describe('getAnalyticsSummary memory profile', () => {
       timeZone: 'America/New_York',
     })
 
-    expect(summary.presentationMeta).toMatchObject({
-      timeZone: 'America/New_York',
-      periodStart: '2026-02-23T05:00:00.000Z',
-      periodEnd: '2026-03-09T04:00:00.000Z',
-    })
     expect(summary.recallQuality[0]).toMatchObject({
       bucketStart: '2026-03-07',
       bucketEnd: '2026-03-07',

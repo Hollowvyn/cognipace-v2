@@ -242,7 +242,6 @@ describe('dashboard routes', () => {
       ] as ReadinessFailure[],
     }
     analyticsSummary = createSerializedAnalyticsSummary({
-      chartDataStatus: 'unready',
       range: 90,
       historicalReadiness: {
         requested: readiness,

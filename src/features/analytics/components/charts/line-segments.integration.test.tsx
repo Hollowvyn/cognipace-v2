@@ -48,7 +48,6 @@ function AnalyticsLineChart({ defaultIndex }: { defaultIndex: number }) {
         <LineSegments
           data={bridgeData}
           dataKey="value"
-          maximumGap={2}
           seriesKey="observedCorrectness"
           stroke="var(--cp-analytics-observed)"
         />

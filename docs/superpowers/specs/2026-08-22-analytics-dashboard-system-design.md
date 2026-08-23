@@ -5,8 +5,8 @@
 Approved by the user on August 22, 2026 after chart-by-chart product review.
 This document is the approved **future-state specification** for the CogniPace
 Analytics dashboard. It does not claim that the current branch already
-implements these contracts. Implementation follows the phase-sized plans linked
-from `../plans/2026-08-22-analytics-dashboard-system.md`.
+implements these contracts. Implementation follows the retained plan at
+`../plans/2026-08-22-analytics-dashboard-system.md`.
 
 This specification supersedes the following Analytics planning artifacts when
 they conflict with it:
@@ -19,11 +19,9 @@ governance documents remain authoritative for shipped behavior until this
 design is implemented. The implementation phase must update those authority
 documents in the same change that makes their descriptions true.
 
-The chart-by-chart decision history remains available in
-`../audits/2026-08-22-analytics-nine-chart-working-decisions.md`. This
-specification resolves that record's remaining nomenclature and algorithmic
-ambiguities. If the working record and this specification differ, this
-specification wins.
+This specification is the sole retained record of the chart-by-chart decisions
+and resolves the nomenclature and algorithmic ambiguities that arose during
+design review.
 
 ## Executive decision
 
@@ -466,8 +464,9 @@ entrypoints -> app -> features -> platform/lib/components
   builders.
 - `src/features/analytics/api` owns Zod request and response contracts across
   the extension runtime boundary.
-- `src/features/analytics/components` owns `AnalyticsFigure`, page sections,
-  evidence presentation, tables, and explicit view components.
+- `src/features/analytics/components` owns page sections and explicit view
+  components. Shared presentation layers exist only when mounted by those
+  components.
 - `src/components/ui/chart.tsx` owns only generic local Shadcn/Recharts
   primitives: container, semantic config, tooltip/legend primitives, responsive
   measurement, and common accessibility wiring.
@@ -486,24 +485,20 @@ SQLite review attempts + problem metadata + current FSRS cards
   -> pure feature-owned metric/evidence builders
   -> one serialized, Zod-validated Analytics presentation model
   -> AnalyticsScreen story composition
-  -> AnalyticsFigure
-  -> explicit Recharts chart and semantic table over the same rows
+  -> explicit Recharts chart or semantic table over feature-owned rows
 ```
 
-The response includes shared metadata (`asOf`, `timeZone`, range bounds,
-partial state, evidence summary) and nine named view models. Each historical
-row includes stable identity, exact bounds, source status, evidence counts, and
-preformatted-independent raw values. Formatting remains a shared presentation
+The response includes the selected range, evidence state, and nine named view
+models. Each historical row includes stable identity, exact bounds, source
+status, evidence counts, and raw values. Formatting remains a presentation
 concern, not serialized prose.
 
-### Presentation catalogue
+### Presentation metadata
 
-Replace drifting parallel metadata with one feature-owned catalogue keyed by
-the stable IDs. Each definition owns title, learner question, metric meaning,
-scope, series names, units, references, tooltip fields, table columns, empty
-copy, interpretation warning, and accessible description template. Explicit
-view components import their definition; a generic renderer does not interpret
-it.
+Keep only metadata a mounted chart consumes: its accessible identity, metric
+meaning, series names, exact-value fields, and any interpretation warning.
+Feature components may share that small semantic metadata, but a generic
+renderer and a parallel full catalogue are out of scope.
 
 ### Provenance capture boundary
 
@@ -1109,8 +1104,8 @@ This is a design sequence, not the implementation plan:
 
 1. Freeze current behavior with focused tests and add fixtures for every
    current-to-target semantic change.
-2. Introduce the canonical view catalogue, shared date/format/domain helpers,
-   presentation schemas, and `AnalyticsFigure` without a universal renderer.
+2. Introduce only the shared date/domain helpers and response contracts that
+   have a live consumer.
 3. Correct metric builders and runtime contracts before changing labels.
 4. Migrate the historical views and Chart/Table parity.
 5. Build Retention Map and Memory Signals from one current-state source model.
@@ -1232,9 +1227,9 @@ contract before it enters Analytics.
   not an ARIA tooltip; keyboard, focus, reflow, contrast, and reduced-motion
   behavior require explicit treatment.
 - **CogniPace-specific design inference:** the question-led page hierarchy,
-  evidence-sufficiency presentation, adaptive domain helpers, explicit
-  `AnalyticsFigure`, and same-model Chart/Table architecture apply that guidance
-  to this repository's local-first data and Terra Compact design system.
+  evidence-sufficiency presentation, adaptive domain helpers, and explicit
+  feature chart components apply that guidance to this repository's local-first
+  data and Terra Compact design system.
 - **Explicit approved product decisions:** the nine metrics and formulas,
   14/30/90 behavior, five-problem backlog watch zone, seven-day durability
   benchmark, Retention Map six-region treatment and 30-row cap, Memory Signals
@@ -1243,12 +1238,6 @@ contract before it enters Analytics.
 
 ### Decision sources
 
-- Locked working record:
-  `docs/superpowers/audits/2026-08-22-analytics-nine-chart-working-decisions.md`
-- Superseded Shadcn/Recharts design:
-  `docs/superpowers/specs/2026-08-13-analytics-v1-shadcn-charts-design.md`
-- Superseded adaptive story design:
-  `docs/superpowers/specs/2026-08-13-analytics-v1-adaptive-chart-story-design.md`
 - Current product authority: `docs/product.md`
 - Current architecture authority: `docs/architecture.md`
 - Current testing authority: `docs/testing.md`
@@ -1279,4 +1268,4 @@ contract before it enters Analytics.
 - View contracts: 9/9 locked.
 - Chart-quality checklist coverage: 18/18 for every view.
 - Implementation: not started by this specification.
-- Implementation plan: written as the linked five-phase plan suite.
+- Implementation plan: `docs/superpowers/plans/2026-08-22-analytics-dashboard-system.md`.

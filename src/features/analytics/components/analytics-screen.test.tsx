@@ -87,19 +87,7 @@ function createReadyHistoricalReadiness() {
 
 function baseAnalyticsSummary(): SerializedAnalyticsSummary {
   return {
-    chartDataStatus: 'unavailable',
-    presentationMeta: {
-      asOf: '2026-01-15T12:00:00.000Z',
-      timeZone: 'UTC',
-      timeZoneFallback: false,
-      range: 30,
-      periodStart: '2025-12-17T00:00:00.000Z',
-      periodEnd: '2026-01-16T00:00:00.000Z',
-      isPartial: true,
-    },
     range: 30,
-    periodStart: '2025-12-16T00:00:00.000Z',
-    periodEnd: '2026-01-15T12:00:00.000Z',
     generatedAt: '2026-01-15T12:00:00.000Z',
     reviewDays: 42,
     totalReviews: 381,
@@ -166,7 +154,6 @@ function readyAnalyticsSummary(
   overrides: Partial<SerializedAnalyticsSummary> = {},
 ): SerializedAnalyticsSummary {
   return createAnalyticsSummary({
-    chartDataStatus: 'ready',
     historicalReadiness: createReadyHistoricalReadiness(),
     recallQuality: [
       {
@@ -333,25 +320,17 @@ describe('AnalyticsScreen', () => {
     ).toBeVisible()
   })
 
-  it('shows one unavailable chart state instead of partial or fabricated charts', async () => {
+  it('keeps measured views visible while the selected range needs more evidence', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(createAnalyticsSummary())
 
     renderAnalyticsScreen()
 
-    const definition = metricDefinitions.analyticsCharts
-    const emptyPanel = await screen.findByRole('region', {
-      name: definition.label,
-    })
     expect(
-      within(emptyPanel).getByText(definition.question ?? ''),
-    ).toBeVisible()
-    expect(within(emptyPanel).getByText(definition.explanation)).toBeVisible()
-    expect(
-      within(emptyPanel).getByText(definition.lowSampleOrEmptyState),
+      await screen.findByRole('region', { name: 'Recall quality' }),
     ).toBeVisible()
     expect(
-      screen.queryByRole('region', { name: 'Recall quality' }),
-    ).not.toBeInTheDocument()
+      screen.getByLabelText('30-day analytics readiness'),
+    ).toBeVisible()
   })
 
   it('keeps the selected unready range while offering a ready shorter view and current-state panels', async () => {
@@ -375,7 +354,6 @@ describe('AnalyticsScreen', () => {
 
     vi.mocked(sendMessage).mockResolvedValueOnce(
       readyAnalyticsSummary({
-        chartDataStatus: 'unready',
         range: 90,
         historicalReadiness: {
           requested: readiness,

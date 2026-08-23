@@ -24,10 +24,6 @@ import {
   type AnalyticsCurrentCard,
   type AnalyticsReviewEvent,
 } from './chart-data'
-import {
-  buildAnalyticsBuckets,
-  getAnalyticsRangePolicy,
-} from './analytics-range-policy'
 import { buildAnalyticsTimeFrame } from './analytics-time'
 import { metricDefinitions } from './metric-definitions'
 
@@ -36,10 +32,61 @@ const end = new Date('2026-08-03T23:59:59.999Z')
 const options = {
   start,
   end,
-  buckets: buildAnalyticsBuckets({ requestedDays: 3, periodEnd: end }),
-  rangePolicy: getAnalyticsRangePolicy(3),
+  buckets: [
+    {
+      key: '2026-08-01',
+      start: new Date('2026-08-01T00:00:00.000Z'),
+      end: new Date('2026-08-01T23:59:59.999Z'),
+      label: '2026-08-01',
+    },
+    {
+      key: '2026-08-02',
+      start: new Date('2026-08-02T00:00:00.000Z'),
+      end: new Date('2026-08-02T23:59:59.999Z'),
+      label: '2026-08-02',
+    },
+    {
+      key: '2026-08-03',
+      start: new Date('2026-08-03T00:00:00.000Z'),
+      end,
+      label: '2026-08-03',
+    },
+  ],
   fsrsOptions: normalizeFsrsSchedulingOptions(),
   lowSampleThreshold: 2,
+}
+
+function buildTestBuckets({
+  requestedDays,
+  periodEnd,
+}: {
+  requestedDays: number
+  periodEnd: Date
+}) {
+  const bucketDays = requestedDays === 30 ? 3 : 1
+  const first = new Date(periodEnd)
+  first.setUTCHours(0, 0, 0, 0)
+  first.setUTCDate(first.getUTCDate() - (requestedDays - 1))
+  const buckets = []
+
+  for (let offset = 0; offset < requestedDays; offset += bucketDays) {
+    const start = new Date(first)
+    start.setUTCDate(start.getUTCDate() + offset)
+    const end = new Date(start)
+    end.setUTCDate(end.getUTCDate() + bucketDays - 1)
+    end.setUTCHours(23, 59, 59, 999)
+    if (end > periodEnd) end.setTime(periodEnd.getTime())
+    const key = start.toISOString().slice(0, 10)
+    const endKey = end.toISOString().slice(0, 10)
+    buckets.push({
+      key,
+      start,
+      end,
+      label: key === endKey ? key : `${key} – ${endKey}`,
+    })
+  }
+
+  return buckets
 }
 const validLog = (stability: number) =>
   JSON.stringify({
@@ -381,11 +428,10 @@ describe('analytics chart-data builders', () => {
     const adaptiveOptions = {
       start: new Date('2026-08-01T00:00:00.000Z'),
       end: adaptiveEnd,
-      buckets: buildAnalyticsBuckets({
+      buckets: buildTestBuckets({
         requestedDays: 30,
         periodEnd: adaptiveEnd,
       }).slice(0, 3),
-      rangePolicy: getAnalyticsRangePolicy(30),
       fsrsOptions: normalizeFsrsSchedulingOptions(),
       lowSampleThreshold: 2,
     }
@@ -435,7 +481,7 @@ describe('analytics chart-data builders', () => {
 
   it('keeps post-start practice buckets while other metrics trim unsupported leading buckets', () => {
     const periodEnd = new Date('2026-08-30T23:59:59.999Z')
-    const buckets = buildAnalyticsBuckets({
+    const buckets = buildTestBuckets({
       requestedDays: 30,
       periodEnd,
     }).slice(0, 3)
@@ -444,7 +490,6 @@ describe('analytics chart-data builders', () => {
       start: buckets[0]!.start,
       end: buckets[2]!.end,
       buckets,
-      rangePolicy: getAnalyticsRangePolicy(30),
     }
     const events = [
       event({
@@ -485,7 +530,7 @@ describe('analytics chart-data builders', () => {
 
   it('preserves internal and trailing historical gaps after the first evidence bucket', () => {
     const periodEnd = new Date('2026-08-30T23:59:59.999Z')
-    const buckets = buildAnalyticsBuckets({
+    const buckets = buildTestBuckets({
       requestedDays: 30,
       periodEnd,
     }).slice(0, 4)
@@ -494,7 +539,6 @@ describe('analytics chart-data builders', () => {
       start: buckets[0]!.start,
       end: buckets[3]!.end,
       buckets,
-      rangePolicy: getAnalyticsRangePolicy(30),
     }
     const events = [
       event({ id: 'first', cardId: 'first-card' }),
@@ -679,11 +723,10 @@ describe('analytics chart-data builders', () => {
       ...options,
       start: new Date('2026-08-01T00:00:00.000Z'),
       end: currentTime,
-      buckets: buildAnalyticsBuckets({
+      buckets: buildTestBuckets({
         requestedDays: 1,
         periodEnd: currentTime,
       }),
-      rangePolicy: getAnalyticsRangePolicy(1),
     }
     const futureReview = event({
       reviewedAt: new Date('2026-08-01T12:00:00.001Z'),
@@ -1042,7 +1085,7 @@ describe('analytics chart-data builders', () => {
 
   it('uses the latest snapshot inside a bucket and preserves later unavailable buckets', () => {
     const periodEnd = new Date('2026-08-30T23:59:59.999Z')
-    const buckets = buildAnalyticsBuckets({
+    const buckets = buildTestBuckets({
       requestedDays: 30,
       periodEnd,
     }).slice(0, 3)
@@ -1051,7 +1094,6 @@ describe('analytics chart-data builders', () => {
       start: buckets[0]!.start,
       end: buckets[2]!.end,
       buckets,
-      rangePolicy: getAnalyticsRangePolicy(30),
     }
 
     expect(

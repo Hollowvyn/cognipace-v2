@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deliver the approved nine-view Analytics dashboard with truthful local-time data, exact Chart/Table parity, accessible interaction, and no expansion beyond CogniPace's local-first dashboard scope.
+**Goal:** Deliver the approved nine-view Analytics dashboard with truthful local-time data, accessible interaction, and no expansion beyond CogniPace's local-first dashboard scope.
 
-**Architecture:** Implement the system in five independently testable phases. Preserve `entrypoints -> app -> features -> platform/lib/components`; keep Analytics read-only; keep FSRS package calls in `src/lib/fsrs`; build feature-owned presentation rows behind the Analytics service; validate the runtime response with Zod; and render explicit feature charts through a thin `AnalyticsFigure` over generic Shadcn/Recharts primitives.
+**Architecture:** Preserve `entrypoints -> app -> features -> platform/lib/components`; keep Analytics read-only; keep FSRS package calls in `src/lib/fsrs`; build feature-owned presentation rows behind the Analytics service; validate the runtime response with Zod; and render explicit feature charts over generic Shadcn/Recharts primitives. Keep only shared code that has a live runtime consumer.
 
 **Tech Stack:** TypeScript 6, React 19, Recharts 3.10, Zod 4, TanStack Query 5, date-fns 4, Vitest 4, Testing Library, WXT Chrome MV3, Tailwind CSS 4.
 
@@ -15,28 +15,23 @@
 Implementation authority for the target state:
 
 - `docs/superpowers/specs/2026-08-22-analytics-dashboard-system-design.md`
-- `docs/superpowers/audits/2026-08-22-analytics-nine-chart-working-decisions.md`
 
 Current behavior authority remains `docs/product.md`, `docs/architecture.md`,
 `docs/testing.md`, and `design.md` until each target behavior lands. Update
 those files only in the final integration phase, when their new wording becomes
 true.
 
-## Why this is a plan suite
+## Execution sequence
 
-The approved design spans shared time/evidence infrastructure, five historical
-analyses, two current-state diagnostics, and two workload views. Executing all
-of that as one pass would violate the repository's phase-sized planning rule.
-Use these plans in order:
+The implementation is sequenced so each stage leaves the repository green:
 
-1. [Phase 1 — Foundation and contracts](./2026-08-22-analytics-dashboard-phase-1-foundation.md)
-2. [Phase 2 — Historical outcome views](./2026-08-22-analytics-dashboard-phase-2-historical-outcomes.md)
-3. [Phase 3 — Ratings and topic views](./2026-08-22-analytics-dashboard-phase-3-ratings-topics.md)
-4. [Phase 4 — Current-state diagnostics](./2026-08-22-analytics-dashboard-phase-4-current-state.md)
-5. [Phase 5 — Workload, integration, and authority docs](./2026-08-22-analytics-dashboard-phase-5-workload-integration.md)
+1. Build local-time range and evidence contracts.
+2. Add the five historical views.
+3. Add rating and topic views.
+4. Add current-state diagnostics.
+5. Add workload views and update authority docs.
 
-Each phase must end with a green repository and a dedicated Conventional Commit.
-Do not begin the next phase while required automated validation is failing.
+Each stage ends with focused tests, repository validation, and a dedicated Conventional Commit. Do not continue while required automated validation is failing.
 
 ## Specification coverage map
 
@@ -44,7 +39,7 @@ Do not begin the next phase while required automated validation is failing.
 | ---------------------------------------------------------------------------------------------------- | ---------------------------------- |
 | local timezone, half-open ranges, 14/30/90 buckets, partial today, fixed forecast bounds             | Phase 1                            |
 | evidence vocabulary/gates, missing-zero semantics, adaptive/count/log domains, shared precision      | Phase 1                            |
-| canonical catalogue, `AnalyticsFigure`, Chart/Table semantics, pagination, generic chart a11y/tokens | Phase 1                            |
+| explicit chart components, chart a11y, and shared semantic tokens                                    | Phase 1                            |
 | View 1 Observed Recall vs FSRS, View 2 Memory Strength, View 3 Practice Rhythm                       | Phase 2                            |
 | View 4 Ratings Mix, View 5 Topic Performance                                                         | Phase 3                            |
 | View 6 Retention Map, rich detail, View 7 Memory Signals                                             | Phase 4                            |
@@ -67,20 +62,14 @@ Do not begin the next phase while required automated validation is failing.
 
 - `src/features/analytics/domain/analytics-time.ts`: IANA timezone validation,
   local-calendar bounds, stable keys, partial-day and forecast boundaries.
-- `src/features/analytics/domain/analytics-evidence.ts`: evidence state and
+- `src/features/analytics/domain/analytics-readiness.ts`: evidence state and
   trend-support calculations.
-- `src/features/analytics/domain/analytics-scales.ts`: deterministic adaptive,
-  count, and logarithmic domains.
-- `src/features/analytics/domain/analytics-format.ts`: shared value/date display
-  formatting used by summaries, tooltips, and tables.
 - `src/features/analytics/domain/historical-presentation.ts`: Views 1–5
   eligibility and presentation-row builders.
 - `src/features/analytics/domain/current-state-presentation.ts`: Views 6–7
   cohort, status, ranking, and reason builders.
 - `src/features/analytics/domain/workload-presentation.ts`: Views 8–9 daily
   backlog and fixed schedule builders.
-- `src/features/analytics/api/analytics-presentation-contracts.ts`: common and
-  per-view Zod schemas.
 - `src/features/analytics/api/analytics-contracts.ts`: request and top-level
   serialized response composition.
 - `src/features/analytics/server/analytics-service.ts`: one local read pass and
@@ -88,18 +77,10 @@ Do not begin the next phase while required automated validation is failing.
 
 ### Analytics UI
 
-- `src/features/analytics/components/analytics-figure.tsx`: header, Chart/Table
-  controls, takeaway/evidence, disclosure, and labelled relationships.
-- `src/features/analytics/components/analytics-data-table.tsx`: semantic table
-  and pagination behavior shared inside Analytics.
-- `src/features/analytics/components/analytics-evidence-summary.tsx`: one calm
-  page evidence summary.
-- `src/features/analytics/components/charts/chart-catalogue.ts`: the single
-  feature-owned presentation catalogue.
 - `src/features/analytics/components/charts/*`: one explicit component per
   chart; never one chart-type switchboard.
 - `src/features/analytics/components/analytics-screen.tsx`: approved story
-  order and phase integration only.
+  order and integration only.
 
 ## Compatibility strategy
 
@@ -110,9 +91,9 @@ Do not replace the entire runtime payload before any consumer can render it.
 3. Phase 5 switches workload, removes superseded serialized fields/components,
    and updates authority docs.
 
-During compatibility, old fields may remain in the top-level schema, but new
-components must never derive locked metrics from old misleading field names.
-The final response has one `views` object keyed by the nine stable IDs.
+Do not retain compatibility metadata or generic presentation layers after
+their live consumer has moved. Components must never derive locked metrics from
+old misleading field names.
 
 ## No schema change in this plan suite
 
@@ -124,14 +105,14 @@ captured facts.
 
 ## Phase gates
 
-At the end of every phase:
+At the end of every stage:
 
 ```sh
 npm run lint
 npm run check
 ```
 
-At the end of every visible UI phase (Phases 2–5), also run:
+At the end of every visible UI stage, also run:
 
 ```sh
 npm run build
@@ -160,7 +141,6 @@ engineer must attach screenshots or a screen recording covering:
 
 - all nine views with representative data;
 - 14/30/90 historical selections;
-- Chart/Table parity and pagination;
 - sparse, missing, zero, partial-today, reconstructed, and error states;
 - Retention Map pointer, keyboard, pin, same-point close, Escape, outside click,
   focus restoration, and LeetCode navigation;
@@ -177,8 +157,6 @@ manual smoke or visual proof N/A.
 - [ ] Retention Map and Memory Signals use one current-state presentation source.
 - [ ] Recent Overdue Backlog stays daily at every historical range.
 - [ ] Upcoming Review Load stays fixed at today plus 13 days.
-- [ ] Every chart has a visible same-model Table alternative; Memory Signals is
-      table-native.
 - [ ] Tooltips, tables, summaries, and accessible announcements use identical
       names, units, precision, and ordering.
 - [ ] Current authority docs describe the shipped behavior and old planning
@@ -187,6 +165,6 @@ manual smoke or visual proof N/A.
 
 ## Execution boundary
 
-Start only with Phase 1. Stop for review after each phase commit. Do not use the
+Start with the local-time and evidence contracts. Stop for review after each stage commit. Do not use the
 untracked August 13 plan as an execution source; this approved August 22 suite
 supersedes it without modifying that user-owned file.

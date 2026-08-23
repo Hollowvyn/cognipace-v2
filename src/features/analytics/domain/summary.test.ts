@@ -392,22 +392,11 @@ describe('buildAnalyticsSummary', () => {
 
     const result = buildAnalyticsSummary({
       generatedAt,
-      presentationMeta: {
-        asOf: generatedAt.toISOString(),
-        timeZone: 'UTC',
-        timeZoneFallback: false,
-        range: 30,
-        periodStart: '2025-12-17T00:00:00.000Z',
-        periodEnd: '2026-01-16T00:00:00.000Z',
-        isPartial: true,
-      },
       reviewDays: 10,
       totalReviews: 42,
       currentStreak: 3,
       observedRatingQuality: retention,
       range: 30,
-      periodStart: new Date(2025, 11, 16, 12),
-      periodEnd: generatedAt,
       forecast,
       weakProblems: [],
       memoryProfile,
@@ -436,15 +425,6 @@ describe('buildAnalyticsSummary', () => {
   it('keeps selected-range evidence and metric readiness explicit in the summary', () => {
     const result = buildAnalyticsSummary({
       generatedAt: now,
-      presentationMeta: {
-        asOf: now.toISOString(),
-        timeZone: 'UTC',
-        timeZoneFallback: false,
-        range: 90,
-        periodStart: '2025-10-18T00:00:00.000Z',
-        periodEnd: '2026-01-16T00:00:00.000Z',
-        isPartial: true,
-      },
       reviewDays: 0,
       totalReviews: 0,
       currentStreak: 0,
@@ -455,8 +435,6 @@ describe('buildAnalyticsSummary', () => {
         lowSample: true,
       },
       range: 90,
-      periodStart: new Date(2025, 9, 18, 0, 0, 0),
-      periodEnd: now,
       forecast: [],
       weakProblems: [],
       memoryProfile: {

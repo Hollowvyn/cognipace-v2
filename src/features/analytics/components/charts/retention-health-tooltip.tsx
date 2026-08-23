@@ -136,9 +136,6 @@ export function RetentionHealthTooltip({
           <p className="m-0 truncate font-semibold text-foreground">
             {point.title}
           </p>
-          <p className="m-0 mt-1 text-[length:var(--cp-badge-font-size)] text-muted-foreground">
-            {point.slug}
-          </p>
         </div>
         <Button
           aria-label={`Close ${point.title} memory details`}

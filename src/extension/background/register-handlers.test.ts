@@ -344,18 +344,7 @@ describe('background handler registration', () => {
     vi.clearAllMocks()
     backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
     backgroundMocks.getAnalyticsSummary.mockResolvedValue({
-      presentationMeta: {
-        asOf: '2026-01-15T12:00:00.000Z',
-        timeZone: 'UTC',
-        timeZoneFallback: false,
-        range: 30,
-        periodStart: '2025-12-17T00:00:00.000Z',
-        periodEnd: '2026-01-16T00:00:00.000Z',
-        isPartial: true,
-      },
       range: 30,
-      periodStart: '2025-12-16T12:00:00.000Z',
-      periodEnd: '2026-01-15T12:00:00.000Z',
       generatedAt: '2026-01-15T12:00:00.000Z',
       reviewDays: 3,
       totalReviews: 12,
@@ -381,7 +370,6 @@ describe('background handler registration', () => {
         lowSample: false,
       },
       targetRetention: 0.9,
-      chartDataStatus: 'ready',
       predictedRecall: { value: 0.86, sampleSize: 12, lowSample: false },
       retentionScatter: [
         {
@@ -631,7 +619,9 @@ describe('background handler registration', () => {
       memoryProfile: {
         averageRetrievability: 0.8,
       },
-      chartDataStatus: 'ready',
+      historicalReadiness: {
+        requested: { ready: true },
+      },
       retentionScatter: [
         {
           slug: 'two-sum',
@@ -647,7 +637,7 @@ describe('background handler registration', () => {
       retentionScatterCurve: [{ days: 0, retrievability: 1 }],
     })
     const parsedResponse = analyticsSummarySchema.parse(response)
-    expect(parsedResponse.chartDataStatus).toBe('ready')
+    expect(parsedResponse.historicalReadiness.requested.ready).toBe(true)
     expect(parsedResponse.predictedRecall).toEqual({
       value: 0.86,
       sampleSize: 12,
@@ -668,19 +658,10 @@ describe('background handler registration', () => {
     )
   })
 
-  it('preserves requested timezone frame metadata across a DST boundary', async () => {
+  it('preserves requested timezone grouping across a DST boundary', async () => {
     const fixture = createSerializedAnalyticsSummary({
       range: 14,
       historicalReadiness: createReadyHistoricalReadiness(),
-      presentationMeta: {
-        asOf: '2026-03-08T05:30:00.000Z',
-        timeZone: 'America/New_York',
-        timeZoneFallback: false,
-        range: 14,
-        periodStart: '2026-02-23T05:00:00.000Z',
-        periodEnd: '2026-03-09T04:00:00.000Z',
-        isPartial: true,
-      },
       upcomingLoad: Array.from({ length: 14 }, (_, index) => ({
         date: `2026-03-${String(8 + index).padStart(2, '0')}`,
         dueCount: index === 0 ? 1 : 0,
@@ -694,7 +675,6 @@ describe('background handler registration', () => {
       observedRatingQuality: 0.75,
       observedRatingSampleSize: 12,
       lowSample: false,
-      chartDataStatus: 'ready',
     })
 
     const response = await sendRuntimeMessage('analytics.getSummary', {
@@ -714,11 +694,7 @@ describe('background handler registration', () => {
     )
     const parsed = analyticsSummarySchema.parse(response)
 
-    expect(parsed.presentationMeta).toMatchObject({
-      timeZone: 'America/New_York',
-      periodStart: '2026-02-23T05:00:00.000Z',
-      periodEnd: '2026-03-09T04:00:00.000Z',
-    })
+    expect(parsed.range).toBe(14)
     expect(parsed.upcomingLoad[0]).toMatchObject({
       date: '2026-03-08',
       dueCount: 1,
@@ -728,18 +704,7 @@ describe('background handler registration', () => {
 
   it('does not expose low-sample observed rating quality as 0%', async () => {
     backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
-      presentationMeta: {
-        asOf: '2026-01-15T12:00:00.000Z',
-        timeZone: 'UTC',
-        timeZoneFallback: false,
-        range: 90,
-        periodStart: '2025-10-18T00:00:00.000Z',
-        periodEnd: '2026-01-16T00:00:00.000Z',
-        isPartial: true,
-      },
       range: 90,
-      periodStart: '2025-10-17T12:00:00.000Z',
-      periodEnd: '2026-01-15T12:00:00.000Z',
       generatedAt: '2026-01-15T12:00:00.000Z',
       reviewDays: 3,
       totalReviews: 4,
@@ -767,7 +732,6 @@ describe('background handler registration', () => {
       targetRetention: 0.9,
       retentionScatter: [],
       retentionScatterCurve: [],
-      chartDataStatus: 'ready',
       historicalReadiness: createReadyHistoricalReadiness(),
       predictedRecall: { value: null, sampleSize: 0, lowSample: true },
       recallQuality: [],
@@ -806,7 +770,6 @@ describe('background handler registration', () => {
 
   it('serializes current and forecast analytics when the selected historical range is unready', async () => {
     const fixture = createSerializedAnalyticsSummary({
-      chartDataStatus: 'unready',
       range: 90,
       historicalReadiness: {
         ...createSerializedAnalyticsSummary().historicalReadiness,
@@ -858,7 +821,6 @@ describe('background handler registration', () => {
       }),
     )
 
-    expect(response.chartDataStatus).toBe('unready')
     expect(response.range).toBe(90)
     expect(response.historicalReadiness.requested.ready).toBe(false)
     expect(response.upcomingLoad).toHaveLength(14)

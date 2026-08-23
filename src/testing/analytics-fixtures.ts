@@ -69,19 +69,7 @@ export function createSerializedAnalyticsSummary(
   overrides?: Partial<SerializedAnalyticsSummary>,
 ): SerializedAnalyticsSummary {
   return {
-    chartDataStatus: 'unavailable',
-    presentationMeta: {
-      asOf: '2026-05-30T00:00:00.000Z',
-      timeZone: 'UTC',
-      timeZoneFallback: false,
-      range: 30,
-      periodStart: '2026-05-01T00:00:00.000Z',
-      periodEnd: '2026-05-31T00:00:00.000Z',
-      isPartial: true,
-    },
     range: 30,
-    periodStart: '2026-04-30T00:00:00.000Z',
-    periodEnd: '2026-05-30T00:00:00.000Z',
     generatedAt: '2026-05-30T00:00:00.000Z',
     reviewDays: 30,
     totalReviews: 150,

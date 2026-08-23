@@ -1,7 +1,5 @@
 import { z } from 'zod'
 
-import { analyticsPresentationMetaSchema } from './analytics-presentation-contracts'
-
 export const analyticsRangeSchema = z.union([
   z.literal(14),
   z.literal(30),
@@ -227,13 +225,8 @@ export const fragileKnowledgeSchema = z.object({
   topics: z.array(z.string()),
 })
 
-export const analyticsSummarySchema = z
-  .object({
-    chartDataStatus: z.enum(['unavailable', 'unready', 'ready']),
-    presentationMeta: analyticsPresentationMetaSchema,
+export const analyticsSummarySchema = z.object({
     range: analyticsRangeSchema,
-    periodStart: z.iso.datetime(),
-    periodEnd: z.iso.datetime(),
     generatedAt: z.iso.datetime(),
     reviewDays: countSchema,
     totalReviews: countSchema,
@@ -262,74 +255,16 @@ export const analyticsSummarySchema = z
     fragileKnowledge: z.array(fragileKnowledgeSchema),
   })
   .superRefine((summary, context) => {
-    const requestedReadiness = summary.historicalReadiness.requested
-
-    if (summary.chartDataStatus === 'ready' && !requestedReadiness.ready) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          'Ready chart data requires requested historical readiness to be ready.',
-        path: ['chartDataStatus'],
-      })
-    }
-
-    if (summary.chartDataStatus === 'unready' && requestedReadiness.ready) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          'Unready chart data requires requested historical readiness to be unready.',
-        path: ['chartDataStatus'],
-      })
-    }
-
     if (
-      summary.chartDataStatus === 'ready' &&
+      summary.historicalReadiness.requested.ready &&
       summary.historicalReadiness.recommendedRange !== null
     ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          'Ready chart data must not include a recommended fallback range.',
+          'A ready requested range must not include a recommended fallback range.',
         path: ['historicalReadiness', 'recommendedRange'],
       })
-    }
-
-    if (summary.chartDataStatus !== 'unavailable') return
-
-    if (
-      summary.predictedRecall.value !== null ||
-      summary.predictedRecall.sampleSize !== 0 ||
-      summary.predictedRecall.lowSample !== true
-    ) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          'Unavailable chart data must use an empty low-sample predicted recall metric.',
-        path: ['predictedRecall'],
-      })
-    }
-
-    const chartFields = [
-      'retentionScatter',
-      'retentionScatterCurve',
-      'recallQuality',
-      'practiceRhythm',
-      'ratingsMix',
-      'topics',
-      'stability',
-      'overdueBacklog',
-      'retentionHealth',
-      'fragileKnowledge',
-    ] as const
-
-    for (const field of chartFields) {
-      if (summary[field].length > 0) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Unavailable chart data must not include chart series.',
-          path: [field],
-        })
-      }
     }
   })
 

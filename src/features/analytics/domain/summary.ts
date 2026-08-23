@@ -73,26 +73,13 @@ export interface ReferenceCurvePoint {
   retrievability: number
 }
 
-export interface AnalyticsPresentationMeta {
-  asOf: string
-  timeZone: string
-  timeZoneFallback: boolean
-  range: 14 | 30 | 90
-  periodStart: string
-  periodEnd: string
-  isPartial: boolean
-}
-
 export interface AnalyticsSummaryInput {
   generatedAt: Date
-  presentationMeta: AnalyticsPresentationMeta
   reviewDays: number
   totalReviews: number
   currentStreak: number
   observedRatingQuality: ObservedRatingQualityResult
   range: 14 | 30 | 90
-  periodStart: Date
-  periodEnd: Date
   forecast: ForecastEntry[]
   weakProblems: WeakProblem[]
   memoryProfile: MemoryProfile
@@ -100,7 +87,6 @@ export interface AnalyticsSummaryInput {
   scatter: RetentionScatterEntry[]
   referenceCurve: ReferenceCurvePoint[]
   historicalReadiness: HistoricalReadiness
-  chartDataStatus?: 'unavailable' | 'unready' | 'ready'
   predictedRecall?: AnalyticsMetricSummary
   recallQuality?: import('./chart-data').RecallQualityPoint[]
   practiceRhythm?: import('./chart-data').PracticeRhythmPoint[]
@@ -128,15 +114,12 @@ export interface HistoricalReadiness {
 
 export interface AnalyticsSummary {
   generatedAt: string
-  presentationMeta: AnalyticsPresentationMeta
   reviewDays: number
   totalReviews: number
   currentStreak: number
   observedRatingQuality: number | null
   observedRatingQualityLabel: string
   range: 14 | 30 | 90
-  periodStart: string
-  periodEnd: string
   observedRatingSampleSize: number
   lowSample: boolean
   dueForecast14Days: ForecastEntry[]
@@ -146,7 +129,6 @@ export interface AnalyticsSummary {
   retentionScatter: RetentionScatterEntry[]
   retentionScatterCurve: ReferenceCurvePoint[]
   historicalReadiness: HistoricalReadiness
-  chartDataStatus: 'unavailable' | 'unready' | 'ready'
   predictedRecall: AnalyticsMetricSummary
   recallQuality: import('./chart-data').RecallQualityPoint[]
   practiceRhythm: import('./chart-data').PracticeRhythmPoint[]
@@ -274,7 +256,6 @@ export function buildAnalyticsSummary(
 ): AnalyticsSummary {
   return {
     generatedAt: input.generatedAt.toISOString(),
-    presentationMeta: input.presentationMeta,
     reviewDays: input.reviewDays,
     totalReviews: input.totalReviews,
     currentStreak: input.currentStreak,
@@ -283,8 +264,6 @@ export function buildAnalyticsSummary(
     observedRatingSampleSize: input.observedRatingQuality.sampleSize,
     lowSample: input.observedRatingQuality.lowSample,
     range: input.range,
-    periodStart: input.periodStart.toISOString(),
-    periodEnd: input.periodEnd.toISOString(),
     dueForecast14Days: input.forecast,
     weakProblems: input.weakProblems,
     memoryProfile: input.memoryProfile,
@@ -292,7 +271,6 @@ export function buildAnalyticsSummary(
     retentionScatter: input.scatter,
     retentionScatterCurve: input.referenceCurve,
     historicalReadiness: input.historicalReadiness,
-    chartDataStatus: input.chartDataStatus ?? 'unavailable',
     predictedRecall: input.predictedRecall ?? {
       value: null,
       sampleSize: 0,

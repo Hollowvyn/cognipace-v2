@@ -20,7 +20,6 @@ import {
   chartDimension,
   formatBucketLabel,
   formatPercent,
-  getMaximumLineBridgeGap,
   toChartLabel,
 } from './chart-shared'
 import { analyticsChartDefinitions } from './chart-definitions'
@@ -213,7 +212,6 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
           <LineSegments
             data={data}
             dataKey="observedRecall"
-            maximumGap={getMaximumLineBridgeGap(data.length)}
             seriesKey={observedSeries.label}
             stroke={observedSeries.color}
             testId="recall-observed-lines"
@@ -222,7 +220,6 @@ export function RecallQualityChart({ data }: { data: RecallQualityPoint[] }) {
           <LineSegments
             data={data}
             dataKey="predictedRecall"
-            maximumGap={getMaximumLineBridgeGap(data.length)}
             seriesKey={predictedSeries.label}
             stroke={predictedSeries.color}
             testId="recall-predicted-lines"

@@ -14,7 +14,6 @@ import {
   chartDimension,
   formatBucketLabel,
   formatPercent,
-  getMaximumLineBridgeGap,
   toChartLabel,
 } from './chart-shared'
 import { analyticsChartDefinitions } from './chart-definitions'
@@ -174,7 +173,6 @@ export function PracticeRhythmChart({ data }: { data: PracticeRhythmPoint[] }) {
               <LineSegments
                 data={data}
                 dataKey="observedCorrectness"
-                maximumGap={getMaximumLineBridgeGap(data.length)}
                 seriesKey={correctnessSeries.label}
                 stroke={correctnessSeries.color}
                 testId="practice-correctness-lines"

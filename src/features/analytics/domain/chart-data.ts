@@ -15,10 +15,7 @@ import {
   recomputeBucketRatio,
   sumBucketValues,
 } from './chart-buckets'
-import type {
-  AnalyticsBucket,
-  AnalyticsRangePolicy,
-} from './analytics-range-policy'
+import type { AnalyticsBucket } from './analytics-range-policy'
 import {
   addAnalyticsCalendarDays,
   getAnalyticsDateKey,
@@ -175,7 +172,6 @@ export interface AnalyticsRangeOptions {
   start: Date
   end: Date
   buckets: readonly AnalyticsBucket[]
-  rangePolicy: AnalyticsRangePolicy
   fsrsOptions: NormalizedFsrsSchedulingOptions
   timeZone?: string
   timeFrame?: AnalyticsTimeFrame

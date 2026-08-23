@@ -13,7 +13,6 @@ import {
   chartDimension,
   formatBucketLabel,
   formatDays,
-  getMaximumLineBridgeGap,
   toChartLabel,
 } from './chart-shared'
 import { analyticsChartDefinitions } from './chart-definitions'
@@ -122,7 +121,6 @@ export function MemoryStrengthChart({ data }: { data: StabilityPoint[] }) {
           <LineSegments
             data={data}
             dataKey="medianStabilityDays"
-            maximumGap={getMaximumLineBridgeGap(data.length)}
             seriesKey={stabilitySeries.label}
             stroke={stabilitySeries.color}
             type="linear"

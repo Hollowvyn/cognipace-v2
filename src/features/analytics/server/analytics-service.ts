@@ -50,7 +50,6 @@ import {
 } from '../domain/analytics-readiness'
 import {
   buildAnalyticsBucketsFromTimeFrame,
-  getAnalyticsRangePolicy,
   type AnalyticsBucket,
 } from '../domain/analytics-range-policy'
 import {
@@ -90,7 +89,6 @@ export async function getAnalyticsSummary(
     timeZone,
   })
   const periodEnd = new Date(presentationTimeFrame.asOf)
-  const rangePolicy = getAnalyticsRangePolicy(range)
   const buckets = buildAnalyticsBucketsFromTimeFrame(presentationTimeFrame)
   const periodStart = buckets[0]!.start
   const forecastBounds = buildForecastBounds({
@@ -180,7 +178,6 @@ export async function getAnalyticsSummary(
     start: periodStart,
     end: periodEnd,
     buckets,
-    rangePolicy,
     fsrsOptions,
     timeZone: presentationTimeFrame.timeZone,
     timeFrame: presentationTimeFrame,
@@ -364,31 +361,17 @@ export async function getAnalyticsSummary(
   // Step 5: assemble
   return buildAnalyticsSummary({
     generatedAt: now,
-    presentationMeta: {
-      asOf: presentationTimeFrame.asOf,
-      timeZone: presentationTimeFrame.timeZone,
-      timeZoneFallback: presentationTimeFrame.timeZoneFallback,
-      range,
-      periodStart: presentationTimeFrame.periodStart,
-      periodEnd: presentationTimeFrame.periodEnd,
-      isPartial: presentationTimeFrame.buckets.some(
-        (bucket) => bucket.isPartial,
-      ),
-    },
     reviewDays: dayStats.reviewDays,
     totalReviews: dayStats.totalReviews,
     currentStreak: practiceProgress.currentStreak,
     observedRatingQuality,
     range,
-    periodStart,
-    periodEnd,
     forecast,
     weakProblems,
     memoryProfile,
     targetRetention: fsrsOptions.targetRetention,
     scatter,
     referenceCurve,
-    chartDataStatus: requestedReadiness.ready ? 'ready' : 'unready',
     historicalReadiness,
     predictedRecall,
     recallQuality,

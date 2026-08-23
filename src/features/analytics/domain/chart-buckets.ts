@@ -1,7 +1,6 @@
 export type LineContinuity =
   | { kind: 'solid'; fromIndex: number; toIndex: number }
   | { kind: 'bridge'; fromIndex: number; toIndex: number }
-  | { kind: 'unbridgeable'; fromIndex: number; toIndex: number }
 
 export function recomputeBucketRatio(
   samples: readonly { numerator: number; denominator: number }[],
@@ -36,12 +35,7 @@ export function lastBucketValue<T>(values: readonly T[]): T | null {
 
 export function classifyLineContinuity(
   values: readonly (number | null)[],
-  maximumGapBuckets: number,
 ): LineContinuity[] {
-  if (!Number.isInteger(maximumGapBuckets) || maximumGapBuckets < 0) {
-    throw new RangeError('Maximum chart gap must be a non-negative integer.')
-  }
-
   const continuity: LineContinuity[] = []
   let previousValueIndex: number | null = null
 
@@ -54,9 +48,7 @@ export function classifyLineContinuity(
         kind:
           gap === 0
             ? 'solid'
-            : gap <= maximumGapBuckets
-              ? 'bridge'
-              : 'unbridgeable',
+            : 'bridge',
         fromIndex: previousValueIndex,
         toIndex: index,
       })

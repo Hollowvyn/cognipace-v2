@@ -4,29 +4,25 @@ import {
   calculateAnalyticsReadiness,
   findRichestReadyRange,
 } from './analytics-readiness'
-import { calculateAnalyticsEvidence } from './analytics-evidence'
 
 const keys = (count: number) =>
   Array.from({ length: count }, (_, index) => `b${index + 1}`)
 
 describe('analytics readiness', () => {
-  it('keeps legacy readiness fields aligned with shared evidence', () => {
-    const input = {
+  it('reports the shared evidence measurements alongside readiness', () => {
+    const readiness = calculateAnalyticsReadiness({
       requestedDays: 30 as const,
       evidenceCounts: [0, 0, 4, 2, 0, 3, 0, 0, 5, 1],
       bucketKeys: keys(10),
-    }
-
-    const evidence = calculateAnalyticsEvidence(input)
-    const readiness = calculateAnalyticsReadiness(input)
+    })
 
     expect(readiness).toMatchObject({
-      requestedBuckets: evidence.requestedBuckets,
-      effectiveBuckets: evidence.effectiveBuckets,
-      assessments: evidence.sampleSize,
-      activeBuckets: evidence.activeBuckets,
-      longestGap: evidence.longestGap,
-      gapRuns: evidence.gapRuns,
+      requestedBuckets: 10,
+      effectiveBuckets: 8,
+      assessments: 15,
+      activeBuckets: 5,
+      longestGap: 2,
+      gapRuns: 2,
     })
   })
 

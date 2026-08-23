@@ -3,8 +3,6 @@ import {
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
 } from '@/components/ui/chart'
 import {
   CartesianGrid,
@@ -319,22 +317,6 @@ export function RetentionHealthChart({
             stroke="var(--chart-2)"
             strokeDasharray="5 5"
             y={targetRetention}
-          />
-          <ChartTooltip
-            content={
-              <ChartTooltipContent
-                active={false}
-                formatter={(value, name) => [
-                  name === 'daysSinceReview'
-                    ? `${String(value)} days`
-                    : formatPercent(typeof value === 'number' ? value : null),
-                  name === 'daysSinceReview'
-                    ? 'Days since review'
-                    : 'Retrievability',
-                ]}
-                payload={[]}
-              />
-            }
           />
           <ChartLegend content={<ChartLegendContent />} />
           <Scatter

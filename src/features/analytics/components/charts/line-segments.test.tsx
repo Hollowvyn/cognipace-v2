@@ -41,13 +41,12 @@ vi.mock('recharts', () => ({
 
 import { DASHED_LINE_EVIDENCE_LABEL, LineSegments } from './line-segments'
 
-function renderSegments(values: Array<number | null>, maximumGap = 2) {
+function renderSegments(values: Array<number | null>) {
   render(
     <svg>
       <LineSegments
         data={values.map((value, index) => ({ index, value }))}
         dataKey="value"
-        maximumGap={maximumGap}
         seriesKey="observedCorrectness"
         stroke="var(--cp-analytics-observed)"
       />
@@ -96,15 +95,13 @@ describe('LineSegments', () => {
     expect(semanticSource).toHaveAttribute('data-has-connect-nulls', 'false')
   })
 
-  it('does not bridge a gap longer than the configured maximum', () => {
+  it('bridges a long evidence gap with the same dashed treatment', () => {
     renderSegments([0.8, null, null, null, 0.84])
 
-    expect(
-      screen.queryByTestId('observedCorrectness-bridge-0-4'),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByTestId(/observedCorrectness-solid/),
-    ).not.toBeInTheDocument()
+    expect(screen.getByTestId('observedCorrectness-bridge-0-4')).toHaveAttribute(
+      'stroke-dasharray',
+      '5 5',
+    )
   })
 
   it('does not create a marker, tooltip datum, or segment for missing-only data', () => {

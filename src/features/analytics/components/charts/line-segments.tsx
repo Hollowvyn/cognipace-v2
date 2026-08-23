@@ -15,7 +15,6 @@ interface LineSegment {
 export interface LineSegmentsProps<T extends Record<string, unknown>> {
   data: readonly T[]
   dataKey: keyof T & string
-  maximumGap: number
   seriesKey: string
   stroke: string
   strokeWidth?: number
@@ -31,11 +30,9 @@ function getNumericValue(value: unknown): number | null {
 function buildLineSegments<T extends Record<string, unknown>>(
   data: readonly T[],
   dataKey: keyof T & string,
-  maximumGap: number,
 ): LineSegment[] {
   const continuity = classifyLineContinuity(
     data.map((point) => getNumericValue(point[dataKey])),
-    maximumGap,
   )
   const numericIndexes = data.flatMap((point, index) =>
     getNumericValue(point[dataKey]) === null ? [] : [index],
@@ -134,7 +131,6 @@ function createBridgeShape(testId: string) {
 export function LineSegments<T extends Record<string, unknown>>({
   data,
   dataKey,
-  maximumGap,
   seriesKey,
   stroke,
   strokeWidth = 2.5,
@@ -142,7 +138,7 @@ export function LineSegments<T extends Record<string, unknown>>({
   type = 'monotone',
   yAxisId,
 }: LineSegmentsProps<T>) {
-  const segments = buildLineSegments(data, dataKey, maximumGap)
+  const segments = buildLineSegments(data, dataKey)
   const semanticTooltipSourceTestId = `${testId}-semantic-tooltip-source`
 
   if (segments.length === 0) return null

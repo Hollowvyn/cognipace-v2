@@ -67,28 +67,18 @@ export function AnalyticsScreen({
   }
 
   const { data } = query
-  const analyticsChartsDefinition = metricDefinitions.analyticsCharts
 
   return (
     <div className="flex min-w-0 flex-col gap-[var(--cp-surface-gap)]">
       <AnalyticsMetricRow summary={data} />
-      {data.chartDataStatus === 'unavailable' ? (
-        <AnalyticsChartPanel
-          description={analyticsChartsDefinition.explanation}
-          emptyMessage={analyticsChartsDefinition.lowSampleOrEmptyState}
-          id="analytics-chart-data"
-          question={analyticsChartsDefinition.question}
-          title={analyticsChartsDefinition.label}
-        />
-      ) : null}
-      {data.chartDataStatus === 'unready' ? (
+      {!data.historicalReadiness.requested.ready ? (
         <AnalyticsReadinessState
           compact
           readiness={data.historicalReadiness.requested}
           recommendedRange={data.historicalReadiness.recommendedRange}
         />
       ) : null}
-      {data.chartDataStatus === 'ready' &&
+      {data.historicalReadiness.requested.ready &&
       hasTrimmedLeadingHistory(data.historicalReadiness.requested) ? (
         <AnalyticsReadinessState
           compact
@@ -96,14 +86,8 @@ export function AnalyticsScreen({
           recommendedRange={null}
         />
       ) : null}
-      {data.chartDataStatus !== 'unavailable' ? (
-        <AnalyticsHistoricalStory data={data} />
-      ) : null}
-      {data.chartDataStatus !== 'unavailable' ? (
-        <AnalyticsWorkloadStory data={data} />
-      ) : (
-        <UpcomingLoadPanel data={data} />
-      )}
+      <AnalyticsHistoricalStory data={data} />
+      <AnalyticsWorkloadStory data={data} />
       <AnalyticsCurrentStateStory data={data} />
     </div>
   )
