@@ -4,8 +4,6 @@ import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
-import { formatDateTime } from '@/utils/date-format'
-
 import { useAnalyticsSummary } from '../api/analytics-api'
 import type {
   AnalyticsRange,
@@ -97,7 +95,7 @@ function AnalyticsScopeMetadata({
         : ''}{' '}
       · Time zone: {data.timeFrame.timeZone}
       {data.timeFrame.timeZoneFallback ? ' (fallback)' : ''} · As of:{' '}
-      {formatDateTime(data.timeFrame.asOf)}
+      {formatScopeAsOf(data.timeFrame.asOf, data.timeFrame.timeZone)}
     </p>
   )
 }
@@ -118,6 +116,18 @@ function formatScopeDateKey(value: string) {
     timeZone: 'UTC',
     year: '2-digit',
   }).format(new Date(`${value}T00:00:00.000Z`))
+}
+
+function formatScopeAsOf(value: string, timeZone: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return 'Unknown date'
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone,
+  }).format(date)
 }
 
 function AnalyticsHistoricalStory({

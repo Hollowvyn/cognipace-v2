@@ -351,7 +351,7 @@ describe('AnalyticsScreen', () => {
     )
     expect(metadata).toHaveTextContent('Time zone: UTC (fallback)')
     expect(metadata).toHaveTextContent('Period: 12/17/25–12/19/25')
-    expect(metadata).toHaveTextContent('As of:')
+    expect(metadata).toHaveTextContent('As of: Jan 15, 2026, 12:00 PM')
   })
 
   it('formats the scope start as a local date and ends it at the final bucket key', async () => {
@@ -359,6 +359,7 @@ describe('AnalyticsScreen', () => {
       createAnalyticsSummary({
         timeFrame: {
           ...baseAnalyticsSummary().timeFrame,
+          asOf: '2026-01-15T16:00:00.000Z',
           periodStart: '2025-12-16T15:00:00.000Z',
           timeZone: 'Asia/Tokyo',
         },
@@ -374,6 +375,9 @@ describe('AnalyticsScreen', () => {
           element.textContent?.includes('Period: 12/17/25–12/19/25') === true,
       ),
     ).toBeVisible()
+    expect(screen.getByText(/As of:/)).toHaveTextContent(
+      'As of: Jan 16, 2026, 1:00 AM',
+    )
   })
 
   it('renders only the three Phase 2 historical views with semantic Chart and Table tabs', async () => {
