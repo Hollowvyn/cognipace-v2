@@ -18,6 +18,8 @@ import {
 export interface HistoricalAnalyticsReviewEvent {
   id: string
   cardId: string
+  problemSlug: string
+  topicLabels: string[]
   rating: string
   reviewedAt: Date
   fsrsReviewLog: string | null
@@ -80,6 +82,40 @@ export interface PracticeRhythmRow {
   evidence: 'measured' | 'not-measured'
 }
 
+export interface RatingsMixRow {
+  id: string
+  bucketStart: string
+  bucketEnd: string
+  isPartial: boolean
+  again: number
+  hard: number
+  good: number
+  easy: number
+  againShare: number | null
+  hardShare: number | null
+  goodShare: number | null
+  easyShare: number | null
+  validRatings: number
+  challengingReviews: number
+  evidence: 'measured' | 'not-measured'
+}
+
+export interface TopicPerformanceRow {
+  id: string
+  topic: string
+  reviewSuccess: number
+  goodEasy: number
+  validRatings: number
+  distinctProblems: number
+  evidence: 'Measured'
+}
+
+export interface LowEvidenceTopicRow {
+  topic: string
+  validRatings: number
+  distinctProblems: number
+}
+
 export interface HistoricalAnalyticsViews {
   observedRecallVsFsrs: {
     rows: ObservedRecallVsFsrsRow[]
@@ -94,6 +130,17 @@ export interface HistoricalAnalyticsViews {
     rows: PracticeRhythmRow[]
     countScale: HistoricalPresentationScale
     percentageScale: HistoricalPresentationScale
+  }
+  ratingsMix: {
+    rows: RatingsMixRow[]
+    selectedHardAgain: number
+    selectedValidRatings: number
+  }
+  topicPerformance: {
+    rows: TopicPerformanceRow[]
+    strongerQualifyingTopics: number
+    lowEvidenceTopics: LowEvidenceTopicRow[]
+    additionalLowEvidenceTopics: number
   }
 }
 
@@ -177,6 +224,46 @@ export function buildHistoricalAnalyticsViews(
       evidence: 'measured' as const,
     }
   })
+  const ratingsMixRows = options.buckets.map((bucket) => {
+    const counts = { again: 0, hard: 0, good: 0, easy: 0 }
+    for (const event of events) {
+      if (
+        event.reviewedAt < options.start ||
+        event.reviewedAt > options.end ||
+        !inBucket(event.reviewedAt, bucket) ||
+        !isReviewRating(event.rating)
+      )
+        continue
+      counts[event.rating] += 1
+    }
+    const validRatings = counts.again + counts.hard + counts.good + counts.easy
+    const shares =
+      validRatings === 0
+        ? { again: null, hard: null, good: null, easy: null }
+        : {
+            again: counts.again / validRatings,
+            hard: counts.hard / validRatings,
+            good: counts.good / validRatings,
+            easy: counts.easy / validRatings,
+          }
+
+    return {
+      ...bucketRow(bucket, options.end),
+      again: counts.again,
+      hard: counts.hard,
+      good: counts.good,
+      easy: counts.easy,
+      againShare: shares.again,
+      hardShare: shares.hard,
+      goodShare: shares.good,
+      easyShare: shares.easy,
+      validRatings,
+      challengingReviews: counts.again + counts.hard,
+      evidence:
+        validRatings === 0 ? ('not-measured' as const) : ('measured' as const),
+    }
+  })
+  const topicPerformance = buildTopicPerformance(events, options)
 
   const durationScale = buildAdaptiveDurationScale(
     memoryRows.flatMap((row) =>
@@ -209,7 +296,109 @@ export function buildHistoricalAnalyticsViews(
         rhythmRows.map((row) => row.reviewSuccess),
       ),
     },
+    ratingsMix: {
+      rows: ratingsMixRows,
+      selectedHardAgain: ratingsMixRows.reduce(
+        (total, row) => total + row.challengingReviews,
+        0,
+      ),
+      selectedValidRatings: ratingsMixRows.reduce(
+        (total, row) => total + row.validRatings,
+        0,
+      ),
+    },
+    topicPerformance,
   }
+}
+
+function buildTopicPerformance(
+  events: readonly HistoricalAnalyticsReviewEvent[],
+  options: HistoricalPresentationOptions,
+): HistoricalAnalyticsViews['topicPerformance'] {
+  const topics = new Map<
+    string,
+    {
+      topic: string
+      normalizedTopic: string
+      goodEasy: number
+      validRatings: number
+      problems: Set<string>
+    }
+  >()
+
+  for (const event of events) {
+    if (
+      event.reviewedAt < options.start ||
+      event.reviewedAt > options.end ||
+      !isReviewRating(event.rating)
+    )
+      continue
+
+    for (const label of uniqueNormalizedTopics(event.topicLabels)) {
+      const entry = topics.get(label.normalizedTopic) ?? {
+        topic: label.topic,
+        normalizedTopic: label.normalizedTopic,
+        goodEasy: 0,
+        validRatings: 0,
+        problems: new Set<string>(),
+      }
+      entry.validRatings += 1
+      if (event.rating === 'good' || event.rating === 'easy')
+        entry.goodEasy += 1
+      entry.problems.add(event.problemSlug)
+      topics.set(label.normalizedTopic, entry)
+    }
+  }
+
+  const entries = [...topics.values()].map((entry) => ({
+    ...entry,
+    distinctProblems: entry.problems.size,
+    reviewSuccess: entry.goodEasy / entry.validRatings,
+  }))
+  const qualifying = entries
+    .filter((entry) => entry.validRatings >= 10 && entry.distinctProblems >= 3)
+    .sort(
+      (left, right) =>
+        left.reviewSuccess - right.reviewSuccess ||
+        right.validRatings - left.validRatings ||
+        left.normalizedTopic.localeCompare(right.normalizedTopic),
+    )
+  const lowEvidence = entries
+    .filter((entry) => entry.validRatings < 10 || entry.distinctProblems < 3)
+    .sort((left, right) =>
+      left.normalizedTopic.localeCompare(right.normalizedTopic),
+    )
+
+  return {
+    rows: qualifying.slice(0, 5).map((entry) => ({
+      id: entry.normalizedTopic,
+      topic: entry.topic,
+      reviewSuccess: entry.reviewSuccess,
+      goodEasy: entry.goodEasy,
+      validRatings: entry.validRatings,
+      distinctProblems: entry.distinctProblems,
+      evidence: 'Measured',
+    })),
+    strongerQualifyingTopics: Math.max(0, qualifying.length - 5),
+    lowEvidenceTopics: lowEvidence.slice(0, 5).map((entry) => ({
+      topic: entry.topic,
+      validRatings: entry.validRatings,
+      distinctProblems: entry.distinctProblems,
+    })),
+    additionalLowEvidenceTopics: Math.max(0, lowEvidence.length - 5),
+  }
+}
+
+function uniqueNormalizedTopics(labels: readonly string[]) {
+  const topics = new Map<string, { topic: string; normalizedTopic: string }>()
+  for (const label of labels) {
+    const topic = label.trim().replaceAll(/\s+/g, ' ')
+    if (!topic) continue
+    const normalizedTopic = topic.toLocaleLowerCase()
+    if (!topics.has(normalizedTopic))
+      topics.set(normalizedTopic, { topic, normalizedTopic })
+  }
+  return [...topics.values()]
 }
 
 function buildPairedReviews(

@@ -49,8 +49,10 @@ function event(
       reviewedAt: '2026-08-01T12:00:00.000Z',
     }),
     id: 'one',
+    problemSlug: 'problem-1',
     rating: 'good',
     reviewedAt: new Date('2026-08-01T12:00:00.000Z'),
+    topicLabels: [],
     ...overrides,
   }
 }
@@ -161,5 +163,118 @@ describe('buildHistoricalAnalyticsViews', () => {
       replayedPostReview,
     )
     expect(views.memoryStrength.rows[0]?.medianStrengthDays).not.toBe(999)
+  })
+
+  it('builds valid-rating composition rows with zero categories and no invented empty stack', () => {
+    const views = buildHistoricalAnalyticsViews(
+      [
+        event({ id: 'again', rating: 'again' }),
+        event({ id: 'good', rating: 'good' }),
+        event({ id: 'invalid', rating: 'unknown' }),
+      ],
+      options,
+    )
+
+    expect(views).toMatchObject({
+      ratingsMix: {
+        rows: [
+          {
+            again: 1,
+            hard: 0,
+            good: 1,
+            easy: 0,
+            validRatings: 2,
+            againShare: 0.5,
+            hardShare: 0,
+            goodShare: 0.5,
+            easyShare: 0,
+            challengingReviews: 1,
+            evidence: 'measured',
+          },
+          {
+            validRatings: 0,
+            againShare: null,
+            hardShare: null,
+            goodShare: null,
+            easyShare: null,
+            evidence: 'not-measured',
+          },
+        ],
+      },
+    })
+  })
+
+  it('ranks only the five lowest qualifying normalized topics by Good + Easy Review Success', () => {
+    const reviews = Array.from({ length: 10 }, (_, index) =>
+      event({
+        cardId: `graph-${index % 3}`,
+        id: `graph-${index}`,
+        problemSlug: `graph-${index % 3}`,
+        rating: index < 4 ? 'again' : 'good',
+        topicLabels: ['Graphs', 'graphs', ' Graphs '],
+      }),
+    ).concat(
+      Array.from({ length: 10 }, (_, index) =>
+        event({
+          cardId: `array-${index % 3}`,
+          id: `array-${index}`,
+          problemSlug: `array-${index % 3}`,
+          rating: 'easy',
+          topicLabels: ['Arrays'],
+        }),
+      ),
+    )
+
+    const views = buildHistoricalAnalyticsViews(reviews, options)
+
+    expect(views).toMatchObject({
+      topicPerformance: {
+        rows: [
+          {
+            topic: 'Graphs',
+            reviewSuccess: 0.6,
+            goodEasy: 6,
+            validRatings: 10,
+            distinctProblems: 3,
+            evidence: 'Measured',
+          },
+          {
+            topic: 'Arrays',
+            reviewSuccess: 1,
+            goodEasy: 10,
+            validRatings: 10,
+            distinctProblems: 3,
+            evidence: 'Measured',
+          },
+        ],
+        strongerQualifyingTopics: 0,
+      },
+    })
+  })
+
+  it('retains only five qualifying topics and counts stronger qualifiers separately', () => {
+    const reviews = Array.from({ length: 6 }, (_, topicIndex) =>
+      Array.from({ length: 10 }, (_, reviewIndex) =>
+        event({
+          cardId: `topic-${topicIndex}-${reviewIndex % 3}`,
+          id: `topic-${topicIndex}-${reviewIndex}`,
+          problemSlug: `topic-${topicIndex}-${reviewIndex % 3}`,
+          rating: reviewIndex < topicIndex ? 'good' : 'again',
+          topicLabels: [`Topic ${topicIndex}`],
+        }),
+      ),
+    ).flat()
+
+    const views = buildHistoricalAnalyticsViews(reviews, options)
+
+    expect(views.topicPerformance.rows).toHaveLength(5)
+    expect(views.topicPerformance.rows.map((row) => row.topic)).toEqual([
+      'Topic 0',
+      'Topic 1',
+      'Topic 2',
+      'Topic 3',
+      'Topic 4',
+    ])
+    expect(views.topicPerformance.strongerQualifyingTopics).toBe(1)
   })
 })

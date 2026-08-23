@@ -227,6 +227,36 @@ export const practiceRhythmRowSchema = historicalRowBaseSchema.extend({
   evidence: z.enum(['measured', 'not-measured']),
 })
 
+export const ratingsMixRowSchema = historicalRowBaseSchema.extend({
+  again: countSchema,
+  hard: countSchema,
+  good: countSchema,
+  easy: countSchema,
+  againShare: nullablePercentageSchema,
+  hardShare: nullablePercentageSchema,
+  goodShare: nullablePercentageSchema,
+  easyShare: nullablePercentageSchema,
+  validRatings: countSchema,
+  challengingReviews: countSchema,
+  evidence: z.enum(['measured', 'not-measured']),
+})
+
+export const topicPerformanceRowSchema = z.object({
+  id: z.string().min(1),
+  topic: z.string().min(1),
+  reviewSuccess: percentageSchema,
+  goodEasy: countSchema,
+  validRatings: countSchema,
+  distinctProblems: countSchema,
+  evidence: z.literal('Measured'),
+})
+
+export const lowEvidenceTopicRowSchema = z.object({
+  topic: z.string().min(1),
+  validRatings: countSchema,
+  distinctProblems: countSchema,
+})
+
 export const analyticsViewsSchema = z.object({
   observedRecallVsFsrs: z.object({
     rows: z.array(observedRecallVsFsrsRowSchema),
@@ -241,6 +271,17 @@ export const analyticsViewsSchema = z.object({
     rows: z.array(practiceRhythmRowSchema),
     countScale: analyticsScaleSchema,
     percentageScale: analyticsScaleSchema,
+  }),
+  ratingsMix: z.object({
+    rows: z.array(ratingsMixRowSchema),
+    selectedHardAgain: countSchema,
+    selectedValidRatings: countSchema,
+  }),
+  topicPerformance: z.object({
+    rows: z.array(topicPerformanceRowSchema).max(5),
+    strongerQualifyingTopics: countSchema,
+    lowEvidenceTopics: z.array(lowEvidenceTopicRowSchema).max(5),
+    additionalLowEvidenceTopics: countSchema,
   }),
 })
 

@@ -16,6 +16,8 @@ import {
   MemoryStrengthView,
   ObservedRecallVsFsrsView,
   PracticeRhythmView,
+  RatingsMixView,
+  TopicPerformanceView,
 } from './historical-views'
 
 export function AnalyticsScreen({
@@ -165,6 +167,30 @@ function AnalyticsHistoricalStory({
           title="Practice Rhythm"
         >
           <PracticeRhythmView view={data.views.practiceRhythm} />
+        </PhaseTwoPanel>
+      </div>
+
+      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+        <PhaseTwoPanel
+          description="The changing share of valid Again, Hard, Good, and Easy review ratings across the selected period."
+          id="ratings-mix"
+          question="How is the balance of your review ratings changing?"
+          readiness={data.historicalReadiness.ratingsMix}
+          title="Ratings Mix"
+        >
+          <RatingsMixView view={data.views.ratingsMix} />
+        </PhaseTwoPanel>
+        <PhaseTwoPanel
+          description="Topics ranked by sufficiently sampled Good + Easy Review Success in the selected period; this is not a mastery score."
+          id="topic-performance"
+          question="Which sufficiently practiced topics had lower Review Success?"
+          readiness={data.historicalReadiness.topics}
+          title="Topic Performance"
+        >
+          <TopicPerformanceView
+            selectedPeriod={`${data.range}-day selected period`}
+            view={data.views.topicPerformance}
+          />
         </PhaseTwoPanel>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   Area,
   Bar,
+  BarChart,
   CartesianGrid,
   ComposedChart,
   ReferenceLine,
@@ -316,6 +317,215 @@ export function PracticeRhythmView({
   )
 }
 
+export function RatingsMixView({
+  view,
+}: {
+  view: AnalyticsViews['ratingsMix']
+}) {
+  const hasRatings = view.rows.some((row) => row.validRatings > 0)
+  const challengingShare =
+    view.selectedValidRatings === 0
+      ? null
+      : view.selectedHardAgain / view.selectedValidRatings
+
+  return (
+    <div className="grid gap-2">
+      <ChartTable
+        chart={
+          hasRatings ? (
+            <ChartContainer
+              accessibleDescription={`Again, Hard, Good, and Easy shares for valid ratings in each selected-period bucket. Scale: 0%–100%. ${view.selectedValidRatings} valid ratings in the selected period.`}
+              accessibleName="Ratings Mix chart"
+              aria-label="Ratings Mix chart"
+              aria-roledescription="100% stacked column chart"
+              className="aspect-auto h-72 min-h-[18rem]"
+              config={{
+                againShare: {
+                  label: 'Again',
+                  color: 'var(--cp-analytics-again)',
+                },
+                hardShare: { label: 'Hard', color: 'var(--cp-analytics-hard)' },
+                goodShare: { label: 'Good', color: 'var(--cp-analytics-good)' },
+                easyShare: { label: 'Easy', color: 'var(--cp-analytics-easy)' },
+              }}
+              initialDimension={chartDimension}
+              role="img"
+            >
+              <BarChart
+                data={view.rows}
+                margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+              >
+                <CartesianGrid stroke="var(--color-border)" vertical={false} />
+                <XAxis
+                  axisLine={false}
+                  dataKey="bucketStart"
+                  minTickGap={32}
+                  tickFormatter={(value) =>
+                    formatRowBucket(
+                      view.rows.find((row) => row.bucketStart === value),
+                    )
+                  }
+                  tickLine={false}
+                />
+                <YAxis
+                  axisLine={false}
+                  domain={[0, 1]}
+                  tickFormatter={formatPercent}
+                  ticks={[0, 0.25, 0.5, 0.75, 1]}
+                  tickLine={false}
+                  width={44}
+                />
+                <ChartTooltip content={<RatingsMixTooltip />} />
+                <Bar
+                  dataKey="againShare"
+                  fill="var(--cp-analytics-again)"
+                  isAnimationActive={false}
+                  name="Again"
+                  stackId="ratings"
+                />
+                <Bar
+                  dataKey="hardShare"
+                  fill="var(--cp-analytics-hard)"
+                  isAnimationActive={false}
+                  name="Hard"
+                  stackId="ratings"
+                />
+                <Bar
+                  dataKey="goodShare"
+                  fill="var(--cp-analytics-good)"
+                  isAnimationActive={false}
+                  name="Good"
+                  stackId="ratings"
+                />
+                <Bar
+                  dataKey="easyShare"
+                  fill="var(--cp-analytics-easy)"
+                  isAnimationActive={false}
+                  name="Easy"
+                  stackId="ratings"
+                />
+              </BarChart>
+            </ChartContainer>
+          ) : (
+            <Empty message="No valid review ratings are available in this period." />
+          )
+        }
+        table={
+          <RatingsMixTable
+            rows={view.rows}
+            resetKey={view.rows.map((row) => row.id).join('|')}
+          />
+        }
+      />
+      <p className="m-0 text-sm text-muted-foreground">
+        This period&apos;s rating mix is based on {view.selectedValidRatings}{' '}
+        valid ratings. Hard + Again: {view.selectedHardAgain} of{' '}
+        {view.selectedValidRatings} ({formatPercent(challengingShare)}).
+      </p>
+    </div>
+  )
+}
+
+export function TopicPerformanceView({
+  selectedPeriod,
+  view,
+}: {
+  selectedPeriod: string
+  view: AnalyticsViews['topicPerformance']
+}) {
+  const hasTopics = view.rows.length > 0
+  return (
+    <div className="grid gap-2">
+      <ChartTable
+        chart={
+          hasTopics ? (
+            <ChartContainer
+              accessibleDescription={`Ranked Topic Review Success for the selected period. Scale: 0%–100%. ${view.rows.length} qualifying topics shown.`}
+              accessibleName="Topic Performance chart"
+              aria-label="Topic Performance chart"
+              aria-roledescription="ranked horizontal bar chart"
+              className="aspect-auto h-72 min-h-[18rem]"
+              config={{
+                reviewSuccess: {
+                  label: 'Review Success',
+                  color: 'var(--cp-analytics-attention)',
+                },
+              }}
+              initialDimension={chartDimension}
+              role="img"
+            >
+              <BarChart
+                data={view.rows}
+                layout="vertical"
+                margin={{ bottom: 4, left: 8, right: 36, top: 8 }}
+              >
+                <CartesianGrid
+                  horizontal={false}
+                  stroke="var(--color-border)"
+                />
+                <XAxis
+                  axisLine={false}
+                  domain={[0, 1]}
+                  tickFormatter={formatPercent}
+                  tickLine={false}
+                  type="number"
+                />
+                <YAxis
+                  axisLine={false}
+                  dataKey="topic"
+                  tickLine={false}
+                  type="category"
+                  width={108}
+                />
+                <ChartTooltip
+                  content={
+                    <TopicPerformanceTooltip selectedPeriod={selectedPeriod} />
+                  }
+                />
+                <Bar
+                  dataKey="reviewSuccess"
+                  fill="var(--cp-analytics-attention)"
+                  isAnimationActive={false}
+                  name="Review Success"
+                  radius={[0, 3, 3, 0]}
+                />
+              </BarChart>
+            </ChartContainer>
+          ) : (
+            <Empty message="No topic has at least 10 valid ratings across 3 reviewed problems in this period." />
+          )
+        }
+        table={<TopicPerformanceTable rows={view.rows} />}
+      />
+      <p className="m-0 text-sm text-muted-foreground">
+        Showing the qualifying topics with the lowest Review Success in this
+        period.
+        {view.strongerQualifyingTopics > 0
+          ? ` ${view.strongerQualifyingTopics} stronger qualifying topic${view.strongerQualifyingTopics === 1 ? '' : 's'} omitted.`
+          : ''}
+      </p>
+      {view.lowEvidenceTopics.length > 0 ? (
+        <details className="text-sm text-muted-foreground">
+          <summary>Calculation details</summary>
+          <p>
+            Low-evidence topics:{' '}
+            {view.lowEvidenceTopics
+              .map(
+                (topic) =>
+                  `${topic.topic} (${topic.validRatings} valid ratings across ${topic.distinctProblems} problems)`,
+              )
+              .join(', ')}
+            .
+            {view.additionalLowEvidenceTopics > 0
+              ? ` ${view.additionalLowEvidenceTopics} more low-evidence topic${view.additionalLowEvidenceTopics === 1 ? '' : 's'} not listed.`
+              : ''}
+          </p>
+        </details>
+      ) : null}
+    </div>
+  )
+}
+
 function ObservedRecallTable({
   rows,
   resetKey,
@@ -415,6 +625,96 @@ function PracticeRhythmTable({
         evidenceText(row.evidence),
       ]}
     />
+  )
+}
+
+function RatingsMixTable({
+  rows,
+  resetKey,
+}: {
+  rows: AnalyticsViews['ratingsMix']['rows']
+  resetKey: string
+}) {
+  return (
+    <PagedTable
+      caption="Ratings Mix exact values"
+      headers={[
+        'Bucket',
+        'Again',
+        'Hard',
+        'Good',
+        'Easy',
+        'Valid ratings',
+        'Challenging reviews',
+        'Evidence',
+      ]}
+      resetKey={resetKey}
+      rows={rows}
+      cells={(row) => [
+        bucketText(row),
+        formatRatingCell(row.again, row.againShare),
+        formatRatingCell(row.hard, row.hardShare),
+        formatRatingCell(row.good, row.goodShare),
+        formatRatingCell(row.easy, row.easyShare),
+        row.validRatings,
+        row.challengingReviews,
+        `${evidenceText(row.evidence)}${row.isPartial ? ' · In progress' : ''}`,
+      ]}
+    />
+  )
+}
+
+function TopicPerformanceTable({
+  rows,
+}: {
+  rows: AnalyticsViews['topicPerformance']['rows']
+}) {
+  return (
+    <table className="w-full text-sm">
+      <caption className="sr-only">Topic Performance exact values</caption>
+      <thead>
+        <tr>
+          {[
+            'Topic',
+            'Review Success',
+            'Good + Easy',
+            'Valid ratings',
+            'Distinct problems',
+            'Evidence',
+          ].map((header) => (
+            <th
+              className="px-2 py-2 text-left font-semibold"
+              key={header}
+              scope="col"
+            >
+              {header}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr className="border-t border-border" key={row.id}>
+            <th className="px-2 py-2 text-left font-medium" scope="row">
+              {row.topic}
+            </th>
+            <td className="px-2 py-2 text-right tabular-nums">
+              {formatPercent(row.reviewSuccess)}
+            </td>
+            <td className="px-2 py-2 text-right tabular-nums">
+              {row.goodEasy}
+            </td>
+            <td className="px-2 py-2 text-right tabular-nums">
+              {row.validRatings}
+            </td>
+            <td className="px-2 py-2 text-right tabular-nums">
+              {row.distinctProblems}
+            </td>
+            <td className="px-2 py-2 text-right">{row.evidence}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 
@@ -578,6 +878,55 @@ function RhythmTooltip({
     />
   ) : null
 }
+function RatingsMixTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean
+  payload?: Array<{ payload: AnalyticsViews['ratingsMix']['rows'][number] }>
+}) {
+  const row = payload?.[0]?.payload
+  return active && row ? (
+    <TooltipBox
+      title={bucketText(row)}
+      values={[
+        `Again: ${formatRatingCell(row.again, row.againShare)}`,
+        `Hard: ${formatRatingCell(row.hard, row.hardShare)}`,
+        `Good: ${formatRatingCell(row.good, row.goodShare)}`,
+        `Easy: ${formatRatingCell(row.easy, row.easyShare)}`,
+        `Valid ratings: ${row.validRatings}`,
+        `Partial state: ${row.isPartial ? 'In progress' : 'Complete'}`,
+      ]}
+    />
+  ) : null
+}
+function TopicPerformanceTooltip({
+  active,
+  payload,
+  selectedPeriod,
+}: {
+  active?: boolean
+  payload?: Array<{
+    payload: AnalyticsViews['topicPerformance']['rows'][number]
+  }>
+  selectedPeriod: string
+}) {
+  const row = payload?.[0]?.payload
+  return active && row ? (
+    <TooltipBox
+      title={row.topic}
+      values={[
+        `Topic: ${row.topic}`,
+        `Review Success: ${formatPercent(row.reviewSuccess)}`,
+        `Good + Easy: ${row.goodEasy}`,
+        `Valid ratings: ${row.validRatings}`,
+        `Distinct reviewed problems: ${row.distinctProblems}`,
+        `Selected period: ${selectedPeriod}`,
+        `Evidence: ${row.evidence}`,
+      ]}
+    />
+  ) : null
+}
 function TooltipBox({ title, values }: { title: string; values: string[] }) {
   return (
     <div className="rounded border border-border bg-popover p-2 text-xs shadow">
@@ -616,6 +965,11 @@ function formatDifference(value: number | null) {
   return value === null
     ? 'Not measured'
     : `${value >= 0 ? '+' : '−'}${Math.round(Math.abs(value) * 100)} pp`
+}
+function formatRatingCell(count: number, share: number | null) {
+  return share === null
+    ? `${count} (Not measured)`
+    : `${count} (${formatPercent(share)})`
 }
 function formatSignedDays(value: number | null) {
   return value === null

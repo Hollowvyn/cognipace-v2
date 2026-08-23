@@ -146,6 +146,17 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
         countScale: { domain: [0, 1], ticks: [0, 1] },
         percentageScale: { domain: [0, 1], ticks: [0, 1] },
       },
+      ratingsMix: {
+        rows: [],
+        selectedHardAgain: 0,
+        selectedValidRatings: 0,
+      },
+      topicPerformance: {
+        rows: [],
+        strongerQualifyingTopics: 0,
+        lowEvidenceTopics: [],
+        additionalLowEvidenceTopics: 0,
+      },
     },
     retentionScatter: [],
     retentionScatterCurve: [],
@@ -380,7 +391,7 @@ describe('AnalyticsScreen', () => {
     )
   })
 
-  it('renders only the three Phase 2 historical views with semantic Chart and Table tabs', async () => {
+  it('renders the Phase 2–3 historical views with semantic Chart and Table tabs', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(
       readyAnalyticsSummary({
         views: {
@@ -412,6 +423,17 @@ describe('AnalyticsScreen', () => {
             countScale: { domain: [0, 1], ticks: [0, 1] },
             percentageScale: { domain: [0, 1], ticks: [0, 1] },
           },
+          ratingsMix: {
+            rows: [],
+            selectedHardAgain: 0,
+            selectedValidRatings: 0,
+          },
+          topicPerformance: {
+            rows: [],
+            strongerQualifyingTopics: 0,
+            lowEvidenceTopics: [],
+            additionalLowEvidenceTopics: 0,
+          },
         },
       }),
     )
@@ -423,9 +445,24 @@ describe('AnalyticsScreen', () => {
         name: 'Observed Recall vs FSRS Estimate',
       }),
     ).toBeVisible()
-    expect(screen.getAllByRole('tab', { name: 'Chart' })).toHaveLength(3)
-    expect(screen.getAllByRole('tab', { name: 'Table' })).toHaveLength(3)
-    expect(screen.queryByText('Ratings mix')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('tab', { name: 'Chart' })).toHaveLength(5)
+    expect(screen.getAllByRole('tab', { name: 'Table' })).toHaveLength(5)
+    expect(screen.getByRole('region', { name: 'Ratings Mix' })).toBeVisible()
+  })
+
+  it('renders Ratings Mix and Topic Performance with their semantic Chart and Table alternatives', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(readyAnalyticsSummary())
+
+    renderAnalyticsScreen()
+
+    expect(
+      await screen.findByRole('region', { name: 'Ratings Mix' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('region', { name: 'Topic Performance' }),
+    ).toBeVisible()
+    expect(screen.getAllByRole('tab', { name: 'Chart' })).toHaveLength(5)
+    expect(screen.getAllByRole('tab', { name: 'Table' })).toHaveLength(5)
   })
 
   it('shows the observed-correctness low-sample warning', async () => {

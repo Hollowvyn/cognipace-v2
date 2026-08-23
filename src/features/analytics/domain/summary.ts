@@ -328,6 +328,17 @@ function emptyHistoricalViews(
       countScale: { domain: [0, 1], ticks: [0, 1] },
       percentageScale: { domain: [0, 1], ticks: [0, 1] },
     },
+    ratingsMix: {
+      rows: [],
+      selectedHardAgain: 0,
+      selectedValidRatings: 0,
+    },
+    topicPerformance: {
+      rows: [],
+      strongerQualifyingTopics: 0,
+      lowEvidenceTopics: [],
+      additionalLowEvidenceTopics: 0,
+    },
   }
 }
 

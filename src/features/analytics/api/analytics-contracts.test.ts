@@ -135,6 +135,17 @@ const validSummary: SerializedAnalyticsSummary = {
       countScale: { domain: [0, 1], ticks: [0, 1] },
       percentageScale: { domain: [0, 1], ticks: [0, 1] },
     },
+    ratingsMix: {
+      rows: [],
+      selectedHardAgain: 0,
+      selectedValidRatings: 0,
+    },
+    topicPerformance: {
+      rows: [],
+      strongerQualifyingTopics: 0,
+      lowEvidenceTopics: [],
+      additionalLowEvidenceTopics: 0,
+    },
   },
   retentionScatter: [],
   retentionScatterCurve: [],
@@ -168,6 +179,19 @@ function withoutSummaryField(field: keyof SerializedAnalyticsSummary) {
 }
 
 describe('analyticsSummaryRequestSchema', () => {
+  it('requires the feature-owned Ratings Mix and Topic Performance presentation models', () => {
+    expect(() =>
+      analyticsSummarySchema.parse({
+        ...validSummary,
+        views: {
+          ...validSummary.views,
+          ratingsMix: undefined,
+          topicPerformance: undefined,
+        },
+      }),
+    ).toThrow()
+  })
+
   it('requires the dashboard surface', () => {
     expect(() => analyticsSummaryRequestSchema.parse({})).toThrow()
     expect(
