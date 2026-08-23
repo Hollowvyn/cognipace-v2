@@ -12,7 +12,12 @@ vi.mock('@/extension/messaging', () => ({
 
 describe('analytics runtime API', () => {
   it('uses the correct analytics summary query key', () => {
-    expect(analyticsQueryKeys.summary(14)).toEqual(['analytics', 'summary', 14])
+    expect(analyticsQueryKeys.summary(14, 'America/New_York')).toEqual([
+      'analytics',
+      'summary',
+      14,
+      'America/New_York',
+    ])
   })
 
   it('calls sendMessage with analytics.getSummary and a dashboard surface request', async () => {
@@ -24,9 +29,11 @@ describe('analytics runtime API', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
     expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
       surface: 'dashboard',
       range: 90,
+      timeZone,
     })
     expect(result.current.data).toBe(payload)
   })

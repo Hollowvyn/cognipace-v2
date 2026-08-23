@@ -68,7 +68,9 @@ import {
 
 export async function getAnalyticsSummary(
   db: Db,
-  nowOrOptions: Date | { range: AnalyticsRange; now?: Date } = new Date(),
+  nowOrOptions:
+    | Date
+    | { range: AnalyticsRange; now?: Date; timeZone?: string } = new Date(),
 ): Promise<AnalyticsSummary> {
   const now =
     nowOrOptions instanceof Date

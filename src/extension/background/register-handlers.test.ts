@@ -594,6 +594,7 @@ describe('background handler registration', () => {
     const response = await sendRuntimeMessage('analytics.getSummary', {
       surface: 'dashboard',
       range: 30,
+      timeZone: 'America/New_York',
       at: '2026-01-15T12:00:00.000Z',
     })
 
@@ -604,6 +605,7 @@ describe('background handler registration', () => {
       {
         range: 30,
         now: new Date('2026-01-15T12:00:00.000Z'),
+        timeZone: 'America/New_York',
       },
     )
     expect(response).toMatchObject({
@@ -648,11 +650,12 @@ describe('background handler registration', () => {
     await sendRuntimeMessage('analytics.getSummary', {
       surface: 'dashboard',
       range: 14,
+      timeZone: 'UTC',
     })
 
     expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
       backgroundMocks.db,
-      { range: 14 },
+      { range: 14, timeZone: 'UTC' },
     )
   })
 
@@ -717,6 +720,7 @@ describe('background handler registration', () => {
       await sendRuntimeMessage('analytics.getSummary', {
         surface: 'dashboard',
         range: 90,
+        timeZone: 'UTC',
       }),
     )
 
@@ -774,6 +778,7 @@ describe('background handler registration', () => {
       await sendRuntimeMessage('analytics.getSummary', {
         surface: 'dashboard',
         range: 90,
+        timeZone: 'UTC',
       }),
     )
 
@@ -2296,8 +2301,7 @@ function readLatestSyncFactoryOptions(): SyncFactoryOptions {
 
 function readLatestSyncFactoryCall(): [unknown, unknown, unknown] {
   const call = backgroundMocks.createBackgroundSyncService.mock.calls.at(-1) as
-    | [unknown, unknown, unknown]
-    | undefined
+    [unknown, unknown, unknown] | undefined
 
   if (!call) {
     throw new Error('Expected sync service factory to be called.')

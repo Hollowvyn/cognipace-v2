@@ -886,8 +886,12 @@ export function registerBackgroundHandlers() {
 
     return getAppDb().then(async ({ db }) => {
       const summaryOptions = request.at
-        ? { range: request.range, now: new Date(request.at) }
-        : { range: request.range }
+        ? {
+            range: request.range,
+            now: new Date(request.at),
+            timeZone: request.timeZone,
+          }
+        : { range: request.range, timeZone: request.timeZone }
       const summary = await getAnalyticsSummary(db, summaryOptions)
 
       return analyticsSummarySchema.parse({

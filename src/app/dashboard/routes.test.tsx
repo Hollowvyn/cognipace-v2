@@ -35,6 +35,8 @@ vi.mock('@/extension/messaging', () => ({
 }))
 
 let analyticsSummary = createSerializedAnalyticsSummary()
+const analyticsTimeZone =
+  Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
 function renderDashboard(initialEntry = '/') {
   const router = createDashboardRouter({
@@ -212,6 +214,7 @@ describe('dashboard routes', () => {
       expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
         surface: 'dashboard',
         range: 90,
+        timeZone: analyticsTimeZone,
       })
     })
     expect(screen.getByRole('button', { name: '90 days' })).toHaveAttribute(
@@ -287,6 +290,7 @@ describe('dashboard routes', () => {
         expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
           surface: 'dashboard',
           range: Number(range),
+          timeZone: analyticsTimeZone,
         }),
       )
     },
@@ -304,6 +308,7 @@ describe('dashboard routes', () => {
         expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
           surface: 'dashboard',
           range: 30,
+          timeZone: analyticsTimeZone,
         }),
       )
     },

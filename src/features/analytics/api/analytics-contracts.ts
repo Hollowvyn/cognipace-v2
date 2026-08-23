@@ -62,6 +62,7 @@ export type AnalyticsMetricSummary = z.infer<
 export const analyticsSummaryRequestSchema = z.object({
   surface: z.literal('dashboard'),
   range: analyticsRangeSchema,
+  timeZone: z.string().min(1),
   at: z.iso.datetime().optional(),
 })
 

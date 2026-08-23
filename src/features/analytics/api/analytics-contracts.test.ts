@@ -140,23 +140,49 @@ describe('analyticsSummaryRequestSchema', () => {
   it('requires the dashboard surface', () => {
     expect(() => analyticsSummaryRequestSchema.parse({})).toThrow()
     expect(
-      analyticsSummaryRequestSchema.parse({ surface: 'dashboard', range: 30 }),
-    ).toEqual({ surface: 'dashboard', range: 30 })
+      analyticsSummaryRequestSchema.parse({
+        surface: 'dashboard',
+        range: 30,
+        timeZone: 'America/New_York',
+      }),
+    ).toEqual({
+      surface: 'dashboard',
+      range: 30,
+      timeZone: 'America/New_York',
+    })
   })
 
   it.each([14, 30, 90] as const)('accepts range %s', (range) => {
     expect(
-      analyticsSummaryRequestSchema.parse({ surface: 'dashboard', range }),
+      analyticsSummaryRequestSchema.parse({
+        surface: 'dashboard',
+        range,
+        timeZone: 'UTC',
+      }),
     ).toEqual({
       surface: 'dashboard',
       range,
+      timeZone: 'UTC',
     })
   })
 
   it.each([undefined, 7, '30'])('rejects invalid range %s', (range) => {
     expect(
-      analyticsSummaryRequestSchema.safeParse({ surface: 'dashboard', range })
-        .success,
+      analyticsSummaryRequestSchema.safeParse({
+        surface: 'dashboard',
+        range,
+        timeZone: 'UTC',
+      }).success,
+    ).toBe(false)
+  })
+
+  it.each([undefined, '', 42])('rejects an invalid timezone %s', (timeZone) => {
+    expect(
+      analyticsSummaryRequestSchema.safeParse({
+        surface: 'dashboard',
+        range: 30,
+        timeZone,
+      }).success,
     ).toBe(false)
   })
 
@@ -165,11 +191,13 @@ describe('analyticsSummaryRequestSchema', () => {
       analyticsSummaryRequestSchema.parse({
         surface: 'dashboard',
         range: 30,
+        timeZone: 'America/New_York',
         at: '2026-01-15T12:00:00.000Z',
       }),
     ).toEqual({
       surface: 'dashboard',
       range: 30,
+      timeZone: 'America/New_York',
       at: '2026-01-15T12:00:00.000Z',
     })
   })

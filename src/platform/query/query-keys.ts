@@ -1,8 +1,8 @@
 export const queryKeys = {
   analytics: {
     all: ['analytics'] as const,
-    summary: (range: 14 | 30 | 90) =>
-      [...queryKeys.analytics.all, 'summary', range] as const,
+    summary: (range: 14 | 30 | 90, timeZone: string) =>
+      [...queryKeys.analytics.all, 'summary', range, timeZone] as const,
   },
   appShell: {
     all: ['app-shell-data'] as const,
