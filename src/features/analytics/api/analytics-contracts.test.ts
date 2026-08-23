@@ -7,13 +7,9 @@ import {
   analyticsRangeSchema,
   analyticsSummaryRequestSchema,
   analyticsSummarySchema,
-  forecastEntrySchema,
   hardAgainSummarySchema,
   practiceRhythmPointSchema,
   ratingsMixPointSchema,
-  retentionScatterEntrySchema,
-  referenceCurvePointSchema,
-  weakProblemSchema,
   type AnalyticsReadiness,
   type SerializedAnalyticsSummary,
 } from './analytics-contracts'
@@ -58,11 +54,6 @@ function withRequestedReadiness(
   }
 }
 
-const validForecast = Array.from({ length: 14 }, (_, index) => ({
-  date: `2026-01-${String(15 + index).padStart(2, '0')}`,
-  dueCount: index,
-}))
-
 const validSummary: SerializedAnalyticsSummary = {
   range: 30,
   generatedAt: '2026-01-15T12:00:00.000Z',
@@ -99,19 +90,6 @@ const validSummary: SerializedAnalyticsSummary = {
   },
   observedRatingSampleSize: 20,
   lowSample: false,
-  dueForecast14Days: validForecast,
-  weakProblems: [],
-  memoryProfile: {
-    totalTracked: 1,
-    dueToday: 0,
-    overdue: 0,
-    learning: 0,
-    review: 1,
-    mastered: 0,
-    suspended: 0,
-    averageRetrievability: 0.8,
-    lowSample: true,
-  },
   targetRetention: 0.9,
   views: {
     observedRecallVsFsrs: {
@@ -174,8 +152,6 @@ const validSummary: SerializedAnalyticsSummary = {
       scale: { domain: [0, 1], ticks: [0, 1] },
     },
   },
-  retentionScatter: [],
-  retentionScatterCurve: [],
   historicalReadiness: withRequestedReadiness(readiness, null),
   recallQuality: [],
   practiceRhythm: [],
@@ -392,25 +368,6 @@ describe('analyticsSummarySchema', () => {
     expect(parsed.views.upcomingReviewLoad.rows).toHaveLength(14)
   })
 
-  it('rejects a forecast with fewer than 14 entries', () => {
-    const result = analyticsSummarySchema.safeParse({
-      ...validSummary,
-      dueForecast14Days: validForecast.slice(0, 13),
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects a forecast with more than 14 entries', () => {
-    const result = analyticsSummarySchema.safeParse({
-      ...validSummary,
-      dueForecast14Days: [
-        ...validForecast,
-        { date: '2026-01-29', dueCount: 0 },
-      ],
-    })
-    expect(result.success).toBe(false)
-  })
-
   it('keeps the fixed workload forecast anchored at today and overdue only today', () => {
     const rows = validSummary.views.upcomingReviewLoad.rows
     expect(
@@ -445,22 +402,6 @@ describe('analyticsSummarySchema', () => {
     ).toBe(false)
   })
 
-  it('rejects more than 10 weak problems', () => {
-    const tooMany = Array.from({ length: 11 }, (_, index) => ({
-      slug: `problem-${index}`,
-      title: `Problem ${index}`,
-      lapseCount: 1,
-      difficulty: 5,
-      retrievability: 0.8,
-    }))
-    expect(
-      analyticsSummarySchema.safeParse({
-        ...validSummary,
-        weakProblems: tooMany,
-      }).success,
-    ).toBe(false)
-  })
-
   it('rejects negative integer counts', () => {
     expect(
       analyticsSummarySchema.safeParse({ ...validSummary, reviewDays: -1 })
@@ -480,27 +421,6 @@ describe('analyticsSummarySchema', () => {
         observedRatingSampleSize: -1,
       }).success,
     ).toBe(false)
-  })
-
-  it('rejects out-of-range average retrievability', () => {
-    expect(() =>
-      analyticsSummarySchema.parse({
-        ...validSummary,
-        memoryProfile: {
-          ...validSummary.memoryProfile,
-          averageRetrievability: 1.01,
-        },
-      }),
-    ).toThrow()
-    expect(() =>
-      analyticsSummarySchema.parse({
-        ...validSummary,
-        memoryProfile: {
-          ...validSummary.memoryProfile,
-          averageRetrievability: -0.01,
-        },
-      }),
-    ).toThrow()
   })
 
   it('accepts chart payloads without duplicate period metadata', () => {
@@ -632,139 +552,9 @@ describe('analyticsRangeSchema', () => {
   })
 })
 
-describe('forecastEntrySchema', () => {
-  it('accepts a valid forecast entry', () => {
-    expect(
-      forecastEntrySchema.safeParse({ date: '2026-01-15', dueCount: 3 })
-        .success,
-    ).toBe(true)
-  })
-
-  it('rejects a negative dueCount', () => {
-    expect(
-      forecastEntrySchema.safeParse({ date: '2026-01-15', dueCount: -1 })
-        .success,
-    ).toBe(false)
-  })
-
-  it('rejects a missing date', () => {
-    expect(forecastEntrySchema.safeParse({ dueCount: 3 }).success).toBe(false)
-  })
-})
-
-describe('weakProblemSchema', () => {
-  it('accepts a valid weak problem', () => {
-    expect(
-      weakProblemSchema.safeParse({
-        slug: 'two-sum',
-        title: 'Two Sum',
-        lapseCount: 3,
-        difficulty: 7.5,
-        retrievability: 0.4,
-      }).success,
-    ).toBe(true)
-  })
-
-  it('rejects a negative lapseCount', () => {
-    expect(
-      weakProblemSchema.safeParse({
-        slug: 'two-sum',
-        title: 'Two Sum',
-        lapseCount: -1,
-        difficulty: 7.5,
-        retrievability: 0.4,
-      }).success,
-    ).toBe(false)
-  })
-
-  it('rejects a missing slug', () => {
-    expect(
-      weakProblemSchema.safeParse({
-        title: 'Two Sum',
-        lapseCount: 3,
-        difficulty: 7.5,
-        retrievability: 0.4,
-      }).success,
-    ).toBe(false)
-  })
-})
-
-describe('retentionScatterEntrySchema', () => {
-  it('accepts a valid scatter entry', () => {
-    expect(
-      retentionScatterEntrySchema.safeParse({
-        slug: 'two-sum',
-        title: 'Two Sum',
-        retrievability: 0.85,
-        daysSinceReview: 5,
-        difficulty: 4.5,
-        stability: 20,
-        lapseCount: 1,
-        lastReviewAt: '2026-01-10T12:00:00.000Z',
-      }).success,
-    ).toBe(true)
-  })
-
-  it('rejects negative daysSinceReview', () => {
-    expect(
-      retentionScatterEntrySchema.safeParse({
-        slug: 'two-sum',
-        title: 'Two Sum',
-        retrievability: 0.85,
-        daysSinceReview: -1,
-        difficulty: 4.5,
-        stability: 20,
-        lapseCount: 1,
-        lastReviewAt: '2026-01-10T12:00:00.000Z',
-      }).success,
-    ).toBe(false)
-  })
-
-  it('rejects retrievability outside 0–1 range', () => {
-    expect(
-      retentionScatterEntrySchema.safeParse({
-        slug: 'two-sum',
-        title: 'Two Sum',
-        retrievability: 1.5,
-        daysSinceReview: 5,
-        difficulty: 4.5,
-        stability: 20,
-        lapseCount: 1,
-        lastReviewAt: '2026-01-10T12:00:00.000Z',
-      }).success,
-    ).toBe(false)
-  })
-})
-
-describe('referenceCurvePointSchema', () => {
-  it('accepts a valid curve point', () => {
-    expect(
-      referenceCurvePointSchema.safeParse({ days: 7, retrievability: 0.9 })
-        .success,
-    ).toBe(true)
-  })
-
-  it('rejects negative days', () => {
-    expect(
-      referenceCurvePointSchema.safeParse({ days: -1, retrievability: 0.9 })
-        .success,
-    ).toBe(false)
-  })
-})
-
-describe('analyticsSummarySchema — new scatter fields', () => {
+describe('analyticsSummarySchema', () => {
   it('rejects a summary missing targetRetention', () => {
     const withoutField = withoutSummaryField('targetRetention')
-    expect(analyticsSummarySchema.safeParse(withoutField).success).toBe(false)
-  })
-
-  it('rejects a summary missing retentionScatter', () => {
-    const withoutField = withoutSummaryField('retentionScatter')
-    expect(analyticsSummarySchema.safeParse(withoutField).success).toBe(false)
-  })
-
-  it('rejects a summary missing retentionScatterCurve', () => {
-    const withoutField = withoutSummaryField('retentionScatterCurve')
     expect(analyticsSummarySchema.safeParse(withoutField).success).toBe(false)
   })
 

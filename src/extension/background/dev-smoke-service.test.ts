@@ -86,7 +86,7 @@ describe('createDevSmokeService', () => {
     expect(liveGenAiCheck?.detail).toContain('[redacted-secret]')
   })
 
-  it('fails analytics when memoryProfile is missing', async () => {
+  it('fails analytics when current chart views are missing', async () => {
     const deps = createDeps()
     vi.mocked(deps.readAnalyticsSummary).mockResolvedValue(
       {} as Awaited<ReturnType<DevSmokeDeps['readAnalyticsSummary']>>,
@@ -98,7 +98,7 @@ describe('createDevSmokeService', () => {
       report.checks.find((check) => check.id === 'analytics'),
     ).toMatchObject({
       status: 'fail',
-      detail: 'Analytics summary is missing memoryProfile.',
+      detail: 'Analytics summary is missing current chart views.',
     })
   })
 
@@ -206,7 +206,7 @@ function createDeps(): DevSmokeDeps {
     now: () => new Date('2026-06-07T12:00:00.000Z'),
     readAnalyticsSummary: vi.fn(() =>
       Promise.resolve({
-        memoryProfile: { totalTracked: 3 },
+        views: { retentionMap: {}, upcomingReviewLoad: {} },
       }),
     ),
     readQueueSummary: vi.fn(() =>

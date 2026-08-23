@@ -4,7 +4,7 @@ export type SmokeStatus = DevSmokeReport['checks'][number]['status']
 
 export interface DevSmokeDeps {
   now: () => Date
-  readAnalyticsSummary: () => Promise<{ memoryProfile: unknown }>
+  readAnalyticsSummary: () => Promise<{ views: unknown }>
   readQueueSummary: () => Promise<{
     dueToday: number
     newAvailable: number
@@ -103,12 +103,12 @@ export function computeNotificationDryRun(input: NotificationDryRunInput): {
 async function runAnalyticsCheck(deps: DevSmokeDeps): Promise<SmokeCheck> {
   try {
     const summary = await deps.readAnalyticsSummary()
-    if (summary.memoryProfile === undefined) {
+    if (summary.views === undefined) {
       return createCheck({
         id: 'analytics',
         label: 'Analytics summary',
         status: 'fail',
-        detail: 'Analytics summary is missing memoryProfile.',
+        detail: 'Analytics summary is missing current chart views.',
       })
     }
 
@@ -116,7 +116,7 @@ async function runAnalyticsCheck(deps: DevSmokeDeps): Promise<SmokeCheck> {
       id: 'analytics',
       label: 'Analytics summary',
       status: 'pass',
-      detail: 'Analytics summary loaded with a memory profile.',
+      detail: 'Analytics summary loaded with current chart views.',
     })
   } catch (error) {
     return createFailureCheck('analytics', 'Analytics summary', error)

@@ -2,11 +2,8 @@ import {
   and,
   asc,
   count,
-  desc,
   eq,
   gte,
-  gt,
-  isNotNull,
   lt,
   lte,
   ne,
@@ -58,21 +55,6 @@ export interface UpcomingCard {
   dueAt: Date
 }
 
-export interface MemoryProfileCard {
-  dueAt: Date
-  stability: number
-  difficulty: number
-  elapsedDays: number
-  scheduledDays: number
-  learningSteps: number
-  reps: number
-  lapses: number
-  state: string
-  lastReviewAt: Date | null
-  practiceStatus: string
-  isSuspended: boolean
-}
-
 export interface CurrentFsrsCard {
   cardId: string
   problemSlug: string
@@ -91,15 +73,6 @@ export interface CurrentFsrsCard {
   state: string
   practiceStatus: string
   isSuspended: boolean
-}
-
-export interface WeakProblemCandidate {
-  slug: string
-  title: string
-  lapseCount: number
-  difficulty: number
-  stability: number
-  lastReviewAt: Date | null
 }
 
 export async function getReviewDayStats(db: Db): Promise<ReviewDayStats> {
@@ -235,48 +208,6 @@ export async function getUpcomingCards(
   return rows.map((row) => ({ dueAt: new Date(row.dueAt) }))
 }
 
-export async function getMemoryProfileCards(
-  db: Db,
-): Promise<MemoryProfileCard[]> {
-  const rows = await db
-    .select({
-      dueAt: fsrsCards.dueAt,
-      stability: fsrsCards.stability,
-      difficulty: fsrsCards.difficulty,
-      elapsedDays: fsrsCards.elapsedDays,
-      scheduledDays: fsrsCards.scheduledDays,
-      learningSteps: fsrsCards.learningSteps,
-      reps: fsrsCards.reps,
-      lapses: fsrsCards.lapses,
-      state: fsrsCards.state,
-      lastReviewAt: fsrsCards.lastReviewAt,
-      practiceStatus: problemPractice.status,
-      isSuspended: problemPractice.isSuspended,
-    })
-    .from(fsrsCards)
-    .innerJoin(
-      problemPractice,
-      eq(problemPractice.problemSlug, fsrsCards.problemSlug),
-    )
-    .where(eq(fsrsCards.cardKind, defaultFsrsCardKind))
-    .orderBy(asc(fsrsCards.problemSlug), asc(fsrsCards.id))
-
-  return rows.map((row) => ({
-    dueAt: new Date(row.dueAt),
-    stability: row.stability,
-    difficulty: row.difficulty,
-    elapsedDays: row.elapsedDays,
-    scheduledDays: row.scheduledDays,
-    learningSteps: row.learningSteps,
-    reps: row.reps,
-    lapses: row.lapses,
-    state: row.state,
-    lastReviewAt: row.lastReviewAt === null ? null : new Date(row.lastReviewAt),
-    practiceStatus: row.practiceStatus,
-    isSuspended: row.isSuspended,
-  }))
-}
-
 export async function getCurrentFsrsCards(db: Db): Promise<CurrentFsrsCard[]> {
   const rows = await db
     .select({
@@ -346,99 +277,5 @@ export async function getCurrentFsrsCards(db: Db): Promise<CurrentFsrsCard[]> {
   return [...cards.values()].map((card) => ({
     ...card,
     topics: [...new Set(card.topics)].sort((a, b) => a.localeCompare(b)),
-  }))
-}
-
-export async function getWeakProblemCandidates(
-  db: Db,
-): Promise<WeakProblemCandidate[]> {
-  const rows = await db
-    .select({
-      slug: problems.slug,
-      title: problems.title,
-      lapseCount: fsrsCards.lapses,
-      difficulty: fsrsCards.difficulty,
-      stability: fsrsCards.stability,
-      lastReviewAt: fsrsCards.lastReviewAt,
-    })
-    .from(problems)
-    .innerJoin(
-      fsrsCards,
-      and(
-        eq(fsrsCards.problemSlug, problems.slug),
-        eq(fsrsCards.cardKind, defaultFsrsCardKind),
-      ),
-    )
-    .innerJoin(problemPractice, eq(problemPractice.problemSlug, problems.slug))
-    .where(
-      and(
-        ne(problemPractice.status, 'new'),
-        eq(problemPractice.isSuspended, false),
-        gt(fsrsCards.lapses, 0),
-      ),
-    )
-    .orderBy(
-      desc(fsrsCards.lapses),
-      desc(fsrsCards.difficulty),
-      asc(problems.slug),
-    )
-    .limit(100)
-
-  return rows.map((row) => ({
-    slug: row.slug,
-    title: row.title,
-    lapseCount: row.lapseCount,
-    difficulty: row.difficulty,
-    stability: row.stability,
-    lastReviewAt: row.lastReviewAt === null ? null : new Date(row.lastReviewAt),
-  }))
-}
-
-export interface RetentionScatterCandidate {
-  slug: string
-  title: string
-  stability: number
-  difficulty: number
-  lapseCount: number
-  lastReviewAt: Date
-}
-
-export async function getRetentionScatterCandidates(
-  db: Db,
-): Promise<RetentionScatterCandidate[]> {
-  const rows = await db
-    .select({
-      slug: problems.slug,
-      title: problems.title,
-      stability: fsrsCards.stability,
-      difficulty: fsrsCards.difficulty,
-      lapseCount: fsrsCards.lapses,
-      lastReviewAt: fsrsCards.lastReviewAt,
-    })
-    .from(problems)
-    .innerJoin(
-      fsrsCards,
-      and(
-        eq(fsrsCards.problemSlug, problems.slug),
-        eq(fsrsCards.cardKind, defaultFsrsCardKind),
-      ),
-    )
-    .innerJoin(problemPractice, eq(problemPractice.problemSlug, problems.slug))
-    .where(
-      and(
-        ne(fsrsCards.state, 'new'),
-        eq(problemPractice.isSuspended, false),
-        isNotNull(fsrsCards.lastReviewAt),
-      ),
-    )
-    .orderBy(asc(problems.slug))
-
-  return rows.map((row) => ({
-    slug: row.slug,
-    title: row.title,
-    stability: row.stability,
-    difficulty: row.difficulty,
-    lapseCount: row.lapseCount,
-    lastReviewAt: new Date(row.lastReviewAt as number),
   }))
 }

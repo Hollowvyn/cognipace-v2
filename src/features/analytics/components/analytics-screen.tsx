@@ -100,7 +100,7 @@ function AnalyticsWorkloadStory({
       <AnalyticsChartPanel
         description="Daily local overdue counts reconstructed from known persisted FSRS review intervals and current card state. Unknown days are deliberately not estimated."
         id="recent-overdue-backlog"
-        question="Is your overdue backlog staying at an acceptable level instead of accumulating?"
+        question="Is my overdue backlog staying at an acceptable level instead of accumulating?"
         title="Recent Overdue Backlog"
       >
         <RecentOverdueBacklogView view={data.views.overdueBacklog} />

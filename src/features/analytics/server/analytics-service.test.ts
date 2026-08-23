@@ -25,7 +25,7 @@ import { updateSettings } from '@/features/settings/server/settings-service'
 import { analyticsSummarySchema } from '../api/analytics-contracts'
 import { getAnalyticsSummary } from './analytics-service'
 
-describe('getAnalyticsSummary memory profile', () => {
+describe('getAnalyticsSummary dashboard views', () => {
   it.each([14, 30, 90] as const)(
     'retains the selected %s-day range in the readiness contract',
     async (range) => {
@@ -92,25 +92,6 @@ describe('getAnalyticsSummary memory profile', () => {
 
     const summary = await getAnalyticsSummary(handle.db, now)
 
-    expect(summary.weakProblems).toEqual([])
-    expect(summary.memoryProfile).toMatchObject({
-      totalTracked: 5,
-      dueToday: 3,
-      overdue: 1,
-      learning: 1,
-      review: 2,
-      mastered: 1,
-      suspended: 1,
-      lowSample: true,
-    })
-    expect(summary.dueForecast14Days[0]?.dueCount).toBe(
-      summary.memoryProfile.dueToday,
-    )
-    expect(summary.memoryProfile.averageRetrievability).not.toBeNull()
-    expect(summary.memoryProfile.averageRetrievability).toBeGreaterThanOrEqual(
-      0,
-    )
-    expect(summary.memoryProfile.averageRetrievability).toBeLessThanOrEqual(1)
   })
 
   it('returns truthful chart payloads for an empty database', async () => {
@@ -302,7 +283,6 @@ describe('getAnalyticsSummary memory profile', () => {
 
     const summary = await getAnalyticsSummary(handle.db, { range: 14, now })
 
-    expect(summary.memoryProfile.totalTracked).toBe(1)
     expect(
       summary.views.upcomingReviewLoad.rows.reduce(
         (sum, point) => sum + point.dueCount,

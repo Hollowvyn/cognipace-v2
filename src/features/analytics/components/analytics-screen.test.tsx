@@ -114,22 +114,6 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
     predictedRecall: { value: null, sampleSize: 0, lowSample: true },
     observedRatingSampleSize: 58,
     lowSample: false,
-    memoryProfile: {
-      totalTracked: 12,
-      dueToday: 3,
-      overdue: 1,
-      learning: 2,
-      review: 8,
-      mastered: 1,
-      suspended: 1,
-      averageRetrievability: 0.74,
-      lowSample: false,
-    },
-    dueForecast14Days: Array.from({ length: 14 }, (_, i) => ({
-      date: `2026-01-${String(15 + i).padStart(2, '0')}`,
-      dueCount: i === 0 ? 6 : (i + 1) * 3,
-    })),
-    weakProblems: [],
     targetRetention: 0.9,
     views: {
       observedRecallVsFsrs: {
@@ -192,8 +176,6 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
         scale: { domain: [0, 1], ticks: [0, 1] },
       },
     },
-    retentionScatter: [],
-    retentionScatterCurve: [],
     historicalReadiness: createUnreadyHistoricalReadiness(),
     recallQuality: [],
     practiceRhythm: [],

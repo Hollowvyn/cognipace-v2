@@ -2,11 +2,7 @@ import { isReviewRating } from '@/lib/fsrs'
 
 import type { AnalyticsReadiness } from './analytics-readiness'
 import type { HistoricalAnalyticsViews } from './historical-presentation'
-import {
-  addAnalyticsCalendarDays,
-  getAnalyticsDateKey,
-  type AnalyticsTimeFrame,
-} from './analytics-time'
+import type { AnalyticsTimeFrame } from './analytics-time'
 
 export interface ObservedRatingQualityResult {
   value: number | null
@@ -26,58 +22,6 @@ export interface AnalyticsMetricSummary {
   lowSample: boolean
 }
 
-export interface ForecastEntry {
-  date: string
-  dueCount: number
-}
-
-export interface WeakProblem {
-  slug: string
-  title: string
-  lapseCount: number
-  difficulty: number
-  retrievability: number
-}
-
-export interface MemoryProfileInput {
-  totalTracked: number
-  dueToday: number
-  overdue: number
-  learning: number
-  review: number
-  mastered: number
-  suspended: number
-  retrievabilities: number[]
-}
-
-export interface MemoryProfile {
-  totalTracked: number
-  dueToday: number
-  overdue: number
-  learning: number
-  review: number
-  mastered: number
-  suspended: number
-  averageRetrievability: number | null
-  lowSample: boolean
-}
-
-export interface RetentionScatterEntry {
-  slug: string
-  title: string
-  retrievability: number
-  daysSinceReview: number
-  difficulty: number
-  stability: number
-  lapseCount: number
-  lastReviewAt: string
-}
-
-export interface ReferenceCurvePoint {
-  days: number
-  retrievability: number
-}
-
 export interface AnalyticsSummaryInput {
   generatedAt: Date
   timeFrame: AnalyticsTimeFrame
@@ -86,13 +30,8 @@ export interface AnalyticsSummaryInput {
   currentStreak: number
   observedRatingQuality: ObservedRatingQualityResult
   range: 14 | 30 | 90
-  forecast: ForecastEntry[]
-  weakProblems: WeakProblem[]
-  memoryProfile: MemoryProfile
   targetRetention: number
   views?: HistoricalAnalyticsViews
-  scatter: RetentionScatterEntry[]
-  referenceCurve: ReferenceCurvePoint[]
   historicalReadiness: HistoricalReadiness
   predictedRecall?: AnalyticsMetricSummary
   recallQuality?: import('./chart-data').RecallQualityPoint[]
@@ -125,13 +64,8 @@ export interface AnalyticsSummary {
   range: 14 | 30 | 90
   observedRatingSampleSize: number
   lowSample: boolean
-  dueForecast14Days: ForecastEntry[]
-  weakProblems: WeakProblem[]
-  memoryProfile: MemoryProfile
   targetRetention: number
   views: HistoricalAnalyticsViews
-  retentionScatter: RetentionScatterEntry[]
-  retentionScatterCurve: ReferenceCurvePoint[]
   historicalReadiness: HistoricalReadiness
   predictedRecall: AnalyticsMetricSummary
   recallQuality: import('./chart-data').RecallQualityPoint[]
@@ -172,84 +106,6 @@ export function buildObservedRatingQuality(
   return { value, label, sampleSize, lowSample: false }
 }
 
-export function buildDueForecast(
-  cards: Array<{ dueAt: Date }>,
-  now: Date,
-  timeZone?: string,
-): ForecastEntry[] {
-  const todayKey = timeZone
-    ? getAnalyticsDateKey(now, timeZone)
-    : toLocalDateKey(now)
-  const entries: ForecastEntry[] = Array.from({ length: 14 }, (_, i) => {
-    const date = timeZone
-      ? addAnalyticsCalendarDays(todayKey, i)
-      : toLocalDateKey(addLocalDays(now, i))
-    return { date, dueCount: 0 }
-  })
-
-  const dateToIndex = new Map(entries.map((e, i) => [e.date, i]))
-
-  for (const card of cards) {
-    const key =
-      card.dueAt < now
-        ? todayKey
-        : timeZone
-          ? getAnalyticsDateKey(card.dueAt, timeZone)
-          : toLocalDateKey(card.dueAt)
-    const index = dateToIndex.get(key)
-    if (index !== undefined) {
-      entries[index]!.dueCount++
-    }
-  }
-
-  return entries
-}
-
-export function buildWeakProblems(candidates: WeakProblem[]): WeakProblem[] {
-  return [...candidates]
-    .sort((a, b) => {
-      if (b.lapseCount !== a.lapseCount) return b.lapseCount - a.lapseCount
-      if (b.difficulty !== a.difficulty) return b.difficulty - a.difficulty
-      return a.retrievability - b.retrievability
-    })
-    .slice(0, 10)
-}
-
-export function buildMemoryProfile(input: MemoryProfileInput): MemoryProfile {
-  const sampleSize = input.retrievabilities.length
-  const averageRetrievability =
-    sampleSize === 0
-      ? null
-      : Math.round(
-          (input.retrievabilities.reduce((sum, value) => sum + value, 0) /
-            sampleSize) *
-            100,
-        ) / 100
-
-  return {
-    totalTracked: input.totalTracked,
-    dueToday: input.dueToday,
-    overdue: input.overdue,
-    learning: input.learning,
-    review: input.review,
-    mastered: input.mastered,
-    suspended: input.suspended,
-    averageRetrievability,
-    lowSample: sampleSize < 10,
-  }
-}
-
-// Entries and curve are pre-computed by the service (FSRS math stays server-side); this sorts only.
-export function buildRetentionScatter(
-  entries: RetentionScatterEntry[],
-  referenceCurve: ReferenceCurvePoint[],
-): { scatter: RetentionScatterEntry[]; referenceCurve: ReferenceCurvePoint[] } {
-  return {
-    scatter: [...entries].sort((a, b) => a.daysSinceReview - b.daysSinceReview),
-    referenceCurve,
-  }
-}
-
 export function buildAnalyticsSummary(
   input: AnalyticsSummaryInput,
 ): AnalyticsSummary {
@@ -264,13 +120,8 @@ export function buildAnalyticsSummary(
     observedRatingSampleSize: input.observedRatingQuality.sampleSize,
     lowSample: input.observedRatingQuality.lowSample,
     range: input.range,
-    dueForecast14Days: input.forecast,
-    weakProblems: input.weakProblems,
-    memoryProfile: input.memoryProfile,
     targetRetention: input.targetRetention,
     views: input.views ?? emptyHistoricalViews(input.targetRetention),
-    retentionScatter: input.scatter,
-    retentionScatterCurve: input.referenceCurve,
     historicalReadiness: input.historicalReadiness,
     predictedRecall: input.predictedRecall ?? {
       value: null,
@@ -364,18 +215,5 @@ function emptyHistoricalViews(
 function subtractDays(date: Date, days: number): Date {
   const result = new Date(date)
   result.setDate(result.getDate() - days)
-  return result
-}
-
-function toLocalDateKey(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function addLocalDays(date: Date, days: number): Date {
-  const result = new Date(date)
-  result.setDate(result.getDate() + days)
   return result
 }

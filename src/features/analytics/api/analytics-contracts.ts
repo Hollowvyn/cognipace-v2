@@ -91,47 +91,6 @@ export type AnalyticsSummaryRequest = z.infer<
   typeof analyticsSummaryRequestSchema
 >
 
-export const weakProblemSchema = z.object({
-  slug: z.string(),
-  title: z.string(),
-  lapseCount: countSchema,
-  difficulty: z.number(),
-  retrievability: percentageSchema,
-})
-
-export const forecastEntrySchema = z.object({
-  date: z.string(),
-  dueCount: countSchema,
-})
-
-export const memoryProfileSchema = z.object({
-  totalTracked: countSchema,
-  dueToday: countSchema,
-  overdue: countSchema,
-  learning: countSchema,
-  review: countSchema,
-  mastered: countSchema,
-  suspended: countSchema,
-  averageRetrievability: nullablePercentageSchema,
-  lowSample: z.boolean(),
-})
-
-export const retentionScatterEntrySchema = z.object({
-  slug: z.string(),
-  title: z.string(),
-  retrievability: percentageSchema,
-  daysSinceReview: countSchema,
-  difficulty: z.number(),
-  stability: z.number().nonnegative(),
-  lapseCount: countSchema,
-  lastReviewAt: z.string(),
-})
-
-export const referenceCurvePointSchema = z.object({
-  days: countSchema,
-  retrievability: percentageSchema,
-})
-
 export const recallQualityPointSchema = z.object({
   bucketStart: z.string(),
   bucketEnd: z.string(),
@@ -417,13 +376,8 @@ export const analyticsSummarySchema = z
     predictedRecall: analyticsMetricSummarySchema,
     observedRatingSampleSize: countSchema,
     lowSample: z.boolean(),
-    dueForecast14Days: z.array(forecastEntrySchema).length(14),
-    weakProblems: z.array(weakProblemSchema).max(10),
-    memoryProfile: memoryProfileSchema,
     targetRetention: percentageSchema,
     views: analyticsViewsSchema,
-    retentionScatter: z.array(retentionScatterEntrySchema),
-    retentionScatterCurve: z.array(referenceCurvePointSchema),
     historicalReadiness: historicalReadinessSchema,
     recallQuality: z.array(recallQualityPointSchema),
     practiceRhythm: z.array(practiceRhythmPointSchema),
