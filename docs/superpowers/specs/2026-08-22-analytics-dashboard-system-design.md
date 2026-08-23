@@ -2,12 +2,11 @@
 
 ## Status and authority
 
-Approved chart-by-chart product direction consolidated on August 22, 2026.
-This document is the design-complete **future-state specification** for the
-CogniPace Analytics dashboard and is pending user review. It does not claim
-that the current branch already implements these contracts, and it does not
-authorize implementation until the written specification is explicitly
-approved.
+Approved by the user on August 22, 2026 after chart-by-chart product review.
+This document is the approved **future-state specification** for the CogniPace
+Analytics dashboard. It does not claim that the current branch already
+implements these contracts. Implementation follows the phase-sized plans linked
+from `../plans/2026-08-22-analytics-dashboard-system.md`.
 
 This specification supersedes the following Analytics planning artifacts when
 they conflict with it:
@@ -1280,4 +1279,4 @@ contract before it enters Analytics.
 - View contracts: 9/9 locked.
 - Chart-quality checklist coverage: 18/18 for every view.
 - Implementation: not started by this specification.
-- Implementation plan: blocked on explicit user approval of this written spec.
+- Implementation plan: written as the linked five-phase plan suite.

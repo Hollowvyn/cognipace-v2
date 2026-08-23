@@ -2,8 +2,9 @@
 
 > Status: completed brainstorming record, not current product authority. The
 > consolidated future-state specification is
-> `../specs/2026-08-22-analytics-dashboard-system-design.md` and is pending
-> explicit user approval. No implementation is authorized by this document.
+> `../specs/2026-08-22-analytics-dashboard-system-design.md` and was approved by
+> the user on August 22, 2026. Implementation authority comes from the approved
+> specification and its phase-sized plan suite, not this working record.
 
 ## Purpose
 

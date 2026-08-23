@@ -12,6 +12,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
+- [`specs/2026-08-22-analytics-dashboard-system-design.md`](./specs/2026-08-22-analytics-dashboard-system-design.md): approved future-state design for the nine-view Analytics dashboard, shared chart system, metric contracts, evidence/date/scale rules, Chart/Table parity, accessibility, and phased migration boundary.
 - [`specs/2026-06-08-agent-governance-drift-audit-design.md`](./specs/2026-06-08-agent-governance-drift-audit-design.md): Phase F design for adding a lightweight file-path-based drift audit checklist to the canonical agent governance doc after the first hardened release cycle, without adding new scheduled automation yet.
 - [`specs/2026-06-08-github-governance-templates-design.md`](./specs/2026-06-08-github-governance-templates-design.md): approved design for reinstating concise GitHub PR and issue templates, direct Bug/Task type labels, Project auto-add expectations, PR hygiene checks, stale PR handling, and workflow hardening before agent-specific enforcement.
 - [`specs/2026-06-07-agent-governance-phase-c-validation-smoke-design.md`](./specs/2026-06-07-agent-governance-phase-c-validation-smoke-design.md): Phase C design for making validation selection and smoke reporting easier to apply from the canonical agent governance doc without duplicating validation authority into root agent guides.
@@ -33,6 +34,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Plans
 
+- [`plans/2026-08-22-analytics-dashboard-system.md`](./plans/2026-08-22-analytics-dashboard-system.md): master execution map for the approved Analytics dashboard, split into five linked phase-sized implementation plans covering foundation, historical outcomes, ratings/topics, current-state diagnostics, and workload/integration.
 - [`plans/2026-06-08-agent-governance-drift-audit.md`](./plans/2026-06-08-agent-governance-drift-audit.md): implementation plan for adding the Phase F drift audit checklist to the canonical agent governance doc and marking the historical Phase F status implemented.
 - [`plans/2026-06-08-github-governance-templates.md`](./plans/2026-06-08-github-governance-templates.md): implementation plan for concise GitHub PR and Bug/Task issue templates, labels, Project auto-add, PR hygiene, stale PR handling, and path-based area labeling.
 - [`plans/2026-06-07-agent-governance-phase-c-validation-smoke.md`](./plans/2026-06-07-agent-governance-phase-c-validation-smoke.md): implementation plan for adding the Phase C validation-selection guide and smoke-reporting clarification to the canonical agent governance doc.
@@ -56,4 +58,5 @@ Use these files to understand why work was shaped a certain way. Before changing
 
 ## Audits
 
+- [`audits/2026-08-22-analytics-nine-chart-working-decisions.md`](./audits/2026-08-22-analytics-nine-chart-working-decisions.md): completed chart-by-chart decision record underlying the approved nine-view Analytics dashboard specification.
 - [`audits/2026-06-07-closed-issues-1-6-11-17.md`](./audits/2026-06-07-closed-issues-1-6-11-17.md): closed-issue rescue audit for issues 1, 6, 11, and 17.
