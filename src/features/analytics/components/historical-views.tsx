@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  Area,
   Bar,
   CartesianGrid,
   ComposedChart,
@@ -75,6 +76,7 @@ export function ObservedRecallVsFsrsView({
                 width={44}
               />
               <ChartTooltip content={<RecallTooltip />} />
+              <RecallLegend />
               <ReferenceLine
                 label="Target retention"
                 stroke="var(--cp-analytics-target)"
@@ -85,14 +87,19 @@ export function ObservedRecallVsFsrsView({
                 data={view.rows}
                 dataKey="observedRecall"
                 seriesKey="Observed recall"
+                showMeasuredDots
                 stroke="var(--cp-analytics-observed)"
+                testId="observed-recall"
                 type="linear"
               />
               <LineSegments
                 data={view.rows}
                 dataKey="fsrsEstimate"
                 seriesKey="FSRS estimate"
+                showMeasuredDots
                 stroke="var(--cp-analytics-predicted)"
+                strokeDasharray="6 3"
+                testId="fsrs-estimate"
                 type="linear"
               />
             </ComposedChart>
@@ -117,6 +124,11 @@ export function MemoryStrengthView({
   view: AnalyticsViews['memoryStrength']
 }) {
   const hasValues = view.rows.some((row) => row.medianStrengthDays !== null)
+  const chartRows = view.rows.map((row) => ({
+    ...row,
+    iqrBase: row.q1,
+    iqrRange: row.q1 === null || row.q3 === null ? null : row.q3 - row.q1,
+  }))
   return (
     <ChartTable
       chart={
@@ -137,7 +149,7 @@ export function MemoryStrengthView({
           >
             <ComposedChart
               accessibilityLayer
-              data={view.rows}
+              data={chartRows}
               margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
             >
               <CartesianGrid stroke="var(--color-border)" vertical={false} />
@@ -147,7 +159,7 @@ export function MemoryStrengthView({
                 minTickGap={32}
                 tickFormatter={(value) =>
                   formatRowBucket(
-                    view.rows.find((row) => row.bucketStart === value),
+                    chartRows.find((row) => row.bucketStart === value),
                   )
                 }
                 tickLine={false}
@@ -161,8 +173,22 @@ export function MemoryStrengthView({
                 width={48}
               />
               <ChartTooltip content={<MemoryTooltip />} />
+              <Area
+                dataKey="iqrBase"
+                fill="transparent"
+                stackId="memory-strength-iqr"
+                stroke="transparent"
+              />
+              <Area
+                data-testid="memory-strength-iqr-band"
+                dataKey="iqrRange"
+                fill="var(--cp-analytics-healthy)"
+                fillOpacity={0.18}
+                stackId="memory-strength-iqr"
+                stroke="none"
+              />
               <LineSegments
-                data={view.rows}
+                data={chartRows}
                 dataKey="medianStrengthDays"
                 seriesKey="Median strength"
                 stroke="var(--cp-analytics-healthy)"
@@ -191,93 +217,98 @@ export function PracticeRhythmView({
 }) {
   const hasReviews = view.rows.some((row) => row.completedReviews > 0)
   return (
-    <ChartTable
-      chart={
-        hasReviews ? (
-          <ChartContainer
-            accessibleDescription={`Completed reviews and Review Success. Review count scale: ${view.countScale.domain.join('–')}; Review Success scale: ${formatPercent(view.percentageScale.domain[0])}–${formatPercent(view.percentageScale.domain[1])}. Association, not causation.`}
-            accessibleName="Practice Rhythm chart"
-            aria-label="Practice Rhythm chart"
-            className="aspect-auto h-72 min-h-[18rem]"
-            config={{
-              completedReviews: {
-                label: 'Completed reviews',
-                color: 'var(--cp-analytics-practice-volume)',
-              },
-              reviewSuccess: {
-                label: 'Review Success',
-                color: 'var(--cp-analytics-observed)',
-              },
-            }}
-            initialDimension={chartDimension}
-            role="img"
-          >
-            <ComposedChart
-              accessibilityLayer
-              data={view.rows}
-              margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+    <div className="grid gap-2">
+      <p className="m-0 text-sm font-medium text-foreground">
+        Association, not causation.
+      </p>
+      <ChartTable
+        chart={
+          hasReviews ? (
+            <ChartContainer
+              accessibleDescription={`Completed reviews and Review Success. Review count scale: ${view.countScale.domain.join('–')}; Review Success scale: ${formatPercent(view.percentageScale.domain[0])}–${formatPercent(view.percentageScale.domain[1])}. Association, not causation.`}
+              accessibleName="Practice Rhythm chart"
+              aria-label="Practice Rhythm chart"
+              className="aspect-auto h-72 min-h-[18rem]"
+              config={{
+                completedReviews: {
+                  label: 'Completed reviews',
+                  color: 'var(--cp-analytics-practice-volume)',
+                },
+                reviewSuccess: {
+                  label: 'Review Success',
+                  color: 'var(--cp-analytics-observed)',
+                },
+              }}
+              initialDimension={chartDimension}
+              role="img"
             >
-              <CartesianGrid stroke="var(--color-border)" vertical={false} />
-              <XAxis
-                axisLine={false}
-                dataKey="bucketStart"
-                minTickGap={32}
-                tickFormatter={(value) =>
-                  formatRowBucket(
-                    view.rows.find((row) => row.bucketStart === value),
-                  )
-                }
-                tickLine={false}
-              />
-              <YAxis
-                allowDecimals={false}
-                axisLine={false}
-                domain={view.countScale.domain}
-                ticks={view.countScale.ticks}
-                tickLine={false}
-                width={42}
-                yAxisId="count"
-              />
-              <YAxis
-                axisLine={false}
-                domain={view.percentageScale.domain}
-                orientation="right"
-                tickFormatter={formatPercent}
-                ticks={view.percentageScale.ticks}
-                tickLine={false}
-                width={44}
-                yAxisId="success"
-              />
-              <ChartTooltip content={<RhythmTooltip />} />
-              <Bar
-                dataKey="completedReviews"
-                fill="var(--cp-analytics-practice-volume)"
-                isAnimationActive={false}
-                name="Completed reviews"
-                radius={[3, 3, 0, 0]}
-                yAxisId="count"
-              />
-              <LineSegments
+              <ComposedChart
+                accessibilityLayer
                 data={view.rows}
-                dataKey="reviewSuccess"
-                seriesKey="Review Success"
-                stroke="var(--cp-analytics-observed)"
-                type="linear"
-                yAxisId="success"
-              />
-            </ComposedChart>
-          </ChartContainer>
-        ) : (
-          <Empty message="No valid review ratings are available in this period." />
-        )
-      }
-      table={
-        <PracticeRhythmTable
-          rows={view.rows}
-          resetKey={view.rows.map((row) => row.id).join('|')}
-        />
-      }
-    />
+                margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+              >
+                <CartesianGrid stroke="var(--color-border)" vertical={false} />
+                <XAxis
+                  axisLine={false}
+                  dataKey="bucketStart"
+                  minTickGap={32}
+                  tickFormatter={(value) =>
+                    formatRowBucket(
+                      view.rows.find((row) => row.bucketStart === value),
+                    )
+                  }
+                  tickLine={false}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  axisLine={false}
+                  domain={view.countScale.domain}
+                  ticks={view.countScale.ticks}
+                  tickLine={false}
+                  width={42}
+                  yAxisId="count"
+                />
+                <YAxis
+                  axisLine={false}
+                  domain={view.percentageScale.domain}
+                  orientation="right"
+                  tickFormatter={formatPercent}
+                  ticks={view.percentageScale.ticks}
+                  tickLine={false}
+                  width={44}
+                  yAxisId="success"
+                />
+                <ChartTooltip content={<RhythmTooltip />} />
+                <Bar
+                  dataKey="completedReviews"
+                  fill="var(--cp-analytics-practice-volume)"
+                  isAnimationActive={false}
+                  name="Completed reviews"
+                  radius={[3, 3, 0, 0]}
+                  yAxisId="count"
+                />
+                <LineSegments
+                  data={view.rows}
+                  dataKey="reviewSuccess"
+                  seriesKey="Review Success"
+                  stroke="var(--cp-analytics-observed)"
+                  type="linear"
+                  yAxisId="success"
+                />
+              </ComposedChart>
+            </ChartContainer>
+          ) : (
+            <Empty message="No valid review ratings are available in this period." />
+          )
+        }
+        table={
+          <PracticeRhythmTable
+            rows={view.rows}
+            resetKey={view.rows.map((row) => row.id).join('|')}
+          />
+        }
+      />
+    </div>
   )
 }
 
@@ -572,7 +603,7 @@ function bucketText(row: {
   bucketEnd: string
   isPartial: boolean
 }) {
-  return `${formatBucketLabel(row.bucketStart, row.bucketEnd)}${row.isPartial ? ' (in progress)' : ''}`
+  return `${formatTableBucket(row.bucketStart, row.bucketEnd)}${row.isPartial ? ' (in progress)' : ''}`
 }
 function evidenceText(value: 'measured' | 'not-measured') {
   return value === 'measured' ? 'Measured' : 'Not measured'
@@ -586,4 +617,69 @@ function formatSignedDays(value: number | null) {
   return value === null
     ? 'Not measured'
     : `${value >= 0 ? '+' : '−'}${formatDays(Math.abs(value))}`
+}
+
+function RecallLegend() {
+  return (
+    <div
+      className="flex flex-wrap gap-4 text-xs text-muted-foreground"
+      role="list"
+    >
+      <LegendLine
+        label="Observed recall"
+        stroke="var(--cp-analytics-observed)"
+      />
+      <LegendLine
+        dashed
+        label="FSRS estimate"
+        stroke="var(--cp-analytics-predicted)"
+      />
+      <LegendLine
+        dashed
+        label="Target retention"
+        stroke="var(--cp-analytics-target)"
+      />
+    </div>
+  )
+}
+
+function LegendLine({
+  dashed = false,
+  label,
+  stroke,
+}: {
+  dashed?: boolean
+  label: string
+  stroke: string
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5" role="listitem">
+      <span
+        aria-hidden="true"
+        className="w-5 border-t-2"
+        style={{
+          borderColor: stroke,
+          borderTopStyle: dashed ? 'dashed' : 'solid',
+        }}
+      />
+      {label}
+    </span>
+  )
+}
+
+const tableDateFormatter = new Intl.DateTimeFormat('en-US', {
+  day: '2-digit',
+  month: '2-digit',
+  timeZone: 'UTC',
+  year: '2-digit',
+})
+
+function formatTableDate(dateKey: string) {
+  return tableDateFormatter.format(new Date(`${dateKey}T00:00:00.000Z`))
+}
+
+function formatTableBucket(bucketStart: string, bucketEnd: string) {
+  return bucketStart === bucketEnd
+    ? formatTableDate(bucketStart)
+    : `${formatTableDate(bucketStart)}–${formatTableDate(bucketEnd)}`
 }

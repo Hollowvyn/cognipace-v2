@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { normalizeFsrsSchedulingOptions } from '@/lib/fsrs'
+import {
+  normalizeFsrsSchedulingOptions,
+  replayReviewHistorySequence,
+} from '@/lib/fsrs'
 
 import {
   buildHistoricalAnalyticsViews,
@@ -125,5 +128,38 @@ describe('buildHistoricalAnalyticsViews', () => {
     })
     expect(withFour.memoryStrength.rows[0]?.q1).not.toBeNull()
     expect(withFour.memoryStrength.rows[0]?.q3).not.toBeNull()
+  })
+
+  it('derives post-review Memory Strength from the replayed post-review card rather than the stored log snapshot', () => {
+    const reviewedAt = new Date('2026-08-01T12:00:00.000Z')
+    const replayedPostReview = replayReviewHistorySequence(
+      [{ rating: 'good', reviewedAt }],
+      options.fsrsOptions,
+    )[0]!.card.stability
+    const views = buildHistoricalAnalyticsViews(
+      [
+        event({
+          fsrsReviewLog: JSON.stringify({
+            rating: 'good',
+            state: 'review',
+            dueAt: '2026-08-01T12:00:00.000Z',
+            stability: 999,
+            difficulty: 5,
+            elapsedDays: 1,
+            lastElapsedDays: 1,
+            scheduledDays: 4,
+            learningSteps: 0,
+            reviewedAt: '2026-08-01T12:00:00.000Z',
+          }),
+          reviewedAt,
+        }),
+      ],
+      options,
+    )
+
+    expect(views.memoryStrength.rows[0]?.medianStrengthDays).toBeCloseTo(
+      replayedPostReview,
+    )
+    expect(views.memoryStrength.rows[0]?.medianStrengthDays).not.toBe(999)
   })
 })

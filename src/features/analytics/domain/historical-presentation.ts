@@ -2,7 +2,6 @@ import {
   createInitialFsrsCard,
   getRetrievability,
   isReviewRating,
-  parseSerializedFsrsReviewLogSnapshot,
   replayReviewHistorySequence,
   type NormalizedFsrsSchedulingOptions,
   type ReviewRating,
@@ -291,32 +290,26 @@ function buildStabilityObservations(
       options.fsrsOptions,
     )
     for (const [index, event] of ordered.entries()) {
+      if (event.reviewedAt < options.start || event.reviewedAt > options.end)
+        continue
+      const postReviewStability = replayed[index]?.card.stability
       if (
-        event.reviewedAt < options.start ||
-        event.reviewedAt > options.end ||
-        !event.fsrsReviewLog
+        postReviewStability === undefined ||
+        !Number.isFinite(postReviewStability) ||
+        postReviewStability <= 0
       )
         continue
-      try {
-        const postReviewStability = parseSerializedFsrsReviewLogSnapshot(
-          event.fsrsReviewLog,
-        ).stability
-        if (!Number.isFinite(postReviewStability) || postReviewStability <= 0)
-          continue
-        const preReviewStability = replayed[index - 1]?.card.stability
-        observations.push({
-          reviewedAt: event.reviewedAt,
-          postReviewStability,
-          preReviewStability:
-            preReviewStability !== undefined &&
-            Number.isFinite(preReviewStability) &&
-            preReviewStability > 0
-              ? preReviewStability
-              : null,
-        })
-      } catch {
-        // Persisted history can contain legacy or malformed logs. It is not evidence.
-      }
+      const preReviewStability = replayed[index - 1]?.card.stability
+      observations.push({
+        reviewedAt: event.reviewedAt,
+        postReviewStability,
+        preReviewStability:
+          preReviewStability !== undefined &&
+          Number.isFinite(preReviewStability) &&
+          preReviewStability > 0
+            ? preReviewStability
+            : null,
+      })
     }
   }
   return observations

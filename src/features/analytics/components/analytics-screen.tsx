@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
+import { formatDateTime } from '@/utils/date-format'
 
 import { useAnalyticsSummary } from '../api/analytics-api'
 import type {
@@ -61,6 +62,7 @@ export function AnalyticsScreen({
   return (
     <div className="flex min-w-0 flex-col gap-[var(--cp-surface-gap)]">
       <AnalyticsMetricRow summary={data} />
+      <AnalyticsScopeMetadata data={data} />
       {!data.historicalReadiness.requested.ready ? (
         <AnalyticsReadinessState
           compact
@@ -78,6 +80,20 @@ export function AnalyticsScreen({
       ) : null}
       <AnalyticsHistoricalStory data={data} />
     </div>
+  )
+}
+
+function AnalyticsScopeMetadata({
+  data,
+}: {
+  data: SerializedAnalyticsSummary
+}) {
+  return (
+    <p className="m-0 text-sm text-muted-foreground">
+      Range: {data.range} days · Time zone: {data.timeFrame.timeZone}
+      {data.timeFrame.timeZoneFallback ? ' (fallback)' : ''} · As of:{' '}
+      {formatDateTime(data.timeFrame.asOf)}
+    </p>
   )
 }
 

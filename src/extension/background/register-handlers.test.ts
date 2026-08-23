@@ -344,8 +344,14 @@ describe('background handler registration', () => {
     vi.clearAllMocks()
     backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
     backgroundMocks.getAnalyticsSummary.mockResolvedValue({
+      ...createSerializedAnalyticsSummary(),
       range: 30,
       generatedAt: '2026-01-15T12:00:00.000Z',
+      timeFrame: {
+        ...createSerializedAnalyticsSummary().timeFrame,
+        asOf: '2026-01-15T12:00:00.000Z',
+        requestedDays: 30,
+      },
       reviewDays: 3,
       totalReviews: 12,
       currentStreak: 2,
@@ -661,6 +667,10 @@ describe('background handler registration', () => {
   it('preserves requested timezone grouping across a DST boundary', async () => {
     const fixture = createSerializedAnalyticsSummary({
       range: 14,
+      timeFrame: {
+        ...createSerializedAnalyticsSummary().timeFrame,
+        requestedDays: 14,
+      },
       historicalReadiness: createReadyHistoricalReadiness(),
       upcomingLoad: Array.from({ length: 14 }, (_, index) => ({
         date: `2026-03-${String(8 + index).padStart(2, '0')}`,
@@ -704,8 +714,14 @@ describe('background handler registration', () => {
 
   it('does not expose low-sample observed rating quality as 0%', async () => {
     backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
+      ...createSerializedAnalyticsSummary(),
       range: 90,
       generatedAt: '2026-01-15T12:00:00.000Z',
+      timeFrame: {
+        ...createSerializedAnalyticsSummary().timeFrame,
+        asOf: '2026-01-15T12:00:00.000Z',
+        requestedDays: 90,
+      },
       reviewDays: 3,
       totalReviews: 4,
       currentStreak: 1,
@@ -771,6 +787,10 @@ describe('background handler registration', () => {
   it('serializes current and forecast analytics when the selected historical range is unready', async () => {
     const fixture = createSerializedAnalyticsSummary({
       range: 90,
+      timeFrame: {
+        ...createSerializedAnalyticsSummary().timeFrame,
+        requestedDays: 90,
+      },
       historicalReadiness: {
         ...createSerializedAnalyticsSummary().historicalReadiness,
         requested: {

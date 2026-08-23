@@ -331,6 +331,28 @@ describe('AnalyticsScreen', () => {
     ).toBeVisible()
   })
 
+  it('surfaces the selected range, timezone fallback, and as-of instant', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      createAnalyticsSummary({
+        timeFrame: {
+          ...baseAnalyticsSummary().timeFrame,
+          timeZone: 'UTC',
+          timeZoneFallback: true,
+        },
+      }),
+    )
+
+    renderAnalyticsScreen()
+
+    const metadata = await screen.findByText(
+      (_, element) =>
+        element?.tagName === 'P' &&
+        element.textContent?.includes('Range: 30 days') === true,
+    )
+    expect(metadata).toHaveTextContent('Time zone: UTC (fallback)')
+    expect(metadata).toHaveTextContent('As of:')
+  })
+
   it('renders only the three Phase 2 historical views with semantic Chart and Table tabs', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(
       readyAnalyticsSummary({
