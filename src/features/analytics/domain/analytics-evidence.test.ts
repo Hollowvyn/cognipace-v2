@@ -74,6 +74,119 @@ describe('analytics evidence', () => {
     })
   })
 
+  it.each([
+    {
+      requestedDays: 14 as const,
+      belowMinimum: [1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+      atMinimum: [1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    },
+    {
+      requestedDays: 30 as const,
+      belowMinimum: [2, 2, 2, 2, 2, 2, 2, 2, 2, 5],
+      atMinimum: [2, 2, 2, 2, 2, 2, 2, 2, 2, 6],
+    },
+    {
+      requestedDays: 90 as const,
+      belowMinimum: [32, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      atMinimum: [33, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    },
+  ])(
+    'uses the locked $requestedDays-day minimum sample threshold',
+    ({ requestedDays, belowMinimum, atMinimum }) => {
+      expect(
+        calculateAnalyticsEvidence({
+          requestedDays,
+          evidenceCounts: belowMinimum,
+          bucketKeys: keys(belowMinimum.length),
+        }).trendSupported,
+      ).toBe(false)
+
+      expect(
+        calculateAnalyticsEvidence({
+          requestedDays,
+          evidenceCounts: atMinimum,
+          bucketKeys: keys(atMinimum.length),
+        }).trendSupported,
+      ).toBe(true)
+    },
+  )
+
+  it('requires the clamped 90-day active-bucket coverage threshold', () => {
+    const belowCoverage = [10, 0, 0, 10, 0, 0, 10, 0, 0, 10, 1, 2, 2]
+    const atCoverage = [10, 1, 0, 10, 0, 0, 10, 0, 0, 10, 1, 2, 1]
+
+    expect(
+      calculateAnalyticsEvidence({
+        requestedDays: 90,
+        evidenceCounts: belowCoverage,
+        bucketKeys: keys(13),
+      }).trendSupported,
+    ).toBe(false)
+    expect(
+      calculateAnalyticsEvidence({
+        requestedDays: 90,
+        evidenceCounts: atCoverage,
+        bucketKeys: keys(13),
+      }).trendSupported,
+    ).toBe(true)
+  })
+
+  it('requires the effective bucket span before supporting a trend', () => {
+    const belowMinimumSpan = [0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2]
+    const atMinimumSpan = [0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+
+    expect(
+      calculateAnalyticsEvidence({
+        requestedDays: 14,
+        evidenceCounts: belowMinimumSpan,
+        bucketKeys: keys(14),
+      }).trendSupported,
+    ).toBe(false)
+    expect(
+      calculateAnalyticsEvidence({
+        requestedDays: 14,
+        evidenceCounts: atMinimumSpan,
+        bucketKeys: keys(14),
+      }).trendSupported,
+    ).toBe(true)
+  })
+
+  it('enforces the longest-gap and gap-run thresholds independently', () => {
+    const longestGapTooLong = [2, 2, 2, 2, 2, 0, 0, 0, 2, 2, 2, 2, 2, 2]
+    const atLongestGap = [2, 2, 2, 2, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2]
+    const tooManyGapRuns = [2, 0, 2, 0, 2, 0, 2, 0, 2, 2, 2, 2, 2, 2]
+    const atGapRuns = [2, 0, 2, 0, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2]
+
+    expect(
+      calculateAnalyticsEvidence({
+        requestedDays: 14,
+        evidenceCounts: longestGapTooLong,
+        bucketKeys: keys(14),
+      }).trendSupported,
+    ).toBe(false)
+    expect(
+      calculateAnalyticsEvidence({
+        requestedDays: 14,
+        evidenceCounts: atLongestGap,
+        bucketKeys: keys(14),
+      }).trendSupported,
+    ).toBe(true)
+    expect(
+      calculateAnalyticsEvidence({
+        requestedDays: 14,
+        evidenceCounts: tooManyGapRuns,
+        bucketKeys: keys(14),
+      }).trendSupported,
+    ).toBe(false)
+    expect(
+      calculateAnalyticsEvidence({
+        requestedDays: 14,
+        evidenceCounts: atGapRuns,
+        bucketKeys: keys(14),
+      }).trendSupported,
+    ).toBe(true)
+  })
+
   it('rejects invalid and misaligned evidence', () => {
     expect(() =>
       calculateAnalyticsEvidence({

@@ -1,16 +1,47 @@
 const NOT_MEASURED = 'Not measured'
 const dateKeyPattern = /^(\d{4})-(\d{2})-(\d{2})$/
 
-export function formatAnalyticsPercent(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return NOT_MEASURED
-  return `${Math.round(value * 100)}%`
+export type AnalyticsPercentagePrecision = 'compact' | 'one-decimal'
+
+export interface AnalyticsFormatOptions {
+  precision?: AnalyticsPercentagePrecision
 }
 
-export function formatAnalyticsPercentagePoints(value: number | null): string {
+export function formatAnalyticsPercent(
+  value: number | null,
+  options: AnalyticsFormatOptions = {},
+): string {
+  if (value === null || !Number.isFinite(value)) return NOT_MEASURED
+  return `${formatPercentageValue(value, options.precision)}%`
+}
+
+export function formatAnalyticsPercentagePoints(
+  value: number | null,
+  options: AnalyticsFormatOptions = {},
+): string {
   if (value === null || !Number.isFinite(value)) return NOT_MEASURED
 
-  const points = Math.round(Math.abs(value) * 100)
+  const points = formatPercentageValue(Math.abs(value), options.precision)
   return `${value >= 0 ? '+' : '−'}${points} pp`
+}
+
+export function selectAnalyticsPercentagePrecision(
+  values: readonly (number | null)[],
+): AnalyticsPercentagePrecision {
+  const compactValues = new Map<number, number>()
+
+  for (const value of values) {
+    if (value === null || !Number.isFinite(value)) continue
+
+    const compactValue = Math.round(value * 100)
+    const previousExactValue = compactValues.get(compactValue)
+    if (previousExactValue !== undefined && previousExactValue !== value) {
+      return 'one-decimal'
+    }
+    compactValues.set(compactValue, value)
+  }
+
+  return 'compact'
 }
 
 export function formatAnalyticsDays(value: number | null): string {
@@ -62,4 +93,14 @@ function parseDateKey(key: string): {
   }
 
   return { year, month, day }
+}
+
+function formatPercentageValue(
+  value: number,
+  precision: AnalyticsPercentagePrecision | undefined,
+): string {
+  const percentage = value * 100
+  return precision === 'one-decimal'
+    ? percentage.toFixed(1)
+    : String(Math.round(percentage))
 }

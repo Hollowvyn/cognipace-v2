@@ -55,9 +55,11 @@ export function buildLogDurationDomain(
   values: readonly number[],
   reference = 7,
 ): NumericDomain {
-  const points = finiteValues([...values, reference]).filter(
-    (value) => value > 0,
-  )
+  const points = finiteValues([
+    ...values,
+    7,
+    ...(Number.isFinite(reference) && reference > 0 ? [reference] : []),
+  ]).filter((value) => value > 0)
   const minimum = Math.min(...points)
   const maximum = Math.max(...points)
 

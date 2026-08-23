@@ -7,6 +7,7 @@ import {
   formatAnalyticsDays,
   formatAnalyticsPercentagePoints,
   formatAnalyticsPercent,
+  selectAnalyticsPercentagePrecision,
 } from './analytics-format'
 
 describe('analytics formatting', () => {
@@ -19,6 +20,23 @@ describe('analytics formatting', () => {
     expect(formatAnalyticsPercentagePoints(0.234)).toBe('+23 pp')
     expect(formatAnalyticsPercentagePoints(-0.234)).toBe('−23 pp')
     expect(formatAnalyticsPercentagePoints(null)).toBe('Not measured')
+  })
+
+  it('uses one decimal when distinct exact percentages would collide compactly', () => {
+    expect(selectAnalyticsPercentagePrecision([0.751, 0.754])).toBe(
+      'one-decimal',
+    )
+    expect(formatAnalyticsPercent(0.754, { precision: 'one-decimal' })).toBe(
+      '75.4%',
+    )
+    expect(
+      formatAnalyticsPercentagePoints(0.234, { precision: 'one-decimal' }),
+    ).toBe('+23.4 pp')
+  })
+
+  it('retains compact whole-number formatting when exact values do not collide', () => {
+    expect(selectAnalyticsPercentagePrecision([0.75, 0.76])).toBe('compact')
+    expect(formatAnalyticsPercent(0.754)).toBe('75%')
   })
 
   it('formats durations with the locked day precision', () => {

@@ -39,4 +39,13 @@ describe('analytics scales', () => {
     expect(buildLogDurationDomain([20, 80])).toEqual([1, 100])
     expect(buildLogDurationDomain([0, Number.NaN])).toEqual([1, 10])
   })
+
+  it('keeps the seven-day benchmark when a custom reference is valid', () => {
+    expect(buildLogDurationDomain([20, 80], 1_000)).toEqual([1, 1_000])
+  })
+
+  it('ignores invalid custom log references instead of producing a NaN domain', () => {
+    expect(buildLogDurationDomain([], 0)).toEqual([1, 10])
+    expect(buildLogDurationDomain([], Number.NaN)).toEqual([1, 10])
+  })
 })
