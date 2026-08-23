@@ -72,6 +72,15 @@ const validUpcomingLoad = Array.from({ length: 14 }, (_, index) => ({
 
 const validSummary: SerializedAnalyticsSummary = {
   chartDataStatus: 'unavailable',
+  presentationMeta: {
+    asOf: '2026-01-15T12:00:00.000Z',
+    timeZone: 'America/New_York',
+    timeZoneFallback: false,
+    range: 30,
+    periodStart: '2025-12-17T05:00:00.000Z',
+    periodEnd: '2026-01-16T05:00:00.000Z',
+    isPartial: true,
+  },
   range: 30,
   periodStart: '2025-12-16T00:00:00.000Z',
   periodEnd: '2026-01-15T12:00:00.000Z',
@@ -204,6 +213,27 @@ describe('analyticsSummaryRequestSchema', () => {
 })
 
 describe('analyticsSummarySchema', () => {
+  it('requires presentation metadata alongside the legacy summary fields', () => {
+    expect(
+      analyticsSummarySchema.safeParse(withoutSummaryField('presentationMeta'))
+        .success,
+    ).toBe(false)
+    expect(
+      analyticsSummarySchema.safeParse({
+        ...validSummary,
+        presentationMeta: {
+          asOf: '2026-01-15T12:00:00.000Z',
+          timeZone: 'America/New_York',
+          timeZoneFallback: false,
+          range: 30,
+          periodStart: '2025-12-17T05:00:00.000Z',
+          periodEnd: '2026-01-16T05:00:00.000Z',
+          isPartial: true,
+        },
+      }).success,
+    ).toBe(true)
+  })
+
   it('serializes evidence readiness for the requested range and each historical metric', () => {
     expect(analyticsReadinessSchema.parse(readiness)).toEqual(readiness)
 

@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { analyticsPresentationMetaSchema } from './analytics-presentation-contracts'
+
 export const analyticsRangeSchema = z.union([
   z.literal(14),
   z.literal(30),
@@ -228,6 +230,7 @@ export const fragileKnowledgeSchema = z.object({
 export const analyticsSummarySchema = z
   .object({
     chartDataStatus: z.enum(['unavailable', 'unready', 'ready']),
+    presentationMeta: analyticsPresentationMetaSchema,
     range: analyticsRangeSchema,
     periodStart: z.iso.datetime(),
     periodEnd: z.iso.datetime(),

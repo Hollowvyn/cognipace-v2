@@ -67,8 +67,19 @@ export interface ReferenceCurvePoint {
   retrievability: number
 }
 
+export interface AnalyticsPresentationMeta {
+  asOf: string
+  timeZone: string
+  timeZoneFallback: boolean
+  range: 14 | 30 | 90
+  periodStart: string
+  periodEnd: string
+  isPartial: boolean
+}
+
 export interface AnalyticsSummaryInput {
   generatedAt: Date
+  presentationMeta: AnalyticsPresentationMeta
   reviewDays: number
   totalReviews: number
   currentStreak: number
@@ -111,6 +122,7 @@ export interface HistoricalReadiness {
 
 export interface AnalyticsSummary {
   generatedAt: string
+  presentationMeta: AnalyticsPresentationMeta
   reviewDays: number
   totalReviews: number
   currentStreak: number
@@ -242,6 +254,7 @@ export function buildAnalyticsSummary(
 ): AnalyticsSummary {
   return {
     generatedAt: input.generatedAt.toISOString(),
+    presentationMeta: input.presentationMeta,
     reviewDays: input.reviewDays,
     totalReviews: input.totalReviews,
     currentStreak: input.currentStreak,

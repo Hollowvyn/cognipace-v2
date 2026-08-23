@@ -53,6 +53,7 @@ import {
   getAnalyticsRangePolicy,
   type AnalyticsBucket,
 } from '../domain/analytics-range-policy'
+import { buildAnalyticsTimeFrame } from '../domain/analytics-time'
 
 import {
   buildObservedRatingQuality,
@@ -77,6 +78,13 @@ export async function getAnalyticsSummary(
       ? nowOrOptions
       : (nowOrOptions.now ?? new Date())
   const range = nowOrOptions instanceof Date ? 30 : nowOrOptions.range
+  const timeZone =
+    nowOrOptions instanceof Date ? 'UTC' : (nowOrOptions.timeZone ?? 'UTC')
+  const presentationTimeFrame = buildAnalyticsTimeFrame({
+    asOf: now,
+    requestedDays: range,
+    timeZone,
+  })
   const periodEnd = now
   const rangePolicy = getAnalyticsRangePolicy(range)
   const buckets = buildAnalyticsBuckets({ requestedDays: range, periodEnd })
@@ -331,6 +339,17 @@ export async function getAnalyticsSummary(
   // Step 5: assemble
   return buildAnalyticsSummary({
     generatedAt: now,
+    presentationMeta: {
+      asOf: presentationTimeFrame.asOf,
+      timeZone: presentationTimeFrame.timeZone,
+      timeZoneFallback: presentationTimeFrame.timeZoneFallback,
+      range,
+      periodStart: presentationTimeFrame.periodStart,
+      periodEnd: presentationTimeFrame.periodEnd,
+      isPartial: presentationTimeFrame.buckets.some(
+        (bucket) => bucket.isPartial,
+      ),
+    },
     reviewDays: dayStats.reviewDays,
     totalReviews: dayStats.totalReviews,
     currentStreak: practiceProgress.currentStreak,

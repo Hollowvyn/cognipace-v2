@@ -344,6 +344,15 @@ describe('background handler registration', () => {
     vi.clearAllMocks()
     backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
     backgroundMocks.getAnalyticsSummary.mockResolvedValue({
+      presentationMeta: {
+        asOf: '2026-01-15T12:00:00.000Z',
+        timeZone: 'UTC',
+        timeZoneFallback: false,
+        range: 30,
+        periodStart: '2025-12-17T00:00:00.000Z',
+        periodEnd: '2026-01-16T00:00:00.000Z',
+        isPartial: true,
+      },
       range: 30,
       periodStart: '2025-12-16T12:00:00.000Z',
       periodEnd: '2026-01-15T12:00:00.000Z',
@@ -661,6 +670,15 @@ describe('background handler registration', () => {
 
   it('does not expose low-sample observed rating quality as 0%', async () => {
     backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
+      presentationMeta: {
+        asOf: '2026-01-15T12:00:00.000Z',
+        timeZone: 'UTC',
+        timeZoneFallback: false,
+        range: 90,
+        periodStart: '2025-10-18T00:00:00.000Z',
+        periodEnd: '2026-01-16T00:00:00.000Z',
+        isPartial: true,
+      },
       range: 90,
       periodStart: '2025-10-17T12:00:00.000Z',
       periodEnd: '2026-01-15T12:00:00.000Z',

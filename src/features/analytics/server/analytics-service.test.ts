@@ -43,6 +43,16 @@ describe('getAnalyticsSummary memory profile', () => {
       expect(summary.range).toBe(range)
       expect(summary.periodEnd).toBe(now.toISOString())
       expect(summary.periodStart).toBe(buckets[0]!.start.toISOString())
+      expect(summary).toMatchObject({
+        presentationMeta: {
+          asOf: now.toISOString(),
+          timeZone: 'UTC',
+          timeZoneFallback: false,
+          range,
+          periodEnd: '2026-01-16T00:00:00.000Z',
+          isPartial: true,
+        },
+      })
       expect(summary.observedRatingQuality).toBeNull()
       expect(summary.chartDataStatus).toBe('unready')
       expect(summary.predictedRecall).toEqual({
