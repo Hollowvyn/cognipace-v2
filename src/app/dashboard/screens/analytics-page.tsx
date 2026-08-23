@@ -1,5 +1,5 @@
 // src/app/dashboard/screens/analytics-page.tsx
-import { AnalyticsScreen } from '@/features/analytics'
+import { useSearch } from '@tanstack/react-router'
 
 import { useDashboardChrome } from '@/app/dashboard/dashboard-shell'
 import {
@@ -7,21 +7,27 @@ import {
   DashboardPageBody,
   DashboardPageHeader,
 } from '@/app/dashboard/layout/dashboard-page'
-import { dashboardRouteMeta } from '@/app/dashboard/navigation/route-manifest'
+import { AnalyticsRangeControl, AnalyticsScreen } from '@/features/analytics'
 
 export function AnalyticsPage() {
   const { headerActions } = useDashboardChrome()
+  const { range } = useSearch({ from: '/analytics' })
 
   return (
     <DashboardPage className="mx-auto w-full max-w-[64rem]">
       <DashboardPageHeader
-        actions={headerActions}
-        title={dashboardRouteMeta.analytics.staticData.title}
+        actions={
+          <>
+            <AnalyticsRangeControl range={range} />
+            {headerActions}
+          </>
+        }
+        title="How your memory is changing"
       >
-        Your local study health — reviews, retention, and upcoming workload.
+        A focused view of recall, practice patterns, weak spots, and workload.
       </DashboardPageHeader>
       <DashboardPageBody>
-        <AnalyticsScreen />
+        <AnalyticsScreen range={range} />
       </DashboardPageBody>
     </DashboardPage>
   )

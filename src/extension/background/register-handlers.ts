@@ -884,14 +884,25 @@ export function registerBackgroundHandlers() {
       sender,
     )
 
-    return getAppDb().then(async ({ db }) =>
-      analyticsSummarySchema.parse(
-        await getAnalyticsSummary(
-          db,
-          request.at ? new Date(request.at) : undefined,
-        ),
-      ),
-    )
+    return getAppDb().then(async ({ db }) => {
+      const summaryOptions = request.at
+        ? {
+            range: request.range,
+            now: new Date(request.at),
+            timeZone: request.timeZone,
+          }
+        : { range: request.range, timeZone: request.timeZone }
+      const summary = await getAnalyticsSummary(db, summaryOptions)
+
+      return analyticsSummarySchema.parse({
+        ...summary,
+        observedRatingQuality: {
+          value: summary.lowSample ? null : summary.observedRatingQuality,
+          sampleSize: summary.observedRatingSampleSize,
+          lowSample: summary.lowSample,
+        },
+      })
+    })
   })
 
   onMessage('devSmoke.run', ({ data, sender }) => {

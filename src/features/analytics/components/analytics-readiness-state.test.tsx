@@ -1,0 +1,127 @@
+import { render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { describe, expect, it } from 'vitest'
+import { vi } from 'vitest'
+
+import type { AnalyticsReadiness } from '../api/analytics-contracts'
+
+import { AnalyticsReadinessState } from './analytics-readiness-state'
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children }: { children: ReactNode }) => (
+    <a href="#/analytics?range=30">{children}</a>
+  ),
+}))
+
+function createReadiness(
+  overrides: Partial<AnalyticsReadiness> = {},
+): AnalyticsReadiness {
+  return {
+    ready: false,
+    requestedDays: 90,
+    bucketDays: 7,
+    requestedBuckets: 13,
+    effectiveBuckets: 6,
+    effectiveStart: '2026-01-19',
+    assessments: 32,
+    minimumAssessments: 45,
+    activeBuckets: 4,
+    minimumActiveBuckets: 5,
+    longestGap: 3,
+    maximumGap: 2,
+    gapRuns: 3,
+    maximumGapRuns: 2,
+    failingReasons: [
+      'insufficient-span',
+      'insufficient-assessments',
+      'insufficient-active-buckets',
+      'gap-too-long',
+      'too-many-gaps',
+    ],
+    ...overrides,
+  }
+}
+
+describe('AnalyticsReadinessState', () => {
+  it('explains structured evidence deficits and links to a ready shorter range', () => {
+    render(
+      <AnalyticsReadinessState
+        readiness={createReadiness()}
+        recommendedRange={30}
+      />,
+    )
+
+    const status = screen.getByRole('status', {
+      name: '90-day analytics readiness',
+    })
+
+    expect(status).toHaveTextContent('2 more buckets of history needed.')
+    expect(status).toHaveTextContent('1 more active buckets needed.')
+    expect(status).toHaveTextContent('13 more assessments needed.')
+    expect(status).toHaveTextContent(
+      'A practice gap is longer than this trend can bridge.',
+    )
+    expect(status).toHaveTextContent(
+      'Practice is too fragmented for a reliable trend.',
+    )
+    expect(
+      screen.getByRole('link', { name: 'Use ready 30-day view' }),
+    ).toHaveAttribute('href', expect.stringContaining('range=30'))
+  })
+
+  it('uses the effective-span threshold rather than active-bucket coverage for span deficits', () => {
+    render(
+      <AnalyticsReadinessState
+        readiness={createReadiness({
+          requestedBuckets: 13,
+          effectiveBuckets: 7,
+          minimumActiveBuckets: 5,
+          failingReasons: ['insufficient-span'],
+        })}
+        recommendedRange={null}
+      />,
+    )
+
+    expect(
+      screen.getByRole('status', { name: '90-day analytics readiness' }),
+    ).toHaveTextContent('1 more buckets of history needed.')
+  })
+
+  it('uses a chart-level heading when it replaces a historical chart panel', () => {
+    render(
+      <AnalyticsReadinessState
+        readiness={createReadiness({
+          failingReasons: ['insufficient-assessments'],
+        })}
+        recommendedRange={null}
+        title="Practice rhythm"
+      />,
+    )
+
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Practice rhythm' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('status', { name: 'Practice rhythm readiness' }),
+    ).toBeVisible()
+  })
+
+  it('describes the usable effective window without changing the selected range', () => {
+    render(
+      <AnalyticsReadinessState
+        readiness={createReadiness({
+          ready: true,
+          effectiveBuckets: 8,
+          failingReasons: [],
+        })}
+        recommendedRange={null}
+      />,
+    )
+
+    expect(
+      screen.getByText(
+        'Showing 8 weeks of usable history from your selected 90-day range.',
+      ),
+    ).toBeVisible()
+  })
+})

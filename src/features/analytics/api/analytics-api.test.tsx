@@ -12,7 +12,12 @@ vi.mock('@/extension/messaging', () => ({
 
 describe('analytics runtime API', () => {
   it('uses the correct analytics summary query key', () => {
-    expect(analyticsQueryKeys.summary()).toEqual(['analytics', 'summary'])
+    expect(analyticsQueryKeys.summary(14, 'America/New_York')).toEqual([
+      'analytics',
+      'summary',
+      14,
+      'America/New_York',
+    ])
   })
 
   it('calls sendMessage with analytics.getSummary and a dashboard surface request', async () => {
@@ -20,12 +25,15 @@ describe('analytics runtime API', () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(payload as never)
 
     const { wrapper } = createQueryTestHarness()
-    const { result } = renderHook(() => useAnalyticsSummary(), { wrapper })
+    const { result } = renderHook(() => useAnalyticsSummary(90), { wrapper })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
     expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
       surface: 'dashboard',
+      range: 90,
+      timeZone,
     })
     expect(result.current.data).toBe(payload)
   })

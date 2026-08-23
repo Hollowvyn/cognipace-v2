@@ -32,7 +32,7 @@ export function DashboardPageHeader({
 }) {
   return (
     <header className="min-w-0">
-      <div className="flex min-w-0 items-start justify-between gap-3">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h2 className="m-0 text-[length:var(--cp-title-font-size)] font-bold leading-tight text-foreground">
             {title}
@@ -44,7 +44,9 @@ export function DashboardPageHeader({
           ) : null}
         </div>
         {actions ? (
-          <div className="flex shrink-0 items-center gap-2">{actions}</div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
+            {actions}
+          </div>
         ) : null}
       </div>
     </header>

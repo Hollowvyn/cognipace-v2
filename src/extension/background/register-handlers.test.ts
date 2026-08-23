@@ -26,9 +26,11 @@ import {
   backupSchemaVersion,
   createBackupSummary,
 } from '@/features/backup/api/backup-contracts'
+import { analyticsSummarySchema } from '@/features/analytics/api/analytics-contracts'
 import { defaultUserSettings } from '@/features/settings/domain'
 import type { ActiveTrack } from '@/features/tracks/domain'
 import { createSerializedPracticeDetails } from '@/testing/practice-fixtures'
+import { createSerializedAnalyticsSummary } from '@/testing/analytics-fixtures'
 import {
   createProblemForEditResponse,
   createProblemLibraryResponse,
@@ -42,6 +44,21 @@ import {
   registerBackgroundHandlers,
   serializeActiveTrack,
 } from './register-handlers'
+
+function createReadyHistoricalReadiness() {
+  const historicalReadiness =
+    createSerializedAnalyticsSummary().historicalReadiness
+
+  return {
+    ...historicalReadiness,
+    requested: {
+      ...historicalReadiness.requested,
+      ready: true,
+      failingReasons: [],
+    },
+    recommendedRange: null,
+  }
+}
 
 const backgroundMocks = vi.hoisted(() => {
   const handlers = new Map<
@@ -327,13 +344,14 @@ describe('background handler registration', () => {
     vi.clearAllMocks()
     backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
     backgroundMocks.getAnalyticsSummary.mockResolvedValue({
+      range: 30,
       generatedAt: '2026-01-15T12:00:00.000Z',
       reviewDays: 3,
       totalReviews: 12,
       currentStreak: 2,
-      retentionProxy: 0.75,
-      retentionProxyLabel: '75%',
-      retentionSampleSize: 12,
+      observedRatingQuality: 0.75,
+      observedRatingQualityLabel: '75%',
+      observedRatingSampleSize: 12,
       lowSample: false,
       dueForecast14Days: Array.from({ length: 14 }, (_, index) => ({
         date: `2026-01-${String(15 + index).padStart(2, '0')}`,
@@ -352,8 +370,41 @@ describe('background handler registration', () => {
         lowSample: false,
       },
       targetRetention: 0.9,
-      retentionScatter: [],
-      retentionScatterCurve: [],
+      predictedRecall: { value: 0.86, sampleSize: 12, lowSample: false },
+      retentionScatter: [
+        {
+          slug: 'two-sum',
+          title: 'Two Sum',
+          retrievability: 0.8,
+          daysSinceReview: 3,
+          difficulty: 5,
+          stability: 10,
+          lapseCount: 0,
+          lastReviewAt: '2026-01-12T12:00:00.000Z',
+        },
+      ],
+      retentionScatterCurve: [{ days: 0, retrievability: 1 }],
+      historicalReadiness: createReadyHistoricalReadiness(),
+      recallQuality: [],
+      practiceRhythm: [],
+      ratingsMix: [],
+      hardAgain: {
+        selectedShare: null,
+        previousShare: null,
+        delta: null,
+        direction: null,
+        sampleSize: 0,
+        previousSampleSize: 0,
+        lowSample: true,
+        previousLowSample: true,
+      },
+      topics: [],
+      stability: [],
+      overdueBacklog: [],
+      overdueHistoryAvailableFrom: null,
+      upcomingLoad: createSerializedAnalyticsSummary().upcomingLoad,
+      retentionHealth: [],
+      fragileKnowledge: [],
     })
     backgroundMocks.backupExportFullBackup.mockResolvedValue(validBackup)
     backgroundMocks.backupResetLocalData.mockResolvedValue(null)
@@ -506,8 +557,12 @@ describe('background handler registration', () => {
   it('registers due-notification jobs and fires startup handler on startup', () => {
     registerBackgroundHandlers()
 
-    expect(backgroundMocks.dueNotification.registerJobs).toHaveBeenCalledTimes(1)
-    expect(backgroundMocks.dueNotification.handleStartup).toHaveBeenCalledTimes(1)
+    expect(backgroundMocks.dueNotification.registerJobs).toHaveBeenCalledTimes(
+      1,
+    )
+    expect(backgroundMocks.dueNotification.handleStartup).toHaveBeenCalledTimes(
+      1,
+    )
   })
 
   it('registers app-shell payload handling with policy and schema parsing', async () => {
@@ -535,6 +590,8 @@ describe('background handler registration', () => {
   it('registers analytics summary handling with dashboard policy and response parsing', async () => {
     const response = await sendRuntimeMessage('analytics.getSummary', {
       surface: 'dashboard',
+      range: 30,
+      timeZone: 'America/New_York',
       at: '2026-01-15T12:00:00.000Z',
     })
 
@@ -542,19 +599,233 @@ describe('background handler registration', () => {
     expect(backgroundMocks.getAppDb).toHaveBeenCalledTimes(1)
     expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
       backgroundMocks.db,
-      new Date('2026-01-15T12:00:00.000Z'),
+      {
+        range: 30,
+        now: new Date('2026-01-15T12:00:00.000Z'),
+        timeZone: 'America/New_York',
+      },
     )
     expect(response).toMatchObject({
       generatedAt: '2026-01-15T12:00:00.000Z',
       reviewDays: 3,
       totalReviews: 12,
       currentStreak: 2,
-      retentionProxyLabel: '75%',
+      observedRatingQuality: {
+        value: 0.75,
+        sampleSize: 12,
+        lowSample: false,
+      },
       weakProblems: [],
       memoryProfile: {
         averageRetrievability: 0.8,
       },
+      historicalReadiness: {
+        requested: { ready: true },
+      },
+      retentionScatter: [
+        {
+          slug: 'two-sum',
+          title: 'Two Sum',
+          retrievability: 0.8,
+          daysSinceReview: 3,
+          difficulty: 5,
+          stability: 10,
+          lapseCount: 0,
+          lastReviewAt: '2026-01-12T12:00:00.000Z',
+        },
+      ],
+      retentionScatterCurve: [{ days: 0, retrievability: 1 }],
     })
+    const parsedResponse = analyticsSummarySchema.parse(response)
+    expect(parsedResponse.historicalReadiness.requested.ready).toBe(true)
+    expect(parsedResponse.predictedRecall).toEqual({
+      value: 0.86,
+      sampleSize: 12,
+      lowSample: false,
+    })
+  })
+
+  it('passes range without an undefined now option when at is absent', async () => {
+    await sendRuntimeMessage('analytics.getSummary', {
+      surface: 'dashboard',
+      range: 14,
+      timeZone: 'UTC',
+    })
+
+    expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      { range: 14, timeZone: 'UTC' },
+    )
+  })
+
+  it('preserves requested timezone grouping across a DST boundary', async () => {
+    const fixture = createSerializedAnalyticsSummary({
+      range: 14,
+      historicalReadiness: createReadyHistoricalReadiness(),
+      upcomingLoad: Array.from({ length: 14 }, (_, index) => ({
+        date: `2026-03-${String(8 + index).padStart(2, '0')}`,
+        dueCount: index === 0 ? 1 : 0,
+        overdueCount: 0,
+        today: index === 0,
+      })),
+    })
+
+    backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
+      ...fixture,
+      observedRatingQuality: 0.75,
+      observedRatingSampleSize: 12,
+      lowSample: false,
+    })
+
+    const response = await sendRuntimeMessage('analytics.getSummary', {
+      surface: 'dashboard',
+      range: 14,
+      timeZone: 'America/New_York',
+      at: '2026-03-08T05:30:00.000Z',
+    })
+
+    expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      {
+        range: 14,
+        now: new Date('2026-03-08T05:30:00.000Z'),
+        timeZone: 'America/New_York',
+      },
+    )
+    const parsed = analyticsSummarySchema.parse(response)
+
+    expect(parsed.range).toBe(14)
+    expect(parsed.upcomingLoad[0]).toMatchObject({
+      date: '2026-03-08',
+      dueCount: 1,
+      today: true,
+    })
+  })
+
+  it('does not expose low-sample observed rating quality as 0%', async () => {
+    backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
+      range: 90,
+      generatedAt: '2026-01-15T12:00:00.000Z',
+      reviewDays: 3,
+      totalReviews: 4,
+      currentStreak: 1,
+      observedRatingQuality: null,
+      observedRatingQualityLabel: '—',
+      observedRatingSampleSize: 4,
+      lowSample: true,
+      dueForecast14Days: Array.from({ length: 14 }, (_, index) => ({
+        date: `2026-01-${String(15 + index).padStart(2, '0')}`,
+        dueCount: 0,
+      })),
+      weakProblems: [],
+      memoryProfile: {
+        totalTracked: 0,
+        dueToday: 0,
+        overdue: 0,
+        learning: 0,
+        review: 0,
+        mastered: 0,
+        suspended: 0,
+        averageRetrievability: null,
+        lowSample: true,
+      },
+      targetRetention: 0.9,
+      retentionScatter: [],
+      retentionScatterCurve: [],
+      historicalReadiness: createReadyHistoricalReadiness(),
+      predictedRecall: { value: null, sampleSize: 0, lowSample: true },
+      recallQuality: [],
+      practiceRhythm: [],
+      ratingsMix: [],
+      hardAgain: {
+        selectedShare: null,
+        previousShare: null,
+        delta: null,
+        direction: null,
+        sampleSize: 0,
+        previousSampleSize: 0,
+        lowSample: true,
+        previousLowSample: true,
+      },
+      topics: [],
+      stability: [],
+      overdueBacklog: [],
+      overdueHistoryAvailableFrom: null,
+      upcomingLoad: createSerializedAnalyticsSummary().upcomingLoad,
+      retentionHealth: [],
+      fragileKnowledge: [],
+    })
+
+    const response = analyticsSummarySchema.parse(
+      await sendRuntimeMessage('analytics.getSummary', {
+        surface: 'dashboard',
+        range: 90,
+        timeZone: 'UTC',
+      }),
+    )
+
+    expect(response.observedRatingQuality.value).toBeNull()
+    expect(response.observedRatingQuality.value).not.toBe(0)
+  })
+
+  it('serializes current and forecast analytics when the selected historical range is unready', async () => {
+    const fixture = createSerializedAnalyticsSummary({
+      range: 90,
+      historicalReadiness: {
+        ...createSerializedAnalyticsSummary().historicalReadiness,
+        requested: {
+          ...createSerializedAnalyticsSummary().historicalReadiness.requested,
+          requestedDays: 90,
+          ready: false,
+        },
+      },
+      upcomingLoad: createSerializedAnalyticsSummary().upcomingLoad,
+      retentionHealth: [
+        {
+          slug: 'two-sum',
+          title: 'Two Sum',
+          retrievability: 0.82,
+          targetRetention: 0.9,
+          daysSinceReview: 2,
+          stabilityDays: 5,
+          difficulty: 5,
+          lapseCount: 0,
+          overdueDays: 0,
+        },
+      ],
+      fragileKnowledge: [
+        {
+          slug: 'add-binary',
+          title: 'Add Binary',
+          retrievability: 0.74,
+          stabilityDays: 2,
+          difficulty: 7,
+          lapseCount: 1,
+          overdueDays: 1,
+          topics: ['Bit manipulation'],
+        },
+      ],
+    })
+    backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
+      ...fixture,
+      observedRatingQuality: null,
+      observedRatingQualityLabel: '—',
+      lowSample: true,
+    })
+
+    const response = analyticsSummarySchema.parse(
+      await sendRuntimeMessage('analytics.getSummary', {
+        surface: 'dashboard',
+        range: 90,
+        timeZone: 'UTC',
+      }),
+    )
+
+    expect(response.range).toBe(90)
+    expect(response.historicalReadiness.requested.ready).toBe(false)
+    expect(response.upcomingLoad).toHaveLength(14)
+    expect(response.retentionHealth).toHaveLength(1)
+    expect(response.fragileKnowledge).toHaveLength(1)
   })
 
   it('registers dev smoke handling with dashboard policy and response parsing', async () => {
@@ -2068,8 +2339,7 @@ function readLatestSyncFactoryOptions(): SyncFactoryOptions {
 
 function readLatestSyncFactoryCall(): [unknown, unknown, unknown] {
   const call = backgroundMocks.createBackgroundSyncService.mock.calls.at(-1) as
-    | [unknown, unknown, unknown]
-    | undefined
+    [unknown, unknown, unknown] | undefined
 
   if (!call) {
     throw new Error('Expected sync service factory to be called.')

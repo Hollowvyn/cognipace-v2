@@ -17,6 +17,11 @@
   --color-destructive: var(--cp-color-danger);
   --color-destructive-foreground: var(--cp-color-danger-foreground);
   --color-ring: var(--cp-color-ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
   --radius-sm: var(--cp-radius-sm);
   --radius-md: var(--cp-radius-md);
   --radius-lg: var(--cp-radius-lg);
@@ -52,6 +57,49 @@
     --cp-color-danger: #b42318;
     --cp-color-danger-foreground: #ffffff;
     --cp-color-ring: #2347a8;
+
+    /* Analytics colors are semantic roles, never positional chart colors. */
+    --cp-analytics-observed: var(--cp-tone-success-fg);
+    --cp-analytics-predicted: var(--cp-color-primary);
+    --cp-analytics-target: var(--cp-color-secondary);
+    --cp-analytics-practice-volume: color-mix(
+      in srgb,
+      var(--cp-tone-success-fg) 56%,
+      transparent
+    );
+    --cp-analytics-again: var(--cp-tone-review-again-fg);
+    --cp-analytics-hard: var(--cp-tone-review-hard-fg);
+    --cp-analytics-good: #0f766e;
+    --cp-analytics-easy: var(--cp-tone-review-easy-fg);
+    --cp-analytics-healthy: var(--cp-tone-success-fg);
+    --cp-analytics-attention: var(--cp-tone-warning-fg);
+    --cp-analytics-risk: var(--cp-tone-danger-fg);
+    --cp-analytics-healthy-subtle: color-mix(
+      in srgb,
+      var(--cp-tone-success-fg) 18%,
+      transparent
+    );
+    --cp-analytics-healthy-strong: var(--cp-tone-success-fg);
+    --cp-analytics-watch-subtle: color-mix(
+      in srgb,
+      var(--cp-tone-warning-fg) 18%,
+      transparent
+    );
+    --cp-analytics-watch-strong: var(--cp-tone-warning-fg);
+    --cp-analytics-risk-subtle: color-mix(
+      in srgb,
+      var(--cp-tone-danger-fg) 18%,
+      transparent
+    );
+    --cp-analytics-risk-strong: var(--cp-tone-danger-fg);
+    --cp-analytics-due: var(--cp-tone-success-fg);
+    --cp-analytics-overdue: var(--cp-tone-danger-fg);
+    --cp-analytics-model: var(--cp-analytics-predicted);
+    --chart-1: var(--cp-analytics-model);
+    --chart-2: var(--cp-analytics-target);
+    --chart-3: var(--cp-tone-success-fg);
+    --chart-4: var(--cp-tone-warning-fg);
+    --chart-5: var(--cp-analytics-risk);
 
     --cp-tone-neutral-bg: #eef1f5;
     --cp-tone-neutral-fg: #46505f;
@@ -138,6 +186,49 @@
     --cp-color-danger-foreground: #690005;
     --cp-color-ring: #a1d1b4;
 
+    /* Analytics colors are semantic roles, never positional chart colors. */
+    --cp-analytics-observed: var(--cp-tone-success-fg);
+    --cp-analytics-predicted: var(--cp-color-primary);
+    --cp-analytics-target: var(--cp-color-secondary);
+    --cp-analytics-practice-volume: color-mix(
+      in srgb,
+      var(--cp-tone-success-fg) 56%,
+      transparent
+    );
+    --cp-analytics-again: var(--cp-tone-review-again-fg);
+    --cp-analytics-hard: var(--cp-tone-review-hard-fg);
+    --cp-analytics-good: #5ee6d0;
+    --cp-analytics-easy: var(--cp-tone-review-easy-fg);
+    --cp-analytics-healthy: var(--cp-tone-success-fg);
+    --cp-analytics-attention: var(--cp-tone-warning-fg);
+    --cp-analytics-risk: var(--cp-tone-danger-fg);
+    --cp-analytics-healthy-subtle: color-mix(
+      in srgb,
+      var(--cp-tone-success-fg) 18%,
+      transparent
+    );
+    --cp-analytics-healthy-strong: var(--cp-tone-success-fg);
+    --cp-analytics-watch-subtle: color-mix(
+      in srgb,
+      var(--cp-tone-warning-fg) 18%,
+      transparent
+    );
+    --cp-analytics-watch-strong: var(--cp-tone-warning-fg);
+    --cp-analytics-risk-subtle: color-mix(
+      in srgb,
+      var(--cp-tone-danger-fg) 18%,
+      transparent
+    );
+    --cp-analytics-risk-strong: var(--cp-tone-danger-fg);
+    --cp-analytics-due: var(--cp-tone-success-fg);
+    --cp-analytics-overdue: var(--cp-tone-danger-fg);
+    --cp-analytics-model: var(--cp-analytics-predicted);
+    --chart-1: var(--cp-analytics-model);
+    --chart-2: var(--cp-analytics-target);
+    --chart-3: var(--cp-tone-success-fg);
+    --chart-4: var(--cp-tone-warning-fg);
+    --chart-5: var(--cp-analytics-risk);
+
     --cp-tone-neutral-bg: rgb(182 192 186 / 14%);
     --cp-tone-neutral-fg: #c0c9c1;
     --cp-tone-neutral-border: rgb(192 201 193 / 22%);
@@ -201,6 +292,48 @@
       --cp-color-danger: #ffb4ab;
       --cp-color-danger-foreground: #690005;
       --cp-color-ring: #a1d1b4;
+
+      --cp-analytics-observed: var(--cp-tone-success-fg);
+      --cp-analytics-predicted: var(--cp-color-primary);
+      --cp-analytics-target: var(--cp-color-secondary);
+      --cp-analytics-practice-volume: color-mix(
+        in srgb,
+        var(--cp-tone-success-fg) 56%,
+        transparent
+      );
+      --cp-analytics-again: var(--cp-tone-review-again-fg);
+      --cp-analytics-hard: var(--cp-tone-review-hard-fg);
+      --cp-analytics-good: #5ee6d0;
+      --cp-analytics-easy: var(--cp-tone-review-easy-fg);
+      --cp-analytics-healthy: var(--cp-tone-success-fg);
+      --cp-analytics-attention: var(--cp-tone-warning-fg);
+      --cp-analytics-risk: var(--cp-tone-danger-fg);
+      --cp-analytics-healthy-subtle: color-mix(
+        in srgb,
+        var(--cp-tone-success-fg) 18%,
+        transparent
+      );
+      --cp-analytics-healthy-strong: var(--cp-tone-success-fg);
+      --cp-analytics-watch-subtle: color-mix(
+        in srgb,
+        var(--cp-tone-warning-fg) 18%,
+        transparent
+      );
+      --cp-analytics-watch-strong: var(--cp-tone-warning-fg);
+      --cp-analytics-risk-subtle: color-mix(
+        in srgb,
+        var(--cp-tone-danger-fg) 18%,
+        transparent
+      );
+      --cp-analytics-risk-strong: var(--cp-tone-danger-fg);
+      --cp-analytics-due: var(--cp-tone-success-fg);
+      --cp-analytics-overdue: var(--cp-tone-danger-fg);
+      --cp-analytics-model: var(--cp-analytics-predicted);
+      --chart-1: var(--cp-analytics-model);
+      --chart-2: var(--cp-analytics-target);
+      --chart-3: var(--cp-tone-success-fg);
+      --chart-4: var(--cp-tone-warning-fg);
+      --chart-5: var(--cp-analytics-risk);
 
       --cp-tone-neutral-bg: rgb(182 192 186 / 14%);
       --cp-tone-neutral-fg: #c0c9c1;
