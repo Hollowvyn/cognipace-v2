@@ -330,8 +330,11 @@ and ticks use a deterministic nice-number step from `1, 2, 5 × 10^n`.
 
 Bars, areas, and backlog counts start at zero. Their upper bound is
 `niceCeil(max(1, visiblePeak, requiredReference) * 1.1)` with four to five
-integer tick intervals selected from `1, 2, 5 × 10^n`. A zero-only chart uses
-`0..1` unless its view defines a dedicated empty state.
+integer tick intervals selected from `1, 2, 5 × 10^n`. When that bound is too
+small to contain four integer intervals (for example, a one-card peak yields
+`0..2`), keep the mandated bound and show every whole-number tick in the
+truthful range; never invent fractional reviews or cards. A zero-only chart
+uses `0..1` unless its view defines a dedicated empty state.
 
 Ratings Mix and Topic Performance use the full `0%..100%` domain.
 
