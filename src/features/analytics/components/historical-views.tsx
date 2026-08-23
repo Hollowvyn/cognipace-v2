@@ -32,78 +32,80 @@ export function ObservedRecallVsFsrsView({
     <ChartTable
       chart={
         hasValues ? (
-          <ChartContainer
-            accessibleDescription={`Paired review outcomes and reconstructed FSRS estimates. Scale: ${formatPercent(view.scale.domain[0])}–${formatPercent(view.scale.domain[1])}.`}
-            accessibleName="Observed Recall vs FSRS Estimate chart"
-            aria-label="Observed Recall vs FSRS Estimate chart"
-            className="aspect-auto h-80 min-h-[20rem]"
-            config={{
-              observedRecall: {
-                label: 'Observed recall',
-                color: 'var(--cp-analytics-observed)',
-              },
-              fsrsEstimate: {
-                label: 'FSRS estimate',
-                color: 'var(--cp-analytics-predicted)',
-              },
-            }}
-            initialDimension={chartDimension}
-            role="img"
-          >
-            <ComposedChart
-              accessibilityLayer
-              data={view.rows}
-              margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+          <div className="grid gap-2">
+            <ChartContainer
+              accessibleDescription={`Paired review outcomes and reconstructed FSRS estimates. Scale: ${formatPercent(view.scale.domain[0])}–${formatPercent(view.scale.domain[1])}.`}
+              accessibleName="Observed Recall vs FSRS Estimate chart"
+              aria-label="Observed Recall vs FSRS Estimate chart"
+              className="aspect-auto h-80 min-h-[20rem]"
+              config={{
+                observedRecall: {
+                  label: 'Observed recall',
+                  color: 'var(--cp-analytics-observed)',
+                },
+                fsrsEstimate: {
+                  label: 'FSRS estimate',
+                  color: 'var(--cp-analytics-predicted)',
+                },
+              }}
+              initialDimension={chartDimension}
+              role="img"
             >
-              <CartesianGrid stroke="var(--color-border)" vertical={false} />
-              <XAxis
-                axisLine={false}
-                dataKey="bucketStart"
-                minTickGap={32}
-                tickFormatter={(value) =>
-                  formatRowBucket(
-                    view.rows.find((row) => row.bucketStart === value),
-                  )
-                }
-                tickLine={false}
-              />
-              <YAxis
-                axisLine={false}
-                domain={view.scale.domain}
-                ticks={view.scale.ticks}
-                tickFormatter={formatPercent}
-                tickLine={false}
-                width={44}
-              />
-              <ChartTooltip content={<RecallTooltip />} />
-              <RecallLegend />
-              <ReferenceLine
-                label="Target retention"
-                stroke="var(--cp-analytics-target)"
-                strokeDasharray="5 5"
-                y={view.targetRetention}
-              />
-              <LineSegments
+              <ComposedChart
+                accessibilityLayer
                 data={view.rows}
-                dataKey="observedRecall"
-                seriesKey="Observed recall"
-                showMeasuredDots
-                stroke="var(--cp-analytics-observed)"
-                testId="observed-recall"
-                type="linear"
-              />
-              <LineSegments
-                data={view.rows}
-                dataKey="fsrsEstimate"
-                seriesKey="FSRS estimate"
-                showMeasuredDots
-                stroke="var(--cp-analytics-predicted)"
-                strokeDasharray="6 3"
-                testId="fsrs-estimate"
-                type="linear"
-              />
-            </ComposedChart>
-          </ChartContainer>
+                margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+              >
+                <CartesianGrid stroke="var(--color-border)" vertical={false} />
+                <XAxis
+                  axisLine={false}
+                  dataKey="bucketStart"
+                  minTickGap={32}
+                  tickFormatter={(value) =>
+                    formatRowBucket(
+                      view.rows.find((row) => row.bucketStart === value),
+                    )
+                  }
+                  tickLine={false}
+                />
+                <YAxis
+                  axisLine={false}
+                  domain={view.scale.domain}
+                  ticks={view.scale.ticks}
+                  tickFormatter={formatPercent}
+                  tickLine={false}
+                  width={44}
+                />
+                <ChartTooltip content={<RecallTooltip />} />
+                <ReferenceLine
+                  label="Target retention"
+                  stroke="var(--cp-analytics-target)"
+                  strokeDasharray="5 5"
+                  y={view.targetRetention}
+                />
+                <LineSegments
+                  data={view.rows}
+                  dataKey="observedRecall"
+                  seriesKey="Observed recall"
+                  showMeasuredDots
+                  stroke="var(--cp-analytics-observed)"
+                  testId="observed-recall"
+                  type="linear"
+                />
+                <LineSegments
+                  data={view.rows}
+                  dataKey="fsrsEstimate"
+                  seriesKey="FSRS estimate"
+                  showMeasuredDots
+                  stroke="var(--cp-analytics-predicted)"
+                  strokeDasharray="6 3"
+                  testId="fsrs-estimate"
+                  type="linear"
+                />
+              </ComposedChart>
+            </ChartContainer>
+            <RecallLegend />
+          </div>
         ) : (
           <Empty message="No reviews in this period have both a valid rating and an FSRS estimate." />
         )
@@ -191,7 +193,9 @@ export function MemoryStrengthView({
                 data={chartRows}
                 dataKey="medianStrengthDays"
                 seriesKey="Median strength"
+                showMeasuredDots
                 stroke="var(--cp-analytics-healthy)"
+                testId="memory-strength"
                 type="linear"
               />
             </ComposedChart>

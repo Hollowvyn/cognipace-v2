@@ -88,13 +88,36 @@ function AnalyticsScopeMetadata({
 }: {
   data: SerializedAnalyticsSummary
 }) {
+  const finalBucketEndKey = data.timeFrame.buckets.at(-1)?.endKey
   return (
     <p className="m-0 text-sm text-muted-foreground">
-      Range: {data.range} days · Time zone: {data.timeFrame.timeZone}
+      Range: {data.range} days
+      {finalBucketEndKey
+        ? ` · Period: ${formatScopeDateTime(data.timeFrame.periodStart, data.timeFrame.timeZone)}–${formatScopeDateKey(finalBucketEndKey)}`
+        : ''}{' '}
+      · Time zone: {data.timeFrame.timeZone}
       {data.timeFrame.timeZoneFallback ? ' (fallback)' : ''} · As of:{' '}
       {formatDateTime(data.timeFrame.asOf)}
     </p>
   )
+}
+
+function formatScopeDateTime(value: string, timeZone: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone,
+    year: '2-digit',
+  }).format(new Date(value))
+}
+
+function formatScopeDateKey(value: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: 'UTC',
+    year: '2-digit',
+  }).format(new Date(`${value}T00:00:00.000Z`))
 }
 
 function AnalyticsHistoricalStory({

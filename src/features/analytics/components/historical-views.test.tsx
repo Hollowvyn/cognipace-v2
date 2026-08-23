@@ -41,6 +41,7 @@ describe('Phase 2 historical analytics views', () => {
     )
     expect(screen.getByRole('list')).toHaveTextContent('Observed recall')
     expect(screen.getByRole('list')).toHaveTextContent('FSRS estimate')
+    expect(screen.getByRole('list').closest('svg')).toBeNull()
   })
 
   it('renders the supported Memory Strength IQR as a restrained chart band', () => {
@@ -68,6 +69,7 @@ describe('Phase 2 historical analytics views', () => {
     )
 
     expect(screen.getByTestId('memory-strength-iqr-band')).toBeVisible()
+    expect(screen.getByTestId('memory-strength-markers')).toBeVisible()
   })
 
   it('keeps the association warning visible and formats table buckets as MM/DD/YY', async () => {

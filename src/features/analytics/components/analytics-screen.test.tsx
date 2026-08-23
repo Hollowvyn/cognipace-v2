@@ -350,7 +350,30 @@ describe('AnalyticsScreen', () => {
         element.textContent?.includes('Range: 30 days') === true,
     )
     expect(metadata).toHaveTextContent('Time zone: UTC (fallback)')
+    expect(metadata).toHaveTextContent('Period: 12/17/25–12/19/25')
     expect(metadata).toHaveTextContent('As of:')
+  })
+
+  it('formats the scope start as a local date and ends it at the final bucket key', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      createAnalyticsSummary({
+        timeFrame: {
+          ...baseAnalyticsSummary().timeFrame,
+          periodStart: '2025-12-16T15:00:00.000Z',
+          timeZone: 'Asia/Tokyo',
+        },
+      }),
+    )
+
+    renderAnalyticsScreen()
+
+    expect(
+      await screen.findByText(
+        (_, element) =>
+          element?.tagName === 'P' &&
+          element.textContent?.includes('Period: 12/17/25–12/19/25') === true,
+      ),
+    ).toBeVisible()
   })
 
   it('renders only the three Phase 2 historical views with semantic Chart and Table tabs', async () => {
