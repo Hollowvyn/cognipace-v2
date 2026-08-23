@@ -1,4 +1,5 @@
 import { getAnalyticsRangePolicy } from './analytics-range-policy'
+import { calculateAnalyticsEvidence } from './analytics-evidence'
 
 export type ReadinessFailure =
   | 'no-evidence'
@@ -40,67 +41,54 @@ export function calculateAnalyticsReadiness({
   const { bucketDays, maximumGapBuckets } =
     getAnalyticsRangePolicy(requestedDays)
 
-  if (evidenceCounts.length !== bucketKeys.length) {
-    throw new RangeError('Analytics readiness keys and counts must align.')
-  }
-  if (evidenceCounts.length === 0) {
-    throw new RangeError('Analytics readiness requires at least one bucket.')
-  }
-  if (
-    evidenceCounts.some((count) => !Number.isSafeInteger(count) || count < 0)
-  ) {
-    throw new RangeError(
-      'Analytics readiness counts must be non-negative integers.',
-    )
-  }
-
+  const evidence = calculateAnalyticsEvidence({
+    requestedDays: requestedDays as 14 | 30 | 90,
+    evidenceCounts,
+    bucketKeys,
+  })
   const firstEvidence = evidenceCounts.findIndex((count) => count > 0)
-  const effectiveCounts =
-    firstEvidence === -1 ? [] : evidenceCounts.slice(firstEvidence)
-  const effectiveKeys =
-    firstEvidence === -1 ? [] : bucketKeys.slice(firstEvidence)
-  const effectiveBuckets = effectiveCounts.length
-  const assessments = effectiveCounts.reduce((sum, count) => sum + count, 0)
-  const activeBuckets = effectiveCounts.filter((count) => count > 0).length
-  const { longestGap, gapRuns } = measureGaps(effectiveCounts)
+  const effectiveStart =
+    firstEvidence === -1 ? null : (bucketKeys[firstEvidence] ?? null)
 
   const minimumAssessments = Math.ceil(
     Math.max(12, requestedDays * 0.5, Math.min(requestedDays, 30) * 0.8),
   )
   const minimumActiveBuckets = Math.ceil(
-    coverage(requestedDays) * effectiveBuckets,
+    coverage(requestedDays) * evidence.effectiveBuckets,
   )
   const minimumEffectiveBuckets = getMinimumEffectiveBuckets(bucketKeys.length)
-  const maximumGapRuns = Math.max(1, Math.ceil(effectiveBuckets * 0.2))
+  const maximumGapRuns = Math.max(1, Math.ceil(evidence.effectiveBuckets * 0.2))
 
   const failingReasons: ReadinessFailure[] = []
-  if (effectiveBuckets === 0) failingReasons.push('no-evidence')
-  if (effectiveBuckets < minimumEffectiveBuckets) {
+  if (evidence.effectiveBuckets === 0) failingReasons.push('no-evidence')
+  if (evidence.effectiveBuckets < minimumEffectiveBuckets) {
     failingReasons.push('insufficient-span')
   }
-  if (assessments < minimumAssessments) {
+  if (evidence.sampleSize < minimumAssessments) {
     failingReasons.push('insufficient-assessments')
   }
-  if (activeBuckets < minimumActiveBuckets) {
+  if (evidence.activeBuckets < minimumActiveBuckets) {
     failingReasons.push('insufficient-active-buckets')
   }
-  if (longestGap > maximumGapBuckets) failingReasons.push('gap-too-long')
-  if (gapRuns > maximumGapRuns) failingReasons.push('too-many-gaps')
+  if (evidence.longestGap > maximumGapBuckets) {
+    failingReasons.push('gap-too-long')
+  }
+  if (evidence.gapRuns > maximumGapRuns) failingReasons.push('too-many-gaps')
 
   return {
     ready: failingReasons.length === 0,
     requestedDays,
     bucketDays,
     requestedBuckets: bucketKeys.length,
-    effectiveBuckets,
-    effectiveStart: effectiveKeys[0] ?? null,
-    assessments,
+    effectiveBuckets: evidence.effectiveBuckets,
+    effectiveStart,
+    assessments: evidence.sampleSize,
     minimumAssessments,
-    activeBuckets,
+    activeBuckets: evidence.activeBuckets,
     minimumActiveBuckets,
-    longestGap,
+    longestGap: evidence.longestGap,
     maximumGap: maximumGapBuckets,
-    gapRuns,
+    gapRuns: evidence.gapRuns,
     maximumGapRuns,
     failingReasons,
   }
@@ -125,32 +113,4 @@ function coverage(requestedDays: number): number {
     0.8,
     Math.max(0.55, 0.76 - 0.06 * Math.log2(requestedDays / 7)),
   )
-}
-
-function measureGaps(counts: readonly number[]): {
-  longestGap: number
-  gapRuns: number
-} {
-  let longestGap = 0
-  let gapRuns = 0
-  let currentGap = 0
-
-  for (const count of counts) {
-    if (count === 0) {
-      currentGap += 1
-      continue
-    }
-    if (currentGap > 0) {
-      gapRuns += 1
-      longestGap = Math.max(longestGap, currentGap)
-      currentGap = 0
-    }
-  }
-
-  if (currentGap > 0) {
-    gapRuns += 1
-    longestGap = Math.max(longestGap, currentGap)
-  }
-
-  return { longestGap, gapRuns }
 }
