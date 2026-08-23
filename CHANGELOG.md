@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/Hollowvyn/cognipace-v2/compare/v1.1.0...v1.2.0) (2026-08-21)
+
+
+### Features
+
+* **navigation:** make brand open overview ([#115](https://github.com/Hollowvyn/cognipace-v2/issues/115)) ([5adc69e](https://github.com/Hollowvyn/cognipace-v2/commit/5adc69eb06ba20abf0f1199d19b9fe83cf442993))
+
+
+### Bug Fixes
+
+* **backup:** use .strip() to accept stored settings written against older schema versions ([#109](https://github.com/Hollowvyn/cognipace-v2/issues/109)) ([3db696c](https://github.com/Hollowvyn/cognipace-v2/commit/3db696cf9d82b3562446ca07d69753cf77f756fd))
+
 ## [1.1.0](https://github.com/Hollowvyn/cognipace-v2/compare/v1.0.1...v1.1.0) (2026-06-14)
 
 
