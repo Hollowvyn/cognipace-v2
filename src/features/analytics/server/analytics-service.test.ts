@@ -211,6 +211,83 @@ describe('getAnalyticsSummary memory profile', () => {
     expect(summary.observedRatingSampleSize).toBe(10)
   })
 
+  it('excludes same-local-day post-as-of reviews from Ratings Mix, Topic Performance, and its equivalent comparison', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-01-31T12:00:00.000Z')
+    const previousDates = Array.from(
+      { length: 14 },
+      (_, index) => new Date(Date.UTC(2026, 0, 4 + index, 12)),
+    )
+    const selectedDates = Array.from(
+      { length: 14 },
+      (_, index) => new Date(Date.UTC(2026, 0, 18 + index, 12)),
+    )
+    const dates = [...previousDates, ...selectedDates]
+
+    for (const index of [1, 2, 3]) {
+      const slug = `post-as-of-graphs-${index}`
+      await insertAnalyticsProblem(
+        handle.db,
+        slug,
+        `Graphs ${index}`,
+        index === 1 ? ['Graphs'] : [],
+      )
+      if (index > 1) {
+        await handle.db.insert(problemTopics).values({
+          problemSlug: slug,
+          topicId: 'post-as-of-graphs-1:graphs',
+        })
+      }
+      await insertAnalyticsHistory(handle.db, slug, {
+        id: `${slug}-card:default`,
+        dates,
+        ratings: [
+          ...Array<ReviewRating>(14).fill('again'),
+          ...Array<ReviewRating>(14).fill('good'),
+        ],
+        correct: Array<boolean>(dates.length).fill(true),
+        dueAt: new Date('2026-02-01T12:00:00.000Z'),
+        stability: 8,
+        difficulty: 5,
+      })
+    }
+
+    const postAsOf = new Date('2026-01-31T13:00:00.000Z')
+    await handle.db.insert(reviewAttempts).values({
+      id: 'post-as-of-ratings-mix-review',
+      problemSlug: 'post-as-of-graphs-1',
+      cardId: 'post-as-of-graphs-1-card:default',
+      rating: 'again',
+      reviewMode: 'manual',
+      reviewedAt: postAsOf.getTime(),
+      isCorrect: false,
+      fsrsReviewLog: null,
+      createdAt: postAsOf.getTime(),
+      updatedAt: postAsOf.getTime(),
+    })
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 14, now })
+
+    expect(summary.views.ratingsMix).toMatchObject({
+      selectedHardAgain: 0,
+      selectedValidRatings: 42,
+      comparison: {
+        direction: 'down',
+        previousHardAgainShare: 1,
+        previousValidRatings: 42,
+      },
+    })
+    expect(summary.views.topicPerformance.rows).toEqual([
+      expect.objectContaining({
+        topic: 'Graphs',
+        reviewSuccess: 1,
+        goodEasy: 42,
+        validRatings: 42,
+        distinctProblems: 3,
+      }),
+    ])
+  })
+
   it('keeps never-reviewed cards in tracked and workload metrics, not fragile knowledge', async () => {
     const handle = await createTestDb({ seed: false })
     const now = new Date('2026-01-31T12:00:00.000Z')

@@ -186,7 +186,7 @@ export async function getAnalyticsSummary(
   const analyticsReviewHistory = reviewHistory satisfies AnalyticsReviewEvent[]
   const views = buildHistoricalAnalyticsViews(analyticsReviewHistory, {
     buckets,
-    end: periodEnd,
+    end: new Date(presentationTimeFrame.asOf),
     fsrsOptions,
     start: periodStart,
     timeZone: presentationTimeFrame.timeZone,
