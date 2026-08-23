@@ -113,4 +113,36 @@ describe('AnalyticsDataTable', () => {
     expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
   })
+
+  it('gives same-range tables distinct live-region ids', () => {
+    render(
+      <div>
+        <AnalyticsDataTable
+          caption="Exact problem scores"
+          columns={columns}
+          datasetKey="range-14"
+          getRowKey={(row) => row.id}
+          rows={createRows(2)}
+        />
+        <AnalyticsDataTable
+          caption="Exact topic scores"
+          columns={columns}
+          datasetKey="range-14"
+          getRowKey={(row) => row.id}
+          rows={createRows(2)}
+        />
+      </div>,
+    )
+
+    const tables = screen.getAllByRole('table')
+    const describedBy = tables.map((table) =>
+      table.getAttribute('aria-describedby'),
+    )
+
+    expect(describedBy[0]).toBeTruthy()
+    expect(describedBy[1]).toBeTruthy()
+    expect(describedBy[0]).not.toBe(describedBy[1])
+    expect(document.getElementById(describedBy[0] ?? '')).toBeInTheDocument()
+    expect(document.getElementById(describedBy[1] ?? '')).toBeInTheDocument()
+  })
 })

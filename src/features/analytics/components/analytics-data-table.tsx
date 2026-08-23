@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
@@ -29,20 +29,20 @@ export function AnalyticsDataTable<Row>(props: AnalyticsDataTableProps<Row>) {
 function AnalyticsDataTableContent<Row>({
   caption,
   columns,
-  datasetKey,
   getRowKey,
   pageSize = defaultPageSize,
   rows,
 }: AnalyticsDataTableProps<Row>) {
   const normalizedPageSize = Math.max(1, Math.floor(pageSize))
   const [pageIndex, setPageIndex] = useState(0)
+  const instanceId = useId()
   const pageCount = Math.max(1, Math.ceil(rows.length / normalizedPageSize))
   const activePageIndex = Math.min(pageIndex, pageCount - 1)
   const startOffset = activePageIndex * normalizedPageSize
   const visibleRows = rows.slice(startOffset, startOffset + normalizedPageSize)
   const visibleStart = rows.length === 0 ? 0 : startOffset + 1
   const visibleEnd = rows.length === 0 ? 0 : startOffset + visibleRows.length
-  const pageStatusId = `analytics-table-${datasetKey}-page-status`
+  const pageStatusId = `analytics-table-${instanceId}-page-status`
 
   return (
     <div className="grid min-w-0 gap-3">
