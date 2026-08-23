@@ -98,7 +98,10 @@ function AnalyticsCurrentStateStory({
         question="Which active memories are below target, and how durable are they?"
         title="Retention Map"
       >
-        <RetentionMapView view={data.views.retentionMap} />
+        <RetentionMapView
+          timeZone={data.timeFrame.timeZone}
+          view={data.views.retentionMap}
+        />
       </AnalyticsChartPanel>
       <AnalyticsChartPanel
         description="Current problems that are below recall target, overdue, or have low target-crossing durability."

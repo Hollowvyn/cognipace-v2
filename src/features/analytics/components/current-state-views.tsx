@@ -21,8 +21,10 @@ import { formatCount, formatPercent } from './charts/chart-shared'
 const chartDimension = { width: 640, height: 288 }
 
 export function RetentionMapView({
+  timeZone = 'UTC',
   view,
 }: {
+  timeZone?: string
   view: AnalyticsViews['retentionMap']
 }) {
   if (view.rows.length === 0) {
@@ -44,9 +46,15 @@ export function RetentionMapView({
           {view.totalEligible === 1 ? '' : 's'} shown.
         </p>
       )}
+      <p className="m-0 text-sm text-muted-foreground">
+        {formatCount(view.statusCounts.onTarget)} on target,{' '}
+        {formatCount(view.statusCounts.watch)} watch, and{' '}
+        {formatCount(view.statusCounts.needsAttention)} need attention across
+        the full eligible cohort.
+      </p>
       <ChartTable
-        chart={<RetentionMapChart view={view} />}
-        table={<RetentionMapTable rows={view.rows} />}
+        chart={<RetentionMapChart timeZone={timeZone} view={view} />}
+        table={<RetentionMapTable rows={view.rows} timeZone={timeZone} />}
       />
     </div>
   )
@@ -73,7 +81,13 @@ export function MemorySignalsView({
   )
 }
 
-function RetentionMapChart({ view }: { view: AnalyticsViews['retentionMap'] }) {
+function RetentionMapChart({
+  timeZone,
+  view,
+}: {
+  timeZone: string
+  view: AnalyticsViews['retentionMap']
+}) {
   const [pinnedSlug, setPinnedSlug] = useState<string | null>(null)
   const [transientSlug, setTransientSlug] = useState<string | null>(null)
   const regionRef = useRef<HTMLDivElement>(null)
@@ -275,7 +289,7 @@ function RetentionMapChart({ view }: { view: AnalyticsViews['retentionMap'] }) {
           },
         }}
         initialDimension={chartDimension}
-        role="img"
+        role="region"
       >
         <ScatterChart
           accessibilityLayer
@@ -325,35 +339,28 @@ function RetentionMapChart({ view }: { view: AnalyticsViews['retentionMap'] }) {
             strokeDasharray="5 5"
             x={7}
           />
-          <Scatter
-            data={view.rows.filter((row) => row.status === 'on-target')}
-            fill="var(--cp-analytics-healthy)"
-            shape={pointShape}
-          />
-          <Scatter
-            data={view.rows.filter((row) => row.status === 'watch')}
-            fill="var(--cp-analytics-attention)"
-            shape={pointShape}
-          />
-          <Scatter
-            data={view.rows.filter((row) => row.status === 'needs-attention')}
-            fill="var(--cp-analytics-risk)"
-            shape={pointShape}
-          />
+          <Scatter data={view.rows} shape={pointShape} />
         </ScatterChart>
       </ChartContainer>
+      <p className="m-0 text-xs text-muted-foreground">
+        Adaptive Y-scale: current recall spans{' '}
+        {formatPercent(view.recallScale.domain[0])}–
+        {formatPercent(view.recallScale.domain[1])} for this eligible cohort.
+      </p>
       <RetentionMapLegend />
       {pinned ? (
         <RetentionMapDetails
           closeButtonRef={closeButtonRef}
           onClose={dismissPinned}
           row={pinned}
+          timeZone={timeZone}
         />
       ) : transient ? (
         <RetentionMapPreview
           onEnter={clearExitTimer}
           onLeave={scheduleTransientClose}
           row={transient}
+          timeZone={timeZone}
         />
       ) : null}
     </div>
@@ -495,10 +502,12 @@ function RetentionMapPreview({
   onEnter,
   onLeave,
   row,
+  timeZone,
 }: {
   onEnter: () => void
   onLeave: () => void
   row: AnalyticsViews['retentionMap']['rows'][number]
+  timeZone: string
 }) {
   return (
     <div
@@ -518,7 +527,7 @@ function RetentionMapPreview({
       >
         {row.title}
       </a>
-      <RetentionMapDetailList row={row} />
+      <RetentionMapDetailList row={row} timeZone={timeZone} />
     </div>
   )
 }
@@ -527,10 +536,12 @@ function RetentionMapDetails({
   closeButtonRef,
   onClose,
   row,
+  timeZone,
 }: {
   closeButtonRef: RefObject<HTMLButtonElement | null>
   onClose: () => void
   row: AnalyticsViews['retentionMap']['rows'][number]
+  timeZone: string
 }) {
   return (
     <div
@@ -558,15 +569,17 @@ function RetentionMapDetails({
           ×
         </Button>
       </div>
-      <RetentionMapDetailList row={row} />
+      <RetentionMapDetailList row={row} timeZone={timeZone} />
     </div>
   )
 }
 
 function RetentionMapDetailList({
   row,
+  timeZone,
 }: {
   row: AnalyticsViews['retentionMap']['rows'][number]
+  timeZone: string
 }) {
   return (
     <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
@@ -580,7 +593,10 @@ function RetentionMapDetailList({
         value={formatDuration(row.targetDurationDays)}
       />
       <Detail label="Target gap" value={formatGap(row.targetGap)} />
-      <Detail label="Last reviewed" value={formatDate(row.lastReviewedAt)} />
+      <Detail
+        label="Last reviewed"
+        value={formatDate(row.lastReviewedAt, timeZone)}
+      />
     </dl>
   )
 }
@@ -596,8 +612,10 @@ function Detail({ label, value }: { label: string; value: string }) {
 
 function RetentionMapTable({
   rows,
+  timeZone,
 }: {
   rows: AnalyticsViews['retentionMap']['rows']
+  timeZone: string
 }) {
   const { page, setPage, visibleRows, start, end, pageCount } = usePagination(
     rows,
@@ -610,6 +628,7 @@ function RetentionMapTable({
           aria-label={`Retention Map rows ${start} through ${end} of ${rows.length}`}
           className="w-full min-w-[64rem] border-collapse text-left text-sm"
         >
+          <caption className="sr-only">Retention Map data table</caption>
           <thead>
             <tr className="border-b border-border text-xs uppercase text-muted-foreground">
               {[
@@ -634,7 +653,9 @@ function RetentionMapTable({
           <tbody>
             {visibleRows.map((row) => (
               <tr className="border-b border-border align-top" key={row.slug}>
-                <td className="px-2 py-2">{row.rank}</td>
+                <td className="px-2 py-2 text-right tabular-nums">
+                  {row.rank}
+                </td>
                 <th className="px-2 py-2 font-medium" scope="row">
                   <a
                     className="text-primary underline-offset-4 hover:underline"
@@ -645,20 +666,30 @@ function RetentionMapTable({
                     {row.title}
                   </a>
                 </th>
-                <td className="px-2 py-2">
+                <td className="px-2 py-2 text-right tabular-nums">
                   {formatPercent(row.retrievability)}
                 </td>
-                <td className="px-2 py-2">
+                <td className="px-2 py-2 text-right tabular-nums">
                   {formatPercent(row.targetRetention)}
                 </td>
-                <td className="px-2 py-2">{formatGap(row.targetGap)}</td>
-                <td className="px-2 py-2">
+                <td className="px-2 py-2 text-right tabular-nums">
+                  {formatGap(row.targetGap)}
+                </td>
+                <td className="px-2 py-2 text-right tabular-nums">
                   {formatDuration(row.targetDurationDays)}
                 </td>
-                <td className="px-2 py-2">{formatDate(row.lastReviewedAt)}</td>
-                <td className="px-2 py-2">{formatDate(row.dueAt)}</td>
-                <td className="px-2 py-2">{row.difficulty.toFixed(1)}</td>
-                <td className="px-2 py-2">{formatCount(row.lapseCount)}</td>
+                <td className="px-2 py-2 text-right tabular-nums">
+                  {formatDate(row.lastReviewedAt, timeZone)}
+                </td>
+                <td className="px-2 py-2 text-right tabular-nums">
+                  {formatDate(row.dueAt, timeZone)}
+                </td>
+                <td className="px-2 py-2 text-right tabular-nums">
+                  {row.difficulty.toFixed(1)}
+                </td>
+                <td className="px-2 py-2 text-right tabular-nums">
+                  {formatCount(row.lapseCount)}
+                </td>
                 <td className="px-2 py-2">{statusLabel(row.status)}</td>
               </tr>
             ))}
@@ -694,6 +725,9 @@ function MemorySignalsTable({
           aria-label={`Memory Signals rows ${start} through ${end} of ${rows.length}`}
           className="w-full min-w-[36rem] border-collapse text-left text-sm"
         >
+          <caption className="sr-only">
+            Memory Signals by Problem data table
+          </caption>
           <thead>
             <tr className="border-b border-border text-xs uppercase text-muted-foreground">
               <th className="px-2 pb-2" scope="col">
@@ -710,7 +744,9 @@ function MemorySignalsTable({
           <tbody>
             {visibleRows.map((row) => (
               <tr className="border-b border-border align-top" key={row.slug}>
-                <td className="px-2 py-2">{row.rank}</td>
+                <td className="px-2 py-2 text-right tabular-nums">
+                  {row.rank}
+                </td>
                 <th className="px-2 py-2 font-medium" scope="row">
                   <a
                     className="text-primary underline-offset-4 hover:underline"
@@ -722,7 +758,7 @@ function MemorySignalsTable({
                   </a>
                 </th>
                 <td className="px-2 py-2">
-                  <div className="flex max-h-12 max-w-md flex-wrap gap-1 overflow-hidden">
+                  <div className="grid max-w-md grid-cols-2 gap-1">
                     {row.reasons.map((reason) => (
                       <span
                         className="rounded border border-border px-1.5 py-0.5 text-xs"
@@ -753,6 +789,11 @@ function MemorySignalsTable({
 
 function usePagination<T>(rows: readonly T[], pageSize: number) {
   const [page, setPage] = useState(0)
+  const [previousRows, setPreviousRows] = useState(rows)
+  if (rows !== previousRows) {
+    setPreviousRows(rows)
+    setPage(0)
+  }
   const pageCount = Math.max(1, Math.ceil(rows.length / pageSize))
   const currentPage = Math.min(page, pageCount - 1)
   const visibleRows = rows.slice(
@@ -852,10 +893,11 @@ function formatDuration(value: number) {
 function formatGap(value: number) {
   return `${value >= 0 ? '+' : '−'}${Math.round(Math.abs(value) * 100)} pp`
 }
-function formatDate(value: string) {
+function formatDate(value: string, timeZone: string) {
   return new Intl.DateTimeFormat('en-US', {
     day: '2-digit',
     month: '2-digit',
+    timeZone,
     year: '2-digit',
   }).format(new Date(value))
 }

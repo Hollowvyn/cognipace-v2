@@ -292,6 +292,11 @@ const retentionMapRowSchema = z.object({
   status: retentionMapStatusSchema,
   region: retentionMapRegionSchema,
 })
+const retentionMapStatusCountsSchema = z.object({
+  onTarget: countSchema,
+  watch: countSchema,
+  needsAttention: countSchema,
+})
 const memorySignalReasonSchema = z.object({
   kind: z.enum(['below-recall', 'overdue', 'low-durability']),
   label: z.string().min(1),
@@ -333,6 +338,7 @@ export const analyticsViewsSchema = z.object({
   retentionMap: z.object({
     rows: z.array(retentionMapRowSchema).max(30),
     totalEligible: countSchema,
+    statusCounts: retentionMapStatusCountsSchema,
     recallScale: analyticsScaleSchema,
     durationScale: analyticsScaleSchema,
     targetRetention: percentageSchema,

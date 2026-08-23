@@ -6,6 +6,11 @@ import {
 import { getAnalyticsDateKey } from './analytics-time'
 
 export type RetentionMapStatus = 'on-target' | 'watch' | 'needs-attention'
+export interface RetentionMapStatusCounts {
+  onTarget: number
+  watch: number
+  needsAttention: number
+}
 export type RetentionMapRegion =
   | 'strongest-position'
   | 'on-target-now'
@@ -37,6 +42,7 @@ export interface CurrentStateAnalyticsViews {
   retentionMap: {
     rows: RetentionMapRow[]
     totalEligible: number
+    statusCounts: RetentionMapStatusCounts
     recallScale: AnalyticsScale
     durationScale: AnalyticsScale
     targetRetention: number
@@ -123,6 +129,7 @@ export function buildCurrentStateAnalyticsViews(
     retentionMap: {
       rows: retainedRetentionRows,
       totalEligible: orderedRetentionRows.length,
+      statusCounts: countRetentionStatuses(orderedRetentionRows),
       recallScale: percentageScale(
         orderedRetentionRows.map((row) => row.retrievability),
         [options.targetRetention, Math.max(0, options.targetRetention - 0.1)],
@@ -184,13 +191,27 @@ function retentionMapRegion(
   return durable ? 'needs-attention' : 'highest-attention'
 }
 
+function countRetentionStatuses(
+  rows: readonly Omit<RetentionMapRow, 'rank'>[],
+): RetentionMapStatusCounts {
+  return rows.reduce<RetentionMapStatusCounts>(
+    (counts, row) => {
+      if (row.status === 'on-target') counts.onTarget += 1
+      else if (row.status === 'watch') counts.watch += 1
+      else counts.needsAttention += 1
+      return counts
+    },
+    { onTarget: 0, watch: 0, needsAttention: 0 },
+  )
+}
+
 function compareRetentionRows(
   left: Omit<RetentionMapRow, 'rank'>,
   right: Omit<RetentionMapRow, 'rank'>,
 ): number {
   return (
     retentionPriority(left) - retentionPriority(right) ||
-    left.targetGap - right.targetGap ||
+    Math.min(0, left.targetGap) - Math.min(0, right.targetGap) ||
     left.targetDurationDays - right.targetDurationDays ||
     normalizedTitle(left.title).localeCompare(normalizedTitle(right.title))
   )

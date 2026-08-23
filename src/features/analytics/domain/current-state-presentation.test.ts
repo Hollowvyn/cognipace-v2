@@ -10,7 +10,7 @@ describe('current-state Analytics presentation', () => {
   it('retains the full eligible Retention Map cohort in deterministic priority order and exposes all six regions', () => {
     const views = buildCurrentStateAnalyticsViews(
       [
-        input('strong', { targetDurationDays: 14, retrievability: 0.95 }),
+        input('strong', { targetDurationDays: 14, retrievability: 0.9 }),
         input('on-target-short', {
           targetDurationDays: 3,
           retrievability: 0.95,
@@ -27,6 +27,11 @@ describe('current-state Analytics presentation', () => {
     )
 
     expect(views.retentionMap.totalEligible).toBe(6)
+    expect(views.retentionMap.statusCounts).toEqual({
+      onTarget: 2,
+      watch: 2,
+      needsAttention: 2,
+    })
     expect(views.retentionMap.rows.map((row) => row.slug)).toEqual([
       'risk-durable',
       'risk-short',
@@ -64,6 +69,28 @@ describe('current-state Analytics presentation', () => {
       rank: 1,
       slug: 'risk-00',
     })
+    expect(views.retentionMap.rows.at(-1)).toMatchObject({
+      rank: 30,
+      slug: 'risk-29',
+    })
+    expect(
+      views.retentionMap.rows.find((row) => row.slug === 'risk-30'),
+    ).toBeUndefined()
+  })
+
+  it('orders on-target rows by duration and title rather than surplus recall', () => {
+    const views = buildCurrentStateAnalyticsViews(
+      [
+        input('alpha', { retrievability: 0.99, targetDurationDays: 3 }),
+        input('zeta', { retrievability: 0.9, targetDurationDays: 3 }),
+      ],
+      { asOf, targetRetention: 0.9, timeZone: 'UTC' },
+    )
+
+    expect(views.retentionMap.rows.map((row) => row.slug)).toEqual([
+      'alpha',
+      'zeta',
+    ])
   })
 
   it('builds Memory Signals from only supported current signals with transparent severity lanes', () => {

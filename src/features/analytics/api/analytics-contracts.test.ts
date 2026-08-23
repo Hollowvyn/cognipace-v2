@@ -155,6 +155,7 @@ const validSummary: SerializedAnalyticsSummary = {
     retentionMap: {
       rows: [],
       totalEligible: 0,
+      statusCounts: { onTarget: 0, watch: 0, needsAttention: 0 },
       recallScale: { domain: [0, 1], ticks: [0, 1] },
       durationScale: { domain: [1, 10], ticks: [1, 10] },
       targetRetention: 0.9,
