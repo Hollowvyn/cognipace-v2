@@ -35,6 +35,17 @@ describe('analytics scales', () => {
     })
   })
 
+  it('expands small count scales to use whole-number ticks', () => {
+    expect(buildMagnitudeScale([1])).toEqual({
+      domain: [0, 4],
+      ticks: [0, 1, 2, 3, 4],
+    })
+    expect(buildMagnitudeScale([2])).toEqual({
+      domain: [0, 5],
+      ticks: [0, 1, 2, 3, 4, 5],
+    })
+  })
+
   it('builds a centered adaptive-duration scale with deterministic nice ticks', () => {
     expect(buildAdaptiveDurationScale([3, 5])).toEqual({
       domain: [2, 6],
