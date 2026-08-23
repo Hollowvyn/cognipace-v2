@@ -176,11 +176,7 @@ function AnalyticsHistoricalStory({
 }
 
 type HistoricalMetricKey =
-  | 'practiceRhythm'
-  | 'ratingsMix'
-  | 'topics'
-  | 'stability'
-  | 'overdueBacklog'
+  'practiceRhythm' | 'ratingsMix' | 'topics' | 'stability' | 'overdueBacklog'
 
 const historicalMetricPanels: Record<
   HistoricalMetricKey,

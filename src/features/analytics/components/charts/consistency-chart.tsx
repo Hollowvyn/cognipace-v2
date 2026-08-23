@@ -151,8 +151,7 @@ export function PracticeRhythmChart({ data }: { data: PracticeRhythmPoint[] }) {
                   }}
                   labelFormatter={(label, payload) => {
                     const point = payload?.[0]?.payload as
-                      | PracticeRhythmPoint
-                      | undefined
+                      PracticeRhythmPoint | undefined
                     return point
                       ? formatBucketLabel(point.bucketStart, point.bucketEnd)
                       : toChartLabel(label)

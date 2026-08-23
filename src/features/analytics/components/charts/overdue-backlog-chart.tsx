@@ -200,8 +200,7 @@ export function OverdueBacklogChart({
                 }}
                 labelFormatter={(label, payload) => {
                   const point = payload?.[0]?.payload as
-                    | BacklogChartPoint
-                    | undefined
+                    BacklogChartPoint | undefined
                   return point
                     ? formatBucketLabel(point.bucketStart, point.bucketEnd)
                     : toChartLabel(label)
