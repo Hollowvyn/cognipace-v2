@@ -278,6 +278,14 @@ export const analyticsSummarySchema = z
     fragileKnowledge: z.array(fragileKnowledgeSchema),
   })
   .superRefine((summary, context) => {
+    if (summary.range !== summary.timeFrame.requestedDays) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'The summary range must match the requested time-frame days.',
+        path: ['timeFrame', 'requestedDays'],
+      })
+    }
+
     if (
       summary.historicalReadiness.requested.ready &&
       summary.historicalReadiness.recommendedRange !== null

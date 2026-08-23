@@ -43,4 +43,39 @@ describe('ChartTable', () => {
     expect(tableTab).toHaveFocus()
     expect(screen.getByRole('table')).toBeVisible()
   })
+
+  it('moves between tabs with symmetric wrapping arrow-key navigation', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <ChartTable
+        chart={<div aria-label="Review trend plot" role="img" />}
+        table={<table aria-label="Review trend exact values" />}
+      />,
+    )
+
+    const chartTab = screen.getByRole('tab', { name: 'Chart' })
+    const tableTab = screen.getByRole('tab', { name: 'Table' })
+
+    chartTab.focus()
+    await user.keyboard('{ArrowLeft}')
+
+    expect(tableTab).toHaveAttribute('aria-selected', 'true')
+    expect(tableTab).toHaveFocus()
+
+    await user.keyboard('{ArrowRight}')
+
+    expect(chartTab).toHaveAttribute('aria-selected', 'true')
+    expect(chartTab).toHaveFocus()
+
+    await user.keyboard('{ArrowRight}')
+
+    expect(tableTab).toHaveAttribute('aria-selected', 'true')
+    expect(tableTab).toHaveFocus()
+
+    await user.keyboard('{ArrowLeft}')
+
+    expect(chartTab).toHaveAttribute('aria-selected', 'true')
+    expect(chartTab).toHaveFocus()
+  })
 })

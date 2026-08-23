@@ -230,6 +230,27 @@ describe('analyticsSummarySchema', () => {
     )
   })
 
+  it('rejects a summary whose range differs from its time-frame requested days', () => {
+    const result = analyticsSummarySchema.safeParse({
+      ...validSummary,
+      range: 30,
+      timeFrame: {
+        ...validSummary.timeFrame,
+        requestedDays: 14,
+      },
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success)
+      expect(result.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: ['timeFrame', 'requestedDays'],
+          }),
+        ]),
+      )
+  })
+
   it('serializes a summary without duplicate presentation metadata', () => {
     expect(
       analyticsSummarySchema.safeParse(withoutSummaryField('generatedAt'))
@@ -283,6 +304,10 @@ describe('analyticsSummarySchema', () => {
     const parsed = analyticsSummarySchema.parse({
       ...validSummary,
       range: 90,
+      timeFrame: {
+        ...validSummary.timeFrame,
+        requestedDays: 90,
+      },
       historicalReadiness: {
         ...validSummary.historicalReadiness,
         requested: {

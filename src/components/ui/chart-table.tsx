@@ -42,7 +42,7 @@ export function ChartTable({
           id={chartTabId}
           onClick={() => selectView('chart')}
           onKeyDown={(event) => {
-            if (event.key === 'ArrowRight') {
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
               event.preventDefault()
               selectView('table')
               document.getElementById(tableTabId)?.focus()
@@ -61,7 +61,7 @@ export function ChartTable({
           id={tableTabId}
           onClick={() => selectView('table')}
           onKeyDown={(event) => {
-            if (event.key === 'ArrowLeft') {
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
               event.preventDefault()
               selectView('chart')
               document.getElementById(chartTabId)?.focus()
