@@ -23,9 +23,13 @@ describe('analytics view catalogue', () => {
       expect(definition.question).not.toHaveLength(0)
       expect(definition.metricMeaning).not.toHaveLength(0)
       expect(definition.units.length).toBeGreaterThan(0)
-      expect(definition.tooltipFields.length).toBeGreaterThan(0)
       expect(definition.tableColumns.length).toBeGreaterThan(0)
       expect(definition.emptyState).not.toHaveLength(0)
+    }
+
+    for (const [id, definition] of Object.entries(analyticsViewCatalogue)) {
+      if (id === 'memory-signals') continue
+      expect(definition.tooltipFields.length).toBeGreaterThan(0)
     }
   })
 
@@ -58,5 +62,14 @@ describe('analytics view catalogue', () => {
     expect(
       analyticsViewCatalogue['upcoming-review-load'].tooltipFields,
     ).toEqual(['Date', 'Due', 'Overdue'])
+  })
+
+  it('keeps Memory Signals table-native with no tooltip contract', () => {
+    expect(analyticsViewCatalogue['memory-signals']).toMatchObject({
+      title: 'Memory Signals by Problem',
+      scope: 'current-state',
+      tooltipFields: [],
+      tableColumns: ['Rank', 'Problem', "Why it's here"],
+    })
   })
 })

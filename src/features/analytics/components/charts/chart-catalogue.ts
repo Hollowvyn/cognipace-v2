@@ -201,7 +201,7 @@ export const analyticsViewCatalogue = {
       'Lists current problems below target, overdue, or supported by less than one week of FSRS durability.',
     scope: 'current-state',
     units: ['percentage', 'days'],
-    tooltipFields: ['Problem', "Why it's here"],
+    tooltipFields: [],
     tableColumns: ['Rank', 'Problem', "Why it's here"],
     emptyState: 'No current problems meet these attention signals.',
   },
