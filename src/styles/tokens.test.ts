@@ -22,4 +22,21 @@ describe('analytics color tokens', () => {
       '--cp-analytics-easy: var(--cp-tone-review-easy-fg);',
     )
   })
+
+  it('defines light and strong semantic health, watch, risk, and workload roles in every theme', () => {
+    const tokens = [
+      '--cp-analytics-healthy-subtle:',
+      '--cp-analytics-healthy-strong:',
+      '--cp-analytics-watch-subtle:',
+      '--cp-analytics-watch-strong:',
+      '--cp-analytics-risk-subtle:',
+      '--cp-analytics-risk-strong:',
+      '--cp-analytics-due:',
+      '--cp-analytics-overdue:',
+    ]
+
+    for (const token of tokens) {
+      expect(analyticsTokens.split(token)).toHaveLength(4)
+    }
+  })
 })

@@ -1,6 +1,6 @@
 import { Bar, BarChart, type TooltipPayloadEntry } from 'recharts'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   ChartContainer,
@@ -122,4 +122,51 @@ describe('Chart primitive', () => {
     expect(screen.getByText('3 formatted')).toBeInTheDocument()
     expect(screen.queryByText('skipped')).not.toBeInTheDocument()
   })
+
+  it('marks the generic chart surface as non-animated when reduced motion is preferred', () => {
+    const matchMedia = vi.fn().mockReturnValue({
+      addEventListener: vi.fn(),
+      matches: true,
+      removeEventListener: vi.fn(),
+    })
+    vi.stubGlobal('matchMedia', matchMedia)
+
+    render(
+      <ChartContainer config={chartConfig} id="reduced-motion-chart">
+        <BarChart data={[{ day: 'Monday', reviews: 3 }]} responsive>
+          <Bar dataKey="reviews" fill="var(--color-reviews)" />
+        </BarChart>
+      </ChartContainer>,
+    )
+
+    expect(
+      document.querySelector('[data-chart="chart-reduced-motion-chart"]'),
+    ).toHaveAttribute('data-chart-animation', 'disabled')
+    expect(matchMedia).toHaveBeenCalledWith('(prefers-reduced-motion: reduce)')
+  })
+
+  it('uses deterministic initial dimensions when no size is supplied', () => {
+    render(
+      <ChartContainer config={chartConfig} id="default-dimensions-chart">
+        <BarChart data={[{ day: 'Monday', reviews: 3 }]} responsive>
+          <Bar dataKey="reviews" fill="var(--color-reviews)" />
+        </BarChart>
+      </ChartContainer>,
+    )
+
+    expect(
+      document.querySelector(
+        '[data-chart="chart-default-dimensions-chart"] svg',
+      ),
+    ).toHaveAttribute('width', '320')
+    expect(
+      document.querySelector(
+        '[data-chart="chart-default-dimensions-chart"] svg',
+      ),
+    ).toHaveAttribute('height', '192')
+  })
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
