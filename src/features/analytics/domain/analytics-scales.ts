@@ -38,7 +38,8 @@ export function buildAdaptiveDurationDomain(
     0,
   )
 
-  return [Math.max(0, niceFloor(lower)), niceCeil(upper)]
+  const step = niceStep(Number(((upper - lower) / 2).toFixed(12)))
+  return [Math.max(0, niceFloorTo(lower, step)), niceCeilTo(upper, step)]
 }
 
 export function buildCountDomain(
@@ -116,15 +117,25 @@ function roundUp(value: number, step: number): number {
   return Number((Math.ceil((value - Number.EPSILON) / step) * step).toFixed(12))
 }
 
-function niceFloor(value: number): number {
-  if (value <= 0) return 0
+function niceStep(value: number): number {
+  if (value <= 0 || !Number.isFinite(value)) return 1
 
   const magnitude = 10 ** Math.floor(Math.log10(value))
-  const factor = [...NICE_FACTORS]
-    .reverse()
-    .find((candidate) => candidate * magnitude <= value)
+  const factor = NICE_FACTORS.find(
+    (candidate) => candidate * magnitude >= value,
+  )
 
-  return (factor ?? 1) * magnitude
+  return factor === undefined ? 10 * magnitude : factor * magnitude
+}
+
+function niceFloorTo(value: number, step: number): number {
+  if (value <= 0) return 0
+  return Number((Math.floor(value / step) * step).toFixed(12))
+}
+
+function niceCeilTo(value: number, step: number): number {
+  if (value <= 0) return 0
+  return Number((Math.ceil(value / step) * step).toFixed(12))
 }
 
 function niceCeil(value: number): number {

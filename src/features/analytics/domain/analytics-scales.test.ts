@@ -30,6 +30,11 @@ describe('analytics scales', () => {
     expect(buildAdaptiveDurationDomain([3.2, 4.1])).toEqual([2, 5])
   })
 
+  it('keeps a high-baseline all-equal duration series near its movement window', () => {
+    expect(buildAdaptiveDurationDomain([80])).toEqual([79, 81])
+    expect(buildAdaptiveDurationDomain([80, 80.4])).toEqual([79, 82])
+  })
+
   it('builds a zero-based count domain with a nice upper bound', () => {
     expect(buildCountDomain([0, 7], [5])).toEqual([0, 10])
     expect(buildCountDomain([])).toEqual([0, 1])
