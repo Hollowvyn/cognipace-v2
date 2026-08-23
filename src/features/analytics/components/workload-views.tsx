@@ -256,15 +256,19 @@ export function buildThresholdStepSegments(
     const nextValue = values[index + 1]
     const currentPoint = points[index]
     const nextPoint = points[index + 1]
+    const currentX = currentPoint?.x
+    const currentY = currentPoint?.y
+    const nextX = nextPoint?.x
+    const nextY = nextPoint?.y
     if (
-      currentValue === null ||
-      nextValue === null ||
-      !currentPoint ||
-      !nextPoint ||
-      currentPoint.x === null ||
-      currentPoint.y === null ||
-      nextPoint.x === null ||
-      nextPoint.y === null
+      typeof currentValue !== 'number' ||
+      typeof nextValue !== 'number' ||
+      !Number.isFinite(currentValue) ||
+      !Number.isFinite(nextValue) ||
+      typeof currentX !== 'number' ||
+      typeof currentY !== 'number' ||
+      typeof nextX !== 'number' ||
+      typeof nextY !== 'number'
     ) {
       continue
     }
@@ -273,43 +277,43 @@ export function buildThresholdStepSegments(
     const nextStatus = getThresholdStatus(nextValue)
     addThresholdStepSegment(
       segments,
-      currentPoint.x,
-      currentPoint.y,
-      nextPoint.x,
-      currentPoint.y,
+      currentX,
+      currentY,
+      nextX,
+      currentY,
       currentStatus,
     )
 
     if (currentStatus === nextStatus) {
       addThresholdStepSegment(
         segments,
-        nextPoint.x,
-        currentPoint.y,
-        nextPoint.x,
-        nextPoint.y,
+        nextX,
+        currentY,
+        nextX,
+        nextY,
         currentStatus,
       )
       continue
     }
 
     const thresholdY =
-      currentPoint.y +
-      ((nextPoint.y - currentPoint.y) * (watchZone - currentValue)) /
+      currentY +
+      ((nextY - currentY) * (watchZone - currentValue)) /
         (nextValue - currentValue)
     addThresholdStepSegment(
       segments,
-      nextPoint.x,
-      currentPoint.y,
-      nextPoint.x,
+      nextX,
+      currentY,
+      nextX,
       thresholdY,
       currentStatus,
     )
     addThresholdStepSegment(
       segments,
-      nextPoint.x,
+      nextX,
       thresholdY,
-      nextPoint.x,
-      nextPoint.y,
+      nextX,
+      nextY,
       nextStatus,
     )
   }
