@@ -214,6 +214,7 @@ export function getAnalyticsLocalDayStart(
 }
 
 function getTimeZoneOffsetMilliseconds(date: Date, timeZone: string): number {
+  const wholeSecondDate = new Date(Math.floor(date.getTime() / 1000) * 1000)
   const parts = new Intl.DateTimeFormat('en-US-u-ca-gregory-nu-latn', {
     timeZone,
     year: 'numeric',
@@ -224,7 +225,7 @@ function getTimeZoneOffsetMilliseconds(date: Date, timeZone: string): number {
     second: '2-digit',
     hourCycle: 'h23',
   })
-    .formatToParts(date)
+    .formatToParts(wholeSecondDate)
     .reduce<Record<string, string>>((result, part) => {
       if (
         part.type === 'year' ||
@@ -247,7 +248,7 @@ function getTimeZoneOffsetMilliseconds(date: Date, timeZone: string): number {
       Number(parts.hour),
       Number(parts.minute),
       Number(parts.second),
-    ) - date.getTime()
+    ) - wholeSecondDate.getTime()
   )
 }
 

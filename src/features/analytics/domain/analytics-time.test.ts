@@ -140,4 +140,14 @@ describe('analytics time', () => {
       ),
     ).toEqual(new Date('2026-02-22T05:30:00.000Z'))
   })
+
+  it('preserves milliseconds when shifting a wall-clock timestamp', () => {
+    expect(
+      shiftAnalyticsCalendarDays(
+        new Date('2026-03-08T05:30:00.123Z'),
+        -14,
+        'America/New_York',
+      ),
+    ).toEqual(new Date('2026-02-22T05:30:00.123Z'))
+  })
 })
