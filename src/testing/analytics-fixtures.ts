@@ -131,6 +131,22 @@ export function createSerializedAnalyticsSummary(
       lowSample: false,
     },
     targetRetention: 0.9,
+    views: {
+      observedRecallVsFsrs: {
+        rows: [],
+        scale: { domain: [0, 1], ticks: [0, 1] },
+        targetRetention: 0.9,
+      },
+      memoryStrength: {
+        rows: [],
+        scale: { domain: [0, 2], ticks: [0, 1, 2] },
+      },
+      practiceRhythm: {
+        rows: [],
+        countScale: { domain: [0, 1], ticks: [0, 1] },
+        percentageScale: { domain: [0, 1], ticks: [0, 1] },
+      },
+    },
     retentionScatter: [],
     retentionScatterCurve: [],
     historicalReadiness: createHistoricalReadiness(),

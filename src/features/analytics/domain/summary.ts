@@ -1,6 +1,7 @@
 import { isReviewRating } from '@/lib/fsrs'
 
 import type { AnalyticsReadiness } from './analytics-readiness'
+import type { HistoricalAnalyticsViews } from './historical-presentation'
 import {
   addAnalyticsCalendarDays,
   getAnalyticsDateKey,
@@ -89,6 +90,7 @@ export interface AnalyticsSummaryInput {
   weakProblems: WeakProblem[]
   memoryProfile: MemoryProfile
   targetRetention: number
+  views?: HistoricalAnalyticsViews
   scatter: RetentionScatterEntry[]
   referenceCurve: ReferenceCurvePoint[]
   historicalReadiness: HistoricalReadiness
@@ -132,6 +134,7 @@ export interface AnalyticsSummary {
   weakProblems: WeakProblem[]
   memoryProfile: MemoryProfile
   targetRetention: number
+  views: HistoricalAnalyticsViews
   retentionScatter: RetentionScatterEntry[]
   retentionScatterCurve: ReferenceCurvePoint[]
   historicalReadiness: HistoricalReadiness
@@ -275,6 +278,7 @@ export function buildAnalyticsSummary(
     weakProblems: input.weakProblems,
     memoryProfile: input.memoryProfile,
     targetRetention: input.targetRetention,
+    views: input.views ?? emptyHistoricalViews(input.targetRetention),
     retentionScatter: input.scatter,
     retentionScatterCurve: input.referenceCurve,
     historicalReadiness: input.historicalReadiness,
@@ -303,6 +307,27 @@ export function buildAnalyticsSummary(
     upcomingLoad: input.upcomingLoad ?? [],
     retentionHealth: input.retentionHealth ?? [],
     fragileKnowledge: input.fragileKnowledge ?? [],
+  }
+}
+
+function emptyHistoricalViews(
+  targetRetention: number,
+): HistoricalAnalyticsViews {
+  return {
+    observedRecallVsFsrs: {
+      rows: [],
+      scale: { domain: [0, 1], ticks: [0, 1] },
+      targetRetention,
+    },
+    memoryStrength: {
+      rows: [],
+      scale: { domain: [0, 2], ticks: [0, 1, 2] },
+    },
+    practiceRhythm: {
+      rows: [],
+      countScale: { domain: [0, 1], ticks: [0, 1] },
+      percentageScale: { domain: [0, 1], ticks: [0, 1] },
+    },
   }
 }
 

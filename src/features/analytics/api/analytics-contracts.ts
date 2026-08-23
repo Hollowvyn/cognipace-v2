@@ -187,6 +187,65 @@ export const stabilityPointSchema = z.object({
   sampleSize: countSchema,
 })
 
+const analyticsScaleSchema = z.object({
+  domain: z.tuple([z.number(), z.number()]),
+  ticks: z.array(z.number()).min(2),
+})
+
+const historicalRowBaseSchema = z.object({
+  id: z.string().min(1),
+  bucketStart: z.string(),
+  bucketEnd: z.string(),
+  isPartial: z.boolean(),
+})
+
+export const observedRecallVsFsrsRowSchema = historicalRowBaseSchema.extend({
+  recalledCount: countSchema,
+  pairedReviews: countSchema,
+  observedRecall: nullablePercentageSchema,
+  fsrsEstimate: nullablePercentageSchema,
+  difference: z.number().min(-1).max(1).nullable(),
+  provenance: z.literal('reconstructed'),
+  evidence: z.enum(['measured', 'not-measured']),
+})
+
+export const memoryStrengthRowSchema = historicalRowBaseSchema.extend({
+  medianStrengthDays: z.number().positive().nullable(),
+  q1: z.number().positive().nullable(),
+  q3: z.number().positive().nullable(),
+  eligibleReviews: countSchema,
+  medianChangeDays: z.number().nullable(),
+  provenance: z.literal('reconstructed'),
+  evidence: z.enum(['measured', 'not-measured']),
+})
+
+export const practiceRhythmRowSchema = historicalRowBaseSchema.extend({
+  completedReviews: countSchema,
+  goodEasy: countSchema,
+  validRatings: countSchema,
+  reviewSuccess: nullablePercentageSchema,
+  evidence: z.enum(['measured', 'not-measured']),
+})
+
+export const analyticsViewsSchema = z.object({
+  observedRecallVsFsrs: z.object({
+    rows: z.array(observedRecallVsFsrsRowSchema),
+    scale: analyticsScaleSchema,
+    targetRetention: percentageSchema,
+  }),
+  memoryStrength: z.object({
+    rows: z.array(memoryStrengthRowSchema),
+    scale: analyticsScaleSchema,
+  }),
+  practiceRhythm: z.object({
+    rows: z.array(practiceRhythmRowSchema),
+    countScale: analyticsScaleSchema,
+    percentageScale: analyticsScaleSchema,
+  }),
+})
+
+export type AnalyticsViews = z.infer<typeof analyticsViewsSchema>
+
 export const overdueBacklogPointSchema = z.discriminatedUnion(
   'historyAvailable',
   [
@@ -262,6 +321,7 @@ export const analyticsSummarySchema = z
     weakProblems: z.array(weakProblemSchema).max(10),
     memoryProfile: memoryProfileSchema,
     targetRetention: percentageSchema,
+    views: analyticsViewsSchema,
     retentionScatter: z.array(retentionScatterEntrySchema),
     retentionScatterCurve: z.array(referenceCurvePointSchema),
     historicalReadiness: historicalReadinessSchema,

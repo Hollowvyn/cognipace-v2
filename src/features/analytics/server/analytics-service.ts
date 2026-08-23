@@ -57,6 +57,7 @@ import {
   buildForecastBounds,
   getAnalyticsDateKey,
 } from '../domain/analytics-time'
+import { buildHistoricalAnalyticsViews } from '../domain/historical-presentation'
 
 import {
   buildObservedRatingQuality,
@@ -183,6 +184,13 @@ export async function getAnalyticsSummary(
     timeFrame: presentationTimeFrame,
   }
   const analyticsReviewHistory = reviewHistory satisfies AnalyticsReviewEvent[]
+  const views = buildHistoricalAnalyticsViews(analyticsReviewHistory, {
+    buckets,
+    end: periodEnd,
+    fsrsOptions,
+    start: periodStart,
+    timeZone: presentationTimeFrame.timeZone,
+  })
   const baselineEvidenceCounts = buildBucketEvidenceCounts(
     analyticsReviewHistory,
     buckets,
@@ -371,6 +379,7 @@ export async function getAnalyticsSummary(
     weakProblems,
     memoryProfile,
     targetRetention: fsrsOptions.targetRetention,
+    views,
     scatter,
     referenceCurve,
     historicalReadiness,

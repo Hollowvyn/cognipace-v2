@@ -120,6 +120,22 @@ const validSummary: SerializedAnalyticsSummary = {
     lowSample: true,
   },
   targetRetention: 0.9,
+  views: {
+    observedRecallVsFsrs: {
+      rows: [],
+      scale: { domain: [0, 1], ticks: [0, 1] },
+      targetRetention: 0.9,
+    },
+    memoryStrength: {
+      rows: [],
+      scale: { domain: [0, 2], ticks: [0, 1, 2] },
+    },
+    practiceRhythm: {
+      rows: [],
+      countScale: { domain: [0, 1], ticks: [0, 1] },
+      percentageScale: { domain: [0, 1], ticks: [0, 1] },
+    },
+  },
   retentionScatter: [],
   retentionScatterCurve: [],
   historicalReadiness: withRequestedReadiness(readiness, null),
@@ -219,6 +235,13 @@ describe('analyticsSummaryRequestSchema', () => {
 })
 
 describe('analyticsSummarySchema', () => {
+  it('requires the Phase 2 historical view presentation models', () => {
+    expect(analyticsSummarySchema.safeParse(validSummary).success).toBe(true)
+    expect(
+      analyticsSummarySchema.safeParse(withoutSummaryField('views')).success,
+    ).toBe(false)
+  })
+
   it('requires explicit local-time metadata and preserves partial bucket state', () => {
     expect(analyticsSummarySchema.safeParse(validSummary).success).toBe(true)
     expect(

@@ -131,6 +131,22 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
     })),
     weakProblems: [],
     targetRetention: 0.9,
+    views: {
+      observedRecallVsFsrs: {
+        rows: [],
+        scale: { domain: [0, 1], ticks: [0, 1] },
+        targetRetention: 0.9,
+      },
+      memoryStrength: {
+        rows: [],
+        scale: { domain: [0, 2], ticks: [0, 1, 2] },
+      },
+      practiceRhythm: {
+        rows: [],
+        countScale: { domain: [0, 1], ticks: [0, 1] },
+        percentageScale: { domain: [0, 1], ticks: [0, 1] },
+      },
+    },
     retentionScatter: [],
     retentionScatterCurve: [],
     historicalReadiness: createUnreadyHistoricalReadiness(),
@@ -315,6 +331,54 @@ describe('AnalyticsScreen', () => {
     ).toBeVisible()
   })
 
+  it('renders only the three Phase 2 historical views with semantic Chart and Table tabs', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      readyAnalyticsSummary({
+        views: {
+          observedRecallVsFsrs: {
+            rows: [
+              {
+                id: '2026-01-14',
+                bucketStart: '2026-01-14',
+                bucketEnd: '2026-01-14',
+                isPartial: true,
+                recalledCount: 3,
+                pairedReviews: 4,
+                observedRecall: 0.75,
+                fsrsEstimate: 0.8,
+                difference: -0.05,
+                provenance: 'reconstructed',
+                evidence: 'measured',
+              },
+            ],
+            scale: { domain: [0.6, 1], ticks: [0.6, 0.8, 1] },
+            targetRetention: 0.9,
+          },
+          memoryStrength: {
+            rows: [],
+            scale: { domain: [0, 2], ticks: [0, 1, 2] },
+          },
+          practiceRhythm: {
+            rows: [],
+            countScale: { domain: [0, 1], ticks: [0, 1] },
+            percentageScale: { domain: [0, 1], ticks: [0, 1] },
+          },
+        },
+      }),
+    )
+
+    renderAnalyticsScreen()
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Observed Recall vs FSRS Estimate',
+      }),
+    ).toBeVisible()
+    expect(screen.getAllByRole('tab', { name: 'Chart' })).toHaveLength(3)
+    expect(screen.getAllByRole('tab', { name: 'Table' })).toHaveLength(3)
+    expect(screen.queryByText('Ratings mix')).not.toBeInTheDocument()
+  })
+
   it('shows the observed-correctness low-sample warning', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(
       createAnalyticsSummary({
@@ -344,11 +408,11 @@ describe('AnalyticsScreen', () => {
     renderAnalyticsScreen()
 
     expect(
-      await screen.findByRole('region', { name: 'Recall quality' }),
+      await screen.findByRole('region', {
+        name: 'Observed Recall vs FSRS Estimate',
+      }),
     ).toBeVisible()
-    expect(
-      screen.getByLabelText('30-day analytics readiness'),
-    ).toBeVisible()
+    expect(screen.getByLabelText('30-day analytics readiness')).toBeVisible()
   })
 
   it('keeps the selected unready range while offering a ready shorter view and current-state panels', async () => {
@@ -397,10 +461,12 @@ describe('AnalyticsScreen', () => {
       screen.getByRole('link', { name: 'Use ready 30-day view' }),
     ).toHaveAttribute('href', expect.stringContaining('range=30'))
     expect(
-      await screen.findByRole('region', { name: 'Recall quality' }),
+      await screen.findByRole('region', {
+        name: 'Observed Recall vs FSRS Estimate',
+      }),
     ).toBeVisible()
     expect(
-      screen.getByRole('region', { name: 'Practice rhythm' }),
+      screen.getByRole('region', { name: 'Practice Rhythm' }),
     ).toBeVisible()
     expect(
       within(
@@ -408,13 +474,7 @@ describe('AnalyticsScreen', () => {
       ).getByText('13 more assessments needed.'),
     ).toBeVisible()
     expect(
-      screen.getByRole('region', { name: 'Upcoming review load' }),
-    ).toBeVisible()
-    expect(
-      screen.getByRole('region', { name: 'Retention health' }),
-    ).toBeVisible()
-    expect(
-      screen.getByRole('region', { name: 'Fragile knowledge' }),
+      screen.getByRole('region', { name: 'Memory Strength' }),
     ).toBeVisible()
   })
 
@@ -475,15 +535,17 @@ describe('AnalyticsScreen', () => {
     renderAnalyticsScreen()
 
     expect(
-      await screen.findByRole('status', { name: 'Practice rhythm readiness' }),
+      await screen.findByRole('status', { name: 'Practice Rhythm readiness' }),
     ).toHaveTextContent('12 more assessments needed.')
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Practice rhythm' }),
+      screen.getByRole('heading', { level: 2, name: 'Practice Rhythm' }),
     ).toBeVisible()
     expect(
-      screen.getByRole('region', { name: 'Practice rhythm' }),
+      screen.getByRole('region', { name: 'Practice Rhythm' }),
     ).toBeVisible()
-    expect(screen.getByRole('region', { name: 'Ratings mix' })).toBeVisible()
+    expect(
+      screen.queryByRole('region', { name: 'Ratings mix' }),
+    ).not.toBeInTheDocument()
   })
 
   it('renders the approved chart hierarchy with explanations and fragile knowledge', async () => {
@@ -492,28 +554,23 @@ describe('AnalyticsScreen', () => {
     renderAnalyticsScreen()
 
     expect(
-      await screen.findByRole('region', { name: 'Recall quality' }),
+      await screen.findByRole('region', {
+        name: 'Observed Recall vs FSRS Estimate',
+      }),
     ).toBeVisible()
     expect(
-      within(screen.getByRole('region', { name: 'Recall quality' })).getByText(
-        /The FSRS model estimate of retrievability immediately before a review/,
+      within(
+        screen.getByRole('region', {
+          name: 'Observed Recall vs FSRS Estimate',
+        }),
+      ).getByText(
+        /reconstructed FSRS retrievability immediately before those exact reviews/,
       ),
     ).toBeVisible()
-    expect(
-      screen.getByRole('region', { name: 'Fragile knowledge' }),
-    ).toBeVisible()
-    expect(screen.getByText('Graph Traversal')).toBeVisible()
-
     const chartRegionNames = [
-      'Recall quality',
-      'Practice rhythm',
-      'Ratings mix',
-      'Where to focus',
-      'Memory strength',
-      'Recent overdue backlog',
-      'Upcoming review load',
-      'Retention health',
-      'Fragile knowledge',
+      'Observed Recall vs FSRS Estimate',
+      'Memory Strength',
+      'Practice Rhythm',
     ]
     const regionOrder = screen.getAllByRole('region').map((region) => {
       const labelledBy = region.getAttribute('aria-labelledby')
@@ -527,11 +584,11 @@ describe('AnalyticsScreen', () => {
 
     expect(chartOrder).toEqual(chartRegionNames)
     const practiceRhythm = screen.getByRole('region', {
-      name: 'Practice rhythm',
+      name: 'Practice Rhythm',
     })
     expect(
       within(practiceRhythm).getByText(
-        /Review volume per selected adaptive time bucket/,
+        /Completed review volume and the Good \+ Easy share/,
       ),
     ).toBeVisible()
     expect(screen.queryByText(/practice days \/ week/i)).not.toBeInTheDocument()
@@ -549,26 +606,29 @@ describe('AnalyticsScreen', () => {
   it('renders chart-level empty states when the service is ready but a series is empty', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(
       readyAnalyticsSummary({
-        recallQuality: [],
-        fragileKnowledge: [],
+        views: {
+          ...baseAnalyticsSummary().views,
+          observedRecallVsFsrs: {
+            ...baseAnalyticsSummary().views.observedRecallVsFsrs,
+            rows: [],
+          },
+        },
       }),
     )
 
     renderAnalyticsScreen()
 
     const recallPanel = await screen.findByRole('region', {
-      name: 'Recall quality',
+      name: 'Observed Recall vs FSRS Estimate',
     })
     expect(
       within(recallPanel).getByText(
-        'Not enough review data for recall quality yet.',
+        'No reviews in this period have both a valid rating and an FSRS estimate.',
       ),
     ).toBeVisible()
     expect(
-      within(
-        screen.getByRole('region', { name: 'Fragile knowledge' }),
-      ).getByText(/No fragile knowledge detected/),
-    ).toBeVisible()
+      screen.queryByRole('region', { name: 'Fragile knowledge' }),
+    ).not.toBeInTheDocument()
   })
 })
 
