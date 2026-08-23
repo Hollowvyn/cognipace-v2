@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
@@ -127,8 +127,14 @@ describe('Phase 2 historical analytics views', () => {
               evidence: 'measured',
             },
           ],
-          selectedHardAgain: 1,
-          selectedValidRatings: 4,
+          selectedHardAgain: 250,
+          selectedValidRatings: 1000,
+          comparison: {
+            direction: 'down',
+            difference: -0.3,
+            previousHardAgainShare: 0.5,
+            previousValidRatings: 1000,
+          },
         }}
       />,
     )
@@ -136,8 +142,20 @@ describe('Phase 2 historical analytics views', () => {
     expect(
       screen.getByRole('img', { name: 'Ratings Mix chart' }),
     ).toHaveAttribute('aria-roledescription', '100% stacked column chart')
+    const ratingsChart = screen.getByTestId('ratings-mix-keyboard-chart')
+    expect(ratingsChart.closest('svg')).toHaveAttribute('tabindex', '0')
     expect(
-      screen.getByText(/This period's rating mix is based on 4 valid ratings/),
+      screen.getByRole('list', { name: 'Ratings Mix categories' }),
+    ).toHaveTextContent('AgainHardGoodEasy')
+    expect(
+      screen.getByText(
+        /This period's rating mix is based on 1,000 valid ratings/,
+      ),
+    ).toBeVisible()
+    expect(
+      screen.getByText(
+        'Hard + Again is down 30 pp from the equivalent prior period (50%; 1,000 valid ratings).',
+      ),
     ).toBeVisible()
     await user.click(screen.getByRole('tab', { name: 'Table' }))
     expect(
@@ -160,15 +178,15 @@ describe('Phase 2 historical analytics views', () => {
               id: 'graphs',
               topic: 'Graphs',
               reviewSuccess: 0.6,
-              goodEasy: 6,
-              validRatings: 10,
-              distinctProblems: 3,
+              goodEasy: 750,
+              validRatings: 1000,
+              distinctProblems: 300,
               evidence: 'Measured',
             },
           ],
-          strongerQualifyingTopics: 2,
+          strongerQualifyingTopics: 1000,
           lowEvidenceTopics: [
-            { topic: 'Trees', validRatings: 8, distinctProblems: 2 },
+            { topic: 'Trees', validRatings: 800, distinctProblems: 200 },
           ],
           additionalLowEvidenceTopics: 0,
         }}
@@ -178,14 +196,18 @@ describe('Phase 2 historical analytics views', () => {
     expect(
       screen.getByRole('img', { name: 'Topic Performance chart' }),
     ).toHaveAttribute('aria-roledescription', 'ranked horizontal bar chart')
+    const topicChart = screen.getByTestId('topic-performance-keyboard-chart')
+    expect(topicChart.closest('svg')).toHaveAttribute('tabindex', '0')
+    expect(within(topicChart).getByText('60%')).toBeVisible()
     expect(
-      screen.getByText(/2 stronger qualifying topics omitted/),
+      screen.getByText(/1,000 stronger qualifying topics omitted/),
     ).toBeVisible()
     await user.click(screen.getByRole('tab', { name: 'Table' }))
     expect(screen.getByRole('rowheader', { name: 'Graphs' })).toBeVisible()
     expect(
       screen.getByRole('columnheader', { name: 'Distinct problems' }),
     ).toBeVisible()
+    expect(screen.getByText('1,000')).toBeVisible()
     expect(
       screen.queryByRole('button', { name: 'Next' }),
     ).not.toBeInTheDocument()

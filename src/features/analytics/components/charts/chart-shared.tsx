@@ -44,6 +44,11 @@ const dateLabelFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
   timeZone: 'UTC',
 })
+const countFormatter = new Intl.NumberFormat('en-US')
+
+export function formatCount(value: number): string {
+  return countFormatter.format(value)
+}
 
 export function formatChartDate(value: string): string {
   return dateLabelFormatter.format(new Date(`${value}T00:00:00.000Z`))

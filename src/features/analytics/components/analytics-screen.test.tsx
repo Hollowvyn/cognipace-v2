@@ -150,6 +150,12 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
         rows: [],
         selectedHardAgain: 0,
         selectedValidRatings: 0,
+        comparison: {
+          previousHardAgainShare: null,
+          previousValidRatings: 0,
+          difference: null,
+          direction: null,
+        },
       },
       topicPerformance: {
         rows: [],
@@ -427,6 +433,12 @@ describe('AnalyticsScreen', () => {
             rows: [],
             selectedHardAgain: 0,
             selectedValidRatings: 0,
+            comparison: {
+              previousHardAgainShare: null,
+              previousValidRatings: 0,
+              difference: null,
+              direction: null,
+            },
           },
           topicPerformance: {
             rows: [],
@@ -463,6 +475,45 @@ describe('AnalyticsScreen', () => {
     ).toBeVisible()
     expect(screen.getAllByRole('tab', { name: 'Chart' })).toHaveLength(5)
     expect(screen.getAllByRole('tab', { name: 'Table' })).toHaveLength(5)
+  })
+
+  it('uses Topic Performance qualifying evidence instead of legacy correctness readiness', async () => {
+    const summary = readyAnalyticsSummary()
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...summary,
+      historicalReadiness: {
+        ...summary.historicalReadiness,
+        topics: createUnreadyHistoricalReadiness().topics,
+      },
+      views: {
+        ...summary.views,
+        topicPerformance: {
+          ...summary.views.topicPerformance,
+          rows: [
+            {
+              id: 'graphs',
+              topic: 'Graphs',
+              reviewSuccess: 0.6,
+              goodEasy: 6,
+              validRatings: 10,
+              distinctProblems: 3,
+              evidence: 'Measured',
+            },
+          ],
+        },
+      },
+    })
+
+    renderAnalyticsScreen()
+
+    expect(
+      await screen.findByText(
+        '1 qualifying topic meets the 10 valid-rating and 3 reviewed-problem gates.',
+      ),
+    ).toBeVisible()
+    expect(
+      screen.queryByLabelText('Topic Performance readiness'),
+    ).not.toBeInTheDocument()
   })
 
   it('shows the observed-correctness low-sample warning', async () => {

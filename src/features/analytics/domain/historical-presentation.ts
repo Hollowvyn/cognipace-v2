@@ -6,8 +6,16 @@ import {
   type NormalizedFsrsSchedulingOptions,
   type ReviewRating,
 } from '@/lib/fsrs'
+import {
+  normalizeTopicLabelList,
+  normalizeTopicLookupKey,
+} from '@/features/problems/domain/topic-taxonomy'
 
 import type { AnalyticsBucket } from './analytics-range-policy'
+import {
+  shiftAnalyticsCalendarDays,
+  type AnalyticsTimeFrame,
+} from './analytics-time'
 import {
   buildAdaptiveDurationScale,
   buildAdaptivePercentageDomain,
@@ -35,6 +43,7 @@ export interface HistoricalPresentationOptions {
   buckets: readonly AnalyticsBucket[]
   fsrsOptions: NormalizedFsrsSchedulingOptions
   timeZone: string
+  timeFrame: AnalyticsTimeFrame
 }
 
 export interface HistoricalPresentationScale {
@@ -135,6 +144,7 @@ export interface HistoricalAnalyticsViews {
     rows: RatingsMixRow[]
     selectedHardAgain: number
     selectedValidRatings: number
+    comparison: RatingsMixComparison
   }
   topicPerformance: {
     rows: TopicPerformanceRow[]
@@ -142,6 +152,13 @@ export interface HistoricalAnalyticsViews {
     lowEvidenceTopics: LowEvidenceTopicRow[]
     additionalLowEvidenceTopics: number
   }
+}
+
+export interface RatingsMixComparison {
+  previousHardAgainShare: number | null
+  previousValidRatings: number
+  difference: number | null
+  direction: 'up' | 'down' | 'flat' | null
 }
 
 export function buildHistoricalAnalyticsViews(
@@ -264,6 +281,14 @@ export function buildHistoricalAnalyticsViews(
     }
   })
   const topicPerformance = buildTopicPerformance(events, options)
+  const selectedHardAgain = ratingsMixRows.reduce(
+    (total, row) => total + row.challengingReviews,
+    0,
+  )
+  const selectedValidRatings = ratingsMixRows.reduce(
+    (total, row) => total + row.validRatings,
+    0,
+  )
 
   const durationScale = buildAdaptiveDurationScale(
     memoryRows.flatMap((row) =>
@@ -298,16 +323,69 @@ export function buildHistoricalAnalyticsViews(
     },
     ratingsMix: {
       rows: ratingsMixRows,
-      selectedHardAgain: ratingsMixRows.reduce(
-        (total, row) => total + row.challengingReviews,
-        0,
-      ),
-      selectedValidRatings: ratingsMixRows.reduce(
-        (total, row) => total + row.validRatings,
-        0,
+      selectedHardAgain,
+      selectedValidRatings,
+      comparison: buildRatingsMixComparison(
+        events,
+        options,
+        selectedHardAgain,
+        selectedValidRatings,
       ),
     },
     topicPerformance,
+  }
+}
+
+function buildRatingsMixComparison(
+  events: readonly HistoricalAnalyticsReviewEvent[],
+  options: HistoricalPresentationOptions,
+  selectedHardAgain: number,
+  selectedValidRatings: number,
+): RatingsMixComparison {
+  const previousStart = shiftAnalyticsCalendarDays(
+    options.start,
+    -options.timeFrame.requestedDays,
+    options.timeFrame.timeZone,
+  )
+  const previousEnd = shiftAnalyticsCalendarDays(
+    new Date(options.timeFrame.asOf),
+    -options.timeFrame.requestedDays,
+    options.timeFrame.timeZone,
+  )
+  const previousRatings = events.filter(
+    (event) =>
+      event.reviewedAt >= previousStart &&
+      event.reviewedAt < previousEnd &&
+      isReviewRating(event.rating),
+  )
+  const previousHardAgain = previousRatings.filter(
+    (event) => event.rating === 'again' || event.rating === 'hard',
+  ).length
+  const previousValidRatings = previousRatings.length
+  const qualifies = selectedValidRatings >= 10 && previousValidRatings >= 10
+  const selectedShare =
+    selectedValidRatings === 0 ? null : selectedHardAgain / selectedValidRatings
+  const previousHardAgainShare =
+    qualifies && previousValidRatings > 0
+      ? previousHardAgain / previousValidRatings
+      : null
+  const difference =
+    selectedShare === null || previousHardAgainShare === null
+      ? null
+      : selectedShare - previousHardAgainShare
+
+  return {
+    previousHardAgainShare,
+    previousValidRatings,
+    difference,
+    direction:
+      difference === null
+        ? null
+        : difference > 0
+          ? 'up'
+          : difference < 0
+            ? 'down'
+            : 'flat',
   }
 }
 
@@ -391,10 +469,8 @@ function buildTopicPerformance(
 
 function uniqueNormalizedTopics(labels: readonly string[]) {
   const topics = new Map<string, { topic: string; normalizedTopic: string }>()
-  for (const label of labels) {
-    const topic = label.trim().replaceAll(/\s+/g, ' ')
-    if (!topic) continue
-    const normalizedTopic = topic.toLocaleLowerCase()
+  for (const topic of normalizeTopicLabelList(labels)) {
+    const normalizedTopic = normalizeTopicLookupKey(topic)
     if (!topics.has(normalizedTopic))
       topics.set(normalizedTopic, { topic, normalizedTopic })
   }

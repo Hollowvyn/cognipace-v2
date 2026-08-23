@@ -7,10 +7,12 @@ import {
 
 import {
   buildHistoricalAnalyticsViews,
+  type HistoricalPresentationOptions,
   type HistoricalAnalyticsReviewEvent,
 } from './historical-presentation'
+import { buildAnalyticsTimeFrame } from './analytics-time'
 
-const options = {
+const options: HistoricalPresentationOptions = {
   buckets: [
     {
       key: '2026-08-01',
@@ -29,6 +31,15 @@ const options = {
   fsrsOptions: normalizeFsrsSchedulingOptions({ targetRetention: 0.9 }),
   start: new Date('2026-08-01T00:00:00.000Z'),
   timeZone: 'UTC',
+  timeFrame: {
+    asOf: '2026-08-02T23:59:59.999Z',
+    timeZone: 'UTC',
+    timeZoneFallback: false,
+    requestedDays: 14,
+    periodStart: '2026-08-01T00:00:00.000Z',
+    periodEnd: '2026-08-03T00:00:00.000Z',
+    buckets: [],
+  },
 }
 
 function event(
@@ -201,6 +212,119 @@ describe('buildHistoricalAnalyticsViews', () => {
           },
         ],
       },
+    })
+  })
+
+  it('exposes an equivalent eligible prior-period Hard + Again comparison only when both periods qualify', () => {
+    const selected = Array.from({ length: 10 }, (_, index) =>
+      event({
+        id: `selected-${index}`,
+        rating: index < 2 ? 'again' : 'good',
+        reviewedAt: new Date(`2026-08-0${index < 5 ? 1 : 2}T12:00:00.000Z`),
+      }),
+    )
+    const previous = Array.from({ length: 10 }, (_, index) =>
+      event({
+        id: `previous-${index}`,
+        rating: index < 5 ? 'again' : 'good',
+        reviewedAt: new Date(`2026-07-1${index < 5 ? 8 : 9}T12:00:00.000Z`),
+      }),
+    )
+
+    const views = buildHistoricalAnalyticsViews([...selected, ...previous], {
+      ...options,
+      end: new Date('2026-08-02T23:59:59.999Z'),
+      start: new Date('2026-08-01T00:00:00.000Z'),
+    })
+
+    expect(views).toMatchObject({
+      ratingsMix: {
+        comparison: {
+          direction: 'down',
+          difference: -0.3,
+          previousHardAgainShare: 0.5,
+          previousValidRatings: 10,
+        },
+      },
+    })
+  })
+
+  it('uses calendar-day shifting for an equivalent prior period across daylight saving time', () => {
+    const asOf = new Date('2026-03-10T16:00:00.000Z')
+    const timeFrame = buildAnalyticsTimeFrame({
+      asOf,
+      requestedDays: 14,
+      timeZone: 'America/New_York',
+    })
+    const timeFrameOptions = {
+      ...options,
+      buckets: [
+        {
+          key: 'selected',
+          start: new Date(timeFrame.periodStart),
+          end: asOf,
+          label: 'selected',
+        },
+      ],
+      end: asOf,
+      start: new Date(timeFrame.periodStart),
+      timeFrame,
+      timeZone: 'America/New_York',
+    }
+    const selected = Array.from({ length: 10 }, (_, index) =>
+      event({
+        id: `selected-dst-${index}`,
+        rating: index < 2 ? 'again' : 'good',
+        reviewedAt: new Date('2026-03-10T15:00:00.000Z'),
+      }),
+    )
+    const prior = Array.from({ length: 10 }, (_, index) =>
+      event({
+        id: `prior-dst-${index}`,
+        rating: index < 5 ? 'again' : 'good',
+        // 11:30 AM EST is eligible through the equivalent 12:00 PM cutoff.
+        reviewedAt: new Date('2026-02-24T16:30:00.000Z'),
+      }),
+    )
+
+    const views = buildHistoricalAnalyticsViews(
+      [...selected, ...prior],
+      timeFrameOptions,
+    )
+
+    expect(views.ratingsMix.comparison).toMatchObject({
+      direction: 'down',
+      previousHardAgainShare: 0.5,
+      previousValidRatings: 10,
+    })
+  })
+
+  it('withholds the prior-period direction when either comparison period has fewer than 10 valid ratings', () => {
+    const selected = Array.from({ length: 10 }, (_, index) =>
+      event({
+        id: `selected-qualified-${index}`,
+        rating: 'good',
+        reviewedAt: new Date('2026-08-01T12:00:00.000Z'),
+      }),
+    )
+    const prior = Array.from({ length: 9 }, (_, index) =>
+      event({
+        id: `prior-insufficient-${index}`,
+        rating: 'again',
+        reviewedAt: new Date('2026-07-18T12:00:00.000Z'),
+      }),
+    )
+
+    const views = buildHistoricalAnalyticsViews(
+      [...selected, ...prior],
+      options,
+    )
+
+    expect(views.ratingsMix.comparison).toEqual({
+      previousHardAgainShare: null,
+      previousValidRatings: 9,
+      difference: null,
+      direction: null,
     })
   })
 

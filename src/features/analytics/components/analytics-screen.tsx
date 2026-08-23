@@ -185,6 +185,7 @@ function AnalyticsHistoricalStory({
           id="topic-performance"
           question="Which sufficiently practiced topics had lower Review Success?"
           readiness={data.historicalReadiness.topics}
+          showReadiness={false}
           title="Topic Performance"
         >
           <TopicPerformanceView
@@ -202,6 +203,7 @@ function PhaseTwoPanel({
   id,
   question,
   readiness,
+  showReadiness = true,
   title,
   children,
 }: {
@@ -209,6 +211,7 @@ function PhaseTwoPanel({
   id: string
   question: string
   readiness: SerializedAnalyticsSummary['historicalReadiness']['recallQuality']
+  showReadiness?: boolean
   title: string
   children: ReactNode
 }) {
@@ -219,7 +222,7 @@ function PhaseTwoPanel({
       question={question}
       title={title}
     >
-      {!readiness.ready ? (
+      {showReadiness && !readiness.ready ? (
         <AnalyticsReadinessState
           compact
           readiness={readiness}

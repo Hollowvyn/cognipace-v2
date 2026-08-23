@@ -177,7 +177,7 @@ export async function getAnalyticsSummary(
 
   const chartOptions: AnalyticsRangeOptions = {
     start: periodStart,
-    end: periodEnd,
+    end: now,
     buckets,
     fsrsOptions,
     timeZone: presentationTimeFrame.timeZone,
@@ -190,6 +190,7 @@ export async function getAnalyticsSummary(
     fsrsOptions,
     start: periodStart,
     timeZone: presentationTimeFrame.timeZone,
+    timeFrame: presentationTimeFrame,
   })
   const baselineEvidenceCounts = buildBucketEvidenceCounts(
     analyticsReviewHistory,

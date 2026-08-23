@@ -139,6 +139,12 @@ const validSummary: SerializedAnalyticsSummary = {
       rows: [],
       selectedHardAgain: 0,
       selectedValidRatings: 0,
+      comparison: {
+        previousHardAgainShare: null,
+        previousValidRatings: 0,
+        difference: null,
+        direction: null,
+      },
     },
     topicPerformance: {
       rows: [],

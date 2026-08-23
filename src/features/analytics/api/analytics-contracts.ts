@@ -257,6 +257,13 @@ export const lowEvidenceTopicRowSchema = z.object({
   distinctProblems: countSchema,
 })
 
+export const ratingsMixComparisonSchema = z.object({
+  previousHardAgainShare: nullablePercentageSchema,
+  previousValidRatings: countSchema,
+  difference: z.number().min(-1).max(1).nullable(),
+  direction: z.enum(['up', 'down', 'flat']).nullable(),
+})
+
 export const analyticsViewsSchema = z.object({
   observedRecallVsFsrs: z.object({
     rows: z.array(observedRecallVsFsrsRowSchema),
@@ -276,6 +283,7 @@ export const analyticsViewsSchema = z.object({
     rows: z.array(ratingsMixRowSchema),
     selectedHardAgain: countSchema,
     selectedValidRatings: countSchema,
+    comparison: ratingsMixComparisonSchema,
   }),
   topicPerformance: z.object({
     rows: z.array(topicPerformanceRowSchema).max(5),

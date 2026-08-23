@@ -6,6 +6,7 @@ import {
   CartesianGrid,
   ComposedChart,
   ReferenceLine,
+  LabelList,
   XAxis,
   YAxis,
 } from 'recharts'
@@ -17,6 +18,7 @@ import type { AnalyticsViews } from '../api/analytics-contracts'
 import { LineSegments } from './charts/line-segments'
 import {
   formatBucketLabel,
+  formatCount,
   formatDays,
   formatPercent,
 } from './charts/chart-shared'
@@ -334,7 +336,7 @@ export function RatingsMixView({
         chart={
           hasRatings ? (
             <ChartContainer
-              accessibleDescription={`Again, Hard, Good, and Easy shares for valid ratings in each selected-period bucket. Scale: 0%–100%. ${view.selectedValidRatings} valid ratings in the selected period.`}
+              accessibleDescription={`Again, Hard, Good, and Easy shares for valid ratings in each selected-period bucket. Scale: 0%–100%. ${formatCount(view.selectedValidRatings)} valid ratings in the selected period.`}
               accessibleName="Ratings Mix chart"
               aria-label="Ratings Mix chart"
               aria-roledescription="100% stacked column chart"
@@ -352,7 +354,9 @@ export function RatingsMixView({
               role="img"
             >
               <BarChart
+                accessibilityLayer
                 data={view.rows}
+                data-testid="ratings-mix-keyboard-chart"
                 margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
               >
                 <CartesianGrid stroke="var(--color-border)" vertical={false} />
@@ -405,6 +409,7 @@ export function RatingsMixView({
                   stackId="ratings"
                 />
               </BarChart>
+              <RatingsMixLegend />
             </ChartContainer>
           ) : (
             <Empty message="No valid review ratings are available in this period." />
@@ -418,10 +423,23 @@ export function RatingsMixView({
         }
       />
       <p className="m-0 text-sm text-muted-foreground">
-        This period&apos;s rating mix is based on {view.selectedValidRatings}{' '}
-        valid ratings. Hard + Again: {view.selectedHardAgain} of{' '}
-        {view.selectedValidRatings} ({formatPercent(challengingShare)}).
+        This period&apos;s rating mix is based on{' '}
+        {formatCount(view.selectedValidRatings)} valid ratings. Hard + Again:{' '}
+        {formatCount(view.selectedHardAgain)} of{' '}
+        {formatCount(view.selectedValidRatings)} (
+        {formatPercent(challengingShare)}).
       </p>
+      {view.comparison.direction !== null &&
+      view.comparison.difference !== null &&
+      view.comparison.previousHardAgainShare !== null ? (
+        <p className="m-0 text-sm text-muted-foreground">
+          Hard + Again is {view.comparison.direction}{' '}
+          {formatDifferencePoints(view.comparison.difference)} from the
+          equivalent prior period (
+          {formatPercent(view.comparison.previousHardAgainShare)};{' '}
+          {formatCount(view.comparison.previousValidRatings)} valid ratings).
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -440,7 +458,7 @@ export function TopicPerformanceView({
         chart={
           hasTopics ? (
             <ChartContainer
-              accessibleDescription={`Ranked Topic Review Success for the selected period. Scale: 0%–100%. ${view.rows.length} qualifying topics shown.`}
+              accessibleDescription={`Ranked Topic Review Success for the selected period. Scale: 0%–100%. ${formatCount(qualifyingTopicCount(view))} qualifying topics shown.`}
               accessibleName="Topic Performance chart"
               aria-label="Topic Performance chart"
               aria-roledescription="ranked horizontal bar chart"
@@ -455,7 +473,9 @@ export function TopicPerformanceView({
               role="img"
             >
               <BarChart
+                accessibilityLayer
                 data={view.rows}
+                data-testid="topic-performance-keyboard-chart"
                 layout="vertical"
                 margin={{ bottom: 4, left: 8, right: 36, top: 8 }}
               >
@@ -488,7 +508,15 @@ export function TopicPerformanceView({
                   isAnimationActive={false}
                   name="Review Success"
                   radius={[0, 3, 3, 0]}
-                />
+                >
+                  <LabelList
+                    dataKey="reviewSuccess"
+                    formatter={(value) =>
+                      formatPercent(typeof value === 'number' ? value : null)
+                    }
+                    position="right"
+                  />
+                </Bar>
               </BarChart>
             </ChartContainer>
           ) : (
@@ -501,8 +529,11 @@ export function TopicPerformanceView({
         Showing the qualifying topics with the lowest Review Success in this
         period.
         {view.strongerQualifyingTopics > 0
-          ? ` ${view.strongerQualifyingTopics} stronger qualifying topic${view.strongerQualifyingTopics === 1 ? '' : 's'} omitted.`
+          ? ` ${formatCount(view.strongerQualifyingTopics)} stronger qualifying topic${view.strongerQualifyingTopics === 1 ? '' : 's'} omitted.`
           : ''}
+      </p>
+      <p className="m-0 text-sm text-muted-foreground" role="status">
+        {formatTopicPerformanceStatus(view)}
       </p>
       {view.lowEvidenceTopics.length > 0 ? (
         <details className="text-sm text-muted-foreground">
@@ -512,17 +543,58 @@ export function TopicPerformanceView({
             {view.lowEvidenceTopics
               .map(
                 (topic) =>
-                  `${topic.topic} (${topic.validRatings} valid ratings across ${topic.distinctProblems} problems)`,
+                  `${topic.topic} (${formatCount(topic.validRatings)} valid ratings across ${formatCount(topic.distinctProblems)} problems)`,
               )
               .join(', ')}
             .
             {view.additionalLowEvidenceTopics > 0
-              ? ` ${view.additionalLowEvidenceTopics} more low-evidence topic${view.additionalLowEvidenceTopics === 1 ? '' : 's'} not listed.`
+              ? ` ${formatCount(view.additionalLowEvidenceTopics)} more low-evidence topic${view.additionalLowEvidenceTopics === 1 ? '' : 's'} not listed.`
               : ''}
           </p>
         </details>
       ) : null}
     </div>
+  )
+}
+
+function qualifyingTopicCount(view: AnalyticsViews['topicPerformance']) {
+  return view.rows.length + view.strongerQualifyingTopics
+}
+
+function formatTopicPerformanceStatus(
+  view: AnalyticsViews['topicPerformance'],
+) {
+  const qualifying = qualifyingTopicCount(view)
+  return qualifying === 0
+    ? 'No topic meets the 10 valid-rating and 3 reviewed-problem gates in this period.'
+    : `${formatCount(qualifying)} qualifying topic${qualifying === 1 ? '' : 's'} ${qualifying === 1 ? 'meets' : 'meet'} the 10 valid-rating and 3 reviewed-problem gates.`
+}
+
+function RatingsMixLegend() {
+  const categories = [
+    ['Again', 'var(--cp-analytics-again)'],
+    ['Hard', 'var(--cp-analytics-hard)'],
+    ['Good', 'var(--cp-analytics-good)'],
+    ['Easy', 'var(--cp-analytics-easy)'],
+  ] as const
+
+  return (
+    <ul
+      aria-label="Ratings Mix categories"
+      className="m-0 flex flex-wrap justify-center gap-x-4 gap-y-1 p-0 text-xs"
+      role="list"
+    >
+      {categories.map(([label, color]) => (
+        <li className="flex items-center gap-1" key={label}>
+          <span
+            aria-hidden="true"
+            className="h-2 w-2 rounded-sm"
+            style={{ backgroundColor: color }}
+          />
+          {label}
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -656,8 +728,8 @@ function RatingsMixTable({
         formatRatingCell(row.hard, row.hardShare),
         formatRatingCell(row.good, row.goodShare),
         formatRatingCell(row.easy, row.easyShare),
-        row.validRatings,
-        row.challengingReviews,
+        formatCount(row.validRatings),
+        formatCount(row.challengingReviews),
         `${evidenceText(row.evidence)}${row.isPartial ? ' · In progress' : ''}`,
       ]}
     />
@@ -702,13 +774,13 @@ function TopicPerformanceTable({
               {formatPercent(row.reviewSuccess)}
             </td>
             <td className="px-2 py-2 text-right tabular-nums">
-              {row.goodEasy}
+              {formatCount(row.goodEasy)}
             </td>
             <td className="px-2 py-2 text-right tabular-nums">
-              {row.validRatings}
+              {formatCount(row.validRatings)}
             </td>
             <td className="px-2 py-2 text-right tabular-nums">
-              {row.distinctProblems}
+              {formatCount(row.distinctProblems)}
             </td>
             <td className="px-2 py-2 text-right">{row.evidence}</td>
           </tr>
@@ -894,7 +966,7 @@ function RatingsMixTooltip({
         `Hard: ${formatRatingCell(row.hard, row.hardShare)}`,
         `Good: ${formatRatingCell(row.good, row.goodShare)}`,
         `Easy: ${formatRatingCell(row.easy, row.easyShare)}`,
-        `Valid ratings: ${row.validRatings}`,
+        `Valid ratings: ${formatCount(row.validRatings)}`,
         `Partial state: ${row.isPartial ? 'In progress' : 'Complete'}`,
       ]}
     />
@@ -918,9 +990,9 @@ function TopicPerformanceTooltip({
       values={[
         `Topic: ${row.topic}`,
         `Review Success: ${formatPercent(row.reviewSuccess)}`,
-        `Good + Easy: ${row.goodEasy}`,
-        `Valid ratings: ${row.validRatings}`,
-        `Distinct reviewed problems: ${row.distinctProblems}`,
+        `Good + Easy: ${formatCount(row.goodEasy)}`,
+        `Valid ratings: ${formatCount(row.validRatings)}`,
+        `Distinct reviewed problems: ${formatCount(row.distinctProblems)}`,
         `Selected period: ${selectedPeriod}`,
         `Evidence: ${row.evidence}`,
       ]}
@@ -968,8 +1040,11 @@ function formatDifference(value: number | null) {
 }
 function formatRatingCell(count: number, share: number | null) {
   return share === null
-    ? `${count} (Not measured)`
-    : `${count} (${formatPercent(share)})`
+    ? `${formatCount(count)} (Not measured)`
+    : `${formatCount(count)} (${formatPercent(share)})`
+}
+function formatDifferencePoints(value: number) {
+  return `${Math.round(Math.abs(value) * 100)} pp`
 }
 function formatSignedDays(value: number | null) {
   return value === null
