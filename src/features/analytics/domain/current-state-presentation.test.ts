@@ -1,0 +1,132 @@
+import { describe, expect, it } from 'vitest'
+
+import { createInitialFsrsCard, scheduleReview } from '@/lib/fsrs'
+
+import { buildCurrentStateAnalyticsViews } from './current-state-presentation'
+
+const asOf = new Date('2026-08-22T12:00:00.000Z')
+
+describe('current-state Analytics presentation', () => {
+  it('retains the full eligible Retention Map cohort in deterministic priority order and exposes all six regions', () => {
+    const views = buildCurrentStateAnalyticsViews(
+      [
+        input('strong', { targetDurationDays: 14, retrievability: 0.95 }),
+        input('on-target-short', {
+          targetDurationDays: 3,
+          retrievability: 0.95,
+        }),
+        input('watch-durable', {
+          targetDurationDays: 14,
+          retrievability: 0.85,
+        }),
+        input('watch-short', { targetDurationDays: 3, retrievability: 0.85 }),
+        input('risk-durable', { targetDurationDays: 14, retrievability: 0.6 }),
+        input('risk-short', { targetDurationDays: 3, retrievability: 0.7 }),
+      ],
+      { asOf, targetRetention: 0.9, timeZone: 'UTC' },
+    )
+
+    expect(views.retentionMap.totalEligible).toBe(6)
+    expect(views.retentionMap.rows.map((row) => row.slug)).toEqual([
+      'risk-durable',
+      'risk-short',
+      'watch-short',
+      'watch-durable',
+      'on-target-short',
+      'strong',
+    ])
+    expect(views.retentionMap.rows.map((row) => row.region)).toEqual([
+      'needs-attention',
+      'highest-attention',
+      'watch-closely',
+      'near-target-more-durable',
+      'on-target-now',
+      'strongest-position',
+    ])
+    expect(views.retentionMap.durationScale.domain).toEqual([1, 100])
+    expect(views.retentionMap.recallScale.domain).toEqual([0.45, 1])
+  })
+
+  it('caps Retention Map rows at 30 while retaining the full eligible count', () => {
+    const views = buildCurrentStateAnalyticsViews(
+      Array.from({ length: 31 }, (_, index) =>
+        input(`risk-${String(index).padStart(2, '0')}`, {
+          retrievability: 0.7,
+          targetDurationDays: index + 1,
+        }),
+      ),
+      { asOf, targetRetention: 0.9, timeZone: 'UTC' },
+    )
+
+    expect(views.retentionMap.totalEligible).toBe(31)
+    expect(views.retentionMap.rows).toHaveLength(30)
+    expect(views.retentionMap.rows[0]).toMatchObject({
+      rank: 1,
+      slug: 'risk-00',
+    })
+  })
+
+  it('builds Memory Signals from only supported current signals with transparent severity lanes', () => {
+    const views = buildCurrentStateAnalyticsViews(
+      [
+        input('below', { retrievability: 0.7, targetDurationDays: 10 }),
+        input('overdue', {
+          dueAt: new Date('2026-08-20T12:00:00.000Z'),
+          retrievability: 0.95,
+          targetDurationDays: 10,
+        }),
+        input('durability', { retrievability: 0.95, targetDurationDays: 3 }),
+        input('due-now', {
+          dueAt: asOf,
+          retrievability: 0.95,
+          targetDurationDays: 10,
+        }),
+      ],
+      { asOf, targetRetention: 0.9, timeZone: 'UTC' },
+    )
+
+    expect(views.memorySignals.totalQualifying).toBe(3)
+    expect(views.memorySignals.rows.map((row) => row.slug)).toEqual([
+      'below',
+      'overdue',
+      'durability',
+    ])
+    expect(views.memorySignals.rows[1]?.reasons).toEqual([
+      { kind: 'overdue', label: '2d overdue' },
+    ])
+    expect(views.memorySignals.rows[2]?.reasons).toEqual([
+      { kind: 'low-durability', label: 'Low durability 3d' },
+    ])
+  })
+})
+
+function input(
+  slug: string,
+  overrides: Partial<{
+    dueAt: Date
+    retrievability: number
+    targetDurationDays: number
+  }> = {},
+) {
+  const lastReviewAt = new Date('2026-08-20T12:00:00.000Z')
+  const card = scheduleReview(
+    createInitialFsrsCard(lastReviewAt),
+    'easy',
+    lastReviewAt,
+  ).card
+
+  return {
+    card,
+    cardId: `${slug}-card`,
+    difficulty: 5,
+    dueAt: new Date('2026-08-25T12:00:00.000Z'),
+    lapseCount: 0,
+    lastReviewAt,
+    retrievability: 0.95,
+    slug,
+    suspended: false,
+    targetDurationDays: 10,
+    title: slug,
+    ...overrides,
+  }
+}

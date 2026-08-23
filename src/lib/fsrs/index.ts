@@ -35,6 +35,7 @@ export {
 export {
   createInitialFsrsCard,
   getRetrievability,
+  getTargetRetentionDuration,
   projectReviewSchedule,
   replayReviewHistory,
   replayReviewHistorySequence,

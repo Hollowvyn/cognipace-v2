@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   createInitialFsrsCard,
+  getTargetRetentionDuration,
   getRetrievability,
   projectReviewSchedule,
   replayReviewHistory,
@@ -116,6 +117,27 @@ describe('fsrs scheduler wrapper', () => {
 
     expect(retrievability).toBeGreaterThan(0)
     expect(retrievability).toBeLessThanOrEqual(1)
+  })
+
+  it('derives a positive target-crossing duration through the same FSRS curve', () => {
+    const card = createReviewedCard()
+    const duration = getTargetRetentionDuration(card, 0.9)
+
+    expect(duration).not.toBeNull()
+    expect(duration).toBeGreaterThan(0)
+    expect(
+      getRetrievability(
+        card,
+        new Date(card.lastReviewAt!.getTime() + duration! * 86_400_000),
+      ),
+    ).toBeCloseTo(0.9, 1)
+  })
+
+  it('rejects target durations that cannot be represented on the current FSRS curve', () => {
+    const card = createReviewedCard()
+
+    expect(getTargetRetentionDuration(card, 1)).toBeNull()
+    expect(getTargetRetentionDuration(card, 0)).toBeNull()
   })
 
   it.each(reviewRatings)(

@@ -345,6 +345,14 @@ function emptyHistoricalViews(
       lowEvidenceTopics: [],
       additionalLowEvidenceTopics: 0,
     },
+    retentionMap: {
+      rows: [],
+      totalEligible: 0,
+      recallScale: { domain: [0, 1], ticks: [0, 1] },
+      durationScale: { domain: [1, 10], ticks: [1, 10] },
+      targetRetention,
+    },
+    memorySignals: { rows: [], totalQualifying: 0 },
   }
 }
 

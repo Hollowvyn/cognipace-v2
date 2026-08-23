@@ -1,5 +1,6 @@
 import {
   getRetrievability,
+  getTargetRetentionDuration,
   normalizeFsrsSchedulingOptions,
   parseFsrsCardState,
   type FsrsCardSnapshot,
@@ -58,6 +59,7 @@ import {
   getAnalyticsDateKey,
 } from '../domain/analytics-time'
 import { buildHistoricalAnalyticsViews } from '../domain/historical-presentation'
+import { buildCurrentStateAnalyticsViews } from '../domain/current-state-presentation'
 
 import {
   buildObservedRatingQuality,
@@ -184,14 +186,48 @@ export async function getAnalyticsSummary(
     timeFrame: presentationTimeFrame,
   }
   const analyticsReviewHistory = reviewHistory satisfies AnalyticsReviewEvent[]
-  const views = buildHistoricalAnalyticsViews(analyticsReviewHistory, {
-    buckets,
-    end: new Date(presentationTimeFrame.asOf),
+  const analyticsCurrentCards = buildCurrentAnalyticsCards(
+    currentFsrsCards,
+    now,
     fsrsOptions,
-    start: periodStart,
-    timeZone: presentationTimeFrame.timeZone,
-    timeFrame: presentationTimeFrame,
-  })
+  )
+  const historicalViews = buildHistoricalAnalyticsViews(
+    analyticsReviewHistory,
+    {
+      buckets,
+      end: new Date(presentationTimeFrame.asOf),
+      fsrsOptions,
+      start: periodStart,
+      timeZone: presentationTimeFrame.timeZone,
+      timeFrame: presentationTimeFrame,
+    },
+  )
+  const currentStateViews = buildCurrentStateAnalyticsViews(
+    analyticsCurrentCards.map((card) => ({
+      cardId: card.cardId,
+      slug: card.slug,
+      title: card.title,
+      retrievability: card.retrievability,
+      targetDurationDays: card.fsrsCard
+        ? getTargetRetentionDuration(
+            card.fsrsCard,
+            fsrsOptions.targetRetention,
+            fsrsOptions,
+          )
+        : null,
+      dueAt: card.dueAt,
+      difficulty: card.difficulty,
+      lapseCount: card.lapseCount,
+      lastReviewAt: card.lastReviewAt,
+      suspended: card.suspended ?? false,
+    })),
+    {
+      asOf: now,
+      targetRetention: fsrsOptions.targetRetention,
+      timeZone: presentationTimeFrame.timeZone,
+    },
+  )
+  const views = { ...historicalViews, ...currentStateViews }
   const baselineEvidenceCounts = buildBucketEvidenceCounts(
     analyticsReviewHistory,
     buckets,
@@ -261,11 +297,6 @@ export async function getAnalyticsSummary(
     ),
     bucketKeys: buckets.map((bucket) => bucket.key),
   })
-  const analyticsCurrentCards = buildCurrentAnalyticsCards(
-    currentFsrsCards,
-    now,
-    fsrsOptions,
-  )
   const overdueSnapshots = reconstructOverdueBacklogSnapshots(
     analyticsReviewHistory,
     analyticsCurrentCards,
@@ -435,21 +466,25 @@ function buildCurrentAnalyticsCards(
   now: Date,
   fsrsOptions: ReturnType<typeof normalizeFsrsSchedulingOptions>,
 ): AnalyticsCurrentCard[] {
-  return cards.map((card) => ({
-    cardId: card.cardId,
-    slug: card.problemSlug,
-    title: card.title,
-    topics: card.topics,
-    retrievability: getRetrievability(buildCurrentCard(card), now, fsrsOptions),
-    targetRetention: fsrsOptions.targetRetention,
-    stabilityDays: card.stability,
-    difficulty: card.difficulty,
-    lapseCount: card.lapses,
-    dueAt: card.dueAt,
-    createdAt: card.createdAt,
-    lastReviewAt: card.lastReviewAt,
-    suspended: card.isSuspended || card.practiceStatus === 'suspended',
-  }))
+  return cards.map((card) => {
+    const fsrsCard = buildCurrentCard(card)
+    return {
+      fsrsCard,
+      cardId: card.cardId,
+      slug: card.problemSlug,
+      title: card.title,
+      topics: card.topics,
+      retrievability: getRetrievability(fsrsCard, now, fsrsOptions),
+      targetRetention: fsrsOptions.targetRetention,
+      stabilityDays: card.stability,
+      difficulty: card.difficulty,
+      lapseCount: card.lapses,
+      dueAt: card.dueAt,
+      createdAt: card.createdAt,
+      lastReviewAt: card.lastReviewAt,
+      suspended: card.isSuspended || card.practiceStatus === 'suspended',
+    }
+  })
 }
 
 function buildCurrentCard(card: CurrentFsrsCard): FsrsCardSnapshot {

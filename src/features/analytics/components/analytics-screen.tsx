@@ -19,6 +19,7 @@ import {
   RatingsMixView,
   TopicPerformanceView,
 } from './historical-views'
+import { MemorySignalsView, RetentionMapView } from './current-state-views'
 
 export function AnalyticsScreen({
   range = 30,
@@ -79,6 +80,34 @@ export function AnalyticsScreen({
         />
       ) : null}
       <AnalyticsHistoricalStory data={data} />
+      <AnalyticsCurrentStateStory data={data} />
+    </div>
+  )
+}
+
+function AnalyticsCurrentStateStory({
+  data,
+}: {
+  data: SerializedAnalyticsSummary
+}) {
+  return (
+    <div className="grid min-w-0 gap-4">
+      <AnalyticsChartPanel
+        description="Current FSRS retrievability and total target-crossing duration for active reviewed problems. This is model-estimated memory health, not observed recall or a due queue."
+        id="retention-map"
+        question="Which active memories are below target, and how durable are they?"
+        title="Retention Map"
+      >
+        <RetentionMapView view={data.views.retentionMap} />
+      </AnalyticsChartPanel>
+      <AnalyticsChartPanel
+        description="Current problems that are below recall target, overdue, or have low target-crossing durability."
+        id="memory-signals"
+        question="Which current problems need attention, and exactly why were they flagged?"
+        title="Memory Signals by Problem"
+      >
+        <MemorySignalsView view={data.views.memorySignals} />
+      </AnalyticsChartPanel>
     </div>
   )
 }

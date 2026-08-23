@@ -264,6 +264,45 @@ export const ratingsMixComparisonSchema = z.object({
   direction: z.enum(['up', 'down', 'flat']).nullable(),
 })
 
+const retentionMapStatusSchema = z.enum([
+  'on-target',
+  'watch',
+  'needs-attention',
+])
+const retentionMapRegionSchema = z.enum([
+  'strongest-position',
+  'on-target-now',
+  'near-target-more-durable',
+  'watch-closely',
+  'needs-attention',
+  'highest-attention',
+])
+const retentionMapRowSchema = z.object({
+  rank: z.number().int().positive().max(30),
+  slug: z.string(),
+  title: z.string(),
+  retrievability: percentageSchema,
+  targetRetention: percentageSchema,
+  targetGap: z.number().min(-1).max(1),
+  targetDurationDays: z.number().positive(),
+  lastReviewedAt: z.iso.datetime(),
+  dueAt: z.iso.datetime(),
+  difficulty: z.number(),
+  lapseCount: countSchema,
+  status: retentionMapStatusSchema,
+  region: retentionMapRegionSchema,
+})
+const memorySignalReasonSchema = z.object({
+  kind: z.enum(['below-recall', 'overdue', 'low-durability']),
+  label: z.string().min(1),
+})
+const memorySignalRowSchema = z.object({
+  rank: z.number().int().positive().max(25),
+  slug: z.string(),
+  title: z.string(),
+  reasons: z.array(memorySignalReasonSchema).min(1).max(3),
+})
+
 export const analyticsViewsSchema = z.object({
   observedRecallVsFsrs: z.object({
     rows: z.array(observedRecallVsFsrsRowSchema),
@@ -290,6 +329,17 @@ export const analyticsViewsSchema = z.object({
     strongerQualifyingTopics: countSchema,
     lowEvidenceTopics: z.array(lowEvidenceTopicRowSchema).max(5),
     additionalLowEvidenceTopics: countSchema,
+  }),
+  retentionMap: z.object({
+    rows: z.array(retentionMapRowSchema).max(30),
+    totalEligible: countSchema,
+    recallScale: analyticsScaleSchema,
+    durationScale: analyticsScaleSchema,
+    targetRetention: percentageSchema,
+  }),
+  memorySignals: z.object({
+    rows: z.array(memorySignalRowSchema).max(25),
+    totalQualifying: countSchema,
   }),
 })
 

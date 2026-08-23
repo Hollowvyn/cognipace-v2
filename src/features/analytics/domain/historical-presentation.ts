@@ -30,6 +30,7 @@ import {
   buildMagnitudeScale,
   type AnalyticsScale,
 } from './analytics-scales'
+import type { CurrentStateAnalyticsViews } from './current-state-presentation'
 
 export interface HistoricalAnalyticsReviewEvent {
   id: string
@@ -160,6 +161,8 @@ export interface HistoricalAnalyticsViews {
     lowEvidenceTopics: LowEvidenceTopicRow[]
     additionalLowEvidenceTopics: number
   }
+  retentionMap: CurrentStateAnalyticsViews['retentionMap']
+  memorySignals: CurrentStateAnalyticsViews['memorySignals']
 }
 
 export interface RatingsMixComparison {
@@ -341,6 +344,14 @@ export function buildHistoricalAnalyticsViews(
       ),
     },
     topicPerformance,
+    retentionMap: {
+      rows: [],
+      totalEligible: 0,
+      recallScale: { domain: [0, 1], ticks: [0, 1] },
+      durationScale: { domain: [1, 10], ticks: [1, 10] },
+      targetRetention: options.fsrsOptions.targetRetention,
+    },
+    memorySignals: { rows: [], totalQualifying: 0 },
   }
 }
 

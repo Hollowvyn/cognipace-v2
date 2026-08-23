@@ -50,6 +50,7 @@ export interface AnalyticsCurrentCard {
   createdAt: Date
   lastReviewAt: Date | null
   suspended?: boolean
+  fsrsCard?: import('@/lib/fsrs').FsrsCardSnapshot
 }
 
 export interface AnalyticsOverdueSnapshot {

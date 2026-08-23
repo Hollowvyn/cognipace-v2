@@ -11,6 +11,7 @@ describe('FSRS public API facade', () => {
         'defaultFsrsSchedulingOptions',
         'fsrsCardStates',
         'getRetrievability',
+        'getTargetRetentionDuration',
         'isFsrsCardKind',
         'isFsrsReviewLogSnapshot',
         'isFsrsCardState',
