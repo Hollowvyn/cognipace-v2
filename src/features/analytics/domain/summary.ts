@@ -10,6 +10,11 @@ export interface ObservedRatingQualityResult {
   lowSample: boolean
 }
 
+export interface ObservedRatingPeriod {
+  periodStart: Date
+  periodEnd: Date
+}
+
 export interface AnalyticsMetricSummary {
   value: number | null
   sampleSize: number
@@ -160,11 +165,16 @@ export function buildObservedRatingQuality(
   attempts: Array<{ rating: string; reviewedAt: Date }>,
   now: Date,
   range: 14 | 30 | 90,
+  period?: ObservedRatingPeriod,
 ): ObservedRatingQualityResult {
-  const since = subtractDays(now, range)
+  const since = period?.periodStart ?? subtractDays(now, range)
+  const periodEnd = period?.periodEnd ?? now
   const recent = attempts.filter(
     (a) =>
-      a.reviewedAt >= since && a.reviewedAt <= now && isReviewRating(a.rating),
+      a.reviewedAt >= since &&
+      a.reviewedAt <= periodEnd &&
+      a.reviewedAt <= now &&
+      isReviewRating(a.rating),
   )
   const sampleSize = recent.length
 

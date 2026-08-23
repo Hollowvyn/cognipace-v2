@@ -1002,6 +1002,57 @@ describe('getAnalyticsSummary memory profile', () => {
       dueCount: 1,
     })
   })
+
+  it('uses local frame bounds for quality and Hard + Again comparisons', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-03-08T05:30:00.000Z')
+    const previous = Array.from(
+      { length: 10 },
+      (_, index) => new Date(Date.UTC(2026, 1, 22, 5, index)),
+    )
+    const previousPartialBoundary = new Date('2026-02-22T06:00:00.000Z')
+    const selected = Array.from(
+      { length: 10 },
+      (_, index) => new Date(Date.UTC(2026, 2, 7, 12, index)),
+    )
+    const dates = [...previous, previousPartialBoundary, ...selected]
+
+    await insertAnalyticsProblem(
+      handle.db,
+      'timezone-comparison-problem',
+      'Timezone Comparison Problem',
+      [],
+    )
+    await insertAnalyticsHistory(handle.db, 'timezone-comparison-problem', {
+      id: 'timezone-comparison-card:default',
+      dates,
+      ratings: [
+        ...Array<ReviewRating>(10).fill('good'),
+        'again',
+        ...Array<ReviewRating>(10).fill('good'),
+      ],
+      correct: Array<boolean>(dates.length).fill(true),
+      dueAt: new Date('2026-03-09T03:30:00.000Z'),
+      stability: 10,
+      difficulty: 5,
+    })
+
+    const summary = await getAnalyticsSummary(handle.db, {
+      range: 14,
+      now,
+      timeZone: 'America/New_York',
+    })
+
+    expect(summary.observedRatingSampleSize).toBe(10)
+    expect(summary.observedRatingQuality).toBe(1)
+    expect(summary.hardAgain).toMatchObject({
+      selectedShare: 0,
+      sampleSize: 10,
+      previousShare: 0,
+      previousSampleSize: 10,
+      previousLowSample: false,
+    })
+  })
 })
 
 async function insertAnalyticsProblem(

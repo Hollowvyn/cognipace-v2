@@ -13,6 +13,7 @@ export interface AnalyticsTimeFrame {
   asOf: string
   timeZone: string
   timeZoneFallback: boolean
+  requestedDays: AnalyticsHistoricalRange
   periodStart: string
   periodEnd: string
   buckets: AnalyticsTimeBucket[]
@@ -56,6 +57,7 @@ export function buildAnalyticsTimeFrame(input: {
     asOf: input.asOf.toISOString(),
     timeZone: resolvedTimeZone.timeZone,
     timeZoneFallback: resolvedTimeZone.fallback,
+    requestedDays: input.requestedDays,
     periodStart: getAnalyticsLocalDayStart(firstKey, resolvedTimeZone.timeZone),
     periodEnd: getAnalyticsLocalDayStart(
       periodEndKey,
@@ -262,6 +264,62 @@ export function addAnalyticsCalendarDays(
     date.getUTCMonth() + 1,
     date.getUTCDate(),
   )
+}
+
+export function shiftAnalyticsCalendarDays(
+  date: Date,
+  days: number,
+  timeZone: string,
+): Date {
+  const localParts = new Intl.DateTimeFormat('en-US-u-ca-gregory-nu-latn', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  })
+    .formatToParts(date)
+    .reduce<Record<string, number>>((result, part) => {
+      if (
+        part.type === 'year' ||
+        part.type === 'month' ||
+        part.type === 'day' ||
+        part.type === 'hour' ||
+        part.type === 'minute' ||
+        part.type === 'second'
+      ) {
+        result[part.type] = Number(part.value)
+      }
+      return result
+    }, {})
+  const targetKey = addAnalyticsCalendarDays(
+    getAnalyticsDateKey(date, timeZone),
+    days,
+  )
+  const [year, month, day] = parseDateKey(targetKey)
+  const wallTime = Date.UTC(
+    year,
+    month - 1,
+    day,
+    localParts.hour,
+    localParts.minute,
+    localParts.second,
+    date.getUTCMilliseconds(),
+  )
+  let instant = wallTime
+
+  for (let attempts = 0; attempts < 3; attempts += 1) {
+    const offset = getTimeZoneOffsetMilliseconds(new Date(instant), timeZone)
+    const candidate = wallTime - offset
+
+    if (candidate === instant) return new Date(candidate)
+    instant = candidate
+  }
+
+  return new Date(instant)
 }
 
 function getMondayWeekday(dateKey: string): number {

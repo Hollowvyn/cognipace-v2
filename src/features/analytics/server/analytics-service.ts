@@ -158,6 +158,10 @@ export async function getAnalyticsSummary(
     recentRatings,
     now,
     range,
+    {
+      periodStart: new Date(presentationTimeFrame.periodStart),
+      periodEnd: new Date(presentationTimeFrame.periodEnd),
+    },
   )
   const forecast = buildDueForecast(
     upcomingCards,

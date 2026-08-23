@@ -4,6 +4,7 @@ import {
   buildAnalyticsTimeFrame,
   buildForecastBounds,
   resolveAnalyticsTimeZone,
+  shiftAnalyticsCalendarDays,
 } from './analytics-time'
 
 describe('analytics time', () => {
@@ -128,5 +129,15 @@ describe('analytics time', () => {
       start: '2026-11-01T04:00:00.000Z',
       end: '2026-11-15T05:00:00.000Z',
     })
+  })
+
+  it('shifts a wall-clock timestamp by local calendar days across DST', () => {
+    expect(
+      shiftAnalyticsCalendarDays(
+        new Date('2026-03-08T05:30:00.000Z'),
+        -14,
+        'America/New_York',
+      ),
+    ).toEqual(new Date('2026-02-22T05:30:00.000Z'))
   })
 })

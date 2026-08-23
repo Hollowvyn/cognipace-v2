@@ -8,6 +8,7 @@ import type {
   ReferenceCurvePoint,
 } from './summary'
 import type { AnalyticsReadiness } from './analytics-readiness'
+import { buildAnalyticsTimeFrame } from './analytics-time'
 import {
   buildObservedRatingQuality,
   buildDueForecast,
@@ -161,6 +162,30 @@ describe('buildObservedRatingQuality', () => {
       ).toBe(0)
     },
   )
+
+  it('uses canonical local frame bounds across a DST midnight', () => {
+    const asOf = new Date('2026-03-08T05:30:00.000Z')
+    const frame = buildAnalyticsTimeFrame({
+      asOf,
+      requestedDays: 14,
+      timeZone: 'America/New_York',
+    })
+    const result = buildObservedRatingQuality(
+      Array.from({ length: 10 }, () => ({
+        rating: 'good',
+        reviewedAt: new Date('2026-02-22T18:00:00.000Z'),
+      })),
+      asOf,
+      14,
+      {
+        periodStart: new Date(frame.periodStart),
+        periodEnd: new Date(frame.periodEnd),
+      },
+    )
+
+    expect(result.sampleSize).toBe(0)
+    expect(result.lowSample).toBe(true)
+  })
 })
 
 describe('buildDueForecast', () => {

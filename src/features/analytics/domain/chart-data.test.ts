@@ -28,6 +28,7 @@ import {
   buildAnalyticsBuckets,
   getAnalyticsRangePolicy,
 } from './analytics-range-policy'
+import { buildAnalyticsTimeFrame } from './analytics-time'
 import { metricDefinitions } from './metric-definitions'
 
 const start = new Date('2026-08-01T00:00:00.000Z')
@@ -613,6 +614,46 @@ describe('analytics chart-data builders', () => {
       sampleSize: 11,
       previousSampleSize: 10,
       lowSample: false,
+      previousLowSample: false,
+    })
+  })
+
+  it('compares a partial local period with the matching local wall-clock window', () => {
+    const asOf = new Date('2026-03-08T05:30:00.000Z')
+    const timeFrame = buildAnalyticsTimeFrame({
+      asOf,
+      requestedDays: 14,
+      timeZone: 'America/New_York',
+    })
+    const periodOptions = {
+      ...options,
+      start: new Date(timeFrame.periodStart),
+      end: asOf,
+      timeFrame,
+    }
+    const previous = Array.from({ length: 10 }, (_, index) =>
+      event({
+        id: `local-previous-${index}`,
+        reviewedAt: new Date(
+          `2026-02-22T05:${String(index).padStart(2, '0')}:00.000Z`,
+        ),
+        rating: 'good',
+      }),
+    )
+    const partialDayAfterPrevious = event({
+      id: 'partial-day-after-previous',
+      reviewedAt: new Date('2026-02-22T06:00:00.000Z'),
+      rating: 'again',
+    })
+
+    expect(
+      buildHardAgainSummary(
+        [...previous, partialDayAfterPrevious],
+        periodOptions,
+      ),
+    ).toMatchObject({
+      previousShare: 0,
+      previousSampleSize: 10,
       previousLowSample: false,
     })
   })

@@ -23,6 +23,7 @@ import {
   addAnalyticsCalendarDays,
   getAnalyticsDateKey,
   getAnalyticsLocalDayStart,
+  shiftAnalyticsCalendarDays,
   type AnalyticsTimeFrame,
 } from './analytics-time'
 
@@ -391,8 +392,23 @@ export function buildHardAgainSummary(
   options: AnalyticsRangeOptions,
   lowSampleThreshold = 10,
 ): HardAgainSummary {
-  const periodLength = options.end.getTime() - options.start.getTime()
-  const previousStart = new Date(options.start.getTime() - periodLength)
+  const previousStart = options.timeFrame
+    ? shiftAnalyticsCalendarDays(
+        new Date(options.timeFrame.periodStart),
+        -options.timeFrame.requestedDays,
+        options.timeFrame.timeZone,
+      )
+    : new Date(
+        options.start.getTime() -
+          (options.end.getTime() - options.start.getTime()),
+      )
+  const previousEnd = options.timeFrame
+    ? shiftAnalyticsCalendarDays(
+        new Date(options.timeFrame.asOf),
+        -options.timeFrame.requestedDays,
+        options.timeFrame.timeZone,
+      )
+    : options.start
   const selectedRatings = events.filter(
     (event) =>
       event.reviewedAt >= options.start &&
@@ -402,7 +418,9 @@ export function buildHardAgainSummary(
   const previousRatings = events.filter(
     (event) =>
       event.reviewedAt >= previousStart &&
-      event.reviewedAt < options.start &&
+      (options.timeFrame
+        ? event.reviewedAt <= previousEnd
+        : event.reviewedAt < options.start) &&
       hasValidReviewRating(event),
   )
   const selectedShare = calculateHardAgainShare(selectedRatings)
