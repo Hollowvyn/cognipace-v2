@@ -62,6 +62,7 @@ export function ObservedRecallVsFsrsView({
                 <CartesianGrid stroke="var(--color-border)" vertical={false} />
                 <XAxis
                   axisLine={false}
+                  allowDuplicatedCategory={false}
                   dataKey="bucketStart"
                   minTickGap={32}
                   tickFormatter={(value) =>
@@ -160,6 +161,7 @@ export function MemoryStrengthView({
               <CartesianGrid stroke="var(--color-border)" vertical={false} />
               <XAxis
                 axisLine={false}
+                allowDuplicatedCategory={false}
                 dataKey="bucketStart"
                 minTickGap={32}
                 tickFormatter={(value) =>
@@ -257,6 +259,7 @@ export function PracticeRhythmView({
                 <CartesianGrid stroke="var(--color-border)" vertical={false} />
                 <XAxis
                   axisLine={false}
+                  allowDuplicatedCategory={false}
                   dataKey="bucketStart"
                   minTickGap={32}
                   tickFormatter={(value) =>
@@ -375,6 +378,7 @@ export function RatingsMixView({
                   />
                   <XAxis
                     axisLine={false}
+                    allowDuplicatedCategory={false}
                     dataKey="bucketStart"
                     minTickGap={32}
                     tickFormatter={(value) =>

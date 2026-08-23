@@ -46,6 +46,53 @@ describe('Phase 2 historical analytics views', () => {
     expect(screen.getByRole('list').closest('svg')).toBeNull()
   })
 
+  it('keeps shared time buckets aligned across multiple line series', () => {
+    render(
+      <ObservedRecallVsFsrsView
+        view={{
+          rows: [
+            {
+              id: '2026-08-01',
+              bucketStart: '2026-08-01',
+              bucketEnd: '2026-08-02',
+              isPartial: false,
+              recalledCount: 3,
+              pairedReviews: 4,
+              observedRecall: 0.75,
+              fsrsEstimate: 0.8,
+              difference: -0.05,
+              provenance: 'reconstructed',
+              evidence: 'measured',
+            },
+            {
+              id: '2026-08-03',
+              bucketStart: '2026-08-03',
+              bucketEnd: '2026-08-04',
+              isPartial: false,
+              recalledCount: 4,
+              pairedReviews: 4,
+              observedRecall: 1,
+              fsrsEstimate: 0.9,
+              difference: 0.1,
+              provenance: 'reconstructed',
+              evidence: 'measured',
+            },
+          ],
+          scale: { domain: [0.6, 1], ticks: [0.6, 0.8, 1] },
+          targetRetention: 0.9,
+        }}
+      />,
+    )
+
+    const xAxisLabels = Array.from(
+      document.querySelectorAll(
+        '.recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-label text',
+      ),
+    ).map((node) => node.textContent)
+
+    expect(xAxisLabels).toEqual(['Aug 1–Aug 2', 'Aug 3–Aug 4'])
+  })
+
   it('renders the supported Memory Strength IQR as a restrained chart band', () => {
     render(
       <MemoryStrengthView

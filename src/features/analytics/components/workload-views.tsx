@@ -169,6 +169,7 @@ function OverdueBacklogChart({
           />
           <XAxis
             axisLine={false}
+            allowDuplicatedCategory={false}
             dataKey="date"
             minTickGap={26}
             tickFormatter={formatShortDate}
@@ -414,6 +415,7 @@ function UpcomingLoadChart({
           <CartesianGrid stroke="var(--color-border)" vertical={false} />
           <XAxis
             axisLine={false}
+            allowDuplicatedCategory={false}
             dataKey="date"
             minTickGap={24}
             tickFormatter={(date) => {
