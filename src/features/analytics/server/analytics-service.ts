@@ -49,11 +49,15 @@ import {
   type AnalyticsReadiness,
 } from '../domain/analytics-readiness'
 import {
-  buildAnalyticsBuckets,
+  buildAnalyticsBucketsFromTimeFrame,
   getAnalyticsRangePolicy,
   type AnalyticsBucket,
 } from '../domain/analytics-range-policy'
-import { buildAnalyticsTimeFrame } from '../domain/analytics-time'
+import {
+  buildAnalyticsTimeFrame,
+  buildForecastBounds,
+  getAnalyticsDateKey,
+} from '../domain/analytics-time'
 
 import {
   buildObservedRatingQuality,
@@ -85,11 +89,15 @@ export async function getAnalyticsSummary(
     requestedDays: range,
     timeZone,
   })
-  const periodEnd = now
+  const periodEnd = new Date(presentationTimeFrame.asOf)
   const rangePolicy = getAnalyticsRangePolicy(range)
-  const buckets = buildAnalyticsBuckets({ requestedDays: range, periodEnd })
+  const buckets = buildAnalyticsBucketsFromTimeFrame(presentationTimeFrame)
   const periodStart = buckets[0]!.start
-  const fourteenDaysLater = addDays(now, 14)
+  const forecastBounds = buildForecastBounds({
+    asOf: now,
+    timeZone: presentationTimeFrame.timeZone,
+  })
+  const fourteenDaysLater = new Date(forecastBounds.end)
 
   const [
     dayStats,
@@ -151,12 +159,17 @@ export async function getAnalyticsSummary(
     now,
     range,
   )
-  const forecast = buildDueForecast(upcomingCards, now)
+  const forecast = buildDueForecast(
+    upcomingCards,
+    now,
+    presentationTimeFrame.timeZone,
+  )
   const weakProblems = buildWeakProblems(enrichedCandidates)
   const memoryProfile = buildMemoryProfileInput(
     memoryProfileCards,
     now,
     fsrsOptions,
+    presentationTimeFrame.timeZone,
   )
 
   const chartOptions: AnalyticsRangeOptions = {
@@ -165,6 +178,8 @@ export async function getAnalyticsSummary(
     buckets,
     rangePolicy,
     fsrsOptions,
+    timeZone: presentationTimeFrame.timeZone,
+    timeFrame: presentationTimeFrame,
   }
   const analyticsReviewHistory = reviewHistory satisfies AnalyticsReviewEvent[]
   const baselineEvidenceCounts = buildBucketEvidenceCounts(
@@ -269,11 +284,17 @@ export async function getAnalyticsSummary(
     overdueBacklog: overdueReadiness,
     recommendedRange: requestedReadiness.ready
       ? null
-      : findRecommendedRange(analyticsReviewHistory, now, range),
+      : findRecommendedRange(
+          analyticsReviewHistory,
+          now,
+          range,
+          presentationTimeFrame.timeZone,
+        ),
   }
   const upcomingLoad = buildUpcomingLoadPoints(
     upcomingCards.map((card) => card.dueAt),
     now,
+    presentationTimeFrame.timeZone,
   )
   const { health: retentionHealth, fragile: fragileKnowledge } =
     buildRetentionHealth(analyticsCurrentCards, now, {
@@ -385,14 +406,17 @@ function buildMemoryProfileInput(
   cards: MemoryProfileCard[],
   now: Date,
   fsrsOptions: ReturnType<typeof normalizeFsrsSchedulingOptions>,
+  timeZone = 'UTC',
 ) {
   const activeCards = cards.filter((card) => !isSuspendedMemoryCard(card))
-  const todayKey = toLocalDateKey(now)
+  const todayKey = getAnalyticsDateKey(now, timeZone)
 
   return buildMemoryProfile({
     totalTracked: cards.length,
     dueToday: activeCards.filter(
-      (card) => card.dueAt < now || toLocalDateKey(card.dueAt) === todayKey,
+      (card) =>
+        card.dueAt < now ||
+        getAnalyticsDateKey(card.dueAt, timeZone) === todayKey,
     ).length,
     overdue: activeCards.filter((card) => card.dueAt < now).length,
     learning: activeCards.filter(isLearningMemoryCard).length,
@@ -509,14 +533,18 @@ function findRecommendedRange(
   events: readonly AnalyticsReviewEvent[],
   now: Date,
   requestedDays: AnalyticsRange,
+  timeZone: string,
 ): AnalyticsRange | null {
   const ranges = ([14, 30, 90] as const)
     .filter((range) => range < requestedDays)
     .map((range) => {
-      const buckets = buildAnalyticsBuckets({
-        requestedDays: range,
-        periodEnd: now,
-      })
+      const buckets = buildAnalyticsBucketsFromTimeFrame(
+        buildAnalyticsTimeFrame({
+          asOf: now,
+          requestedDays: range,
+          timeZone,
+        }),
+      )
       const readiness = calculateAnalyticsReadiness({
         requestedDays: range,
         evidenceCounts: buildBucketEvidenceCounts(
@@ -602,17 +630,4 @@ function computeMedianStability(stabilities: number[]): number {
   return sorted.length % 2 === 0
     ? (sorted[mid - 1]! + sorted[mid]!) / 2
     : sorted[mid]!
-}
-
-function addDays(date: Date, days: number): Date {
-  const result = new Date(date)
-  result.setDate(result.getDate() + days)
-  return result
-}
-
-function toLocalDateKey(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
 }

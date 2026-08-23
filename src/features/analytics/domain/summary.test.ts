@@ -210,6 +210,17 @@ describe('buildDueForecast', () => {
 
     expect(result.every((e) => e.dueCount === 0)).toBe(true)
   })
+
+  it('groups forecast dates in the requested timezone across DST', () => {
+    const result = buildDueForecast(
+      [{ dueAt: new Date('2026-03-09T03:30:00.000Z') }],
+      new Date('2026-03-08T05:30:00.000Z'),
+      'America/New_York',
+    )
+
+    expect(result[0]).toMatchObject({ date: '2026-03-08', dueCount: 1 })
+    expect(result[1]?.date).toBe('2026-03-09')
+  })
 })
 
 describe('buildWeakProblems', () => {

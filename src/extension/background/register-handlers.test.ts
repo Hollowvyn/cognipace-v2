@@ -668,6 +668,64 @@ describe('background handler registration', () => {
     )
   })
 
+  it('preserves requested timezone frame metadata across a DST boundary', async () => {
+    const fixture = createSerializedAnalyticsSummary({
+      range: 14,
+      historicalReadiness: createReadyHistoricalReadiness(),
+      presentationMeta: {
+        asOf: '2026-03-08T05:30:00.000Z',
+        timeZone: 'America/New_York',
+        timeZoneFallback: false,
+        range: 14,
+        periodStart: '2026-02-23T05:00:00.000Z',
+        periodEnd: '2026-03-09T04:00:00.000Z',
+        isPartial: true,
+      },
+      upcomingLoad: Array.from({ length: 14 }, (_, index) => ({
+        date: `2026-03-${String(8 + index).padStart(2, '0')}`,
+        dueCount: index === 0 ? 1 : 0,
+        overdueCount: 0,
+        today: index === 0,
+      })),
+    })
+
+    backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
+      ...fixture,
+      observedRatingQuality: 0.75,
+      observedRatingSampleSize: 12,
+      lowSample: false,
+      chartDataStatus: 'ready',
+    })
+
+    const response = await sendRuntimeMessage('analytics.getSummary', {
+      surface: 'dashboard',
+      range: 14,
+      timeZone: 'America/New_York',
+      at: '2026-03-08T05:30:00.000Z',
+    })
+
+    expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      {
+        range: 14,
+        now: new Date('2026-03-08T05:30:00.000Z'),
+        timeZone: 'America/New_York',
+      },
+    )
+    const parsed = analyticsSummarySchema.parse(response)
+
+    expect(parsed.presentationMeta).toMatchObject({
+      timeZone: 'America/New_York',
+      periodStart: '2026-02-23T05:00:00.000Z',
+      periodEnd: '2026-03-09T04:00:00.000Z',
+    })
+    expect(parsed.upcomingLoad[0]).toMatchObject({
+      date: '2026-03-08',
+      dueCount: 1,
+      today: true,
+    })
+  })
+
   it('does not expose low-sample observed rating quality as 0%', async () => {
     backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
       presentationMeta: {

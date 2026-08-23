@@ -45,16 +45,22 @@ export function buildAnalyticsTimeFrame(input: {
   assertHistoricalRange(input.requestedDays)
 
   const resolvedTimeZone = resolveAnalyticsTimeZone(input.timeZone)
-  const todayKey = getLocalDateKey(input.asOf, resolvedTimeZone.timeZone)
-  const firstKey = addCalendarDays(todayKey, -(input.requestedDays - 1))
-  const periodEndKey = addCalendarDays(todayKey, 1)
+  const todayKey = getAnalyticsDateKey(input.asOf, resolvedTimeZone.timeZone)
+  const firstKey = addAnalyticsCalendarDays(
+    todayKey,
+    -(input.requestedDays - 1),
+  )
+  const periodEndKey = addAnalyticsCalendarDays(todayKey, 1)
 
   return {
     asOf: input.asOf.toISOString(),
     timeZone: resolvedTimeZone.timeZone,
     timeZoneFallback: resolvedTimeZone.fallback,
-    periodStart: getLocalDayStart(firstKey, resolvedTimeZone.timeZone),
-    periodEnd: getLocalDayStart(periodEndKey, resolvedTimeZone.timeZone),
+    periodStart: getAnalyticsLocalDayStart(firstKey, resolvedTimeZone.timeZone),
+    periodEnd: getAnalyticsLocalDayStart(
+      periodEndKey,
+      resolvedTimeZone.timeZone,
+    ),
     buckets: buildHistoricalBuckets({
       requestedDays: input.requestedDays,
       firstKey,
@@ -72,12 +78,15 @@ export function buildForecastBounds(input: { asOf: Date; timeZone: string }): {
   assertValidAsOf(input.asOf)
 
   const { timeZone } = resolveAnalyticsTimeZone(input.timeZone)
-  const todayKey = getLocalDateKey(input.asOf, timeZone)
+  const todayKey = getAnalyticsDateKey(input.asOf, timeZone)
 
   return {
     todayKey,
-    start: getLocalDayStart(todayKey, timeZone),
-    end: getLocalDayStart(addCalendarDays(todayKey, 14), timeZone),
+    start: getAnalyticsLocalDayStart(todayKey, timeZone),
+    end: getAnalyticsLocalDayStart(
+      addAnalyticsCalendarDays(todayKey, 14),
+      timeZone,
+    ),
   }
 }
 
@@ -110,11 +119,11 @@ function buildFixedWidthBuckets(
 
   while (startKey <= input.todayKey) {
     const endKey = minDateKey(
-      addCalendarDays(startKey, width - 1),
+      addAnalyticsCalendarDays(startKey, width - 1),
       input.todayKey,
     )
     buckets.push(createBucket(startKey, endKey, input.todayKey, input.timeZone))
-    startKey = addCalendarDays(endKey, 1)
+    startKey = addAnalyticsCalendarDays(endKey, 1)
   }
 
   return buckets
@@ -132,11 +141,11 @@ function buildMondayWeekBuckets(
   while (startKey <= input.todayKey) {
     const daysUntilSunday = 6 - getMondayWeekday(startKey)
     const endKey = minDateKey(
-      addCalendarDays(startKey, daysUntilSunday),
+      addAnalyticsCalendarDays(startKey, daysUntilSunday),
       input.todayKey,
     )
     buckets.push(createBucket(startKey, endKey, input.todayKey, input.timeZone))
-    startKey = addCalendarDays(endKey, 1)
+    startKey = addAnalyticsCalendarDays(endKey, 1)
   }
 
   return buckets
@@ -150,15 +159,18 @@ function createBucket(
 ): AnalyticsTimeBucket {
   return {
     key: startKey,
-    start: getLocalDayStart(startKey, timeZone),
-    end: getLocalDayStart(addCalendarDays(endKey, 1), timeZone),
+    start: getAnalyticsLocalDayStart(startKey, timeZone),
+    end: getAnalyticsLocalDayStart(
+      addAnalyticsCalendarDays(endKey, 1),
+      timeZone,
+    ),
     startKey,
     endKey,
     isPartial: endKey === todayKey,
   }
 }
 
-function getLocalDateKey(date: Date, timeZone: string): string {
+export function getAnalyticsDateKey(date: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat('en-US-u-ca-gregory-nu-latn', {
     timeZone,
     year: 'numeric',
@@ -180,7 +192,10 @@ function getLocalDateKey(date: Date, timeZone: string): string {
   return `${parts.year!}-${parts.month!}-${parts.day!}`
 }
 
-function getLocalDayStart(dateKey: string, timeZone: string): string {
+export function getAnalyticsLocalDayStart(
+  dateKey: string,
+  timeZone: string,
+): string {
   const [year, month, day] = parseDateKey(dateKey)
   const wallTime = Date.UTC(year, month - 1, day)
   let instant = wallTime
@@ -234,7 +249,10 @@ function getTimeZoneOffsetMilliseconds(date: Date, timeZone: string): number {
   )
 }
 
-function addCalendarDays(dateKey: string, days: number): string {
+export function addAnalyticsCalendarDays(
+  dateKey: string,
+  days: number,
+): string {
   const [year, month, day] = parseDateKey(dateKey)
   const date = new Date(Date.UTC(year, month - 1, day))
   date.setUTCDate(date.getUTCDate() + days)

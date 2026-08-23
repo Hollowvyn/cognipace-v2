@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildAnalyticsBuckets,
+  buildAnalyticsBucketsFromTimeFrame,
   getAnalyticsRangePolicy,
 } from './analytics-range-policy'
+import { buildAnalyticsTimeFrame } from './analytics-time'
 
 describe('analytics range policy', () => {
   it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
@@ -90,5 +92,23 @@ describe('analytics range policy', () => {
         process.env.TZ = previousTimezone
       }
     }
+  })
+
+  it('converts one requested-zone time frame into legacy buckets without shifting dates', () => {
+    const timeFrame = buildAnalyticsTimeFrame({
+      asOf: new Date('2026-03-08T05:30:00.000Z'),
+      requestedDays: 14,
+      timeZone: 'America/New_York',
+    })
+
+    const buckets = buildAnalyticsBucketsFromTimeFrame(timeFrame)
+
+    expect(buckets.at(-1)).toMatchObject({
+      key: '2026-03-08',
+      start: new Date('2026-03-08T05:00:00.000Z'),
+      end: new Date('2026-03-08T05:30:00.000Z'),
+      label: '2026-03-08',
+    })
+    expect(buckets.at(-2)?.start.toISOString()).toBe('2026-03-07T05:00:00.000Z')
   })
 })

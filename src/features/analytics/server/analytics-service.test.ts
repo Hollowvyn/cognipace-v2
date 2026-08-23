@@ -959,6 +959,49 @@ describe('getAnalyticsSummary memory profile', () => {
 
     expect(second).toEqual(first)
   })
+
+  it('uses one requested timezone for bucket rows and forecast grouping', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-03-08T05:30:00.000Z')
+    const reviewAt = new Date('2026-03-08T04:30:00.000Z')
+
+    await insertAnalyticsProblem(
+      handle.db,
+      'timezone-boundary-problem',
+      'Timezone Boundary Problem',
+      [],
+    )
+    await insertAnalyticsHistory(handle.db, 'timezone-boundary-problem', {
+      id: 'timezone-boundary-card:default',
+      dates: [reviewAt],
+      ratings: ['good'],
+      correct: [true],
+      dueAt: new Date('2026-03-09T03:30:00.000Z'),
+      stability: 10,
+      difficulty: 5,
+    })
+
+    const summary = await getAnalyticsSummary(handle.db, {
+      range: 14,
+      now,
+      timeZone: 'America/New_York',
+    })
+
+    expect(summary.presentationMeta).toMatchObject({
+      timeZone: 'America/New_York',
+      periodStart: '2026-02-23T05:00:00.000Z',
+      periodEnd: '2026-03-09T04:00:00.000Z',
+    })
+    expect(summary.recallQuality[0]).toMatchObject({
+      bucketStart: '2026-03-07',
+      bucketEnd: '2026-03-07',
+      reviewCount: 1,
+    })
+    expect(summary.upcomingLoad[0]).toMatchObject({
+      date: '2026-03-08',
+      dueCount: 1,
+    })
+  })
 })
 
 async function insertAnalyticsProblem(

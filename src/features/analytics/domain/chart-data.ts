@@ -19,6 +19,12 @@ import type {
   AnalyticsBucket,
   AnalyticsRangePolicy,
 } from './analytics-range-policy'
+import {
+  addAnalyticsCalendarDays,
+  getAnalyticsDateKey,
+  getAnalyticsLocalDayStart,
+  type AnalyticsTimeFrame,
+} from './analytics-time'
 
 export interface AnalyticsReviewEvent {
   id: string
@@ -170,6 +176,8 @@ export interface AnalyticsRangeOptions {
   buckets: readonly AnalyticsBucket[]
   rangePolicy: AnalyticsRangePolicy
   fsrsOptions: NormalizedFsrsSchedulingOptions
+  timeZone?: string
+  timeFrame?: AnalyticsTimeFrame
   lowSampleThreshold?: number
 }
 
@@ -179,7 +187,8 @@ export interface RetentionHealthOptions {
 
 const dayMs = 24 * 60 * 60 * 1000
 
-export function toAnalyticsDateKey(date: Date): string {
+export function toAnalyticsDateKey(date: Date, timeZone?: string): string {
+  if (timeZone) return getAnalyticsDateKey(date, timeZone)
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
@@ -302,7 +311,7 @@ export function buildPredictedRecallSamples(
         event.reviewedAt <= options.end
       ) {
         results.push({
-          date: toAnalyticsDateKey(event.reviewedAt),
+          date: toAnalyticsDateKey(event.reviewedAt, options.timeZone),
           reviewedAt: event.reviewedAt,
           value: predicted,
         })
@@ -577,12 +586,19 @@ export function reconstructOverdueBacklogSnapshots(
 export function buildUpcomingLoadPoints(
   dueDates: readonly Date[],
   now: Date,
+  timeZone?: string,
 ): UpcomingLoadPoint[] {
+  const todayKey = timeZone
+    ? getAnalyticsDateKey(now, timeZone)
+    : toAnalyticsDateKey(now)
   const points = Array.from({ length: 14 }, (_, index) => {
-    const date = new Date(now)
-    date.setDate(date.getDate() + index)
+    const localDate = new Date(now)
+    localDate.setDate(localDate.getDate() + index)
+    const date = timeZone
+      ? addAnalyticsCalendarDays(todayKey, index)
+      : toAnalyticsDateKey(localDate)
     return {
-      date: toAnalyticsDateKey(date),
+      date,
       dueCount: 0,
       overdueCount: 0,
       today: index === 0,
@@ -592,7 +608,7 @@ export function buildUpcomingLoadPoints(
     if (dueAt < now) points[0]!.overdueCount += 1
     else {
       const point = points.find(
-        (candidate) => candidate.date === toAnalyticsDateKey(dueAt),
+        (candidate) => candidate.date === toAnalyticsDateKey(dueAt, timeZone),
       )
       if (point) point.dueCount += 1
     }
@@ -665,6 +681,29 @@ export function buildRetentionHealth(
 }
 
 function dailyObservationDates(options: AnalyticsRangeOptions): Date[] {
+  if (options.timeFrame) {
+    const firstKey = options.timeFrame.buckets[0]?.startKey
+    const lastKey = options.timeFrame.buckets.at(-1)?.endKey
+    const timeZone = options.timeFrame.timeZone
+    if (!firstKey || !lastKey) return []
+
+    const observations: Date[] = []
+    let dateKey = firstKey
+    while (dateKey <= lastKey) {
+      const nextStart = new Date(
+        getAnalyticsLocalDayStart(
+          addAnalyticsCalendarDays(dateKey, 1),
+          timeZone,
+        ),
+      )
+      observations.push(
+        new Date(Math.min(nextStart.getTime() - 1, options.end.getTime())),
+      )
+      dateKey = addAnalyticsCalendarDays(dateKey, 1)
+    }
+    return observations
+  }
+
   const observations: Date[] = []
   const date = new Date(options.start)
   while (date <= options.end) {
@@ -686,8 +725,8 @@ function compareEvents(
 
 function bucketBounds(bucket: AnalyticsBucket) {
   return {
-    bucketStart: toAnalyticsDateKey(bucket.start),
-    bucketEnd: toAnalyticsDateKey(bucket.end),
+    bucketStart: bucket.startKey ?? toAnalyticsDateKey(bucket.start),
+    bucketEnd: bucket.endKey ?? toAnalyticsDateKey(bucket.end),
   }
 }
 

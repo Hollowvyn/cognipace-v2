@@ -1,8 +1,12 @@
+import type { AnalyticsTimeFrame } from './analytics-time'
+
 export interface AnalyticsBucket {
   key: string
   start: Date
   end: Date
   label: string
+  startKey?: string
+  endKey?: string
 }
 
 export interface AnalyticsRangePolicy {
@@ -76,6 +80,30 @@ export function buildAnalyticsBuckets({
   }
 
   return buckets
+}
+
+export function buildAnalyticsBucketsFromTimeFrame(
+  timeFrame: AnalyticsTimeFrame,
+): AnalyticsBucket[] {
+  const asOf = new Date(timeFrame.asOf)
+
+  return timeFrame.buckets.map((bucket) => {
+    const start = new Date(bucket.start)
+    const endExclusive = new Date(bucket.end)
+    const end = new Date(Math.min(endExclusive.getTime() - 1, asOf.getTime()))
+
+    return {
+      key: bucket.key,
+      start,
+      end,
+      label:
+        bucket.startKey === bucket.endKey
+          ? bucket.startKey
+          : `${bucket.startKey} – ${bucket.endKey}`,
+      startKey: bucket.startKey,
+      endKey: bucket.endKey,
+    }
+  })
 }
 
 function buildWeeklyBuckets(periodStart: Date, periodEnd: Date) {

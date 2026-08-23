@@ -1,6 +1,7 @@
 import { isReviewRating } from '@/lib/fsrs'
 
 import type { AnalyticsReadiness } from './analytics-readiness'
+import { addAnalyticsCalendarDays, getAnalyticsDateKey } from './analytics-time'
 
 export interface ObservedRatingQualityResult {
   value: number | null
@@ -183,18 +184,27 @@ export function buildObservedRatingQuality(
 export function buildDueForecast(
   cards: Array<{ dueAt: Date }>,
   now: Date,
+  timeZone?: string,
 ): ForecastEntry[] {
+  const todayKey = timeZone
+    ? getAnalyticsDateKey(now, timeZone)
+    : toLocalDateKey(now)
   const entries: ForecastEntry[] = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(now)
-    d.setDate(d.getDate() + i)
-    return { date: toLocalDateKey(d), dueCount: 0 }
+    const date = timeZone
+      ? addAnalyticsCalendarDays(todayKey, i)
+      : toLocalDateKey(addLocalDays(now, i))
+    return { date, dueCount: 0 }
   })
 
-  const todayKey = toLocalDateKey(now)
   const dateToIndex = new Map(entries.map((e, i) => [e.date, i]))
 
   for (const card of cards) {
-    const key = card.dueAt < now ? todayKey : toLocalDateKey(card.dueAt)
+    const key =
+      card.dueAt < now
+        ? todayKey
+        : timeZone
+          ? getAnalyticsDateKey(card.dueAt, timeZone)
+          : toLocalDateKey(card.dueAt)
     const index = dateToIndex.get(key)
     if (index !== undefined) {
       entries[index]!.dueCount++
@@ -312,4 +322,10 @@ function toLocalDateKey(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function addLocalDays(date: Date, days: number): Date {
+  const result = new Date(date)
+  result.setDate(result.getDate() + days)
+  return result
 }
