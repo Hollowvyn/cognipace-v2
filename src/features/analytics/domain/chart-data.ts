@@ -10,7 +10,6 @@ import {
 } from '@/lib/fsrs'
 
 import {
-  lastBucketValue,
   medianBucketValues,
   recomputeBucketRatio,
   sumBucketValues,
@@ -119,54 +118,11 @@ export interface StabilityPoint {
   sampleSize: number
 }
 
-interface OverdueBacklogPointBase {
-  bucketStart: string
-  bucketEnd: string
-}
-
-export type OverdueBacklogPoint =
-  | (OverdueBacklogPointBase & {
-      overdueCount: number
-      historyAvailable: true
-    })
-  | (OverdueBacklogPointBase & {
-      overdueCount: null
-      historyAvailable: false
-    })
-
-export interface OverdueBacklogResult {
-  points: OverdueBacklogPoint[]
-  overdueHistoryAvailableFrom: string | null
-}
-
 export interface UpcomingLoadPoint {
   date: string
   dueCount: number
   overdueCount: number
   today: boolean
-}
-
-export interface RetentionHealthPoint {
-  slug: string
-  title: string
-  retrievability: number
-  targetRetention: number
-  daysSinceReview: number
-  stabilityDays: number
-  difficulty: number
-  lapseCount: number
-  overdueDays: number
-}
-
-export interface FragileKnowledgeRow {
-  slug: string
-  title: string
-  retrievability: number
-  stabilityDays: number
-  difficulty: number
-  lapseCount: number
-  overdueDays: number
-  topics: string[]
 }
 
 export interface AnalyticsRangeOptions {
@@ -178,12 +134,6 @@ export interface AnalyticsRangeOptions {
   timeFrame?: AnalyticsTimeFrame
   lowSampleThreshold?: number
 }
-
-export interface RetentionHealthOptions {
-  fragileDifficultyThreshold: number
-}
-
-const dayMs = 24 * 60 * 60 * 1000
 
 export function toAnalyticsDateKey(date: Date, timeZone?: string): string {
   if (timeZone) return getAnalyticsDateKey(date, timeZone)
@@ -510,52 +460,6 @@ export function buildStabilityPoints(
   )
 }
 
-export function buildOverdueBacklogPoints(
-  snapshots: readonly AnalyticsOverdueSnapshot[] | null,
-  options: AnalyticsRangeOptions,
-): OverdueBacklogResult {
-  const visibleSnapshots = snapshots
-    ?.filter(
-      (snapshot) =>
-        snapshot.date >= options.start && snapshot.date <= options.end,
-    )
-    .sort((left, right) => left.date.getTime() - right.date.getTime())
-
-  const overdueHistoryAvailableFrom =
-    visibleSnapshots?.[0]?.date.toISOString() ?? null
-
-  if (!visibleSnapshots?.length) {
-    return { points: [], overdueHistoryAvailableFrom }
-  }
-
-  return {
-    points: trimLeadingEmptyBuckets(
-      options.buckets.map((bucket) => {
-        const snapshot = lastBucketValue(
-          visibleSnapshots.filter((candidate) =>
-            isInBucket(candidate.date, bucket),
-          ),
-        )
-        if (!snapshot) {
-          return {
-            ...bucketBounds(bucket),
-            overdueCount: null,
-            historyAvailable: false,
-          }
-        }
-
-        return {
-          ...bucketBounds(bucket),
-          overdueCount: snapshot.overdueCount,
-          historyAvailable: true,
-        }
-      }),
-      (point) => point.historyAvailable,
-    ),
-    overdueHistoryAvailableFrom,
-  }
-}
-
 export function reconstructOverdueBacklogSnapshots(
   events: readonly AnalyticsReviewEvent[],
   cards: readonly AnalyticsCurrentCard[],
@@ -629,70 +533,6 @@ export function buildUpcomingLoadPoints(
     }
   }
   return points
-}
-
-export function buildRetentionHealth(
-  cards: readonly AnalyticsCurrentCard[],
-  now: Date,
-  options: RetentionHealthOptions,
-): { health: RetentionHealthPoint[]; fragile: FragileKnowledgeRow[] } {
-  const rows = cards
-    .filter(
-      (card) =>
-        !card.suspended &&
-        card.lastReviewAt !== null &&
-        Number.isFinite(card.retrievability),
-    )
-    .map((card) => {
-      const daysSinceReview =
-        card.lastReviewAt === null
-          ? 0
-          : Math.max(
-              0,
-              Math.floor((now.getTime() - card.lastReviewAt.getTime()) / dayMs),
-            )
-      const overdueDays = Math.max(
-        0,
-        Math.floor((now.getTime() - card.dueAt.getTime()) / dayMs),
-      )
-      return { card, daysSinceReview, overdueDays }
-    })
-  const health = rows
-    .map(({ card, daysSinceReview, overdueDays }) => ({
-      slug: card.slug,
-      title: card.title,
-      retrievability: card.retrievability,
-      targetRetention: card.targetRetention,
-      daysSinceReview,
-      stabilityDays: card.stabilityDays,
-      difficulty: card.difficulty,
-      lapseCount: card.lapseCount,
-      overdueDays,
-    }))
-    .sort(
-      (a, b) =>
-        a.retrievability - b.retrievability || a.slug.localeCompare(b.slug),
-    )
-  const fragile = health
-    .filter(
-      (row) =>
-        row.retrievability < row.targetRetention ||
-        row.stabilityDays < 3 ||
-        row.lapseCount > 0 ||
-        row.overdueDays > 0 ||
-        row.difficulty >= options.fragileDifficultyThreshold,
-    )
-    .map((row) => ({
-      ...row,
-      topics: cards.find((card) => card.slug === row.slug)?.topics ?? [],
-    }))
-    .sort(
-      (a, b) =>
-        a.retrievability - b.retrievability ||
-        b.overdueDays - a.overdueDays ||
-        a.slug.localeCompare(b.slug),
-    )
-  return { health, fragile }
 }
 
 function dailyObservationDates(options: AnalyticsRangeOptions): Date[] {

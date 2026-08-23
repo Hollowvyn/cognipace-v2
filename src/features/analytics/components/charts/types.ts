@@ -32,9 +32,3 @@ export type RatingsMixPoint = SerializedAnalyticsSummary['ratingsMix'][number]
 export type HardAgainSummary = SerializedAnalyticsSummary['hardAgain']
 export type TopicPoint = SerializedAnalyticsSummary['topics'][number]
 export type StabilityPoint = SerializedAnalyticsSummary['stability'][number]
-export type OverdueBacklogPoint =
-  SerializedAnalyticsSummary['overdueBacklog'][number]
-export type UpcomingLoadPoint =
-  SerializedAnalyticsSummary['upcomingLoad'][number]
-export type RetentionHealthPoint =
-  SerializedAnalyticsSummary['retentionHealth'][number]

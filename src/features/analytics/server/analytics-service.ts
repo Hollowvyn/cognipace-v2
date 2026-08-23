@@ -26,12 +26,10 @@ import {
 
 import {
   buildHardAgainSummary,
-  buildOverdueBacklogPoints,
   buildPredictedRecallSamples,
   buildPracticeRhythmPoints,
   buildRatingsMixPoints,
   buildRecallQualityPoints,
-  buildRetentionHealth,
   buildStabilityPoints,
   buildTopicPoints,
   buildUpcomingLoadPoints,
@@ -303,10 +301,6 @@ export async function getAnalyticsSummary(
     analyticsCurrentCards,
     chartOptions,
   )
-  const overdueBacklogResult = buildOverdueBacklogPoints(
-    overdueSnapshots,
-    chartOptions,
-  )
   const overdueReadiness = calculateAnalyticsReadiness({
     requestedDays: range,
     evidenceCounts: bucketCountsFromDatedObservations(
@@ -315,7 +309,6 @@ export async function getAnalyticsSummary(
     ),
     bucketKeys: buckets.map((bucket) => bucket.key),
   })
-  const overdueBacklog = overdueBacklogResult.points
   const historicalReadiness = {
     requested: requestedReadiness,
     recallQuality: recallReadiness,
@@ -344,11 +337,6 @@ export async function getAnalyticsSummary(
     upcomingLoad,
   })
   const views = { ...baseViews, ...workloadViews }
-  const { health: retentionHealth, fragile: fragileKnowledge } =
-    buildRetentionHealth(analyticsCurrentCards, now, {
-      fragileDifficultyThreshold: 7,
-    })
-
   const dayMs = 24 * 60 * 60 * 1000
 
   const enrichedScatter: RetentionScatterEntry[] = scatterCandidates.map(
@@ -429,12 +417,6 @@ export async function getAnalyticsSummary(
     hardAgain,
     topics,
     stability,
-    overdueBacklog,
-    overdueHistoryAvailableFrom:
-      overdueBacklogResult.overdueHistoryAvailableFrom,
-    upcomingLoad,
-    retentionHealth,
-    fragileKnowledge,
   })
 }
 

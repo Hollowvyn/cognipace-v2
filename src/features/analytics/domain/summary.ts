@@ -101,11 +101,6 @@ export interface AnalyticsSummaryInput {
   hardAgain?: import('./chart-data').HardAgainSummary
   topics?: import('./chart-data').TopicPoint[]
   stability?: import('./chart-data').StabilityPoint[]
-  overdueBacklog?: import('./chart-data').OverdueBacklogPoint[]
-  overdueHistoryAvailableFrom?: string | null
-  upcomingLoad?: import('./chart-data').UpcomingLoadPoint[]
-  retentionHealth?: import('./chart-data').RetentionHealthPoint[]
-  fragileKnowledge?: import('./chart-data').FragileKnowledgeRow[]
 }
 
 export interface HistoricalReadiness {
@@ -145,11 +140,6 @@ export interface AnalyticsSummary {
   hardAgain: import('./chart-data').HardAgainSummary
   topics: import('./chart-data').TopicPoint[]
   stability: import('./chart-data').StabilityPoint[]
-  overdueBacklog: import('./chart-data').OverdueBacklogPoint[]
-  overdueHistoryAvailableFrom: string | null
-  upcomingLoad: import('./chart-data').UpcomingLoadPoint[]
-  retentionHealth: import('./chart-data').RetentionHealthPoint[]
-  fragileKnowledge: import('./chart-data').FragileKnowledgeRow[]
 }
 
 export function buildObservedRatingQuality(
@@ -302,11 +292,6 @@ export function buildAnalyticsSummary(
     },
     topics: input.topics ?? [],
     stability: input.stability ?? [],
-    overdueBacklog: input.overdueBacklog ?? [],
-    overdueHistoryAvailableFrom: input.overdueHistoryAvailableFrom ?? null,
-    upcomingLoad: input.upcomingLoad ?? [],
-    retentionHealth: input.retentionHealth ?? [],
-    fragileKnowledge: input.fragileKnowledge ?? [],
   }
 }
 

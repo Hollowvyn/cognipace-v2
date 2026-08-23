@@ -406,11 +406,6 @@ describe('background handler registration', () => {
       },
       topics: [],
       stability: [],
-      overdueBacklog: [],
-      overdueHistoryAvailableFrom: null,
-      upcomingLoad: createSerializedAnalyticsSummary().upcomingLoad,
-      retentionHealth: [],
-      fragileKnowledge: [],
     })
     backgroundMocks.backupExportFullBackup.mockResolvedValue(validBackup)
     backgroundMocks.backupResetLocalData.mockResolvedValue(null)
@@ -672,12 +667,18 @@ describe('background handler registration', () => {
         requestedDays: 14,
       },
       historicalReadiness: createReadyHistoricalReadiness(),
-      upcomingLoad: Array.from({ length: 14 }, (_, index) => ({
-        date: `2026-03-${String(8 + index).padStart(2, '0')}`,
-        dueCount: index === 0 ? 1 : 0,
-        overdueCount: 0,
-        today: index === 0,
-      })),
+      views: {
+        ...createSerializedAnalyticsSummary().views,
+        upcomingReviewLoad: {
+          scale: { domain: [0, 1], ticks: [0, 1] },
+          rows: Array.from({ length: 14 }, (_, index) => ({
+            date: `2026-03-${String(8 + index).padStart(2, '0')}`,
+            dueCount: index === 0 ? 1 : 0,
+            overdueCount: 0,
+            today: index === 0,
+          })),
+        },
+      },
     })
 
     backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
@@ -705,7 +706,7 @@ describe('background handler registration', () => {
     const parsed = analyticsSummarySchema.parse(response)
 
     expect(parsed.range).toBe(14)
-    expect(parsed.upcomingLoad[0]).toMatchObject({
+    expect(parsed.views.upcomingReviewLoad.rows[0]).toMatchObject({
       date: '2026-03-08',
       dueCount: 1,
       today: true,
@@ -765,11 +766,6 @@ describe('background handler registration', () => {
       },
       topics: [],
       stability: [],
-      overdueBacklog: [],
-      overdueHistoryAvailableFrom: null,
-      upcomingLoad: createSerializedAnalyticsSummary().upcomingLoad,
-      retentionHealth: [],
-      fragileKnowledge: [],
     })
 
     const response = analyticsSummarySchema.parse(
@@ -799,32 +795,6 @@ describe('background handler registration', () => {
           ready: false,
         },
       },
-      upcomingLoad: createSerializedAnalyticsSummary().upcomingLoad,
-      retentionHealth: [
-        {
-          slug: 'two-sum',
-          title: 'Two Sum',
-          retrievability: 0.82,
-          targetRetention: 0.9,
-          daysSinceReview: 2,
-          stabilityDays: 5,
-          difficulty: 5,
-          lapseCount: 0,
-          overdueDays: 0,
-        },
-      ],
-      fragileKnowledge: [
-        {
-          slug: 'add-binary',
-          title: 'Add Binary',
-          retrievability: 0.74,
-          stabilityDays: 2,
-          difficulty: 7,
-          lapseCount: 1,
-          overdueDays: 1,
-          topics: ['Bit manipulation'],
-        },
-      ],
     })
     backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
       ...fixture,
@@ -843,9 +813,7 @@ describe('background handler registration', () => {
 
     expect(response.range).toBe(90)
     expect(response.historicalReadiness.requested.ready).toBe(false)
-    expect(response.upcomingLoad).toHaveLength(14)
-    expect(response.retentionHealth).toHaveLength(1)
-    expect(response.fragileKnowledge).toHaveLength(1)
+    expect(response.views.upcomingReviewLoad.rows).toHaveLength(14)
   })
 
   it('registers dev smoke handling with dashboard policy and response parsing', async () => {

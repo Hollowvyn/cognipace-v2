@@ -210,16 +210,6 @@ function baseAnalyticsSummary(): SerializedAnalyticsSummary {
     },
     topics: [],
     stability: [],
-    overdueBacklog: [],
-    overdueHistoryAvailableFrom: null,
-    upcomingLoad: Array.from({ length: 14 }, (_, index) => ({
-      date: `2026-01-${String(15 + index).padStart(2, '0')}`,
-      dueCount: 0,
-      overdueCount: 0,
-      today: index === 0,
-    })),
-    retentionHealth: [],
-    fragileKnowledge: [],
   }
 }
 
@@ -281,46 +271,6 @@ function readyAnalyticsSummary(
         bucketEnd: '2026-01-14',
         medianStabilityDays: 8.2,
         sampleSize: 12,
-      },
-    ],
-    overdueBacklog: [
-      {
-        bucketStart: '2026-01-14',
-        bucketEnd: '2026-01-14',
-        overdueCount: 3,
-        historyAvailable: true,
-      },
-    ],
-    overdueHistoryAvailableFrom: '2026-01-14T00:00:00.000Z',
-    upcomingLoad: Array.from({ length: 14 }, (_, index) => ({
-      date: `2026-01-${String(15 + index).padStart(2, '0')}`,
-      dueCount: index === 0 ? 5 : 0,
-      overdueCount: index === 0 ? 1 : 0,
-      today: index === 0,
-    })),
-    retentionHealth: [
-      {
-        slug: 'graph-traversal',
-        title: 'Graph Traversal',
-        retrievability: 0.86,
-        targetRetention: 0.9,
-        daysSinceReview: 3,
-        stabilityDays: 4,
-        difficulty: 7.8,
-        lapseCount: 2,
-        overdueDays: 1,
-      },
-    ],
-    fragileKnowledge: [
-      {
-        slug: 'graph-traversal',
-        title: 'Graph Traversal',
-        retrievability: 0.86,
-        stabilityDays: 4,
-        difficulty: 7.8,
-        lapseCount: 2,
-        overdueDays: 1,
-        topics: ['Graphs'],
       },
     ],
     ...overrides,

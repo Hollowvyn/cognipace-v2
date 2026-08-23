@@ -371,6 +371,18 @@ describe('getUpcomingCards', () => {
     const result = await getUpcomingCards(db, until)
     expect(result).toEqual([])
   })
+
+  it('excludes cards whose practice status is suspended', async () => {
+    const { db } = await createTestDb()
+    const until = new Date('2026-01-20T00:00:00.000Z')
+
+    await insertPractice(db, 'two-sum', { status: 'suspended' })
+    await insertCard(db, 'two-sum', {
+      dueAt: ts(new Date('2026-01-15T00:00:00.000Z')),
+    })
+
+    await expect(getUpcomingCards(db, until)).resolves.toEqual([])
+  })
 })
 
 // ---------------------------------------------------------------------------

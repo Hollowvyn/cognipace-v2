@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { AnalyticsViews } from '../api/analytics-contracts'
 import {
+  buildThresholdStepSegments,
   RecentOverdueBacklogView,
   UpcomingReviewLoadView,
 } from './workload-views'
@@ -37,6 +38,39 @@ const upcomingReviewLoad: AnalyticsViews['upcomingReviewLoad'] = {
 }
 
 describe('workload analytics views', () => {
+  it('splits step segments at the 5-problem threshold in chart coordinates', () => {
+    expect(
+      buildThresholdStepSegments(
+        [
+          { x: 0, y: 10 },
+          { x: 10, y: 0 },
+        ],
+        [4, 6],
+      ),
+    ).toEqual([
+      { d: 'M0,10L10,10', status: 'within-watch' },
+      { d: 'M10,10L10,5', status: 'within-watch' },
+      { d: 'M10,5L10,0', status: 'above-watch' },
+    ])
+  })
+
+  it('does not introduce green segments when every backlog value is above the threshold', () => {
+    expect(
+      buildThresholdStepSegments(
+        [
+          { x: 0, y: 2 },
+          { x: 10, y: 4 },
+          { x: 20, y: 6 },
+        ],
+        [8, 7, 6],
+      ).map((segment) => segment.status),
+    ).toEqual(['above-watch', 'above-watch', 'above-watch', 'above-watch'])
+  })
+
+  it('does not add a permanent marker for a single measured backlog day', () => {
+    expect(buildThresholdStepSegments([{ x: 10, y: 10 }], [4])).toEqual([])
+  })
+
   it('renders unknown backlog days as a broken-line measure with Chart/Table parity and keyboard inspection', async () => {
     const user = userEvent.setup()
     render(<RecentOverdueBacklogView view={overdueBacklog} />)

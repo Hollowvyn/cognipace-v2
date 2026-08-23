@@ -45,7 +45,7 @@ describe('getAnalyticsSummary memory profile', () => {
       })
       expect(summary.recallQuality).toEqual([])
       expect(summary.ratingsMix).toEqual([])
-      expect(summary.upcomingLoad).toHaveLength(14)
+      expect(summary.views.upcomingReviewLoad.rows).toHaveLength(14)
     },
   )
 
@@ -130,12 +130,13 @@ describe('getAnalyticsSummary memory profile', () => {
     ).toBe(true)
     expect(summary.topics).toEqual([])
     expect(summary.stability).toEqual([])
-    expect(summary.overdueBacklog).toEqual([])
-    expect(summary.overdueHistoryAvailableFrom).toBeNull()
-    expect(summary.upcomingLoad).toHaveLength(14)
-    expect(summary.upcomingLoad.every((point) => point.dueCount === 0)).toBe(
-      true,
-    )
+    expect(summary.views.overdueBacklog.knownDays).toBe(0)
+    expect(summary.views.upcomingReviewLoad.rows).toHaveLength(14)
+    expect(
+      summary.views.upcomingReviewLoad.rows.every(
+        (point) => point.dueCount === 0,
+      ),
+    ).toBe(true)
   })
 
   it('counts same-day pre-review predictions individually in the summary', async () => {
@@ -303,10 +304,11 @@ describe('getAnalyticsSummary memory profile', () => {
 
     expect(summary.memoryProfile.totalTracked).toBe(1)
     expect(
-      summary.upcomingLoad.reduce((sum, point) => sum + point.dueCount, 0),
+      summary.views.upcomingReviewLoad.rows.reduce(
+        (sum, point) => sum + point.dueCount,
+        0,
+      ),
     ).toBe(1)
-    expect(summary.retentionHealth).toEqual([])
-    expect(summary.fragileKnowledge).toEqual([])
   })
 
   it('derives chart metrics from full history and current FSRS state', async () => {
@@ -384,14 +386,10 @@ describe('getAnalyticsSummary memory profile', () => {
     expect(
       summary.ratingsMix.reduce((sum, point) => sum + point.again, 0),
     ).toBe(1)
-    expect(summary.upcomingLoad[0]?.overdueCount).toBe(0)
-    expect(summary.upcomingLoad[1]?.dueCount).toBe(1)
-    expect(summary.retentionHealth).toHaveLength(2)
-    expect(
-      summary.fragileKnowledge.some((row) => row.topics.includes('Graphs')),
-    ).toBe(true)
-    expect(summary.overdueBacklog.length).toBeGreaterThan(0)
-    expect(summary.overdueHistoryAvailableFrom).not.toBeNull()
+    expect(summary.views.upcomingReviewLoad.rows[0]?.overdueCount).toBe(0)
+    expect(summary.views.upcomingReviewLoad.rows[1]?.dueCount).toBe(1)
+    expect(summary.views.retentionMap.rows).toHaveLength(2)
+    expect(summary.views.overdueBacklog.rows).toHaveLength(14)
   })
 
   it.each([30, 90] as const)(
@@ -429,9 +427,7 @@ describe('getAnalyticsSummary memory profile', () => {
         activeBuckets:
           summary.historicalReadiness.overdueBacklog.requestedBuckets,
       })
-      expect(
-        summary.overdueBacklog.every((point) => point.historyAvailable),
-      ).toBe(true)
+      expect(summary.views.overdueBacklog.knownDays).toBe(range)
     },
   )
 
@@ -471,9 +467,8 @@ describe('getAnalyticsSummary memory profile', () => {
       assessments: 3,
     })
     expect(
-      summary.overdueBacklog.some(
-        (point) =>
-          point.historyAvailable === false && point.overdueCount === null,
+      summary.views.overdueBacklog.rows.some(
+        (point) => point.overdueCount === null,
       ),
     ).toBe(true)
   })
@@ -850,8 +845,8 @@ describe('getAnalyticsSummary memory profile', () => {
     expect(readiness.recallQuality).toHaveLength(
       readiness.historicalReadiness.recallQuality.effectiveBuckets,
     )
-    expect(readiness.upcomingLoad).toHaveLength(14)
-    expect(readiness.retentionHealth.length).toBeGreaterThan(0)
+    expect(readiness.views.upcomingReviewLoad.rows).toHaveLength(14)
+    expect(readiness.views.retentionMap.rows.length).toBeGreaterThan(0)
   })
 
   it('recommends only a shorter ready range than the selected range', async () => {
@@ -1052,7 +1047,7 @@ describe('getAnalyticsSummary memory profile', () => {
       bucketEnd: '2026-03-07',
       reviewCount: 1,
     })
-    expect(summary.upcomingLoad[0]).toMatchObject({
+    expect(summary.views.upcomingReviewLoad.rows[0]).toMatchObject({
       date: '2026-03-08',
       dueCount: 1,
     })

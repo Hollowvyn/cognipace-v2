@@ -100,7 +100,7 @@ function AnalyticsWorkloadStory({
       <AnalyticsChartPanel
         description="Daily local overdue counts reconstructed from known persisted FSRS review intervals and current card state. Unknown days are deliberately not estimated."
         id="recent-overdue-backlog"
-        question="How has the known overdue backlog changed across this selected period?"
+        question="Is your overdue backlog staying at an acceptable level instead of accumulating?"
         title="Recent Overdue Backlog"
       >
         <RecentOverdueBacklogView view={data.views.overdueBacklog} />
@@ -108,7 +108,7 @@ function AnalyticsWorkloadStory({
       <AnalyticsChartPanel
         description="A fixed local-date schedule for active, non-suspended FSRS cards due today and over the next 13 days."
         id="upcoming-review-load"
-        question="What review load is scheduled for the next 14 days?"
+        question="What review work is currently scheduled for the next 14 days?"
         title="Upcoming Review Load"
       >
         <UpcomingReviewLoadView view={data.views.upcomingReviewLoad} />

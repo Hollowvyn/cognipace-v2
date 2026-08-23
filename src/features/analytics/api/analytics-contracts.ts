@@ -319,80 +319,80 @@ const upcomingReviewLoadViewRowSchema = z.object({
   today: z.boolean(),
 })
 
-export const analyticsViewsSchema = z.object({
-  observedRecallVsFsrs: z.object({
-    rows: z.array(observedRecallVsFsrsRowSchema),
-    scale: analyticsScaleSchema,
-    targetRetention: percentageSchema,
-  }),
-  memoryStrength: z.object({
-    rows: z.array(memoryStrengthRowSchema),
-    scale: analyticsScaleSchema,
-  }),
-  practiceRhythm: z.object({
-    rows: z.array(practiceRhythmRowSchema),
-    countScale: analyticsScaleSchema,
-    percentageScale: analyticsScaleSchema,
-  }),
-  ratingsMix: z.object({
-    rows: z.array(ratingsMixRowSchema),
-    selectedHardAgain: countSchema,
-    selectedValidRatings: countSchema,
-    comparison: ratingsMixComparisonSchema,
-  }),
-  topicPerformance: z.object({
-    rows: z.array(topicPerformanceRowSchema).max(5),
-    strongerQualifyingTopics: countSchema,
-    lowEvidenceTopics: z.array(lowEvidenceTopicRowSchema).max(5),
-    additionalLowEvidenceTopics: countSchema,
-  }),
-  retentionMap: z.object({
-    rows: z.array(retentionMapRowSchema).max(30),
-    totalEligible: countSchema,
-    statusCounts: retentionMapStatusCountsSchema,
-    recallScale: analyticsScaleSchema,
-    durationScale: analyticsScaleSchema,
-    targetRetention: percentageSchema,
-  }),
-  memorySignals: z.object({
-    rows: z.array(memorySignalRowSchema).max(25),
-    totalQualifying: countSchema,
-  }),
-  overdueBacklog: z.object({
-    rows: z.array(overdueBacklogViewRowSchema),
-    knownDays: countSchema,
-    withinWatchDays: countSchema,
-    aboveWatchDays: countSchema,
-    selectedDays: countSchema,
-    currentBacklog: countSchema.nullable(),
-    peak: countSchema.nullable(),
-    scale: analyticsScaleSchema,
-  }),
-  upcomingReviewLoad: z.object({
-    rows: z.array(upcomingReviewLoadViewRowSchema).length(14),
-    scale: analyticsScaleSchema,
-  }),
-})
+export const analyticsViewsSchema = z
+  .object({
+    observedRecallVsFsrs: z.object({
+      rows: z.array(observedRecallVsFsrsRowSchema),
+      scale: analyticsScaleSchema,
+      targetRetention: percentageSchema,
+    }),
+    memoryStrength: z.object({
+      rows: z.array(memoryStrengthRowSchema),
+      scale: analyticsScaleSchema,
+    }),
+    practiceRhythm: z.object({
+      rows: z.array(practiceRhythmRowSchema),
+      countScale: analyticsScaleSchema,
+      percentageScale: analyticsScaleSchema,
+    }),
+    ratingsMix: z.object({
+      rows: z.array(ratingsMixRowSchema),
+      selectedHardAgain: countSchema,
+      selectedValidRatings: countSchema,
+      comparison: ratingsMixComparisonSchema,
+    }),
+    topicPerformance: z.object({
+      rows: z.array(topicPerformanceRowSchema).max(5),
+      strongerQualifyingTopics: countSchema,
+      lowEvidenceTopics: z.array(lowEvidenceTopicRowSchema).max(5),
+      additionalLowEvidenceTopics: countSchema,
+    }),
+    retentionMap: z.object({
+      rows: z.array(retentionMapRowSchema).max(30),
+      totalEligible: countSchema,
+      statusCounts: retentionMapStatusCountsSchema,
+      recallScale: analyticsScaleSchema,
+      durationScale: analyticsScaleSchema,
+      targetRetention: percentageSchema,
+    }),
+    memorySignals: z.object({
+      rows: z.array(memorySignalRowSchema).max(25),
+      totalQualifying: countSchema,
+    }),
+    overdueBacklog: z.object({
+      rows: z.array(overdueBacklogViewRowSchema),
+      knownDays: countSchema,
+      withinWatchDays: countSchema,
+      aboveWatchDays: countSchema,
+      selectedDays: countSchema,
+      currentBacklog: countSchema.nullable(),
+      peak: countSchema.nullable(),
+      scale: analyticsScaleSchema,
+    }),
+    upcomingReviewLoad: z.object({
+      rows: z.array(upcomingReviewLoadViewRowSchema).length(14),
+      scale: analyticsScaleSchema,
+    }),
+  })
+  .superRefine((views, context) => {
+    const { rows } = views.upcomingReviewLoad
+    if (!rows[0]?.today || rows.filter((row) => row.today).length !== 1) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Upcoming Review Load must mark only its first row as today.',
+        path: ['upcomingReviewLoad', 'rows'],
+      })
+    }
+    if (rows.slice(1).some((row) => row.overdueCount !== 0)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Only today may contain overdue reviews.',
+        path: ['upcomingReviewLoad', 'rows'],
+      })
+    }
+  })
 
 export type AnalyticsViews = z.infer<typeof analyticsViewsSchema>
-
-export const overdueBacklogPointSchema = z.discriminatedUnion(
-  'historyAvailable',
-  [
-    z.object({
-      bucketStart: z.string(),
-      bucketEnd: z.string(),
-      overdueCount: countSchema,
-      historyAvailable: z.literal(true),
-    }),
-    z.object({
-      bucketStart: z.string(),
-      bucketEnd: z.string(),
-      overdueCount: z.null(),
-      historyAvailable: z.literal(false),
-    }),
-  ],
-)
 
 export const historicalReadinessSchema = z.object({
   requested: analyticsReadinessSchema,
@@ -403,36 +403,6 @@ export const historicalReadinessSchema = z.object({
   stability: analyticsReadinessSchema,
   overdueBacklog: analyticsReadinessSchema,
   recommendedRange: analyticsRangeSchema.nullable(),
-})
-
-export const upcomingLoadPointSchema = z.object({
-  date: z.string(),
-  dueCount: countSchema,
-  overdueCount: countSchema,
-  today: z.boolean(),
-})
-
-export const retentionHealthPointSchema = z.object({
-  slug: z.string(),
-  title: z.string(),
-  retrievability: percentageSchema,
-  targetRetention: percentageSchema,
-  daysSinceReview: countSchema,
-  stabilityDays: z.number().nonnegative(),
-  difficulty: z.number(),
-  lapseCount: countSchema,
-  overdueDays: countSchema,
-})
-
-export const fragileKnowledgeSchema = z.object({
-  slug: z.string(),
-  title: z.string(),
-  retrievability: percentageSchema,
-  stabilityDays: z.number().nonnegative(),
-  difficulty: z.number(),
-  lapseCount: countSchema,
-  overdueDays: countSchema,
-  topics: z.array(z.string()),
 })
 
 export const analyticsSummarySchema = z
@@ -461,11 +431,6 @@ export const analyticsSummarySchema = z
     hardAgain: hardAgainSummarySchema,
     topics: z.array(topicPointSchema),
     stability: z.array(stabilityPointSchema),
-    overdueBacklog: z.array(overdueBacklogPointSchema),
-    overdueHistoryAvailableFrom: z.iso.datetime().nullable(),
-    upcomingLoad: z.array(upcomingLoadPointSchema).length(14),
-    retentionHealth: z.array(retentionHealthPointSchema),
-    fragileKnowledge: z.array(fragileKnowledgeSchema),
   })
   .superRefine((summary, context) => {
     if (summary.range !== summary.timeFrame.requestedDays) {

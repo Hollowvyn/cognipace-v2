@@ -227,6 +227,7 @@ export async function getUpcomingCards(
         eq(fsrsCards.cardKind, defaultFsrsCardKind),
         lt(fsrsCards.dueAt, until.getTime()),
         eq(problemPractice.isSuspended, false),
+        ne(problemPractice.status, 'suspended'),
       ),
     )
     .orderBy(asc(fsrsCards.dueAt), asc(fsrsCards.problemSlug))

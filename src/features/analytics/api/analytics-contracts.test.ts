@@ -63,13 +63,6 @@ const validForecast = Array.from({ length: 14 }, (_, index) => ({
   dueCount: index,
 }))
 
-const validUpcomingLoad = Array.from({ length: 14 }, (_, index) => ({
-  date: `2026-01-${String(15 + index).padStart(2, '0')}`,
-  dueCount: index,
-  overdueCount: index === 0 ? 1 : 0,
-  today: index === 0,
-}))
-
 const validSummary: SerializedAnalyticsSummary = {
   range: 30,
   generatedAt: '2026-01-15T12:00:00.000Z',
@@ -199,11 +192,6 @@ const validSummary: SerializedAnalyticsSummary = {
   },
   topics: [],
   stability: [],
-  overdueBacklog: [],
-  overdueHistoryAvailableFrom: null,
-  upcomingLoad: validUpcomingLoad,
-  retentionHealth: [],
-  fragileKnowledge: [],
 }
 
 function withoutSummaryField(field: keyof SerializedAnalyticsSummary) {
@@ -381,7 +369,7 @@ describe('analyticsSummarySchema', () => {
       )
   })
 
-  it('serializes an unready historical selection with current and forecast analytics', () => {
+  it('serializes an unready historical selection with feature-owned current and workload views', () => {
     const parsed = analyticsSummarySchema.parse({
       ...validSummary,
       range: 90,
@@ -397,39 +385,11 @@ describe('analyticsSummarySchema', () => {
           ready: false,
         },
       },
-      upcomingLoad: validUpcomingLoad,
-      retentionHealth: [
-        {
-          slug: 'two-sum',
-          title: 'Two Sum',
-          retrievability: 0.82,
-          targetRetention: 0.9,
-          daysSinceReview: 2,
-          stabilityDays: 5,
-          difficulty: 5,
-          lapseCount: 0,
-          overdueDays: 0,
-        },
-      ],
-      fragileKnowledge: [
-        {
-          slug: 'add-binary',
-          title: 'Add Binary',
-          retrievability: 0.74,
-          stabilityDays: 2,
-          difficulty: 7,
-          lapseCount: 1,
-          overdueDays: 1,
-          topics: ['Bit manipulation'],
-        },
-      ],
     })
 
     expect(parsed.range).toBe(90)
     expect(parsed.historicalReadiness.requested.ready).toBe(false)
-    expect(parsed.upcomingLoad).toHaveLength(14)
-    expect(parsed.retentionHealth).toHaveLength(1)
-    expect(parsed.fragileKnowledge).toHaveLength(1)
+    expect(parsed.views.upcomingReviewLoad.rows).toHaveLength(14)
   })
 
   it('rejects a forecast with fewer than 14 entries', () => {
@@ -451,43 +411,39 @@ describe('analyticsSummarySchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it.each([
-    [readyReadiness, null],
-    [readiness, 14],
-  ] as const)(
-    'requires exactly 14 upcoming-load entries regardless of readiness',
-    (requested, recommendedRange) => {
-      const summary = {
+  it('keeps the fixed workload forecast anchored at today and overdue only today', () => {
+    const rows = validSummary.views.upcomingReviewLoad.rows
+    expect(
+      analyticsSummarySchema.safeParse({
         ...validSummary,
-        historicalReadiness: withRequestedReadiness(
-          requested,
-          recommendedRange,
-        ),
-      }
-
-      expect(analyticsSummarySchema.safeParse(summary).success).toBe(true)
-      expect(
-        analyticsSummarySchema.safeParse({
-          ...summary,
-          upcomingLoad: validUpcomingLoad.slice(0, 13),
-        }).success,
-      ).toBe(false)
-      expect(
-        analyticsSummarySchema.safeParse({
-          ...summary,
-          upcomingLoad: [
-            ...validUpcomingLoad,
-            {
-              date: '2026-01-29',
-              dueCount: 0,
-              overdueCount: 0,
-              today: false,
-            },
-          ],
-        }).success,
-      ).toBe(false)
-    },
-  )
+        views: {
+          ...validSummary.views,
+          upcomingReviewLoad: {
+            ...validSummary.views.upcomingReviewLoad,
+            rows: rows.map((row, index) => ({
+              ...row,
+              overdueCount: index === 1 ? 1 : row.overdueCount,
+            })),
+          },
+        },
+      }).success,
+    ).toBe(false)
+    expect(
+      analyticsSummarySchema.safeParse({
+        ...validSummary,
+        views: {
+          ...validSummary.views,
+          upcomingReviewLoad: {
+            ...validSummary.views.upcomingReviewLoad,
+            rows: rows.map((row, index) => ({
+              ...row,
+              today: index === 1,
+            })),
+          },
+        },
+      }).success,
+    ).toBe(false)
+  })
 
   it('rejects more than 10 weak problems', () => {
     const tooMany = Array.from({ length: 11 }, (_, index) => ({
@@ -551,7 +507,6 @@ describe('analyticsSummarySchema', () => {
     const chartReadySummary = {
       ...validSummary,
       historicalReadiness: withRequestedReadiness(readyReadiness, null),
-      overdueHistoryAvailableFrom: '2026-01-01T00:00:00.000Z',
       recallQuality: [
         {
           bucketStart: '2026-01-15',
@@ -571,47 +526,7 @@ describe('analyticsSummarySchema', () => {
       recallQuality: chartReadySummary.recallQuality,
       practiceRhythm: chartReadySummary.practiceRhythm,
       ratingsMix: chartReadySummary.ratingsMix,
-      overdueHistoryAvailableFrom: '2026-01-01T00:00:00.000Z',
     })
-  })
-
-  it('preserves a nullable overdue history boundary', () => {
-    expect(
-      analyticsSummarySchema.parse({
-        ...validSummary,
-        overdueHistoryAvailableFrom: null,
-      }).overdueHistoryAvailableFrom,
-    ).toBeNull()
-    expect(
-      analyticsSummarySchema.parse({
-        ...validSummary,
-        overdueHistoryAvailableFrom: '2026-01-01T00:00:00.000Z',
-      }).overdueHistoryAvailableFrom,
-    ).toBe('2026-01-01T00:00:00.000Z')
-  })
-
-  it('preserves unknown overdue buckets instead of fabricating a count', () => {
-    const parsed = analyticsSummarySchema.parse({
-      ...validSummary,
-      historicalReadiness: withRequestedReadiness(readyReadiness, null),
-      overdueBacklog: [
-        {
-          bucketStart: '2026-01-13',
-          bucketEnd: '2026-01-15',
-          overdueCount: null,
-          historyAvailable: false,
-        },
-      ],
-    })
-
-    expect(parsed.overdueBacklog).toEqual([
-      {
-        bucketStart: '2026-01-13',
-        bucketEnd: '2026-01-15',
-        overdueCount: null,
-        historyAvailable: false,
-      },
-    ])
   })
 
   it('permits sparse summaries without hiding measured chart values', () => {

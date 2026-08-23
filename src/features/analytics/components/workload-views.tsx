@@ -1,4 +1,5 @@
 import { useId, useState, type ReactNode } from 'react'
+import type { LineDrawShapeProps } from 'recharts'
 import {
   Bar,
   BarChart,
@@ -92,16 +93,8 @@ function OverdueBacklogChart({
   view: AnalyticsViews['overdueBacklog']
 }) {
   const summaryId = useId()
-  const gradientId = `overdue-line-${summaryId.replaceAll(':', '')}`
   const [activeIndex, setActiveIndex] = useState(0)
   const active = view.rows[activeIndex]
-  const watchOffset = Math.max(
-    0,
-    Math.min(
-      100,
-      ((view.scale.domain[1] - watchZone) / view.scale.domain[1]) * 100,
-    ),
-  )
 
   if (view.knownDays === 0) {
     return (
@@ -153,20 +146,6 @@ function OverdueBacklogChart({
           data={view.rows}
           margin={{ bottom: 8, left: 0, right: 8, top: 16 }}
         >
-          <defs>
-            <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="var(--cp-analytics-attention)" />
-              <stop
-                offset={`${watchOffset}%`}
-                stopColor="var(--cp-analytics-attention)"
-              />
-              <stop
-                offset={`${watchOffset}%`}
-                stopColor="var(--cp-analytics-healthy)"
-              />
-              <stop offset="100%" stopColor="var(--cp-analytics-healthy)" />
-            </linearGradient>
-          </defs>
           <CartesianGrid stroke="var(--color-border)" vertical={false} />
           <ReferenceArea
             fill="var(--cp-analytics-healthy)"
@@ -205,11 +184,19 @@ function OverdueBacklogChart({
           />
           <Tooltip content={<BacklogTooltip />} />
           <Line
-            activeDot={{ r: 4 }}
+            activeDot={{
+              fill: 'var(--color-card)',
+              r: 4,
+              stroke: 'var(--cp-analytics-target)',
+              strokeWidth: 2,
+            }}
             dataKey="overdueCount"
             dot={false}
             isAnimationActive={false}
-            stroke={`url(#${gradientId})`}
+            shape={createThresholdStepShape(
+              view.rows.map((row) => row.overdueCount),
+            )}
+            stroke="transparent"
             strokeWidth={2}
             type="stepAfter"
           />
@@ -226,6 +213,131 @@ function OverdueBacklogChart({
       </p>
     </div>
   )
+}
+
+interface ThresholdLinePoint {
+  x: number | null
+  y: number | null
+}
+
+interface ThresholdStepSegment {
+  d: string
+  status: 'within-watch' | 'above-watch'
+}
+
+function getThresholdStatus(value: number): ThresholdStepSegment['status'] {
+  return value <= watchZone ? 'within-watch' : 'above-watch'
+}
+
+function addThresholdStepSegment(
+  segments: ThresholdStepSegment[],
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  status: ThresholdStepSegment['status'],
+) {
+  if (fromX === toX && fromY === toY) return
+  segments.push({
+    d: `M${fromX},${fromY}L${toX},${toY}`,
+    status,
+  })
+}
+
+export function buildThresholdStepSegments(
+  points: readonly ThresholdLinePoint[] | undefined,
+  values: readonly (number | null)[],
+): ThresholdStepSegment[] {
+  if (!points) return []
+
+  const segments: ThresholdStepSegment[] = []
+  for (let index = 0; index < values.length - 1; index += 1) {
+    const currentValue = values[index]
+    const nextValue = values[index + 1]
+    const currentPoint = points[index]
+    const nextPoint = points[index + 1]
+    if (
+      currentValue === null ||
+      nextValue === null ||
+      !currentPoint ||
+      !nextPoint ||
+      currentPoint.x === null ||
+      currentPoint.y === null ||
+      nextPoint.x === null ||
+      nextPoint.y === null
+    ) {
+      continue
+    }
+
+    const currentStatus = getThresholdStatus(currentValue)
+    const nextStatus = getThresholdStatus(nextValue)
+    addThresholdStepSegment(
+      segments,
+      currentPoint.x,
+      currentPoint.y,
+      nextPoint.x,
+      currentPoint.y,
+      currentStatus,
+    )
+
+    if (currentStatus === nextStatus) {
+      addThresholdStepSegment(
+        segments,
+        nextPoint.x,
+        currentPoint.y,
+        nextPoint.x,
+        nextPoint.y,
+        currentStatus,
+      )
+      continue
+    }
+
+    const thresholdY =
+      currentPoint.y +
+      ((nextPoint.y - currentPoint.y) * (watchZone - currentValue)) /
+        (nextValue - currentValue)
+    addThresholdStepSegment(
+      segments,
+      nextPoint.x,
+      currentPoint.y,
+      nextPoint.x,
+      thresholdY,
+      currentStatus,
+    )
+    addThresholdStepSegment(
+      segments,
+      nextPoint.x,
+      thresholdY,
+      nextPoint.x,
+      nextPoint.y,
+      nextStatus,
+    )
+  }
+  return segments
+}
+
+function createThresholdStepShape(values: readonly (number | null)[]) {
+  return function ThresholdStepShape({ points }: LineDrawShapeProps) {
+    const segments = buildThresholdStepSegments(points, values)
+    return (
+      <g aria-hidden="true" data-testid="overdue-threshold-step-segments">
+        {segments.map((segment, index) => (
+          <path
+            d={segment.d}
+            data-threshold-status={segment.status}
+            fill="none"
+            key={`${segment.status}-${index}`}
+            stroke={
+              segment.status === 'within-watch'
+                ? 'var(--cp-analytics-healthy)'
+                : 'var(--cp-analytics-attention)'
+            }
+            strokeWidth={2}
+          />
+        ))}
+      </g>
+    )
+  }
 }
 
 function UpcomingLoadChart({
@@ -361,7 +473,7 @@ function BacklogTooltip({
     <div className="rounded border border-border bg-card px-3 py-2 text-xs shadow-overlay">
       <p className="m-0 font-medium">Date: {formatDate(row.date)}</p>
       <p className="m-0">
-        Overdue:{' '}
+        Overdue problems:{' '}
         {row.overdueCount === null
           ? 'Not measured'
           : formatCount(row.overdueCount)}
