@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -164,6 +164,55 @@ describe('TrackImportForm', () => {
     expect(screen.getByRole('button', { name: 'Import Tracks' })).toBeEnabled()
   })
 
+  it('keeps the newest file ready when an older file read resolves later', async () => {
+    const user = userEvent.setup()
+    const fileARead = createDeferred<string>()
+    const fileBRead = createDeferred<string>()
+    const importFileA = createImportFile('Track A', 'two-sum')
+    const importFileB = createImportFile('Track B', 'binary-search', {
+      trackCount: 2,
+    })
+    const fileA = createJsonFile(importFileA, 'tracks-a.json')
+    const fileB = createJsonFile(importFileB, 'tracks-b.json')
+
+    deferFileText(fileA, fileARead.promise)
+    deferFileText(fileB, fileBRead.promise)
+    renderImportForm()
+
+    const input = screen.getByLabelText('Tracks import file')
+    await user.upload(input, fileA)
+    await user.upload(input, fileB)
+
+    await act(async () => {
+      fileBRead.resolve(JSON.stringify(importFileB))
+      await fileBRead.promise
+    })
+    expect(await screen.findByText('Tracks: 2')).toBeVisible()
+
+    await act(async () => {
+      fileARead.resolve(JSON.stringify(importFileA))
+      await fileARead.promise
+    })
+
+    expect(screen.getByText('tracks-b.json')).toBeVisible()
+    expect(screen.getByText('Tracks: 2')).toBeVisible()
+    expect(screen.getByText('Groups: 2')).toBeVisible()
+    expect(screen.getByText('Unique referenced problems: 2')).toBeVisible()
+
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      createdTrackIds: ['track-b'],
+      createdTrackCount: 2,
+      createdProblemCount: 0,
+      reusedProblemCount: 2,
+    })
+    await user.click(screen.getByRole('button', { name: 'Import Tracks' }))
+
+    expect(sendMessage).toHaveBeenCalledWith('tracks.importTracks', {
+      surface: 'dashboard',
+      file: importFileB,
+    })
+  })
+
   it('disables duplicate submissions while the import is pending', async () => {
     const user = userEvent.setup()
     let resolveImport!: (
@@ -288,10 +337,59 @@ async function uploadValidFile(user: ReturnType<typeof userEvent.setup>) {
   )
 }
 
-function createJsonFile(value: unknown) {
-  return new File([JSON.stringify(value)], 'tracks.json', {
+function createJsonFile(value: unknown, name = 'tracks.json') {
+  return new File([JSON.stringify(value)], name, {
     type: 'application/json',
   })
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise
+  })
+
+  return { promise, resolve }
+}
+
+function deferFileText(file: File, text: Promise<string>) {
+  Object.defineProperty(file, 'text', {
+    configurable: true,
+    value: vi.fn(() => text),
+  })
+}
+
+function createImportFile(
+  title: string,
+  problemSlug: string,
+  options: { trackCount?: number } = {},
+): TrackImportFile {
+  const tracks = [
+    {
+      description: null,
+      dueAt: null,
+      title,
+      groups: [{ title: 'Arrays', problemSlugs: [problemSlug] }],
+    },
+  ]
+
+  if (options.trackCount === 2) {
+    tracks.push({
+      description: null,
+      dueAt: null,
+      title: `${title} Two`,
+      groups: [
+        { title: 'Graphs', problemSlugs: ['container-with-most-water'] },
+      ],
+    })
+  }
+
+  return {
+    app: 'cognipace-track-import',
+    problems: [],
+    schemaVersion: 1,
+    tracks,
+  }
 }
 
 const validImportFile = {

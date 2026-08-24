@@ -22,6 +22,7 @@ export function TrackImportForm({
   onDone: () => void
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const fileSelectionRequestRef = useRef(0)
   const importTracks = useImportTracks()
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<TrackImportFile | null>(null)
@@ -31,6 +32,8 @@ export function TrackImportForm({
   const isPending = importTracks.isPending
 
   async function handleFileSelect(file: File) {
+    const requestId = fileSelectionRequestRef.current + 1
+    fileSelectionRequestRef.current = requestId
     setSelectedFileName(file.name)
     setSelectedFile(null)
     setPreview(null)
@@ -42,7 +45,15 @@ export function TrackImportForm({
     try {
       parsedJson = JSON.parse(await readFileText(file))
     } catch {
+      if (fileSelectionRequestRef.current !== requestId) {
+        return
+      }
+
       setError('Selected file is not valid JSON.')
+      return
+    }
+
+    if (fileSelectionRequestRef.current !== requestId) {
       return
     }
 
@@ -132,7 +143,14 @@ export function TrackImportForm({
             className="sr-only"
             disabled={controlsDisabled}
             id="tracks-import-file"
-            onChange={handleFileChange(handleFileSelect)}
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0]
+              event.currentTarget.value = ''
+
+              if (file) {
+                void handleFileSelect(file)
+              }
+            }}
             ref={fileInputRef}
             type="file"
           />
@@ -240,17 +258,6 @@ function PreviewMetric({ label, value }: { label: string; value: number }) {
       </dd>
     </div>
   )
-}
-
-function handleFileChange(onFileSelect: (file: File) => Promise<void>) {
-  return (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0]
-    event.currentTarget.value = ''
-
-    if (file) {
-      void onFileSelect(file)
-    }
-  }
 }
 
 async function readFileText(file: File) {
