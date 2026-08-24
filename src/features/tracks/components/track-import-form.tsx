@@ -89,7 +89,7 @@ export function TrackImportForm({
         file: selectedFile,
       })
       setSuccess(
-        `Imported ${result.createdTrackCount} ${result.createdTrackCount === 1 ? 'track' : 'tracks'}. Created ${result.createdProblemCount} problems. Reused ${result.reusedProblemCount} problems.`,
+        `Imported ${result.createdTrackCount} ${result.createdTrackCount === 1 ? 'track' : 'tracks'}. Created ${result.createdProblemCount} ${result.createdProblemCount === 1 ? 'problem' : 'problems'}. Reused ${result.reusedProblemCount} ${result.reusedProblemCount === 1 ? 'problem' : 'problems'}.`,
       )
     } catch (caughtError) {
       setError(readErrorMessage(caughtError, 'Track import failed.'))

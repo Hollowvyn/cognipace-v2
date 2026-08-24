@@ -213,6 +213,44 @@ describe('TrackImportForm', () => {
     })
   })
 
+  it('keeps the newest file ready when an older file read rejects later', async () => {
+    const user = userEvent.setup()
+    const fileARead = createDeferred<string>()
+    const fileBRead = createDeferred<string>()
+    const importFileA = createImportFile('Track A', 'two-sum')
+    const importFileB = createImportFile('Track B', 'binary-search', {
+      trackCount: 2,
+    })
+    const fileA = createJsonFile(importFileA, 'tracks-a.json')
+    const fileB = createJsonFile(importFileB, 'tracks-b.json')
+
+    deferFileText(fileA, fileARead.promise)
+    deferFileText(fileB, fileBRead.promise)
+    renderImportForm()
+
+    const input = screen.getByLabelText('Tracks import file')
+    await user.upload(input, fileA)
+    await user.upload(input, fileB)
+
+    await act(async () => {
+      fileBRead.resolve(JSON.stringify(importFileB))
+      await fileBRead.promise
+    })
+    expect(await screen.findByText('Tracks: 2')).toBeVisible()
+
+    await act(async () => {
+      fileARead.reject(new Error('stale file read failed'))
+      await fileARead.promise.catch(() => undefined)
+    })
+
+    expect(screen.getByText('tracks-b.json')).toBeVisible()
+    expect(screen.getByText('Tracks: 2')).toBeVisible()
+    expect(screen.getByText('Groups: 2')).toBeVisible()
+    expect(screen.getByText('Unique referenced problems: 2')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Import Tracks' })).toBeEnabled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('disables duplicate submissions while the import is pending', async () => {
     const user = userEvent.setup()
     let resolveImport!: (
@@ -292,14 +330,14 @@ describe('TrackImportForm', () => {
       createdTrackIds: ['track-one'],
       createdTrackCount: 1,
       createdProblemCount: 1,
-      reusedProblemCount: 0,
+      reusedProblemCount: 1,
     })
 
     await user.click(screen.getByRole('button', { name: 'Import Tracks' }))
 
     expect(sendMessage).toHaveBeenCalledTimes(2)
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'Imported 1 track. Created 1 problems. Reused 0 problems.',
+      'Imported 1 track. Created 1 problem. Reused 1 problem.',
     )
   })
 
@@ -345,11 +383,13 @@ function createJsonFile(value: unknown, name = 'tracks.json') {
 
 function createDeferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void
-  const promise = new Promise<T>((resolvePromise) => {
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
     resolve = resolvePromise
+    reject = rejectPromise
   })
 
-  return { promise, resolve }
+  return { promise, reject, resolve }
 }
 
 function deferFileText(file: File, text: Promise<string>) {
