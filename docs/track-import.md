@@ -135,8 +135,8 @@ On success, the result counts mean:
 
 ## NeetCode example
 
-The checked-in NeetCode file is generated from the legacy curated source at
-`CogniPace/src/features/problems/data/seed/curatedSets.ts`. It contains the
+The checked-in NeetCode file is generated from the sibling legacy curated
+source at `../CogniPace/src/features/problems/data/seed/curatedSets.ts`. It contains the
 `NeetCode 150` and `NeetCode 250` tracks, 35 groups, and 240 unique referenced
 problems. After preserving source order and keeping only the first occurrence
 of each problem within a track, the tracks contain 144 and 232 unique
