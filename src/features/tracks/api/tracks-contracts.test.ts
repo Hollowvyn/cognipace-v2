@@ -1,7 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-
-import * as ts from 'typescript'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
@@ -13,7 +11,6 @@ import {
   createSerializedActiveTrack,
   createTrackProblemRow,
 } from '@/testing/track-fixtures'
-import { normalizeLeetCodeSlug } from '@/lib/leetcode'
 
 import {
   createTrackImportPreview,
@@ -37,6 +34,7 @@ import {
   type TrackImportResult,
   type TracksImportTracksRequest,
 } from './tracks-contracts'
+import { legacyNeetCodeTracks } from './fixtures/legacy-neetcode-tracks'
 
 function createImportTrack(
   title: string,
@@ -58,142 +56,6 @@ function createImportFile(
     app: 'cognipace-track-import',
     tracks,
   }
-}
-
-type LegacyNeetCodeTrack = {
-  title: string
-  groups: Array<{
-    title: string
-    problemSlugs: string[]
-  }>
-}
-
-const legacyCuratedSetsRelativePath =
-  'CogniPace/src/features/problems/data/seed/curatedSets.ts'
-
-function findLegacyCuratedSetsPath() {
-  let directory = resolve(process.cwd())
-
-  while (true) {
-    const candidate = resolve(directory, '..', legacyCuratedSetsRelativePath)
-    if (existsSync(candidate)) {
-      return candidate
-    }
-
-    const parent = dirname(directory)
-    if (parent === directory) {
-      throw new Error(
-        `Could not find the legacy curated source at ../${legacyCuratedSetsRelativePath}.`,
-      )
-    }
-    directory = parent
-  }
-}
-
-function getPropertyInitializer(
-  object: ts.ObjectLiteralExpression,
-  propertyName: string,
-) {
-  const property = object.properties.find(
-    (candidate): candidate is ts.PropertyAssignment =>
-      ts.isPropertyAssignment(candidate) &&
-      ts.isIdentifier(candidate.name) &&
-      candidate.name.text === propertyName,
-  )
-
-  if (!property) {
-    throw new Error(`Legacy source is missing the ${propertyName} property.`)
-  }
-
-  return property.initializer
-}
-
-function readLegacyStringArray(
-  object: ts.ObjectLiteralExpression,
-  propertyName: string,
-) {
-  const initializer = getPropertyInitializer(object, propertyName)
-  if (!ts.isArrayLiteralExpression(initializer)) {
-    throw new Error(`Legacy ${propertyName} must be an array.`)
-  }
-
-  return initializer.elements.map((element) => {
-    if (!ts.isStringLiteral(element)) {
-      throw new Error(`Legacy ${propertyName} must contain string slugs.`)
-    }
-    return element.text
-  })
-}
-
-function readLegacyTopicPath(
-  sourceFile: ts.SourceFile,
-  declarationName: string,
-) {
-  const declaration = sourceFile.statements
-    .filter(ts.isVariableStatement)
-    .flatMap((statement) => Array.from(statement.declarationList.declarations))
-    .find(
-      (candidate) =>
-        ts.isIdentifier(candidate.name) &&
-        candidate.name.text === declarationName,
-    )
-
-  if (!declaration || !declaration.initializer) {
-    throw new Error(`Legacy source is missing ${declarationName}.`)
-  }
-  if (!ts.isArrayLiteralExpression(declaration.initializer)) {
-    throw new Error(`Legacy ${declarationName} must be an array.`)
-  }
-
-  return declaration.initializer.elements.map((element) => {
-    if (!ts.isObjectLiteralExpression(element)) {
-      throw new Error(`Legacy ${declarationName} must contain group objects.`)
-    }
-
-    const topic = getPropertyInitializer(element, 'topic')
-    if (!ts.isStringLiteral(topic)) {
-      throw new Error(`Legacy ${declarationName} topics must be strings.`)
-    }
-
-    return {
-      title: topic.text,
-      problemSlugs: readLegacyStringArray(element, 'slugs'),
-    }
-  })
-}
-
-function readLegacyNeetCodeTracks(): LegacyNeetCodeTrack[] {
-  const sourcePath = findLegacyCuratedSetsPath()
-  const sourceFile = ts.createSourceFile(
-    sourcePath,
-    readFileSync(sourcePath, 'utf8'),
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TS,
-  )
-
-  return [
-    ['NeetCode 150', 'neetCode150TopicPath'],
-    ['NeetCode 250', 'neetCode250TopicPath'],
-  ].map(([title, declarationName]) => {
-    const seenSlugs = new Set<string>()
-    const groups = readLegacyTopicPath(sourceFile, declarationName).map(
-      (group) => ({
-        title: group.title,
-        problemSlugs: group.problemSlugs
-          .map(normalizeLeetCodeSlug)
-          .filter((slug) => {
-            if (seenSlugs.has(slug)) {
-              return false
-            }
-            seenSlugs.add(slug)
-            return true
-          }),
-      }),
-    )
-
-    return { title, groups }
-  })
 }
 
 describe('tracks runtime contracts', () => {
@@ -1012,7 +874,7 @@ describe('track import contracts', () => {
     const definedProblemSlugs = new Set(
       parsed.problems.map((problem) => problem.slug),
     )
-    const legacyTracks = readLegacyNeetCodeTracks()
+    const legacyTracks = legacyNeetCodeTracks
 
     expect(parsed.tracks.map((track) => track.title)).toEqual([
       'NeetCode 150',
