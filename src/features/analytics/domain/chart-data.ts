@@ -20,7 +20,7 @@ import {
   getAnalyticsDateKey,
   getAnalyticsLocalDayStart,
   shiftAnalyticsCalendarDays,
-  type SelectedAnalyticsTimeFrame,
+  type AnalyticsTimeFrame,
 } from './analytics-time'
 
 export interface AnalyticsReviewEvent {
@@ -131,7 +131,7 @@ export interface AnalyticsRangeOptions {
   buckets: readonly AnalyticsBucket[]
   fsrsOptions: NormalizedFsrsSchedulingOptions
   timeZone?: string
-  timeFrame?: SelectedAnalyticsTimeFrame
+  timeFrame?: AnalyticsTimeFrame
   lowSampleThreshold?: number
 }
 
@@ -330,25 +330,25 @@ export function buildHardAgainSummary(
   lowSampleThreshold = 10,
 ): HardAgainSummary {
   const comparisonDays = getComparisonDays(options)
-  const selectedTimeFrame = options.timeFrame
-  const hasComparablePeriod = comparisonDays !== null || !selectedTimeFrame
+  const analyticsTimeFrame = options.timeFrame
+  const hasComparablePeriod = comparisonDays !== null || !analyticsTimeFrame
   const previousStart =
-    comparisonDays !== null && selectedTimeFrame
+    comparisonDays !== null && analyticsTimeFrame
       ? shiftAnalyticsCalendarDays(
-          new Date(selectedTimeFrame.periodStart ?? options.start),
+          new Date(analyticsTimeFrame.periodStart ?? options.start),
           -comparisonDays,
-          selectedTimeFrame.timeZone,
+          analyticsTimeFrame.timeZone,
         )
       : new Date(
           options.start.getTime() -
             (options.end.getTime() - options.start.getTime()),
         )
   const previousEnd =
-    comparisonDays !== null && selectedTimeFrame
+    comparisonDays !== null && analyticsTimeFrame
       ? shiftAnalyticsCalendarDays(
-          new Date(selectedTimeFrame.asOf),
+          new Date(analyticsTimeFrame.asOf),
           -comparisonDays,
-          selectedTimeFrame.timeZone,
+          analyticsTimeFrame.timeZone,
         )
       : options.start
   const selectedRatings = events.filter(

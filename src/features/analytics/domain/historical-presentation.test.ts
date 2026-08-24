@@ -13,7 +13,7 @@ import {
   type HistoricalAnalyticsReviewEvent,
 } from './historical-presentation'
 import {
-  buildSelectedAnalyticsTimeFrame,
+  buildAnalyticsTimeFrame,
   shiftAnalyticsCalendarDays,
 } from './analytics-time'
 import { buildAnalyticsBucketsFromTimeFrame } from './analytics-range-policy'
@@ -535,7 +535,7 @@ describe('buildHistoricalAnalyticsViews', () => {
     const comparisonOptions = optionsForComparison(asOf, 'UTC')
     const previousAsOf = shiftAnalyticsCalendarDays(asOf, -90, 'UTC')
     const previousBuckets = buildAnalyticsBucketsFromTimeFrame(
-      buildSelectedAnalyticsTimeFrame({
+      buildAnalyticsTimeFrame({
         asOf: previousAsOf,
         requestedRange: 90,
         allTimeStart: null,
@@ -585,7 +585,7 @@ describe('buildHistoricalAnalyticsViews', () => {
       'America/New_York',
     )
     const previousBuckets = buildAnalyticsBucketsFromTimeFrame(
-      buildSelectedAnalyticsTimeFrame({
+      buildAnalyticsTimeFrame({
         asOf: previousAsOf,
         requestedRange: 90,
         allTimeStart: null,
@@ -631,7 +631,7 @@ describe('buildHistoricalAnalyticsViews', () => {
     const comparisonOptions = optionsForComparison(asOf, 'UTC')
     const previousAsOf = shiftAnalyticsCalendarDays(asOf, -90, 'UTC')
     const previousBuckets = buildAnalyticsBucketsFromTimeFrame(
-      buildSelectedAnalyticsTimeFrame({
+      buildAnalyticsTimeFrame({
         asOf: previousAsOf,
         requestedRange: 90,
         allTimeStart: null,
@@ -670,7 +670,7 @@ describe('buildHistoricalAnalyticsViews', () => {
 
   it('emits direction only when both Ratings Mix periods meet trend evidence', () => {
     const asOf = new Date('2026-08-22T12:00:00.000Z')
-    const timeFrame = buildSelectedAnalyticsTimeFrame({
+    const timeFrame = buildAnalyticsTimeFrame({
       asOf,
       requestedRange: 90,
       allTimeStart: null,
@@ -686,7 +686,7 @@ describe('buildHistoricalAnalyticsViews', () => {
     }
     const previousAsOf = shiftAnalyticsCalendarDays(asOf, -90, 'UTC')
     const previousBuckets = buildAnalyticsBucketsFromTimeFrame(
-      buildSelectedAnalyticsTimeFrame({
+      buildAnalyticsTimeFrame({
         asOf: previousAsOf,
         requestedRange: 90,
         allTimeStart: null,
@@ -731,7 +731,7 @@ describe('buildHistoricalAnalyticsViews', () => {
     'uses an equivalent selected-frame prior window for %s days',
     (requestedRange) => {
       const asOf = new Date('2026-08-22T12:00:00.000Z')
-      const timeFrame = buildSelectedAnalyticsTimeFrame({
+      const timeFrame = buildAnalyticsTimeFrame({
         asOf,
         requestedRange,
         allTimeStart: null,
@@ -750,7 +750,7 @@ describe('buildHistoricalAnalyticsViews', () => {
         -requestedRange,
         'UTC',
       )
-      const previousFrame = buildSelectedAnalyticsTimeFrame({
+      const previousFrame = buildAnalyticsTimeFrame({
         asOf: previousAsOf,
         requestedRange,
         allTimeStart: null,
@@ -799,7 +799,7 @@ describe('buildHistoricalAnalyticsViews', () => {
 
   it('does not compare an All-time presentation with a prior window', () => {
     const asOf = new Date('2026-08-22T12:00:00.000Z')
-    const timeFrame = buildSelectedAnalyticsTimeFrame({
+    const timeFrame = buildAnalyticsTimeFrame({
       asOf,
       requestedRange: 'all',
       allTimeStart: new Date('2025-01-01T12:00:00.000Z'),
@@ -930,7 +930,7 @@ function optionsForComparison(
   asOf: Date,
   timeZone: string,
 ): HistoricalPresentationOptions {
-  const timeFrame = buildSelectedAnalyticsTimeFrame({
+  const timeFrame = buildAnalyticsTimeFrame({
     asOf,
     requestedRange: 90,
     allTimeStart: null,

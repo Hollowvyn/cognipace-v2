@@ -2,10 +2,7 @@ import { isReviewRating } from '@/lib/fsrs'
 
 import type { AnalyticsEvidenceClassification } from './analytics-evidence'
 import type { HistoricalAnalyticsViews } from './historical-presentation'
-import type {
-  AnalyticsRange,
-  SelectedAnalyticsTimeFrame,
-} from './analytics-time'
+import type { AnalyticsRange, AnalyticsTimeFrame } from './analytics-time'
 
 export interface ObservedRatingQualityResult {
   value: number | null
@@ -53,7 +50,7 @@ export type AnalyticsViews = Omit<
 
 export interface AnalyticsSummaryInput {
   generatedAt: Date
-  timeFrame: SelectedAnalyticsTimeFrame
+  timeFrame: AnalyticsTimeFrame
   reviewDays: number
   totalReviews: number
   currentStreak: number
@@ -72,7 +69,7 @@ export interface AnalyticsSummaryInput {
 
 export interface AnalyticsSummary {
   generatedAt: string
-  timeFrame: SelectedAnalyticsTimeFrame
+  timeFrame: AnalyticsTimeFrame
   reviewDays: number
   totalReviews: number
   currentStreak: number

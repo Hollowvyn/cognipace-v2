@@ -1,7 +1,7 @@
 import type {
   AnalyticsBucketGrain,
   AnalyticsRange,
-  SelectedAnalyticsTimeFrame,
+  AnalyticsTimeFrame,
 } from './analytics-time'
 import { getAnalyticsDateKey } from './analytics-time'
 
@@ -120,7 +120,7 @@ function getEpochDay(dateKey: string): number {
 }
 
 export function buildAnalyticsBucketsFromTimeFrame(
-  timeFrame: SelectedAnalyticsTimeFrame,
+  timeFrame: AnalyticsTimeFrame,
 ): AnalyticsBucket[] {
   const asOf = new Date(timeFrame.asOf)
 

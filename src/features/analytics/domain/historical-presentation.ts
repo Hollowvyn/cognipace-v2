@@ -17,9 +17,9 @@ import {
 } from './analytics-range-policy'
 import {
   addAnalyticsCalendarDays,
-  buildSelectedAnalyticsTimeFrame,
+  buildAnalyticsTimeFrame,
   shiftAnalyticsCalendarDays,
-  type SelectedAnalyticsTimeFrame,
+  type AnalyticsTimeFrame,
 } from './analytics-time'
 import { classifyAnalyticsEvidence } from './analytics-evidence'
 import {
@@ -51,7 +51,7 @@ export interface HistoricalPresentationOptions {
   buckets: readonly AnalyticsBucket[]
   fsrsOptions: NormalizedFsrsSchedulingOptions
   timeZone: string
-  timeFrame: SelectedAnalyticsTimeFrame
+  timeFrame: AnalyticsTimeFrame
 }
 
 export interface HistoricalPresentationScale {
@@ -511,11 +511,11 @@ function buildRatingsMixComparison(
 }
 
 function buildPreviousComparisonBuckets(
-  timeFrame: SelectedAnalyticsTimeFrame,
+  timeFrame: AnalyticsTimeFrame,
   asOf: Date,
   requestedRange: 90 | 120,
 ): AnalyticsBucket[] {
-  const previousTimeFrame = buildSelectedAnalyticsTimeFrame({
+  const previousTimeFrame = buildAnalyticsTimeFrame({
     asOf,
     requestedRange,
     allTimeStart: null,
@@ -552,9 +552,7 @@ function hasTrendEvidence(
   }).supportsDirection
 }
 
-function getComparisonDays(
-  timeFrame: SelectedAnalyticsTimeFrame,
-): 90 | 120 | null {
+function getComparisonDays(timeFrame: AnalyticsTimeFrame): 90 | 120 | null {
   return typeof timeFrame.requestedRange === 'number'
     ? timeFrame.requestedRange
     : null

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ObservedRatingQualityResult } from './summary'
-import { buildSelectedAnalyticsTimeFrame } from './analytics-time'
+import { buildAnalyticsTimeFrame } from './analytics-time'
 import { buildObservedRatingQuality, buildAnalyticsSummary } from './summary'
 
 const now = new Date(2026, 0, 15, 12, 0, 0)
@@ -146,7 +146,7 @@ describe('buildObservedRatingQuality', () => {
 
   it('uses canonical local frame bounds across a DST midnight', () => {
     const asOf = new Date('2026-03-08T05:30:00.000Z')
-    const frame = buildSelectedAnalyticsTimeFrame({
+    const frame = buildAnalyticsTimeFrame({
       asOf,
       requestedRange: 90,
       allTimeStart: null,
@@ -181,7 +181,7 @@ describe('buildAnalyticsSummary', () => {
     }
     const result = buildAnalyticsSummary({
       generatedAt,
-      timeFrame: buildSelectedAnalyticsTimeFrame({
+      timeFrame: buildAnalyticsTimeFrame({
         asOf: generatedAt,
         requestedRange: 90,
         allTimeStart: null,
@@ -222,7 +222,7 @@ describe('buildAnalyticsSummary', () => {
   it('keeps all-time range and evidence views explicit in the summary', () => {
     const result = buildAnalyticsSummary({
       generatedAt: now,
-      timeFrame: buildSelectedAnalyticsTimeFrame({
+      timeFrame: buildAnalyticsTimeFrame({
         asOf: now,
         requestedRange: 'all',
         allTimeStart: null,

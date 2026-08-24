@@ -18,7 +18,7 @@ export interface AnalyticsTimeBucket {
   isPartial: boolean
 }
 
-export interface SelectedAnalyticsTimeFrame {
+export interface AnalyticsTimeFrame {
   asOf: string
   timeZone: string
   timeZoneFallback: boolean
@@ -35,7 +35,7 @@ interface TimeZoneResolution {
   fallback: boolean
 }
 
-const selectedRanges: readonly AnalyticsRange[] = [90, 120, 'all']
+const analyticsRanges: readonly AnalyticsRange[] = [90, 120, 'all']
 
 export function resolveAnalyticsTimeZone(
   requested: string,
@@ -48,13 +48,13 @@ export function resolveAnalyticsTimeZone(
   }
 }
 
-export function buildSelectedAnalyticsTimeFrame(input: {
+export function buildAnalyticsTimeFrame(input: {
   asOf: Date
   requestedRange: AnalyticsRange
   allTimeStart: Date | null
   timeZone: string
   bucketGrain?: AnalyticsBucketGrain | null
-}): SelectedAnalyticsTimeFrame {
+}): AnalyticsTimeFrame {
   assertValidAsOf(input.asOf)
   assertSelectedRange(input.requestedRange)
 
@@ -116,7 +116,7 @@ export function buildSelectedAnalyticsTimeFrame(input: {
     periodEnd,
     bucketGrain,
     allTimeUnsupported: false,
-    buckets: buildSelectedBuckets({
+    buckets: buildRangeBuckets({
       firstKey,
       todayKey,
       timeZone: resolvedTimeZone.timeZone,
@@ -166,7 +166,7 @@ function buildMondayWeekBuckets(input: {
   return buckets
 }
 
-function buildSelectedBuckets(input: {
+function buildRangeBuckets(input: {
   firstKey: string
   todayKey: string
   timeZone: string
@@ -448,7 +448,7 @@ function toDateKey(year: number, month: number, day: number): string {
 function assertSelectedRange(
   requestedRange: AnalyticsRange,
 ): asserts requestedRange is AnalyticsRange {
-  if (!selectedRanges.includes(requestedRange)) {
+  if (!analyticsRanges.includes(requestedRange)) {
     throw new RangeError('Analytics ranges must be 90, 120, or all.')
   }
 }

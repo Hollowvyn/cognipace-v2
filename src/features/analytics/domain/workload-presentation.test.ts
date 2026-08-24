@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildSelectedAnalyticsTimeFrame } from './analytics-time'
+import { buildAnalyticsTimeFrame } from './analytics-time'
 import { buildWorkloadAnalyticsViews } from './workload-presentation'
 
-const timeFrame = buildSelectedAnalyticsTimeFrame({
+const timeFrame = buildAnalyticsTimeFrame({
   asOf: new Date('2026-08-22T12:00:00.000Z'),
   requestedRange: 90,
   allTimeStart: null,
@@ -80,7 +80,7 @@ describe('workload analytics presentation', () => {
           { date: new Date('2025-11-10T04:59:59.999Z'), overdueCount: 0 },
           { date: new Date('2026-03-08T05:30:00.000Z'), overdueCount: 2 },
         ],
-        timeFrame: buildSelectedAnalyticsTimeFrame({
+        timeFrame: buildAnalyticsTimeFrame({
           asOf,
           requestedRange,
           allTimeStart:

@@ -41,9 +41,9 @@ import {
 } from '../domain/analytics-range-policy'
 import {
   buildForecastBounds,
-  buildSelectedAnalyticsTimeFrame,
+  buildAnalyticsTimeFrame,
   resolveAnalyticsTimeZone,
-  type SelectedAnalyticsTimeFrame,
+  type AnalyticsTimeFrame,
 } from '../domain/analytics-time'
 import {
   buildHistoricalAnalyticsPresentation,
@@ -100,7 +100,7 @@ export async function getAnalyticsSummary(
     asOf: now,
     timeZone,
   })
-  const selectedTimeFrame = buildSelectedAnalyticsTimeFrame({
+  const requestedTimeFrame = buildAnalyticsTimeFrame({
     asOf: now,
     requestedRange: range,
     allTimeStart,
@@ -108,10 +108,10 @@ export async function getAnalyticsSummary(
     bucketGrain: longRangePolicy.bucketGrain,
   })
   const presentationTimeFrame = {
-    ...selectedTimeFrame,
+    ...requestedTimeFrame,
     timeZoneFallback: timeZoneResolution.fallback,
   }
-  const workloadTimeFrame = buildSelectedAnalyticsTimeFrame({
+  const workloadTimeFrame = buildAnalyticsTimeFrame({
     asOf: now,
     requestedRange: 120,
     allTimeStart: null,
@@ -333,7 +333,7 @@ function getEarliestEligibleRatingDate(
 
 function attachHistoricalEvidence(
   views: HistoricalAnalyticsViews,
-  timeFrame: SelectedAnalyticsTimeFrame,
+  timeFrame: AnalyticsTimeFrame,
   observations: HistoricalAnalyticsEvidenceObservations,
 ) {
   return {
@@ -370,7 +370,7 @@ function attachHistoricalEvidence(
 }
 
 function classifyHistoricalViewEvidence(
-  timeFrame: SelectedAnalyticsTimeFrame,
+  timeFrame: AnalyticsTimeFrame,
   observations: readonly { observedAt: Date; value: number }[],
 ) {
   const asOf = new Date(timeFrame.asOf)

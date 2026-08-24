@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildForecastBounds,
-  buildSelectedAnalyticsTimeFrame,
+  buildAnalyticsTimeFrame,
   resolveAnalyticsTimeZone,
   shiftAnalyticsCalendarDays,
 } from './analytics-time'
 
 describe('analytics time', () => {
   it('clips Monday-start weeks at the 90-day range boundaries', () => {
-    const result = buildSelectedAnalyticsTimeFrame({
+    const result = buildAnalyticsTimeFrame({
       asOf: new Date('2026-08-20T16:40:00.000Z'),
       requestedRange: 90,
       allTimeStart: null,
@@ -30,7 +30,7 @@ describe('analytics time', () => {
   })
 
   it('builds 90 local dates through spring-forward as clipped Monday weeks', () => {
-    const result = buildSelectedAnalyticsTimeFrame({
+    const result = buildAnalyticsTimeFrame({
       asOf: new Date('2026-03-10T16:40:00.000Z'),
       requestedRange: 90,
       allTimeStart: null,
@@ -61,7 +61,7 @@ describe('analytics time', () => {
   })
 
   it('builds 120 local dates through fall-back as clipped Monday weeks', () => {
-    const result = buildSelectedAnalyticsTimeFrame({
+    const result = buildAnalyticsTimeFrame({
       asOf: new Date('2026-11-01T16:40:00.000Z'),
       requestedRange: 120,
       allTimeStart: null,
@@ -90,7 +90,7 @@ describe('analytics time', () => {
   })
 
   it('uses the explicit earliest valid rating local date for All time', () => {
-    const result = buildSelectedAnalyticsTimeFrame({
+    const result = buildAnalyticsTimeFrame({
       asOf: new Date('2026-03-10T16:40:00.000Z'),
       requestedRange: 'all',
       allTimeStart: new Date('2026-03-08T04:30:00.000Z'),
@@ -119,7 +119,7 @@ describe('analytics time', () => {
 
   it('does not invent a period for empty All time', () => {
     expect(
-      buildSelectedAnalyticsTimeFrame({
+      buildAnalyticsTimeFrame({
         asOf: new Date('2026-03-10T16:40:00.000Z'),
         requestedRange: 'all',
         allTimeStart: null,
@@ -136,7 +136,7 @@ describe('analytics time', () => {
 
   it('marks unrepresentable All-time history unsupported instead of falling back to weeks', () => {
     expect(
-      buildSelectedAnalyticsTimeFrame({
+      buildAnalyticsTimeFrame({
         asOf: new Date('2026-08-24T12:00:00.000Z'),
         requestedRange: 'all',
         allTimeStart: new Date('1970-01-05T12:00:00.000Z'),
@@ -152,7 +152,7 @@ describe('analytics time', () => {
   })
 
   it('uses calendar boundaries through the spring-forward transition', () => {
-    const result = buildSelectedAnalyticsTimeFrame({
+    const result = buildAnalyticsTimeFrame({
       asOf: new Date('2026-03-10T16:40:00.000Z'),
       requestedRange: 90,
       allTimeStart: null,
@@ -177,7 +177,7 @@ describe('analytics time', () => {
     })
 
     expect(
-      buildSelectedAnalyticsTimeFrame({
+      buildAnalyticsTimeFrame({
         asOf: new Date('2026-08-22T16:40:00.000Z'),
         requestedRange: 90,
         allTimeStart: null,

@@ -3,7 +3,7 @@ import { buildMagnitudeScale, type AnalyticsScale } from './analytics-scales'
 import {
   addAnalyticsCalendarDays,
   getAnalyticsDateKey,
-  type SelectedAnalyticsTimeFrame,
+  type AnalyticsTimeFrame,
 } from './analytics-time'
 
 export interface WorkloadAnalyticsViews {
@@ -42,7 +42,7 @@ export function buildWorkloadAnalyticsViews({
   upcomingLoad,
 }: {
   overdueSnapshots: readonly AnalyticsOverdueSnapshot[]
-  timeFrame: SelectedAnalyticsTimeFrame
+  timeFrame: AnalyticsTimeFrame
   upcomingLoad: readonly UpcomingLoadPoint[]
 }): WorkloadAnalyticsViews {
   const overdueRows = buildOverdueBacklogRows(overdueSnapshots, timeFrame)
@@ -74,7 +74,7 @@ export function buildWorkloadAnalyticsViews({
 
 function buildOverdueBacklogRows(
   snapshots: readonly AnalyticsOverdueSnapshot[],
-  timeFrame: SelectedAnalyticsTimeFrame,
+  timeFrame: AnalyticsTimeFrame,
 ): OverdueBacklogRow[] {
   const lastKey = getAnalyticsDateKey(
     new Date(timeFrame.asOf),

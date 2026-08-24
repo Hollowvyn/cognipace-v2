@@ -22,7 +22,7 @@ import {
   type AnalyticsCurrentCard,
   type AnalyticsReviewEvent,
 } from './chart-data'
-import { buildSelectedAnalyticsTimeFrame } from './analytics-time'
+import { buildAnalyticsTimeFrame } from './analytics-time'
 import { metricDefinitions } from './metric-definitions'
 
 const start = new Date('2026-08-01T00:00:00.000Z')
@@ -635,7 +635,7 @@ describe('analytics chart-data builders', () => {
 
   it('compares a partial local period with the matching local wall-clock window', () => {
     const asOf = new Date('2026-03-08T05:30:00.000Z')
-    const timeFrame = buildSelectedAnalyticsTimeFrame({
+    const timeFrame = buildAnalyticsTimeFrame({
       asOf,
       requestedRange: 90,
       allTimeStart: null,

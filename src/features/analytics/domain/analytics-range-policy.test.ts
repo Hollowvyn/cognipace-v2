@@ -4,7 +4,7 @@ import {
   buildAnalyticsBucketsFromTimeFrame,
   selectAnalyticsLongRangePolicy,
 } from './analytics-range-policy'
-import { buildSelectedAnalyticsTimeFrame } from './analytics-time'
+import { buildAnalyticsTimeFrame } from './analytics-time'
 
 describe('analytics range policy', () => {
   it('uses Monday-start weekly buckets for the 90-day selected range', () => {
@@ -105,7 +105,7 @@ describe('analytics range policy', () => {
   })
 
   it('converts a selected requested-zone time frame without shifting dates', () => {
-    const timeFrame = buildSelectedAnalyticsTimeFrame({
+    const timeFrame = buildAnalyticsTimeFrame({
       asOf: new Date('2026-03-08T05:30:00.000Z'),
       requestedRange: 90,
       allTimeStart: null,
