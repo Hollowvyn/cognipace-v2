@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildAnalyticsTimeFrame,
   buildForecastBounds,
+  buildSelectedAnalyticsTimeFrame,
   resolveAnalyticsTimeZone,
   shiftAnalyticsCalendarDays,
 } from './analytics-time'
@@ -78,6 +79,111 @@ describe('analytics time', () => {
       startKey: '2026-08-17',
       endKey: '2026-08-20',
       isPartial: true,
+    })
+  })
+
+  it('builds 90 local dates through spring-forward as clipped Monday weeks', () => {
+    const result = buildSelectedAnalyticsTimeFrame({
+      asOf: new Date('2026-03-10T16:40:00.000Z'),
+      requestedRange: 90,
+      allTimeStart: null,
+      timeZone: 'America/New_York',
+    })
+
+    expect(result).toMatchObject({
+      requestedRange: 90,
+      bucketGrain: 'week',
+      periodStart: '2025-12-11T05:00:00.000Z',
+      periodEnd: '2026-03-11T04:00:00.000Z',
+    })
+    expect(result.buckets).toHaveLength(14)
+    expect(result.buckets[0]).toMatchObject({
+      startKey: '2025-12-11',
+      endKey: '2025-12-14',
+      start: '2025-12-11T05:00:00.000Z',
+      end: '2025-12-15T05:00:00.000Z',
+      isPartial: false,
+    })
+    expect(result.buckets.at(-1)).toMatchObject({
+      startKey: '2026-03-09',
+      endKey: '2026-03-10',
+      start: '2026-03-09T04:00:00.000Z',
+      end: '2026-03-11T04:00:00.000Z',
+      isPartial: true,
+    })
+  })
+
+  it('builds 120 local dates through fall-back as clipped Monday weeks', () => {
+    const result = buildSelectedAnalyticsTimeFrame({
+      asOf: new Date('2026-11-01T16:40:00.000Z'),
+      requestedRange: 120,
+      allTimeStart: null,
+      timeZone: 'America/New_York',
+    })
+
+    expect(result).toMatchObject({
+      requestedRange: 120,
+      bucketGrain: 'week',
+      periodStart: '2026-07-05T04:00:00.000Z',
+      periodEnd: '2026-11-02T05:00:00.000Z',
+    })
+    expect(result.buckets).toHaveLength(18)
+    expect(result.buckets[0]).toMatchObject({
+      startKey: '2026-07-05',
+      endKey: '2026-07-05',
+      isPartial: false,
+    })
+    expect(result.buckets.at(-1)).toMatchObject({
+      startKey: '2026-10-26',
+      endKey: '2026-11-01',
+      start: '2026-10-26T04:00:00.000Z',
+      end: '2026-11-02T05:00:00.000Z',
+      isPartial: true,
+    })
+  })
+
+  it('uses the explicit earliest valid rating local date for All time', () => {
+    const result = buildSelectedAnalyticsTimeFrame({
+      asOf: new Date('2026-03-10T16:40:00.000Z'),
+      requestedRange: 'all',
+      allTimeStart: new Date('2026-03-08T04:30:00.000Z'),
+      timeZone: 'America/New_York',
+    })
+
+    expect(result).toMatchObject({
+      requestedRange: 'all',
+      bucketGrain: 'week',
+      periodStart: '2026-03-07T05:00:00.000Z',
+      periodEnd: '2026-03-11T04:00:00.000Z',
+    })
+    expect(result.buckets).toEqual([
+      expect.objectContaining({
+        startKey: '2026-03-07',
+        endKey: '2026-03-08',
+        isPartial: false,
+      }),
+      expect.objectContaining({
+        startKey: '2026-03-09',
+        endKey: '2026-03-10',
+        isPartial: true,
+      }),
+    ])
+  })
+
+  it('does not invent a period for empty All time', () => {
+    expect(
+      buildSelectedAnalyticsTimeFrame({
+        asOf: new Date('2026-03-10T16:40:00.000Z'),
+        requestedRange: 'all',
+        allTimeStart: null,
+        timeZone: 'America/New_York',
+      }),
+    ).toMatchObject({
+      requestedRange: 'all',
+      bucketGrain: 'week',
+      periodStart: null,
+      periodEnd: '2026-03-11T04:00:00.000Z',
+      buckets: [],
     })
   })
 

@@ -1,5 +1,16 @@
 export type AnalyticsHistoricalRange = 14 | 30 | 90
 
+export type AnalyticsRange = 90 | 120 | 'all'
+
+export type AnalyticsBucketGrain =
+  | 'week'
+  | 'two-weeks'
+  | 'month'
+  | 'two-months'
+  | 'quarter'
+  | 'half-year'
+  | 'year'
+
 export interface AnalyticsTimeBucket {
   key: string
   start: string
@@ -19,12 +30,24 @@ export interface AnalyticsTimeFrame {
   buckets: AnalyticsTimeBucket[]
 }
 
+export interface SelectedAnalyticsTimeFrame {
+  asOf: string
+  timeZone: string
+  timeZoneFallback: boolean
+  requestedRange: AnalyticsRange
+  periodStart: string | null
+  periodEnd: string
+  bucketGrain: AnalyticsBucketGrain
+  buckets: AnalyticsTimeBucket[]
+}
+
 interface TimeZoneResolution {
   timeZone: string
   fallback: boolean
 }
 
 const historicalRanges: readonly AnalyticsHistoricalRange[] = [14, 30, 90]
+const selectedRanges: readonly AnalyticsRange[] = [90, 120, 'all']
 
 export function resolveAnalyticsTimeZone(
   requested: string,
@@ -65,6 +88,60 @@ export function buildAnalyticsTimeFrame(input: {
     ),
     buckets: buildHistoricalBuckets({
       requestedDays: input.requestedDays,
+      firstKey,
+      todayKey,
+      timeZone: resolvedTimeZone.timeZone,
+    }),
+  }
+}
+
+export function buildSelectedAnalyticsTimeFrame(input: {
+  asOf: Date
+  requestedRange: AnalyticsRange
+  allTimeStart: Date | null
+  timeZone: string
+}): SelectedAnalyticsTimeFrame {
+  assertValidAsOf(input.asOf)
+  assertSelectedRange(input.requestedRange)
+
+  const resolvedTimeZone = resolveAnalyticsTimeZone(input.timeZone)
+  const todayKey = getAnalyticsDateKey(input.asOf, resolvedTimeZone.timeZone)
+  const periodEndKey = addAnalyticsCalendarDays(todayKey, 1)
+  const periodEnd = getAnalyticsLocalDayStart(
+    periodEndKey,
+    resolvedTimeZone.timeZone,
+  )
+
+  if (input.requestedRange === 'all' && input.allTimeStart === null) {
+    return {
+      asOf: input.asOf.toISOString(),
+      timeZone: resolvedTimeZone.timeZone,
+      timeZoneFallback: resolvedTimeZone.fallback,
+      requestedRange: input.requestedRange,
+      periodStart: null,
+      periodEnd,
+      bucketGrain: 'week',
+      buckets: [],
+    }
+  }
+
+  const firstKey =
+    input.requestedRange === 'all'
+      ? getAnalyticsDateKey(
+          assertValidAllTimeStart(input.allTimeStart),
+          resolvedTimeZone.timeZone,
+        )
+      : addAnalyticsCalendarDays(todayKey, -(input.requestedRange - 1))
+
+  return {
+    asOf: input.asOf.toISOString(),
+    timeZone: resolvedTimeZone.timeZone,
+    timeZoneFallback: resolvedTimeZone.fallback,
+    requestedRange: input.requestedRange,
+    periodStart: getAnalyticsLocalDayStart(firstKey, resolvedTimeZone.timeZone),
+    periodEnd,
+    bucketGrain: 'week',
+    buckets: buildMondayWeekBuckets({
       firstKey,
       todayKey,
       timeZone: resolvedTimeZone.timeZone,
@@ -363,6 +440,22 @@ function assertHistoricalRange(
   if (!historicalRanges.includes(requestedDays as AnalyticsHistoricalRange)) {
     throw new RangeError('Analytics ranges must be 14, 30, or 90 days.')
   }
+}
+
+function assertSelectedRange(
+  requestedRange: AnalyticsRange,
+): asserts requestedRange is AnalyticsRange {
+  if (!selectedRanges.includes(requestedRange)) {
+    throw new RangeError('Analytics ranges must be 90, 120, or all.')
+  }
+}
+
+function assertValidAllTimeStart(allTimeStart: Date | null): Date {
+  if (allTimeStart === null || !Number.isFinite(allTimeStart.getTime())) {
+    throw new RangeError('Analytics all-time start must be a valid date.')
+  }
+
+  return allTimeStart
 }
 
 function assertValidAsOf(asOf: Date): void {
