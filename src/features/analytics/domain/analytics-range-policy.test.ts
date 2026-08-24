@@ -2,10 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildAnalyticsBucketsFromTimeFrame,
-  getAnalyticsRangePolicy,
   selectAnalyticsLongRangePolicy,
 } from './analytics-range-policy'
-import { buildAnalyticsTimeFrame } from './analytics-time'
+import { buildSelectedAnalyticsTimeFrame } from './analytics-time'
 
 describe('analytics range policy', () => {
   it('uses Monday-start weekly buckets for the 90-day selected range', () => {
@@ -105,36 +104,22 @@ describe('analytics range policy', () => {
     ).toEqual({ bucketGrain: null, calendarAnchor: null })
   })
 
-  it.each([0, -1, 1.5, 7, 120, Number.NaN, Number.POSITIVE_INFINITY])(
-    'rejects unsupported requested day count %s',
-    (requestedDays) => {
-      expect(() => getAnalyticsRangePolicy(requestedDays)).toThrow(RangeError)
-    },
-  )
-
-  it.each([
-    [14, 1],
-    [30, 3],
-    [90, 7],
-  ])('uses readable buckets for %s days', (requestedDays, bucketDays) => {
-    expect(getAnalyticsRangePolicy(requestedDays).bucketDays).toBe(bucketDays)
-  })
-
-  it('converts one requested-zone time frame into legacy buckets without shifting dates', () => {
-    const timeFrame = buildAnalyticsTimeFrame({
+  it('converts a selected requested-zone time frame without shifting dates', () => {
+    const timeFrame = buildSelectedAnalyticsTimeFrame({
       asOf: new Date('2026-03-08T05:30:00.000Z'),
-      requestedDays: 14,
+      requestedRange: 90,
+      allTimeStart: null,
       timeZone: 'America/New_York',
     })
 
     const buckets = buildAnalyticsBucketsFromTimeFrame(timeFrame)
 
     expect(buckets.at(-1)).toMatchObject({
-      key: '2026-03-08',
-      start: new Date('2026-03-08T05:00:00.000Z'),
+      key: '2026-03-02',
+      start: new Date('2026-03-02T05:00:00.000Z'),
       end: new Date('2026-03-08T05:30:00.000Z'),
-      label: '2026-03-08',
+      label: '2026-03-02 – 2026-03-08',
     })
-    expect(buckets.at(-2)?.start.toISOString()).toBe('2026-03-07T05:00:00.000Z')
+    expect(buckets.at(-2)?.start.toISOString()).toBe('2026-02-23T05:00:00.000Z')
   })
 })

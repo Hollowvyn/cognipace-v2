@@ -95,7 +95,7 @@ export interface AnalyticsSummary {
 export function buildObservedRatingQuality(
   attempts: Array<{ rating: string; reviewedAt: Date }>,
   now: Date,
-  range: AnalyticsRange | 14 | 30,
+  range: AnalyticsRange,
   period?: ObservedRatingPeriod,
 ): ObservedRatingQualityResult {
   const since =

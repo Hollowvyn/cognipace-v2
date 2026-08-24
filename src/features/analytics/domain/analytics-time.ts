@@ -1,5 +1,3 @@
-export type AnalyticsHistoricalRange = 14 | 30 | 90
-
 export type AnalyticsRange = 90 | 120 | 'all'
 
 export type AnalyticsBucketGrain =
@@ -20,16 +18,6 @@ export interface AnalyticsTimeBucket {
   isPartial: boolean
 }
 
-export interface AnalyticsTimeFrame {
-  asOf: string
-  timeZone: string
-  timeZoneFallback: boolean
-  requestedDays: AnalyticsHistoricalRange
-  periodStart: string
-  periodEnd: string
-  buckets: AnalyticsTimeBucket[]
-}
-
 export interface SelectedAnalyticsTimeFrame {
   asOf: string
   timeZone: string
@@ -47,7 +35,6 @@ interface TimeZoneResolution {
   fallback: boolean
 }
 
-const historicalRanges: readonly AnalyticsHistoricalRange[] = [14, 30, 90]
 const selectedRanges: readonly AnalyticsRange[] = [90, 120, 'all']
 
 export function resolveAnalyticsTimeZone(
@@ -58,41 +45,6 @@ export function resolveAnalyticsTimeZone(
     return { timeZone: requested, fallback: false }
   } catch {
     return { timeZone: 'UTC', fallback: true }
-  }
-}
-
-export function buildAnalyticsTimeFrame(input: {
-  asOf: Date
-  requestedDays: AnalyticsHistoricalRange
-  timeZone: string
-}): AnalyticsTimeFrame {
-  assertValidAsOf(input.asOf)
-  assertHistoricalRange(input.requestedDays)
-
-  const resolvedTimeZone = resolveAnalyticsTimeZone(input.timeZone)
-  const todayKey = getAnalyticsDateKey(input.asOf, resolvedTimeZone.timeZone)
-  const firstKey = addAnalyticsCalendarDays(
-    todayKey,
-    -(input.requestedDays - 1),
-  )
-  const periodEndKey = addAnalyticsCalendarDays(todayKey, 1)
-
-  return {
-    asOf: input.asOf.toISOString(),
-    timeZone: resolvedTimeZone.timeZone,
-    timeZoneFallback: resolvedTimeZone.fallback,
-    requestedDays: input.requestedDays,
-    periodStart: getAnalyticsLocalDayStart(firstKey, resolvedTimeZone.timeZone),
-    periodEnd: getAnalyticsLocalDayStart(
-      periodEndKey,
-      resolvedTimeZone.timeZone,
-    ),
-    buckets: buildHistoricalBuckets({
-      requestedDays: input.requestedDays,
-      firstKey,
-      todayKey,
-      timeZone: resolvedTimeZone.timeZone,
-    }),
   }
 }
 
@@ -193,51 +145,11 @@ export function buildForecastBounds(input: { asOf: Date; timeZone: string }): {
   }
 }
 
-function buildHistoricalBuckets(input: {
-  requestedDays: AnalyticsHistoricalRange
+function buildMondayWeekBuckets(input: {
   firstKey: string
   todayKey: string
   timeZone: string
 }): AnalyticsTimeBucket[] {
-  if (input.requestedDays === 14) {
-    return buildFixedWidthBuckets(input, 1)
-  }
-
-  if (input.requestedDays === 30) {
-    return buildFixedWidthBuckets(input, 3)
-  }
-
-  return buildMondayWeekBuckets(input)
-}
-
-function buildFixedWidthBuckets(
-  input: Pick<
-    Parameters<typeof buildHistoricalBuckets>[0],
-    'firstKey' | 'todayKey' | 'timeZone'
-  >,
-  width: number,
-): AnalyticsTimeBucket[] {
-  const buckets: AnalyticsTimeBucket[] = []
-  let startKey = input.firstKey
-
-  while (startKey <= input.todayKey) {
-    const endKey = minDateKey(
-      addAnalyticsCalendarDays(startKey, width - 1),
-      input.todayKey,
-    )
-    buckets.push(createBucket(startKey, endKey, input.todayKey, input.timeZone))
-    startKey = addAnalyticsCalendarDays(endKey, 1)
-  }
-
-  return buckets
-}
-
-function buildMondayWeekBuckets(
-  input: Pick<
-    Parameters<typeof buildHistoricalBuckets>[0],
-    'firstKey' | 'todayKey' | 'timeZone'
-  >,
-): AnalyticsTimeBucket[] {
   const buckets: AnalyticsTimeBucket[] = []
   let startKey = input.firstKey
 
@@ -531,14 +443,6 @@ function toDateKey(year: number, month: number, day: number): string {
     String(date.getUTCMonth() + 1).padStart(2, '0'),
     String(date.getUTCDate()).padStart(2, '0'),
   ].join('-')
-}
-
-function assertHistoricalRange(
-  requestedDays: number,
-): asserts requestedDays is AnalyticsHistoricalRange {
-  if (!historicalRanges.includes(requestedDays as AnalyticsHistoricalRange)) {
-    throw new RangeError('Analytics ranges must be 14, 30, or 90 days.')
-  }
 }
 
 function assertSelectedRange(

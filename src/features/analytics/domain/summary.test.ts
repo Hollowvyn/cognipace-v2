@@ -1,24 +1,21 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ObservedRatingQualityResult } from './summary'
-import {
-  buildAnalyticsTimeFrame,
-  buildSelectedAnalyticsTimeFrame,
-} from './analytics-time'
+import { buildSelectedAnalyticsTimeFrame } from './analytics-time'
 import { buildObservedRatingQuality, buildAnalyticsSummary } from './summary'
 
 const now = new Date(2026, 0, 15, 12, 0, 0)
 const recentDate = new Date(2026, 0, 14, 12, 0, 0)
-const oldDate = new Date(2025, 11, 14, 12, 0, 0) // > 30 days before now
+const oldDate = new Date(2025, 9, 14, 12, 0, 0) // > 90 days before now
 
 describe('buildObservedRatingQuality', () => {
-  it('returns lowSample when fewer than 10 ratings in the 30-day window', () => {
+  it('returns lowSample when fewer than 10 ratings in the 90-day window', () => {
     const attempts = Array.from({ length: 9 }, () => ({
       rating: 'good',
       reviewedAt: recentDate,
     }))
 
-    const result = buildObservedRatingQuality(attempts, now, 30)
+    const result = buildObservedRatingQuality(attempts, now, 90)
 
     expect(result.lowSample).toBe(true)
     expect(result.value).toBeNull()
@@ -38,7 +35,7 @@ describe('buildObservedRatingQuality', () => {
       })),
     ]
 
-    const result = buildObservedRatingQuality(attempts, now, 30)
+    const result = buildObservedRatingQuality(attempts, now, 90)
 
     expect(result.lowSample).toBe(false)
     expect(result.value).toBeCloseTo(0.7)
@@ -58,7 +55,7 @@ describe('buildObservedRatingQuality', () => {
       })),
     ]
 
-    const result = buildObservedRatingQuality(attempts, now, 30)
+    const result = buildObservedRatingQuality(attempts, now, 90)
 
     expect(result).toMatchObject({
       value: 1,
@@ -79,19 +76,19 @@ describe('buildObservedRatingQuality', () => {
       })),
     ]
 
-    const result = buildObservedRatingQuality(attempts, now, 30)
+    const result = buildObservedRatingQuality(attempts, now, 90)
 
     expect(result.value).toBeCloseTo(0.8)
     expect(result.label).toBe('80%')
   })
 
-  it('excludes ratings older than 30 days', () => {
+  it('excludes ratings older than 90 days', () => {
     const attempts = Array.from({ length: 10 }, () => ({
       rating: 'good',
       reviewedAt: oldDate,
     }))
 
-    const result = buildObservedRatingQuality(attempts, now, 30)
+    const result = buildObservedRatingQuality(attempts, now, 90)
 
     expect(result.lowSample).toBe(true)
     expect(result.sampleSize).toBe(0)
@@ -103,7 +100,7 @@ describe('buildObservedRatingQuality', () => {
       reviewedAt: recentDate,
     }))
 
-    const result = buildObservedRatingQuality(attempts, now, 30)
+    const result = buildObservedRatingQuality(attempts, now, 90)
 
     expect(result.lowSample).toBe(false)
   })
@@ -118,56 +115,52 @@ describe('buildObservedRatingQuality', () => {
       reviewedAt: new Date(now.getTime() + 1),
     }
 
-    const result = buildObservedRatingQuality([...atEnd, justAfterEnd], now, 30)
+    const result = buildObservedRatingQuality([...atEnd, justAfterEnd], now, 90)
 
     expect(result.sampleSize).toBe(10)
     expect(result.value).toBe(1)
     expect(result.lowSample).toBe(false)
   })
 
-  it.each([14, 30, 90] as const)(
-    'uses the selected %s-day boundary',
-    (range) => {
-      const inside = new Date(now.getTime() - range * 24 * 60 * 60 * 1000)
-      const outside = new Date(
-        now.getTime() - (range + 1) * 24 * 60 * 60 * 1000,
-      )
-      expect(
-        buildObservedRatingQuality(
-          Array.from({ length: 10 }, () => ({
-            rating: 'good',
-            reviewedAt: inside,
-          })),
-          now,
-          range,
-        ).sampleSize,
-      ).toBe(10)
-      expect(
-        buildObservedRatingQuality(
-          [{ rating: 'good', reviewedAt: outside }],
-          now,
-          range,
-        ).sampleSize,
-      ).toBe(0)
-    },
-  )
+  it.each([90, 120] as const)('uses the selected %s-day boundary', (range) => {
+    const inside = new Date(now.getTime() - range * 24 * 60 * 60 * 1000)
+    const outside = new Date(now.getTime() - (range + 1) * 24 * 60 * 60 * 1000)
+    expect(
+      buildObservedRatingQuality(
+        Array.from({ length: 10 }, () => ({
+          rating: 'good',
+          reviewedAt: inside,
+        })),
+        now,
+        range,
+      ).sampleSize,
+    ).toBe(10)
+    expect(
+      buildObservedRatingQuality(
+        [{ rating: 'good', reviewedAt: outside }],
+        now,
+        range,
+      ).sampleSize,
+    ).toBe(0)
+  })
 
   it('uses canonical local frame bounds across a DST midnight', () => {
     const asOf = new Date('2026-03-08T05:30:00.000Z')
-    const frame = buildAnalyticsTimeFrame({
+    const frame = buildSelectedAnalyticsTimeFrame({
       asOf,
-      requestedDays: 14,
+      requestedRange: 90,
+      allTimeStart: null,
       timeZone: 'America/New_York',
     })
     const result = buildObservedRatingQuality(
       Array.from({ length: 10 }, () => ({
         rating: 'good',
-        reviewedAt: new Date('2026-02-22T18:00:00.000Z'),
+        reviewedAt: new Date('2025-12-09T04:59:59.999Z'),
       })),
       asOf,
-      14,
+      90,
       {
-        periodStart: new Date(frame.periodStart),
+        periodStart: new Date(frame.periodStart!),
         periodEnd: new Date(frame.periodEnd),
       },
     )

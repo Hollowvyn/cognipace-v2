@@ -17,10 +17,8 @@ import {
 } from './analytics-range-policy'
 import {
   addAnalyticsCalendarDays,
-  buildAnalyticsTimeFrame,
   buildSelectedAnalyticsTimeFrame,
   shiftAnalyticsCalendarDays,
-  type AnalyticsTimeFrame,
   type SelectedAnalyticsTimeFrame,
 } from './analytics-time'
 import { classifyAnalyticsEvidence } from './analytics-evidence'
@@ -53,7 +51,7 @@ export interface HistoricalPresentationOptions {
   buckets: readonly AnalyticsBucket[]
   fsrsOptions: NormalizedFsrsSchedulingOptions
   timeZone: string
-  timeFrame: AnalyticsTimeFrame | SelectedAnalyticsTimeFrame
+  timeFrame: SelectedAnalyticsTimeFrame
 }
 
 export interface HistoricalPresentationScale {
@@ -513,24 +511,17 @@ function buildRatingsMixComparison(
 }
 
 function buildPreviousComparisonBuckets(
-  timeFrame: AnalyticsTimeFrame | SelectedAnalyticsTimeFrame,
+  timeFrame: SelectedAnalyticsTimeFrame,
   asOf: Date,
-  requestedDays: number,
+  requestedRange: 90 | 120,
 ): AnalyticsBucket[] {
-  const previousTimeFrame =
-    'requestedDays' in timeFrame
-      ? buildAnalyticsTimeFrame({
-          asOf,
-          requestedDays: timeFrame.requestedDays,
-          timeZone: timeFrame.timeZone,
-        })
-      : buildSelectedAnalyticsTimeFrame({
-          asOf,
-          requestedRange: requestedDays as 90 | 120,
-          allTimeStart: null,
-          timeZone: timeFrame.timeZone,
-          bucketGrain: timeFrame.bucketGrain,
-        })
+  const previousTimeFrame = buildSelectedAnalyticsTimeFrame({
+    asOf,
+    requestedRange,
+    allTimeStart: null,
+    timeZone: timeFrame.timeZone,
+    bucketGrain: timeFrame.bucketGrain,
+  })
 
   return buildAnalyticsBucketsFromTimeFrame(previousTimeFrame)
 }
@@ -562,9 +553,8 @@ function hasTrendEvidence(
 }
 
 function getComparisonDays(
-  timeFrame: AnalyticsTimeFrame | SelectedAnalyticsTimeFrame,
-): number | null {
-  if ('requestedDays' in timeFrame) return timeFrame.requestedDays
+  timeFrame: SelectedAnalyticsTimeFrame,
+): 90 | 120 | null {
   return typeof timeFrame.requestedRange === 'number'
     ? timeFrame.requestedRange
     : null

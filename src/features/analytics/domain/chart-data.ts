@@ -20,7 +20,6 @@ import {
   getAnalyticsDateKey,
   getAnalyticsLocalDayStart,
   shiftAnalyticsCalendarDays,
-  type AnalyticsTimeFrame,
   type SelectedAnalyticsTimeFrame,
 } from './analytics-time'
 
@@ -132,7 +131,7 @@ export interface AnalyticsRangeOptions {
   buckets: readonly AnalyticsBucket[]
   fsrsOptions: NormalizedFsrsSchedulingOptions
   timeZone?: string
-  timeFrame?: AnalyticsTimeFrame | SelectedAnalyticsTimeFrame
+  timeFrame?: SelectedAnalyticsTimeFrame
   lowSampleThreshold?: number
 }
 
@@ -581,10 +580,9 @@ function bucketBounds(bucket: AnalyticsBucket) {
   }
 }
 
-function getComparisonDays(options: AnalyticsRangeOptions): number | null {
+function getComparisonDays(options: AnalyticsRangeOptions): 90 | 120 | null {
   const { timeFrame } = options
   if (!timeFrame) return null
-  if ('requestedDays' in timeFrame) return timeFrame.requestedDays
   return typeof timeFrame.requestedRange === 'number'
     ? timeFrame.requestedRange
     : null

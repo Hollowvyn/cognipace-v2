@@ -3,24 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { buildSelectedAnalyticsTimeFrame } from './analytics-time'
 import { buildWorkloadAnalyticsViews } from './workload-presentation'
 
-const timeFrame = {
-  asOf: '2026-08-22T12:00:00.000Z',
+const timeFrame = buildSelectedAnalyticsTimeFrame({
+  asOf: new Date('2026-08-22T12:00:00.000Z'),
+  requestedRange: 90,
+  allTimeStart: null,
   timeZone: 'America/New_York',
-  timeZoneFallback: false,
-  requestedDays: 14 as const,
-  periodStart: '2026-08-09T04:00:00.000Z',
-  periodEnd: '2026-08-23T04:00:00.000Z',
-  buckets: [
-    {
-      key: '2026-08-09',
-      start: '2026-08-09T04:00:00.000Z',
-      end: '2026-08-23T04:00:00.000Z',
-      startKey: '2026-08-09',
-      endKey: '2026-08-22',
-      isPartial: true,
-    },
-  ],
-}
+})
 
 describe('workload analytics presentation', () => {
   it('keeps every selected local day, preserves unknown reconstruction gaps, and reports known backlog summaries', () => {

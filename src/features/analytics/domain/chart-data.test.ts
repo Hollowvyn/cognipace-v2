@@ -22,7 +22,7 @@ import {
   type AnalyticsCurrentCard,
   type AnalyticsReviewEvent,
 } from './chart-data'
-import { buildAnalyticsTimeFrame } from './analytics-time'
+import { buildSelectedAnalyticsTimeFrame } from './analytics-time'
 import { metricDefinitions } from './metric-definitions'
 
 const start = new Date('2026-08-01T00:00:00.000Z')
@@ -635,14 +635,15 @@ describe('analytics chart-data builders', () => {
 
   it('compares a partial local period with the matching local wall-clock window', () => {
     const asOf = new Date('2026-03-08T05:30:00.000Z')
-    const timeFrame = buildAnalyticsTimeFrame({
+    const timeFrame = buildSelectedAnalyticsTimeFrame({
       asOf,
-      requestedDays: 14,
+      requestedRange: 90,
+      allTimeStart: null,
       timeZone: 'America/New_York',
     })
     const periodOptions = {
       ...options,
-      start: new Date(timeFrame.periodStart),
+      start: new Date(timeFrame.periodStart!),
       end: asOf,
       timeFrame,
     }
@@ -650,14 +651,14 @@ describe('analytics chart-data builders', () => {
       event({
         id: `local-previous-${index}`,
         reviewedAt: new Date(
-          `2026-02-22T05:${String(index).padStart(2, '0')}:00.000Z`,
+          `2025-12-08T05:${String(index).padStart(2, '0')}:00.000Z`,
         ),
         rating: 'good',
       }),
     )
     const partialDayAfterPrevious = event({
       id: 'partial-day-after-previous',
-      reviewedAt: new Date('2026-02-22T06:00:00.000Z'),
+      reviewedAt: new Date('2025-12-08T06:00:00.000Z'),
       rating: 'again',
     })
 

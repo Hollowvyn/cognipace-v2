@@ -77,36 +77,6 @@ const percentageSchema = z.number().min(0).max(1)
 const countSchema = z.number().int().nonnegative()
 const nullablePercentageSchema = percentageSchema.nullable()
 
-export const readinessFailureSchema = z.enum([
-  'no-evidence',
-  'insufficient-span',
-  'insufficient-assessments',
-  'insufficient-active-buckets',
-  'gap-too-long',
-  'too-many-gaps',
-])
-
-export const analyticsReadinessSchema = z.object({
-  ready: z.boolean(),
-  requestedDays: z.number().int().positive(),
-  bucketDays: z.number().int().positive(),
-  requestedBuckets: z.number().int().positive(),
-  effectiveBuckets: countSchema,
-  effectiveStart: z.string().nullable(),
-  assessments: countSchema,
-  minimumAssessments: z.number().int().positive(),
-  activeBuckets: countSchema,
-  minimumActiveBuckets: countSchema,
-  longestGap: countSchema,
-  maximumGap: z.number().int().positive(),
-  gapRuns: countSchema,
-  maximumGapRuns: z.number().int().positive(),
-  failingReasons: z.array(readinessFailureSchema),
-})
-
-export type AnalyticsReadiness = z.infer<typeof analyticsReadinessSchema>
-export type ReadinessFailure = z.infer<typeof readinessFailureSchema>
-
 export const analyticsMetricSummarySchema = z.union([
   z.object({
     value: z.null(),

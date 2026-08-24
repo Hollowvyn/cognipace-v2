@@ -1,7 +1,6 @@
 import type {
   AnalyticsBucketGrain,
   AnalyticsRange,
-  AnalyticsTimeFrame,
   SelectedAnalyticsTimeFrame,
 } from './analytics-time'
 import { getAnalyticsDateKey } from './analytics-time'
@@ -13,11 +12,6 @@ export interface AnalyticsBucket {
   label: string
   startKey?: string
   endKey?: string
-}
-
-export interface AnalyticsRangePolicy {
-  bucketDays: number
-  maximumGapBuckets: number
 }
 
 export interface AnalyticsLongRangePolicy {
@@ -32,12 +26,6 @@ export interface AnalyticsLongRangePolicyInput {
   timeZone: string
 }
 
-const policies: Record<14 | 30 | 90, AnalyticsRangePolicy> = {
-  14: { bucketDays: 1, maximumGapBuckets: 2 },
-  30: { bucketDays: 3, maximumGapBuckets: 2 },
-  90: { bucketDays: 7, maximumGapBuckets: 2 },
-}
-
 const maxLongRangeBuckets = 48
 const mondayAnchorEpochDay = Math.floor(Date.UTC(1970, 0, 5) / 86_400_000)
 const longRangeGrains: readonly AnalyticsBucketGrain[] = [
@@ -49,17 +37,6 @@ const longRangeGrains: readonly AnalyticsBucketGrain[] = [
   'half-year',
   'year',
 ]
-
-export function getAnalyticsRangePolicy(
-  requestedDays: number,
-): AnalyticsRangePolicy {
-  const policy = policies[requestedDays as 14 | 30 | 90]
-  if (!policy) {
-    throw new RangeError('Analytics range must be one of 14, 30, or 90 days.')
-  }
-
-  return policy
-}
 
 export function selectAnalyticsLongRangePolicy(
   input: AnalyticsLongRangePolicyInput,
@@ -143,7 +120,7 @@ function getEpochDay(dateKey: string): number {
 }
 
 export function buildAnalyticsBucketsFromTimeFrame(
-  timeFrame: AnalyticsTimeFrame | SelectedAnalyticsTimeFrame,
+  timeFrame: SelectedAnalyticsTimeFrame,
 ): AnalyticsBucket[] {
   const asOf = new Date(timeFrame.asOf)
 
