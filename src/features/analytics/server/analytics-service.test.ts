@@ -327,11 +327,11 @@ describe('getAnalyticsSummary service regressions', () => {
     expect(summary.views.upcomingReviewLoad.rows[0]?.overdueCount).toBe(0)
     expect(summary.views.upcomingReviewLoad.rows[1]?.dueCount).toBe(1)
     expect(summary.views.retentionMap.rows).toHaveLength(2)
-    expect(summary.views.overdueBacklog.rows).toHaveLength(90)
+    expect(summary.views.overdueBacklog.rows).toHaveLength(120)
   })
 
   it.each([90, 120] as const)(
-    'keeps %s-day overdue backlog history available when replay is complete',
+    'keeps fixed overdue backlog history available when replay is complete for %s days',
     async (range) => {
       const handle = await createTestDb({ seed: false })
       const now = new Date('2026-08-13T12:00:00.000Z')
@@ -359,7 +359,7 @@ describe('getAnalyticsSummary service regressions', () => {
 
       const summary = await getAnalyticsSummary(handle.db, { range, now })
 
-      expect(summary.views.overdueBacklog.knownDays).toBe(range)
+      expect(summary.views.overdueBacklog.knownDays).toBe(120)
     },
   )
 
@@ -994,6 +994,95 @@ describe('getAnalyticsSummary service regressions', () => {
 })
 
 describe('getAnalyticsSummary long-range evidence', () => {
+  it('keeps fixed local workload windows independent of the historical selector', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-03-08T05:30:00.000Z')
+    const summaries = await Promise.all(
+      ([90, 120, 'all'] as const).map((range) =>
+        getAnalyticsSummary(handle.db, {
+          range,
+          now,
+          timeZone: 'America/New_York',
+        }),
+      ),
+    )
+
+    const workloadViews = summaries.map((summary) => ({
+      overdueBacklog: summary.views.overdueBacklog,
+      upcomingReviewLoad: summary.views.upcomingReviewLoad,
+    }))
+
+    expect(workloadViews[0]).toEqual(workloadViews[1])
+    expect(workloadViews[1]).toEqual(workloadViews[2])
+    expect(workloadViews[0]?.overdueBacklog.rows).toHaveLength(120)
+    expect(workloadViews[0]?.overdueBacklog.rows[0]).toMatchObject({
+      date: '2025-11-09',
+      overdueCount: null,
+    })
+    expect(workloadViews[0]?.overdueBacklog.rows.at(-1)).toMatchObject({
+      date: '2026-03-08',
+      overdueCount: null,
+      inProgress: true,
+    })
+    expect(workloadViews[0]?.upcomingReviewLoad.rows).toHaveLength(14)
+    expect(workloadViews[0]?.upcomingReviewLoad.rows.map((row) => row.date)).toEqual(
+      [
+        '2026-03-08',
+        '2026-03-09',
+        '2026-03-10',
+        '2026-03-11',
+        '2026-03-12',
+        '2026-03-13',
+        '2026-03-14',
+        '2026-03-15',
+        '2026-03-16',
+        '2026-03-17',
+        '2026-03-18',
+        '2026-03-19',
+        '2026-03-20',
+        '2026-03-21',
+      ],
+    )
+  })
+
+  it('reconstructs the same 120-day backlog across historical selections', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-03-08T05:30:00.000Z')
+    const dates = Array.from(
+      { length: 120 },
+      (_, index) => new Date(Date.UTC(2025, 10, 9 + index, 12)),
+    )
+
+    await insertAnalyticsProblem(handle.db, 'fixed-workload', 'Fixed Workload', [])
+    await insertAnalyticsHistory(handle.db, 'fixed-workload', {
+      id: 'fixed-workload:default',
+      dates,
+      ratings: Array<ReviewRating>(dates.length).fill('good'),
+      correct: Array<boolean>(dates.length).fill(true),
+      dueAt: new Date('2026-03-09T03:30:00.000Z'),
+      stability: 10,
+      difficulty: 5,
+    })
+
+    const summaries = await Promise.all(
+      ([90, 120, 'all'] as const).map((range) =>
+        getAnalyticsSummary(handle.db, {
+          range,
+          now,
+          timeZone: 'America/New_York',
+        }),
+      ),
+    )
+    const overdueBacklogs = summaries.map(
+      (summary) => summary.views.overdueBacklog,
+    )
+
+    expect(overdueBacklogs[0]).toEqual(overdueBacklogs[1])
+    expect(overdueBacklogs[1]).toEqual(overdueBacklogs[2])
+    expect(overdueBacklogs[0]?.selectedDays).toBe(120)
+    expect(overdueBacklogs[0]?.knownDays).toBeGreaterThan(0)
+  })
+
   it.each([90, 120, 'all'] as const)(
     'returns a truthful empty %s frame without readiness output',
     async (range) => {

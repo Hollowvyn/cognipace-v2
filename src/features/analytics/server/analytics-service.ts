@@ -111,6 +111,13 @@ export async function getAnalyticsSummary(
     ...selectedTimeFrame,
     timeZoneFallback: timeZoneResolution.fallback,
   }
+  const workloadTimeFrame = buildSelectedAnalyticsTimeFrame({
+    asOf: now,
+    requestedRange: 120,
+    allTimeStart: null,
+    timeZone,
+    bucketGrain: 'week',
+  })
   const periodEnd = new Date(presentationTimeFrame.asOf)
   const buckets = buildAnalyticsBucketsFromTimeFrame(presentationTimeFrame)
   const periodStart = presentationTimeFrame.periodStart
@@ -214,7 +221,7 @@ export async function getAnalyticsSummary(
   const overdueSnapshots = reconstructOverdueBacklogSnapshots(
     analyticsReviewHistory,
     analyticsCurrentCards,
-    chartOptions,
+    { ...chartOptions, timeFrame: workloadTimeFrame },
   )
   const upcomingLoad = buildUpcomingLoadPoints(
     upcomingCards.map((card) => card.dueAt),
