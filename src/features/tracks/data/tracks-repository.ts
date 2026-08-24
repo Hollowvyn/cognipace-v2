@@ -92,6 +92,10 @@ export class TracksRepository {
     return readTrackById(this.db, trackId)
   }
 
+  async getTrackByNormalizedTitle(title: string): Promise<Track | null> {
+    return readTrackByNormalizedTitle(this.db, title)
+  }
+
   async getSession(): Promise<TrackSessionState> {
     return readSessionState(this.db)
   }
@@ -688,6 +692,24 @@ async function readTrackById(
     .limit(1)
 
   return rows[0] ? mapTrack(rows[0]) : null
+}
+
+async function readTrackByNormalizedTitle(
+  db: TracksReadDb,
+  title: string,
+): Promise<Track | null> {
+  const normalizedTitle = normalizeLeetCodeSlug(title)
+
+  if (!normalizedTitle) {
+    return null
+  }
+
+  const rows = await db.select().from(tracks)
+  const matchingRow = rows.find(
+    (row) => normalizeLeetCodeSlug(row.title) === normalizedTitle,
+  )
+
+  return matchingRow ? mapTrack(matchingRow) : null
 }
 
 async function readSessionState(db: TracksReadDb): Promise<TrackSessionState> {

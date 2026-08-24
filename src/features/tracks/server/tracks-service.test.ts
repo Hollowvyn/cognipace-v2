@@ -688,14 +688,14 @@ describe('track import orchestration', () => {
     })
 
     const repository = createTracksRepository(handle.db)
-    await expect(repository.getTrackById('first-import')).resolves.toMatchObject(
-      {
-        id: 'first-import',
-        title: 'First Import',
-        description: 'Ordered first',
-        dueAt: new Date('2026-01-04T00:00:00.000Z'),
-      },
-    )
+    await expect(
+      repository.getTrackById('first-import'),
+    ).resolves.toMatchObject({
+      id: 'first-import',
+      title: 'First Import',
+      description: 'Ordered first',
+      dueAt: new Date('2026-01-04T00:00:00.000Z'),
+    })
     await expect(repository.getGroups('first-import')).resolves.toEqual([
       {
         id: 'first-import:first-group',
@@ -710,39 +710,39 @@ describe('track import orchestration', () => {
         position: 2,
       },
     ])
-    await expect(repository.getMemberships('first-import')).resolves.toMatchObject(
-      [
-        {
-          groupId: 'first-import:first-group',
-          problemSlug: 'shared-problem',
-          problemPosition: 1,
-        },
-        {
-          groupId: 'first-import:first-group',
-          problemSlug: 'fallback-problem',
-          problemPosition: 2,
-        },
-        {
-          groupId: 'first-import:second-group',
-          problemSlug: 'explicit-problem',
-          problemPosition: 1,
-        },
-      ],
-    )
-    await expect(repository.getMemberships('second-import')).resolves.toMatchObject(
-      [
-        {
-          groupId: 'second-import:only-group',
-          problemSlug: 'shared-problem',
-          problemPosition: 1,
-        },
-        {
-          groupId: 'second-import:only-group',
-          problemSlug: 'second-fallback',
-          problemPosition: 2,
-        },
-      ],
-    )
+    await expect(
+      repository.getMemberships('first-import'),
+    ).resolves.toMatchObject([
+      {
+        groupId: 'first-import:first-group',
+        problemSlug: 'shared-problem',
+        problemPosition: 1,
+      },
+      {
+        groupId: 'first-import:first-group',
+        problemSlug: 'fallback-problem',
+        problemPosition: 2,
+      },
+      {
+        groupId: 'first-import:second-group',
+        problemSlug: 'explicit-problem',
+        problemPosition: 1,
+      },
+    ])
+    await expect(
+      repository.getMemberships('second-import'),
+    ).resolves.toMatchObject([
+      {
+        groupId: 'second-import:only-group',
+        problemSlug: 'shared-problem',
+        problemPosition: 1,
+      },
+      {
+        groupId: 'second-import:only-group',
+        problemSlug: 'second-fallback',
+        problemPosition: 2,
+      },
+    ])
   })
 
   it('reuses existing problems without changing metadata and creates explicit and fallback problems', async () => {
@@ -837,6 +837,10 @@ describe('track import orchestration', () => {
   it('leaves active state, practice history, settings, and unrelated tracks unchanged', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    await completeTrackProblem(handle.db, {
+      trackId: 'leetcode-75',
+      problemSlug: 'two-sum',
     })
     const before = await readStableTrackState(handle.db)
 
@@ -952,13 +956,82 @@ describe('track import orchestration', () => {
     await expect(handle.db.select().from(problems)).resolves.toEqual([])
   })
 
-  it('rolls back problems and earlier tracks when a later track insertion fails', async () => {
+  it('rejects a later normalized title conflict even when the existing id is arbitrary', async () => {
     const handle = await createTestDb({ seed: false })
+    const existingTrack = {
+      id: 'legacy-track-record',
+      slug: 'legacy-track-slug',
+      title: 'Legacy Track',
+      description: null,
+      dueAt: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z').getTime(),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z').getTime(),
+    }
+    await handle.db.insert(tracks).values(existingTrack)
+
     let mutationCount = 0
     setOnMutationHook(() => {
       mutationCount += 1
+    })
 
-      if (mutationCount === 1) {
+    try {
+      await expect(
+        importTracks(
+          handle.db,
+          parseImportRequest({
+            schemaVersion: 1,
+            app: 'cognipace-track-import',
+            tracks: [
+              {
+                title: 'Fresh Import',
+                description: null,
+                dueAt: null,
+                groups: [
+                  {
+                    title: 'Main',
+                    problemSlugs: ['fresh-import-problem'],
+                  },
+                ],
+              },
+              {
+                title: 'Legacy Track',
+                description: null,
+                dueAt: null,
+                groups: [
+                  {
+                    title: 'Main',
+                    problemSlugs: ['later-conflict-problem'],
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
+      ).rejects.toThrow(
+        'Track "Legacy Track" already exists. Rename or delete it explicitly before importing.',
+      )
+    } finally {
+      setOnMutationHook(null)
+    }
+
+    expect(mutationCount).toBe(0)
+    await expect(handle.db.select().from(tracks)).resolves.toEqual([
+      existingTrack,
+    ])
+    await expect(handle.db.select().from(problems)).resolves.toEqual([])
+  })
+
+  it('rolls back problems, earlier tracks, and later track writes on insertion failure', async () => {
+    const handle = await createTestDb({ seed: false })
+    const beforeProgress = await handle.db.select().from(trackProblemProgress)
+    const beforeSession = await handle.db.select().from(trackSession)
+    let trackInsertCount = 0
+    setOnMutationHook((sql) => {
+      if (sql.toLowerCase().includes('insert into "tracks"')) {
+        trackInsertCount += 1
+      }
+
+      if (trackInsertCount === 2) {
         throw new Error('forced track insertion failure')
       }
     })
@@ -970,16 +1043,27 @@ describe('track import orchestration', () => {
           parseImportRequest({
             schemaVersion: 1,
             app: 'cognipace-track-import',
-            problems: [{ slug: 'first-problem' }],
+            problems: [{ slug: 'first-problem' }, { slug: 'second-problem' }],
             tracks: [
               {
-                title: 'Fails During Insert',
+                title: 'First Imported Track',
                 description: null,
                 dueAt: null,
                 groups: [
                   {
                     title: 'Main',
                     problemSlugs: ['first-problem'],
+                  },
+                ],
+              },
+              {
+                title: 'Fails During Later Insert',
+                description: null,
+                dueAt: null,
+                groups: [
+                  {
+                    title: 'Main',
+                    problemSlugs: ['second-problem'],
                   },
                 ],
               },
@@ -994,10 +1078,16 @@ describe('track import orchestration', () => {
     await expect(handle.db.select().from(problems)).resolves.toEqual([])
     await expect(handle.db.select().from(tracks)).resolves.toEqual([])
     await expect(handle.db.select().from(trackGroups)).resolves.toEqual([])
+    await expect(handle.db.select().from(trackGroupProblems)).resolves.toEqual(
+      [],
+    )
     await expect(
-      handle.db.select().from(trackGroupProblems),
-    ).resolves.toEqual([])
-    expect(mutationCount).toBe(1)
+      handle.db.select().from(trackProblemProgress),
+    ).resolves.toEqual(beforeProgress)
+    await expect(handle.db.select().from(trackSession)).resolves.toEqual(
+      beforeSession,
+    )
+    expect(trackInsertCount).toBe(2)
   })
 
   it('validates requests at the service boundary and returns a schema-valid result', async () => {
@@ -1050,22 +1140,24 @@ async function readStableTrackState(
   db: Db,
   preservedTrackIds?: ReadonlySet<string>,
 ) {
-  const trackRows = await db
-    .select()
-    .from(tracks)
-    .orderBy(asc(tracks.id))
-  const trackIds = preservedTrackIds ?? new Set(trackRows.map((track) => track.id))
+  const trackRows = await db.select().from(tracks).orderBy(asc(tracks.id))
+  const trackIds =
+    preservedTrackIds ?? new Set(trackRows.map((track) => track.id))
 
   return {
     tracks: trackRows.filter((track) => trackIds.has(track.id)),
-    groups: (await db.select().from(trackGroups).orderBy(asc(trackGroups.id))).filter(
-      (group) => trackIds.has(group.trackId),
-    ),
+    groups: (
+      await db.select().from(trackGroups).orderBy(asc(trackGroups.id))
+    ).filter((group) => trackIds.has(group.trackId)),
     memberships: (
       await db
         .select()
         .from(trackGroupProblems)
-        .orderBy(asc(trackGroupProblems.trackId), asc(trackGroupProblems.trackGroupId), asc(trackGroupProblems.position))
+        .orderBy(
+          asc(trackGroupProblems.trackId),
+          asc(trackGroupProblems.trackGroupId),
+          asc(trackGroupProblems.position),
+        )
     ).filter((membership) => trackIds.has(membership.trackId)),
     session: await db.select().from(trackSession),
     practice: await db
@@ -1077,6 +1169,13 @@ async function readStableTrackState(
       .select()
       .from(reviewAttempts)
       .orderBy(asc(reviewAttempts.id)),
+    trackProgress: await db
+      .select()
+      .from(trackProblemProgress)
+      .orderBy(
+        asc(trackProblemProgress.trackId),
+        asc(trackProblemProgress.problemSlug),
+      ),
     settings: await db.select().from(settingsKv).orderBy(asc(settingsKv.key)),
   }
 }

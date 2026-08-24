@@ -57,7 +57,9 @@ export async function importTracks(
 
     for (const track of validatedRequest.file.tracks) {
       const trackId = normalizeLeetCodeSlug(track.title)
-      const existingTrack = await tracksRepository.getTrackById(trackId)
+      const existingTrack =
+        (await tracksRepository.getTrackByNormalizedTitle(track.title)) ??
+        (await tracksRepository.getTrackById(trackId))
 
       if (existingTrack) {
         throw new Error(
