@@ -96,6 +96,95 @@ function summaryWithTopicPerformance(
   }
 }
 
+function createDailyRows(start: string, count: number) {
+  const startDate = new Date(`${start}T00:00:00.000Z`)
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(startDate)
+    date.setUTCDate(date.getUTCDate() + index)
+    return date.toISOString().slice(0, 10)
+  })
+}
+
+function summaryWithSelectorIndependentViews(
+  range: AnalyticsRange,
+): SerializedAnalyticsSummary {
+  const base = createSerializedAnalyticsSummary()
+  const backlogDates = createDailyRows('2026-04-03', 120)
+  const forecastDates = createDailyRows('2026-08-01', 14)
+  return {
+    ...base,
+    range,
+    timeFrame: {
+      ...base.timeFrame,
+      requestedRange: range,
+      periodStart: range === 'all' ? null : base.timeFrame.periodStart,
+      bucketGrain: range === 'all' ? null : base.timeFrame.bucketGrain,
+      buckets: range === 'all' ? [] : base.timeFrame.buckets,
+    },
+    views: {
+      ...base.views,
+      retentionMap: {
+        rows: [
+          {
+            rank: 1,
+            slug: 'selector-stable-problem',
+            title: 'Selector Stable Problem',
+            retrievability: 0.7,
+            targetRetention: 0.9,
+            targetGap: -0.2,
+            targetDurationDays: 3,
+            lastReviewedAt: '2026-07-31T00:00:00.000Z',
+            dueAt: '2026-08-01T00:00:00.000Z',
+            difficulty: 5,
+            lapseCount: 1,
+            status: 'needs-attention',
+            region: 'highest-attention',
+          },
+        ],
+        totalEligible: 1,
+        statusCounts: { onTarget: 0, watch: 0, needsAttention: 1 },
+        recallScale: { domain: [0.6, 1], ticks: [0.6, 0.8, 1] },
+        durationScale: { domain: [1, 10], ticks: [1, 10] },
+        targetRetention: 0.9,
+      },
+      memorySignals: {
+        rows: [
+          {
+            rank: 1,
+            slug: 'selector-stable-problem',
+            title: 'Selector Stable Problem',
+            reasons: [{ kind: 'below-recall', label: 'Below recall 70%' }],
+          },
+        ],
+        totalQualifying: 1,
+      },
+      overdueBacklog: {
+        rows: backlogDates.map((date, index) => ({
+          date,
+          overdueCount: index === 60 ? null : index % 7,
+          inProgress: index === 119,
+        })),
+        knownDays: 119,
+        withinWatchDays: 102,
+        aboveWatchDays: 17,
+        selectedDays: 120,
+        currentBacklog: 0,
+        peak: 6,
+        scale: { domain: [0, 10], ticks: [0, 5, 10] },
+      },
+      upcomingReviewLoad: {
+        rows: forecastDates.map((date, index) => ({
+          date,
+          dueCount: index === 1 ? 2 : 0,
+          overdueCount: index === 0 ? 1 : 0,
+          today: index === 0,
+        })),
+        scale: { domain: [0, 4], ticks: [0, 2, 4] },
+      },
+    },
+  }
+}
+
 describe('AnalyticsScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -349,7 +438,89 @@ describe('AnalyticsScreen', () => {
       .filter((name): name is string => historicalNames.includes(name ?? ''))
     expect(renderedNames).toEqual(historicalNames)
   })
+
+  it('keeps current cohorts and fixed workload windows across every historical selector', async () => {
+    vi.mocked(sendMessage)
+      .mockResolvedValueOnce(summaryWithSelectorIndependentViews(90))
+      .mockResolvedValueOnce(summaryWithSelectorIndependentViews(120))
+      .mockResolvedValueOnce(summaryWithSelectorIndependentViews('all'))
+    const harness = createQueryTestHarness()
+    const { rerender } = render(<AnalyticsScreen range={90} />, {
+      wrapper: harness.wrapper,
+    })
+
+    await expectSelectorIndependentViews('90 days')
+
+    rerender(<AnalyticsScreen range={120} />)
+    await expectSelectorIndependentViews('120 days')
+
+    rerender(<AnalyticsScreen range="all" />)
+    await expectSelectorIndependentViews('All time')
+
+    expect(sendMessage).toHaveBeenCalledTimes(3)
+  })
 })
+
+async function expectSelectorIndependentViews(rangeLabel: string) {
+  await waitFor(() => {
+    expect(
+      screen.getByRole('status', { name: 'Analytics range and time scope' }),
+    ).toHaveTextContent(`Range: ${rangeLabel}`)
+  })
+
+  const retentionMap = screen.getByRole('region', { name: 'Retention Map' })
+  expect(
+    within(retentionMap).getByRole('button', {
+      name: /Selector Stable Problem.*Needs attention/i,
+    }),
+  ).toBeVisible()
+  const memorySignals = screen.getByRole('region', {
+    name: 'Memory Signals by Problem',
+  })
+  expect(
+    within(memorySignals).getByRole('link', {
+      name: 'Selector Stable Problem',
+    }),
+  ).toBeVisible()
+
+  const backlog = screen.getByRole('region', {
+    name: 'Recent Overdue Backlog',
+  })
+  expect(within(backlog).getByText(/119 known days of 120/)).toBeVisible()
+  await userEvent.click(within(backlog).getByRole('tab', { name: 'Table' }))
+  expect(within(backlog).getByRole('status')).toHaveTextContent(
+    'Showing 1–7 of 120',
+  )
+  const backlogTable = within(backlog).getByRole('table', {
+    name: 'Recent Overdue Backlog data table',
+  })
+  expect(within(backlogTable).getByText('04/03/26')).toBeVisible()
+  expect(within(backlogTable).getByText('04/09/26')).toBeVisible()
+
+  const upcoming = screen.getByRole('region', {
+    name: 'Upcoming Review Load',
+  })
+  await userEvent.click(within(upcoming).getByRole('tab', { name: 'Table' }))
+  expect(within(upcoming).getByRole('status')).toHaveTextContent(
+    'Showing 1–7 of 14',
+  )
+  expect(
+    within(upcoming)
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent),
+  ).toEqual(['Date', 'Due', 'Overdue'])
+  const upcomingTable = within(upcoming).getByRole('table', {
+    name: 'Upcoming Review Load data table',
+  })
+  expect(within(upcomingTable).getByText('Today · 08/01/26')).toBeVisible()
+  await userEvent.click(
+    within(upcoming).getByRole('button', { name: 'Next page' }),
+  )
+  expect(within(upcoming).getByRole('status')).toHaveTextContent(
+    'Showing 8–14 of 14',
+  )
+  expect(within(upcomingTable).getByText('08/14/26')).toBeVisible()
+}
 
 function renderAnalyticsScreen(range?: AnalyticsRange) {
   const harness = createQueryTestHarness()

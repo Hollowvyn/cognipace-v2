@@ -4,8 +4,10 @@ import { describe, expect, it } from 'vitest'
 
 import type { AnalyticsViews } from '../api/analytics-contracts'
 import {
+  BacklogTooltip,
   buildThresholdStepSegments,
   RecentOverdueBacklogView,
+  UpcomingTooltip,
   UpcomingReviewLoadView,
 } from './workload-views'
 
@@ -71,6 +73,46 @@ describe('workload analytics views', () => {
     expect(buildThresholdStepSegments([{ x: 10, y: 10 }], [4])).toEqual([])
   })
 
+  it('breaks the backlog line across unknown days instead of connecting them', () => {
+    expect(
+      buildThresholdStepSegments(
+        [
+          { x: 0, y: 10 },
+          { x: 10, y: null },
+          { x: 20, y: 5 },
+          { x: 30, y: 0 },
+        ],
+        [4, null, 5, 6],
+      ),
+    ).toEqual([
+      { d: 'M20,5L30,5', status: 'within-watch' },
+      { d: 'M30,5L30,0', status: 'above-watch' },
+    ])
+  })
+
+  it('keeps the backlog tooltip to date and overdue count only', () => {
+    render(
+      <BacklogTooltip
+        active
+        payload={[
+          {
+            payload: {
+              date: '2026-08-16',
+              overdueCount: 7,
+              inProgress: true,
+            },
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('Date: 08/16/26')).toBeVisible()
+    expect(screen.getByText('Overdue problems: 7')).toBeVisible()
+    expect(screen.queryByText(/status/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/daily change/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/in progress/i)).not.toBeInTheDocument()
+  })
+
   it('renders unknown backlog days as a broken-line measure with Chart/Table parity and keyboard inspection', async () => {
     const user = userEvent.setup()
     render(<RecentOverdueBacklogView view={overdueBacklog} />)
@@ -129,5 +171,38 @@ describe('workload analytics views', () => {
       ),
     ).toHaveLength(1)
     rerender(<UpcomingReviewLoadView view={upcomingReviewLoad} />)
+  })
+
+  it('keeps the upcoming tooltip and paginated table on Date, Due, and Overdue values', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(
+      <UpcomingTooltip
+        active
+        payload={[{ payload: upcomingReviewLoad.rows[0] }]}
+      />,
+    )
+
+    expect(screen.getByText('Date: Today, 08/22/26')).toBeVisible()
+    expect(screen.getByText('Due: 2')).toBeVisible()
+    expect(screen.getByText('Overdue: 1')).toBeVisible()
+    unmount()
+
+    render(<UpcomingReviewLoadView view={upcomingReviewLoad} />)
+    await user.click(screen.getByRole('tab', { name: 'Table' }))
+    const table = screen.getByRole('table', {
+      name: 'Upcoming Review Load data table',
+    })
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Date', 'Due', 'Overdue'])
+    expect(screen.getByRole('status')).toHaveTextContent('Showing 1–7 of 14')
+    expect(within(table).getByText('Today · 08/22/26')).toBeVisible()
+    expect(within(table).getByText('2')).toBeVisible()
+    expect(within(table).getByText('1')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Showing 8–14 of 14')
+    expect(within(table).getByText('09/04/26')).toBeVisible()
   })
 })
