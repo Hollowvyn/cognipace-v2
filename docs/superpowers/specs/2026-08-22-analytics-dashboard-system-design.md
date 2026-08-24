@@ -3,6 +3,9 @@
 ## Status and authority
 
 Approved by the user on August 22, 2026 after chart-by-chart product review.
+The historical range, bucketing, and trend-evidence contract was amended and
+approved on August 23, 2026 after reviewing the implemented sparse-data
+behavior and a dedicated data-path research pass.
 This document is the approved **future-state specification** for the CogniPace
 Analytics dashboard. It does not claim that the current branch already
 implements these contracts. Implementation follows the retained plan at
@@ -73,7 +76,7 @@ meaning changes. The following changes are intentional:
 | Weakest Topics based on correctness or a composite focus score                   | Topic Performance based only on sufficiently sampled Review Success                            |
 | Retention Health with days-since-review X axis                                   | Retention Map with logarithmic FSRS-derived target-duration X axis                             |
 | Fragile Knowledge qualified by difficulty, lapses, or broad fragility heuristics | Memory Signals qualified by below-target recall, overdue state, or sub-week target duration    |
-| Overdue history aggregated into 3-day or weekly buckets                          | Daily overdue observations for all 14/30/90 ranges                                             |
+| Overdue history following the selected historical range                          | Fixed 120-day daily overdue observations independent of the historical selector                |
 | Tooltips as the main exact-value path                                            | Same-model semantic Table view for every chart; View 7 is already table-native                 |
 
 The current persisted review history does not reliably identify retries,
@@ -84,7 +87,8 @@ rating or correctness field to first-try recall.
 
 The reading order is fixed:
 
-1. page title, 14/30/90 historical control, exact range/timezone/as-of label,
+1. page title, 90 days/120 days/All time historical control, exact
+   range/timezone/as-of label,
    and one compact evidence summary;
 2. **Observed Recall vs FSRS Estimate**, full width;
 3. **Memory Strength** and **Practice Rhythm**, paired;
@@ -103,17 +107,17 @@ all-time, or fixed forecast.
 
 ## Stable view catalogue
 
-| #   | Stable ID                 | User-facing name                 | Scope                     | Mark                              |
-| --- | ------------------------- | -------------------------------- | ------------------------- | --------------------------------- |
-| 1   | `observed-recall-vs-fsrs` | Observed Recall vs FSRS Estimate | historical 14/30/90       | two lines                         |
-| 2   | `memory-strength`         | Memory Strength                  | historical 14/30/90       | median line and optional IQR band |
-| 3   | `practice-rhythm`         | Practice Rhythm                  | historical 14/30/90       | count bars plus percentage line   |
-| 4   | `ratings-mix`             | Ratings Mix                      | historical 14/30/90       | 100% stacked columns              |
-| 5   | `topic-performance`       | Topic Performance                | whole selected period     | ranked horizontal bars            |
-| 6   | `retention-map`           | Retention Map                    | current state             | scatter plot                      |
-| 7   | `memory-signals`          | Memory Signals by Problem        | current state             | semantic table                    |
-| 8   | `overdue-backlog`         | Recent Overdue Backlog           | historical daily 14/30/90 | threshold step line               |
-| 9   | `upcoming-review-load`    | Upcoming Review Load             | fixed today + 13 days     | stacked columns                   |
+| #   | Stable ID                 | User-facing name                 | Scope                    | Mark                              |
+| --- | ------------------------- | -------------------------------- | ------------------------ | --------------------------------- |
+| 1   | `observed-recall-vs-fsrs` | Observed Recall vs FSRS Estimate | historical 90/120/all    | two lines                         |
+| 2   | `memory-strength`         | Memory Strength                  | historical 90/120/all    | median line and optional IQR band |
+| 3   | `practice-rhythm`         | Practice Rhythm                  | historical 90/120/all    | count bars plus percentage line   |
+| 4   | `ratings-mix`             | Ratings Mix                      | historical 90/120/all    | 100% stacked columns              |
+| 5   | `topic-performance`       | Topic Performance                | whole selected period    | ranked horizontal bars            |
+| 6   | `retention-map`           | Retention Map                    | current state            | scatter plot                      |
+| 7   | `memory-signals`          | Memory Signals by Problem        | current state            | semantic table                    |
+| 8   | `overdue-backlog`         | Recent Overdue Backlog           | fixed preceding 120 days | threshold step line               |
+| 9   | `upcoming-review-load`    | Upcoming Review Load             | fixed today + 13 days    | stacked columns                   |
 
 `Retention Map` and `Memory Signals by Problem` are the canonical names.
 `Retention Health` and `Fragile Knowledge` are superseded labels.
@@ -150,25 +154,75 @@ all-time, or fixed forecast.
 
 ### Historical ranges
 
-- 14 days means today plus the preceding 13 local dates.
-- 30 days means today plus the preceding 29 local dates.
 - 90 days means today plus the preceding 89 local dates.
+- 120 days means today plus the preceding 119 local dates.
+- All time begins at the earliest persisted review event with a valid review
+  rating and ends at the start of the local day after today. Metric-specific
+  eligibility may leave leading presentation buckets Not measured, but does
+  not change the shared All-time bounds.
+- The stable URL values are `range=90`, `range=120`, and `range=all`; 90 days is
+  the default.
 - The range end is the start of the local day after today, but observations are
   queried only through `asOf`; therefore today's bucket is visibly in progress.
 - Compare previous periods only through equivalent elapsed local time. A
   partial today is never compared with a completed historical day.
+- All time has no previous-period comparison because no equivalent preceding
+  lifetime exists.
 
 ### Default presentation buckets
 
-| Range   | Bucket algorithm                                                  | Expected marks |
-| ------- | ----------------------------------------------------------------- | -------------- |
-| 14 days | one local date                                                    | 14             |
-| 30 days | consecutive 3-local-date buckets anchored at selected-range start | 10             |
-| 90 days | Monday-start calendar weeks clipped at the selected-range edges   | about 13–14    |
+| Range    | Bucket algorithm                                                | Expected positions |
+| -------- | --------------------------------------------------------------- | ------------------ |
+| 90 days  | Monday-start calendar weeks clipped at selected-range edges     | about 13–14        |
+| 120 days | Monday-start calendar weeks clipped at selected-range edges     | about 17–18        |
+| All time | finest approved calendar grain that produces at most 48 buckets | target 24–48       |
 
-This matrix applies to historical time-series Views 1–4. View 5
-aggregates the complete selected period, View 8 deliberately remains daily at
-all ranges, Views 6–7 are current-state, and View 9 is a fixed forecast.
+The approved All-time grains, from finest to coarsest, are Monday-start week,
+Monday-anchored two-week block, calendar month, aligned two-month block,
+calendar quarter, calendar half-year, and calendar year. Select the first grain
+that yields no more than 48 positions. Clip the first and last bucket to the
+All-time bounds. Twenty-four positions is a density target when the history
+span permits it, never a reason to invent finer evidence.
+
+This matrix applies to historical time-series Views 1–4. View 5 aggregates the
+complete selected period, View 8 remains fixed at 120 daily observations,
+Views 6–7 are current-state, and View 9 is a fixed forecast. Empty calendar
+intervals stay present as Not measured rows; the system thins visible axis
+labels rather than removing time from the dataset or compressing inactivity.
+
+### Historical FSRS replay order
+
+Display bucketing never resets or truncates memory state. Historical FSRS
+values follow this order:
+
+```text
+full ordered review sequence per card
+  -> replay and capture pre-review and post-review FSRS values
+  -> retain events inside the selected display period
+  -> assign retained events to presentation buckets
+  -> aggregate raw counts and values
+  -> derive ratios, medians, and shares
+```
+
+Coarser buckets sum numerators and denominators before deriving a ratio. They
+never average already displayed percentages. Replayed values keep their
+Reconstructed and model/settings provenance.
+
+### X-axis meaning by view
+
+| View | Primary X axis                                         |
+| ---- | ------------------------------------------------------ |
+| 1–4  | elapsed local calendar time                            |
+| 5    | Review Success percentage; topics are categorical rows |
+| 6    | logarithmic FSRS target-duration days                  |
+| 7    | none; semantic table                                   |
+| 8    | local calendar date, fixed daily 120-day history       |
+| 9    | local calendar date, fixed today plus 13 days          |
+
+Review order or equal-evidence blocks do not replace calendar time in the
+primary historical charts. A separately approved diagnostic may later show
+Review sequence for Views 1–2, with exact dates retained in its tooltip and
+Table.
 
 Counts are aggregated before ratios are derived. Percentages are never averaged
 from already displayed percentages.
@@ -215,49 +269,45 @@ These labels may coexist, for example `Reconstructed · In progress`.
 
 ### Historical evidence gates
 
-For the requested presentation buckets, let:
+For each historical metric, let:
 
 ```text
-N = requested bucket count
-f = first bucket containing eligible metric evidence
-E = buckets from f through the current bucket
-S = total eligible observations in E
-A = buckets in E with at least one eligible observation
-G = longest run of empty buckets in E
-K = number of separate empty-bucket runs in E
+H = elapsed local calendar days from the metric's first eligible observation
+    through asOf, clipped to the selected presentation period
+M = presentation buckets containing at least one eligible metric observation
+S = total eligible metric observations in the selected presentation period
 ```
 
-The selected range is not shortened visually: leading empty rows remain
-available in the Table view and the selected bounds stay explicit. `f` is used
-only to assess whether enough usable history spans the selected range.
-
-The shared trend gate is:
+The display tiers are:
 
 ```text
-E_min = ceil(0.60 * N)
-S_min(R) = ceil(max(12, 0.5 * R, 0.8 * min(R, 30)))
-C(R) = clamp(0.76 - 0.06 * log2(R / 7), 0.55, 0.80)
-A_min = ceil(C(R) * E)
-G_max = 2 for 14, 30, and 90-day ranges
-K_max = max(1, ceil(0.20 * E))
-
-trendSupported =
-  E >= E_min AND
-  S >= S_min AND
-  A >= A_min AND
-  G <= G_max AND
-  K <= K_max
+H < 30                    -> no trend plot; show evidence state and Table
+H >= 30 AND M = 1         -> one measured mark; no line or direction
+H >= 30 AND 2 <= M <= 5   -> measured marks; line series stay unconnected;
+                             no direction
+H >= 30 AND M >= 6 AND S >= 30
+                           -> descriptive line and trend language supported
 ```
+
+Bars and columns remain visible as measured marks in the middle tiers; this
+gate controls line geometry and directional interpretation, not whether a
+truthful count or composition exists.
 
 Each view computes these values from its own eligibility predicate. The page
 shows one quiet evidence summary; each figure shows only the compact sample and
 status needed to qualify its own statement. Repeated warning banners are not
 allowed.
 
-Measured marks remain visible when the trend gate fails. The gate suppresses
-directional takeaways; it does not erase truthful points. A previous-period
-comparison appears only when both periods independently satisfy the same
-metric-specific gate through equivalent elapsed time.
+Normal intermittent practice is not an evidence failure by itself. Empty-
+bucket percentages, gap counts, and gap-run counts do not block readiness.
+Calendar gaps control line geometry and evidence copy instead. A previous-
+period comparison appears only when both periods independently support a line
+through equivalent elapsed time; All time never presents that comparison.
+
+When `H < 30`, Views 1–4 omit the Chart tab and open directly to the exact Table
+and evidence state. Current-state Views 6–7 and fixed Views 8–9 remain
+available. View 5 may remain available when its independent qualification gate
+passes.
 
 View-specific overrides:
 
@@ -277,8 +327,8 @@ prepared to perform.
 - `0` is a measured zero; `null` is unknown or ineligible.
 - No chart converts missing outcomes to zero.
 - Historical line charts draw solid segments between adjacent measured
-  buckets, dashed segments across a permitted gap of at most `G_max`, and no
-  segment across a longer gap.
+  buckets, a dashed segment across exactly one empty bucket, and no segment
+  across two or more consecutive empty buckets.
 - A dashed segment has no synthetic marker or tooltip value inside it.
 - View 8 never bridges an unknown daily backlog value; its step line breaks.
 - One point is a measurement, not a trend.
@@ -330,8 +380,11 @@ and ticks use a deterministic nice-number step from `1, 2, 5 × 10^n`.
 
 Bars, areas, and backlog counts start at zero. Their upper bound is
 `niceCeil(max(1, visiblePeak, requiredReference) * 1.1)` with four to five
-integer tick intervals selected from `1, 2, 5 × 10^n`. A zero-only chart uses
-`0..1` unless its view defines a dedicated empty state.
+integer tick intervals selected from `1, 2, 5 × 10^n`. When that bound is too
+small to contain four integer intervals (for example, a one-card peak yields
+`0..2`), keep the mandated bound and show every whole-number tick in the
+truthful range; never invent fractional reviews or cards. A zero-only chart
+uses `0..1` unless its view defines a dedicated empty state.
 
 Ratings Mix and Topic Performance use the full `0%..100%` domain.
 
@@ -346,8 +399,11 @@ seven-day reference; redundant ticks may be removed at narrow widths.
 ## Chart/Table parity
 
 Each of the eight chart-based views provides native **Chart** and **Table** tabs
-with one labelled tablist and one selected tab. The Table is not hidden screen-
-reader-only content; it is a visible exact-value alternative.
+when the chart satisfies its minimum display tier. The Table is not hidden
+screen-reader-only content; it is a visible exact-value alternative. When a
+View 1–4 metric has fewer than 30 elapsed eligible-history days, omit its Chart
+tab and show the evidence state with the exact Table directly; do not render an
+empty or disabled Chart tab.
 
 - Both tabs consume the same Zod-validated presentation model.
 - Neither tab recalculates metrics, eligibility, ranking, classification, or
@@ -596,7 +652,7 @@ learner is better or worse than FSRS, calibrated, more able, or guaranteed to
 remember.
 
 Test pairing, finite-range validation, Again-only measured zero, aggregate-
-first ratios, provenance, missing/zero, all ranges, DST and partial today,
+first ratios, provenance, missing/zero, 90/120/All-time ranges, DST and partial today,
 adaptive domain, continuity, evidence suppression, tooltip/table parity,
 pagination, keyboard announcements, reduced motion, and narrow layout.
 
@@ -646,7 +702,7 @@ Do not call this correctness, current recall, personal ability, guaranteed
 memory, or proof that the learner improved.
 
 Test replay/capture provenance, eligibility, Tukey hinges, four-observation IQR
-gate, median per-event delta, missing buckets, all ranges, adaptive duration
+gate, median per-event delta, missing buckets, 90/120/All-time ranges, adaptive duration
 domain, continuity, evidence, table parity, pagination, keyboard, motion, and
 responsive states.
 
@@ -691,7 +747,7 @@ ticks to at most four, and keep overflow inside the figure.
 ### Tests
 
 Test formula and aggregate-first behavior, invalid ratings, known-zero versus
-unknown history, all ranges, partial buckets, both domain helpers, continuity,
+unknown history, 90/120/All-time ranges, partial buckets, both domain helpers, continuity,
 evidence suppression, tooltip/table parity, pagination, keyboard description,
 reduced motion, and responsive states.
 
@@ -788,7 +844,7 @@ non-overlapping distribution, or proof of ability.
 
 Test Good + Easy aggregation, topic de-duplication, overlapping attribution,
 problem breadth, both gates, deterministic ties, zero through five qualifying
-rows, omitted/low-evidence disclosure, all ranges, partial periods, parity,
+rows, omitted/low-evidence disclosure, 90/120/All-time ranges, partial periods, parity,
 long labels, keyboard navigation, motion, and responsive states.
 
 ## View 6 — Retention Map
@@ -994,8 +1050,8 @@ that time. It is a stock, not a flow; daily values are never summed.
   the observation and no later review has cleared that interval.
 - If complete state cannot be reconstructed for a day, keep the date row as Not
   measured and break the line.
-- Use one local-day row for all 14, 30, and 90-day selections; change tick
-  density only.
+- Always use the 120 local dates ending today. This fixed history is independent
+  of the 90/120/All-time selector.
 
 ### Presentation
 
@@ -1006,7 +1062,7 @@ that time. It is a stock, not a flow; daily values are never summed.
   temporary marker only during inspection.
 - Direct region labels: Within watch zone and Above watch zone.
 - Summary: known days within zone, current known backlog, known peak, and known
-  days out of selected days.
+  days out of the fixed 120-day history.
 - Tooltip only: full date, Overdue problems, and In progress for today. Do not
   show daily change or status.
 - Table: Date, Overdue problems. Seven rows per page. Unknown is Not measured.
@@ -1025,7 +1081,7 @@ The five-problem threshold is a CogniPace watch zone, not an FSRS or scientific
 boundary. Do not claim why backlog changed.
 
 Test reconstruction, observation instants, active/suspended state, interval
-clearing, missing days, partial today, daily 14/30/90 rows, threshold equality
+clearing, missing days, partial today, exactly 120 daily rows, range independence, threshold equality
 and crossings, green/yellow clipping, zero baseline/nice upper bound, all-zero
 versus all-unknown, known-day summaries, minimal tooltip, parity, pagination,
 keyboard inspection, motion, and responsive ticks.
@@ -1165,8 +1221,9 @@ Before PR review or merge, a human engineer must run happy-path and edge-case
 Chrome-extension smoke tests and attach screenshots or a recording:
 
 1. open Analytics with representative local history;
-2. verify every historical view at 14, 30, and 90 days;
-3. confirm exact range, timezone, partial today, and View 8's daily exception;
+2. verify Views 1–5 at 90 days, 120 days, and All time;
+3. confirm exact range, adaptive All-time grain, timezone, partial today, and
+   View 8's fixed daily 120-day exception;
 4. switch each chart between Chart and Table and verify exact parity;
 5. inspect each tooltip with pointer, keyboard, and touch-equivalent input;
 6. operate Retention Map transient and pinned detail, same-point toggle,
@@ -1210,7 +1267,9 @@ contract before it enters Analytics.
 | Retention Health days-since-review X axis                     | Replaced by Retention Map target-duration log X axis                      |
 | Above/Approaching/Below labels                                | Replaced by On target now/Watch/Needs attention with six labelled regions |
 | Difficulty/lapses as independent Fragile Knowledge qualifiers | Rejected; retained only as Retention Map table context                    |
-| Generic 3-day/weekly backlog aggregation                      | Replaced by daily View 8 rows for all ranges                              |
+| Generic 3-day/weekly backlog aggregation                      | Replaced by fixed daily View 8 rows for the preceding 120 days            |
+| Historical 14/30/90 selector                                  | Replaced by 90/120/All time with 90 days as the default                   |
+| Active-time compression or omitted empty calendar buckets     | Rejected; elapsed calendar time and Not measured positions remain visible |
 | Backlog tooltip status and daily change                       | Removed                                                                   |
 | Upcoming-load scenario projections                            | Deferred                                                                  |
 | Leading-empty visual trimming                                 | Rejected; selected-period rows and bounds remain truthful                 |
@@ -1231,7 +1290,7 @@ contract before it enters Analytics.
   feature chart components apply that guidance to this repository's local-first
   data and Terra Compact design system.
 - **Explicit approved product decisions:** the nine metrics and formulas,
-  14/30/90 behavior, five-problem backlog watch zone, seven-day durability
+  90/120/All-time behavior, five-problem backlog watch zone, seven-day durability
   benchmark, Retention Map six-region treatment and 30-row cap, Memory Signals
   25-row cap, exact tooltip fields, and fixed 14-day forecast are CogniPace
   product rules. They are not presented as scientific or library defaults.
@@ -1255,6 +1314,8 @@ contract before it enters Analytics.
 - [ARIA Authoring Practices tooltip pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tooltip/)
 - [ARIA Authoring Practices dialog pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)
 - [Storytelling with Data chart guide](https://www.storytellingwithdata.com/chart-guide)
+- [ONS line-chart and missing-data guidance](https://service-manual.ons.gov.uk/data-visualisation/chart-types/line-chart)
+- [UK Government Analysis Function line-chart guidance](https://analysisfunction.civilservice.gov.uk/support/communicating-analysis/introduction-to-data-visualisation-e-learning/module-8-line-charts/)
 - [Highcharts data-visualization accessibility guidance](https://www.highcharts.com/article/10-guidelines-for-dataviz-accessibility/)
 - [A11Y Collective accessible-chart checklist](https://www.a11y-collective.com/blog/accessible-charts/)
 - [Tableau visualization best practices](https://www.tableau.com/visualization/data-visualization-best-practices)

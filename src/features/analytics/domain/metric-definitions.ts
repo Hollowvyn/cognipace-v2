@@ -93,43 +93,6 @@ export const metricDefinitions = {
     lowSampleOrEmptyState:
       'A target is shown only when the current FSRS setting is available.',
   },
-  overdueBacklog: {
-    label: 'Recent overdue backlog',
-    question: 'Is your overdue backlog staying below the watch zone?',
-    explanation: 'Cards that were due before the point in time being shown.',
-    unit: 'cards',
-    lowSampleOrEmptyState:
-      'Only dates that can be reconstructed from persisted FSRS due dates are shown; unknown dates stay blank.',
-  },
-  upcomingLoad: {
-    label: 'Upcoming review load',
-    question: 'What review work is scheduled for the next 14 days?',
-    explanation:
-      'Cards due today or over the next 13 days, with overdue cards separated.',
-    unit: 'cards due',
-    lowSampleOrEmptyState: 'No current card schedule is available.',
-  },
-  fragileKnowledge: {
-    label: 'Fragile knowledge',
-    question:
-      'Which active problems need attention before they become harder to recover?',
-    explanation:
-      'Current cards whose predicted retrievability, stability, overdue gap, lapses, or configured high-difficulty threshold suggests they may need attention.',
-    unit: 'problems',
-    lowSampleOrEmptyState:
-      'No current cards meet the fragile-knowledge signals.',
-    warning:
-      'These are signals to investigate, not a diagnosis. Suspended problems are excluded.',
-  },
-  retentionHealth: {
-    label: 'Retention health',
-    question: 'Which active problems are above, approaching, or below target?',
-    explanation:
-      "Each reviewed problem's current FSRS retrievability compared with your configured target.",
-    unit: '% estimated retrievability',
-    lowSampleOrEmptyState:
-      'Reviewed cards will appear after their first review.',
-  },
 } satisfies Record<string, AnalyticsMetricDefinition>
 
 export type MetricDefinitionKey = keyof typeof metricDefinitions

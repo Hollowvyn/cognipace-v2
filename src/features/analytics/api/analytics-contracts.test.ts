@@ -7,13 +7,9 @@ import {
   analyticsRangeSchema,
   analyticsSummaryRequestSchema,
   analyticsSummarySchema,
-  forecastEntrySchema,
   hardAgainSummarySchema,
   practiceRhythmPointSchema,
   ratingsMixPointSchema,
-  retentionScatterEntrySchema,
-  referenceCurvePointSchema,
-  weakProblemSchema,
   type AnalyticsReadiness,
   type SerializedAnalyticsSummary,
 } from './analytics-contracts'
@@ -58,21 +54,27 @@ function withRequestedReadiness(
   }
 }
 
-const validForecast = Array.from({ length: 14 }, (_, index) => ({
-  date: `2026-01-${String(15 + index).padStart(2, '0')}`,
-  dueCount: index,
-}))
-
-const validUpcomingLoad = Array.from({ length: 14 }, (_, index) => ({
-  date: `2026-01-${String(15 + index).padStart(2, '0')}`,
-  dueCount: index,
-  overdueCount: index === 0 ? 1 : 0,
-  today: index === 0,
-}))
-
 const validSummary: SerializedAnalyticsSummary = {
   range: 30,
   generatedAt: '2026-01-15T12:00:00.000Z',
+  timeFrame: {
+    asOf: '2026-01-15T12:00:00.000Z',
+    timeZone: 'America/New_York',
+    timeZoneFallback: false,
+    requestedDays: 30,
+    periodStart: '2025-12-17T05:00:00.000Z',
+    periodEnd: '2026-01-16T05:00:00.000Z',
+    buckets: [
+      {
+        key: '2025-12-17',
+        start: '2025-12-17T05:00:00.000Z',
+        end: '2025-12-20T05:00:00.000Z',
+        startKey: '2025-12-17',
+        endKey: '2025-12-19',
+        isPartial: false,
+      },
+    ],
+  },
   reviewDays: 10,
   totalReviews: 42,
   currentStreak: 3,
@@ -88,22 +90,68 @@ const validSummary: SerializedAnalyticsSummary = {
   },
   observedRatingSampleSize: 20,
   lowSample: false,
-  dueForecast14Days: validForecast,
-  weakProblems: [],
-  memoryProfile: {
-    totalTracked: 1,
-    dueToday: 0,
-    overdue: 0,
-    learning: 0,
-    review: 1,
-    mastered: 0,
-    suspended: 0,
-    averageRetrievability: 0.8,
-    lowSample: true,
-  },
   targetRetention: 0.9,
-  retentionScatter: [],
-  retentionScatterCurve: [],
+  views: {
+    observedRecallVsFsrs: {
+      rows: [],
+      scale: { domain: [0, 1], ticks: [0, 1] },
+      targetRetention: 0.9,
+    },
+    memoryStrength: {
+      rows: [],
+      scale: { domain: [0, 2], ticks: [0, 1, 2] },
+    },
+    practiceRhythm: {
+      rows: [],
+      countScale: { domain: [0, 1], ticks: [0, 1] },
+      percentageScale: { domain: [0, 1], ticks: [0, 1] },
+    },
+    ratingsMix: {
+      rows: [],
+      selectedHardAgain: 0,
+      selectedValidRatings: 0,
+      comparison: {
+        previousHardAgainShare: null,
+        previousValidRatings: 0,
+        difference: null,
+        direction: null,
+      },
+    },
+    topicPerformance: {
+      rows: [],
+      strongerQualifyingTopics: 0,
+      lowEvidenceTopics: [],
+      additionalLowEvidenceTopics: 0,
+    },
+    retentionMap: {
+      rows: [],
+      totalEligible: 0,
+      statusCounts: { onTarget: 0, watch: 0, needsAttention: 0 },
+      recallScale: { domain: [0, 1], ticks: [0, 1] },
+      durationScale: { domain: [1, 10], ticks: [1, 10] },
+      targetRetention: 0.9,
+    },
+    memorySignals: { rows: [], totalQualifying: 0 },
+    overdueBacklog: {
+      rows: [],
+      knownDays: 0,
+      withinWatchDays: 0,
+      aboveWatchDays: 0,
+      selectedDays: 0,
+      currentBacklog: null,
+      peak: null,
+      scale: { domain: [0, 5], ticks: [0, 5] },
+    },
+    upcomingReviewLoad: {
+      rows: Array.from({ length: 14 }, (_, index) => ({
+        date: `2026-01-${String(index + 1).padStart(2, '0')}`,
+        dueCount: 0,
+        overdueCount: 0,
+        today: index === 0,
+      })),
+      scale: { domain: [0, 1], ticks: [0, 1] },
+    },
+  },
   historicalReadiness: withRequestedReadiness(readiness, null),
   recallQuality: [],
   practiceRhythm: [],
@@ -120,11 +168,6 @@ const validSummary: SerializedAnalyticsSummary = {
   },
   topics: [],
   stability: [],
-  overdueBacklog: [],
-  overdueHistoryAvailableFrom: null,
-  upcomingLoad: validUpcomingLoad,
-  retentionHealth: [],
-  fragileKnowledge: [],
 }
 
 function withoutSummaryField(field: keyof SerializedAnalyticsSummary) {
@@ -134,6 +177,19 @@ function withoutSummaryField(field: keyof SerializedAnalyticsSummary) {
 }
 
 describe('analyticsSummaryRequestSchema', () => {
+  it('requires the feature-owned Ratings Mix and Topic Performance presentation models', () => {
+    expect(() =>
+      analyticsSummarySchema.parse({
+        ...validSummary,
+        views: {
+          ...validSummary.views,
+          ratingsMix: undefined,
+          topicPerformance: undefined,
+        },
+      }),
+    ).toThrow()
+  })
+
   it('requires the dashboard surface', () => {
     expect(() => analyticsSummaryRequestSchema.parse({})).toThrow()
     expect(
@@ -201,6 +257,45 @@ describe('analyticsSummaryRequestSchema', () => {
 })
 
 describe('analyticsSummarySchema', () => {
+  it('requires the Phase 2 historical view presentation models', () => {
+    expect(analyticsSummarySchema.safeParse(validSummary).success).toBe(true)
+    expect(
+      analyticsSummarySchema.safeParse(withoutSummaryField('views')).success,
+    ).toBe(false)
+  })
+
+  it('requires explicit local-time metadata and preserves partial bucket state', () => {
+    expect(analyticsSummarySchema.safeParse(validSummary).success).toBe(true)
+    expect(
+      analyticsSummarySchema.safeParse(withoutSummaryField('timeFrame'))
+        .success,
+    ).toBe(false)
+    expect(analyticsSummarySchema.parse(validSummary).timeFrame).toEqual(
+      validSummary.timeFrame,
+    )
+  })
+
+  it('rejects a summary whose range differs from its time-frame requested days', () => {
+    const result = analyticsSummarySchema.safeParse({
+      ...validSummary,
+      range: 30,
+      timeFrame: {
+        ...validSummary.timeFrame,
+        requestedDays: 14,
+      },
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success)
+      expect(result.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: ['timeFrame', 'requestedDays'],
+          }),
+        ]),
+      )
+  })
+
   it('serializes a summary without duplicate presentation metadata', () => {
     expect(
       analyticsSummarySchema.safeParse(withoutSummaryField('generatedAt'))
@@ -250,10 +345,14 @@ describe('analyticsSummarySchema', () => {
       )
   })
 
-  it('serializes an unready historical selection with current and forecast analytics', () => {
+  it('serializes an unready historical selection with feature-owned current and workload views', () => {
     const parsed = analyticsSummarySchema.parse({
       ...validSummary,
       range: 90,
+      timeFrame: {
+        ...validSummary.timeFrame,
+        requestedDays: 90,
+      },
       historicalReadiness: {
         ...validSummary.historicalReadiness,
         requested: {
@@ -262,110 +361,43 @@ describe('analyticsSummarySchema', () => {
           ready: false,
         },
       },
-      upcomingLoad: validUpcomingLoad,
-      retentionHealth: [
-        {
-          slug: 'two-sum',
-          title: 'Two Sum',
-          retrievability: 0.82,
-          targetRetention: 0.9,
-          daysSinceReview: 2,
-          stabilityDays: 5,
-          difficulty: 5,
-          lapseCount: 0,
-          overdueDays: 0,
-        },
-      ],
-      fragileKnowledge: [
-        {
-          slug: 'add-binary',
-          title: 'Add Binary',
-          retrievability: 0.74,
-          stabilityDays: 2,
-          difficulty: 7,
-          lapseCount: 1,
-          overdueDays: 1,
-          topics: ['Bit manipulation'],
-        },
-      ],
     })
 
     expect(parsed.range).toBe(90)
     expect(parsed.historicalReadiness.requested.ready).toBe(false)
-    expect(parsed.upcomingLoad).toHaveLength(14)
-    expect(parsed.retentionHealth).toHaveLength(1)
-    expect(parsed.fragileKnowledge).toHaveLength(1)
+    expect(parsed.views.upcomingReviewLoad.rows).toHaveLength(14)
   })
 
-  it('rejects a forecast with fewer than 14 entries', () => {
-    const result = analyticsSummarySchema.safeParse({
-      ...validSummary,
-      dueForecast14Days: validForecast.slice(0, 13),
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects a forecast with more than 14 entries', () => {
-    const result = analyticsSummarySchema.safeParse({
-      ...validSummary,
-      dueForecast14Days: [
-        ...validForecast,
-        { date: '2026-01-29', dueCount: 0 },
-      ],
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it.each([
-    [readyReadiness, null],
-    [readiness, 14],
-  ] as const)(
-    'requires exactly 14 upcoming-load entries regardless of readiness',
-    (requested, recommendedRange) => {
-      const summary = {
-        ...validSummary,
-        historicalReadiness: withRequestedReadiness(
-          requested,
-          recommendedRange,
-        ),
-      }
-
-      expect(analyticsSummarySchema.safeParse(summary).success).toBe(true)
-      expect(
-        analyticsSummarySchema.safeParse({
-          ...summary,
-          upcomingLoad: validUpcomingLoad.slice(0, 13),
-        }).success,
-      ).toBe(false)
-      expect(
-        analyticsSummarySchema.safeParse({
-          ...summary,
-          upcomingLoad: [
-            ...validUpcomingLoad,
-            {
-              date: '2026-01-29',
-              dueCount: 0,
-              overdueCount: 0,
-              today: false,
-            },
-          ],
-        }).success,
-      ).toBe(false)
-    },
-  )
-
-  it('rejects more than 10 weak problems', () => {
-    const tooMany = Array.from({ length: 11 }, (_, index) => ({
-      slug: `problem-${index}`,
-      title: `Problem ${index}`,
-      lapseCount: 1,
-      difficulty: 5,
-      retrievability: 0.8,
-    }))
+  it('keeps the fixed workload forecast anchored at today and overdue only today', () => {
+    const rows = validSummary.views.upcomingReviewLoad.rows
     expect(
       analyticsSummarySchema.safeParse({
         ...validSummary,
-        weakProblems: tooMany,
+        views: {
+          ...validSummary.views,
+          upcomingReviewLoad: {
+            ...validSummary.views.upcomingReviewLoad,
+            rows: rows.map((row, index) => ({
+              ...row,
+              overdueCount: index === 1 ? 1 : row.overdueCount,
+            })),
+          },
+        },
+      }).success,
+    ).toBe(false)
+    expect(
+      analyticsSummarySchema.safeParse({
+        ...validSummary,
+        views: {
+          ...validSummary.views,
+          upcomingReviewLoad: {
+            ...validSummary.views.upcomingReviewLoad,
+            rows: rows.map((row, index) => ({
+              ...row,
+              today: index === 1,
+            })),
+          },
+        },
       }).success,
     ).toBe(false)
   })
@@ -391,32 +423,10 @@ describe('analyticsSummarySchema', () => {
     ).toBe(false)
   })
 
-  it('rejects out-of-range average retrievability', () => {
-    expect(() =>
-      analyticsSummarySchema.parse({
-        ...validSummary,
-        memoryProfile: {
-          ...validSummary.memoryProfile,
-          averageRetrievability: 1.01,
-        },
-      }),
-    ).toThrow()
-    expect(() =>
-      analyticsSummarySchema.parse({
-        ...validSummary,
-        memoryProfile: {
-          ...validSummary.memoryProfile,
-          averageRetrievability: -0.01,
-        },
-      }),
-    ).toThrow()
-  })
-
   it('accepts chart payloads without duplicate period metadata', () => {
     const chartReadySummary = {
       ...validSummary,
       historicalReadiness: withRequestedReadiness(readyReadiness, null),
-      overdueHistoryAvailableFrom: '2026-01-01T00:00:00.000Z',
       recallQuality: [
         {
           bucketStart: '2026-01-15',
@@ -436,47 +446,7 @@ describe('analyticsSummarySchema', () => {
       recallQuality: chartReadySummary.recallQuality,
       practiceRhythm: chartReadySummary.practiceRhythm,
       ratingsMix: chartReadySummary.ratingsMix,
-      overdueHistoryAvailableFrom: '2026-01-01T00:00:00.000Z',
     })
-  })
-
-  it('preserves a nullable overdue history boundary', () => {
-    expect(
-      analyticsSummarySchema.parse({
-        ...validSummary,
-        overdueHistoryAvailableFrom: null,
-      }).overdueHistoryAvailableFrom,
-    ).toBeNull()
-    expect(
-      analyticsSummarySchema.parse({
-        ...validSummary,
-        overdueHistoryAvailableFrom: '2026-01-01T00:00:00.000Z',
-      }).overdueHistoryAvailableFrom,
-    ).toBe('2026-01-01T00:00:00.000Z')
-  })
-
-  it('preserves unknown overdue buckets instead of fabricating a count', () => {
-    const parsed = analyticsSummarySchema.parse({
-      ...validSummary,
-      historicalReadiness: withRequestedReadiness(readyReadiness, null),
-      overdueBacklog: [
-        {
-          bucketStart: '2026-01-13',
-          bucketEnd: '2026-01-15',
-          overdueCount: null,
-          historyAvailable: false,
-        },
-      ],
-    })
-
-    expect(parsed.overdueBacklog).toEqual([
-      {
-        bucketStart: '2026-01-13',
-        bucketEnd: '2026-01-15',
-        overdueCount: null,
-        historyAvailable: false,
-      },
-    ])
   })
 
   it('permits sparse summaries without hiding measured chart values', () => {
@@ -582,139 +552,9 @@ describe('analyticsRangeSchema', () => {
   })
 })
 
-describe('forecastEntrySchema', () => {
-  it('accepts a valid forecast entry', () => {
-    expect(
-      forecastEntrySchema.safeParse({ date: '2026-01-15', dueCount: 3 })
-        .success,
-    ).toBe(true)
-  })
-
-  it('rejects a negative dueCount', () => {
-    expect(
-      forecastEntrySchema.safeParse({ date: '2026-01-15', dueCount: -1 })
-        .success,
-    ).toBe(false)
-  })
-
-  it('rejects a missing date', () => {
-    expect(forecastEntrySchema.safeParse({ dueCount: 3 }).success).toBe(false)
-  })
-})
-
-describe('weakProblemSchema', () => {
-  it('accepts a valid weak problem', () => {
-    expect(
-      weakProblemSchema.safeParse({
-        slug: 'two-sum',
-        title: 'Two Sum',
-        lapseCount: 3,
-        difficulty: 7.5,
-        retrievability: 0.4,
-      }).success,
-    ).toBe(true)
-  })
-
-  it('rejects a negative lapseCount', () => {
-    expect(
-      weakProblemSchema.safeParse({
-        slug: 'two-sum',
-        title: 'Two Sum',
-        lapseCount: -1,
-        difficulty: 7.5,
-        retrievability: 0.4,
-      }).success,
-    ).toBe(false)
-  })
-
-  it('rejects a missing slug', () => {
-    expect(
-      weakProblemSchema.safeParse({
-        title: 'Two Sum',
-        lapseCount: 3,
-        difficulty: 7.5,
-        retrievability: 0.4,
-      }).success,
-    ).toBe(false)
-  })
-})
-
-describe('retentionScatterEntrySchema', () => {
-  it('accepts a valid scatter entry', () => {
-    expect(
-      retentionScatterEntrySchema.safeParse({
-        slug: 'two-sum',
-        title: 'Two Sum',
-        retrievability: 0.85,
-        daysSinceReview: 5,
-        difficulty: 4.5,
-        stability: 20,
-        lapseCount: 1,
-        lastReviewAt: '2026-01-10T12:00:00.000Z',
-      }).success,
-    ).toBe(true)
-  })
-
-  it('rejects negative daysSinceReview', () => {
-    expect(
-      retentionScatterEntrySchema.safeParse({
-        slug: 'two-sum',
-        title: 'Two Sum',
-        retrievability: 0.85,
-        daysSinceReview: -1,
-        difficulty: 4.5,
-        stability: 20,
-        lapseCount: 1,
-        lastReviewAt: '2026-01-10T12:00:00.000Z',
-      }).success,
-    ).toBe(false)
-  })
-
-  it('rejects retrievability outside 0–1 range', () => {
-    expect(
-      retentionScatterEntrySchema.safeParse({
-        slug: 'two-sum',
-        title: 'Two Sum',
-        retrievability: 1.5,
-        daysSinceReview: 5,
-        difficulty: 4.5,
-        stability: 20,
-        lapseCount: 1,
-        lastReviewAt: '2026-01-10T12:00:00.000Z',
-      }).success,
-    ).toBe(false)
-  })
-})
-
-describe('referenceCurvePointSchema', () => {
-  it('accepts a valid curve point', () => {
-    expect(
-      referenceCurvePointSchema.safeParse({ days: 7, retrievability: 0.9 })
-        .success,
-    ).toBe(true)
-  })
-
-  it('rejects negative days', () => {
-    expect(
-      referenceCurvePointSchema.safeParse({ days: -1, retrievability: 0.9 })
-        .success,
-    ).toBe(false)
-  })
-})
-
-describe('analyticsSummarySchema — new scatter fields', () => {
+describe('analyticsSummarySchema', () => {
   it('rejects a summary missing targetRetention', () => {
     const withoutField = withoutSummaryField('targetRetention')
-    expect(analyticsSummarySchema.safeParse(withoutField).success).toBe(false)
-  })
-
-  it('rejects a summary missing retentionScatter', () => {
-    const withoutField = withoutSummaryField('retentionScatter')
-    expect(analyticsSummarySchema.safeParse(withoutField).success).toBe(false)
-  })
-
-  it('rejects a summary missing retentionScatterCurve', () => {
-    const withoutField = withoutSummaryField('retentionScatterCurve')
     expect(analyticsSummarySchema.safeParse(withoutField).success).toBe(false)
   })
 

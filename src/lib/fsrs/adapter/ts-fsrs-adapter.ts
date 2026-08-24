@@ -57,6 +57,53 @@ export function calculateCardRetrievability(
   )
 }
 
+export function calculateCardTargetRetentionDuration(
+  card: FsrsCardSnapshot,
+  targetRetention: number,
+  options: FsrsSchedulingOptions,
+): number | null {
+  if (
+    !card.lastReviewAt ||
+    !Number.isFinite(card.stability) ||
+    card.stability <= 0 ||
+    !Number.isFinite(targetRetention) ||
+    targetRetention <= 0 ||
+    targetRetention >= 1
+  ) {
+    return null
+  }
+
+  validateCardSnapshot(card)
+  const scheduler = createScheduler(options)
+  let lowerDays = 0
+  let upperDays = 1
+
+  while (
+    scheduler.forgetting_curve(upperDays, card.stability) > targetRetention
+  ) {
+    upperDays *= 2
+    if (upperDays > maximumTargetDurationDays) return null
+  }
+
+  for (
+    let iteration = 0;
+    iteration < targetDurationIterations;
+    iteration += 1
+  ) {
+    const midpoint = (lowerDays + upperDays) / 2
+    if (
+      scheduler.forgetting_curve(midpoint, card.stability) > targetRetention
+    ) {
+      lowerDays = midpoint
+    } else {
+      upperDays = midpoint
+    }
+  }
+
+  const duration = (lowerDays + upperDays) / 2
+  return Number.isFinite(duration) && duration > 0 ? duration : null
+}
+
 function createScheduler(options: FsrsSchedulingOptions) {
   const normalized = normalizeFsrsSchedulingOptions(options)
 
@@ -68,6 +115,9 @@ function createScheduler(options: FsrsSchedulingOptions) {
     relearning_steps: normalized.relearningSteps,
   })
 }
+
+const maximumTargetDurationDays = 365_000
+const targetDurationIterations = 48
 
 function toTsFsrsCard(snapshot: FsrsCardSnapshot): CardInput {
   validateCardSnapshot(snapshot)

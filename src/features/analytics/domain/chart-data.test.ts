@@ -10,12 +10,10 @@ import {
 
 import {
   buildHardAgainSummary,
-  buildOverdueBacklogPoints,
   buildPredictedRecallSamples,
   buildPracticeRhythmPoints,
   buildRatingsMixPoints,
   buildRecallQualityPoints,
-  buildRetentionHealth,
   buildStabilityPoints,
   buildTopicPoints,
   buildUpcomingLoadPoints,
@@ -127,9 +125,7 @@ describe('analytics chart-data builders', () => {
     expect(metricDefinitions.observedCorrectness.explanation).toContain(
       'does not identify retries',
     )
-    expect(metricDefinitions.overdueBacklog.lowSampleOrEmptyState).toContain(
-      'unknown dates stay blank',
-    )
+    expect(metricDefinitions).not.toHaveProperty('overdueBacklog')
   })
 
   it('defines practice rhythm by review volume in adaptive buckets', () => {
@@ -569,40 +565,6 @@ describe('analytics chart-data builders', () => {
         (point) => point.sampleSize,
       ),
     ).toEqual([1, 0, 1, 0])
-    expect(
-      buildOverdueBacklogPoints(
-        [
-          { date: new Date('2026-08-02T12:00:00.000Z'), overdueCount: 1 },
-          { date: new Date('2026-08-08T12:00:00.000Z'), overdueCount: 3 },
-        ],
-        bucketOptions,
-      ).points,
-    ).toEqual([
-      {
-        bucketStart: '2026-08-01',
-        bucketEnd: '2026-08-03',
-        overdueCount: 1,
-        historyAvailable: true,
-      },
-      {
-        bucketStart: '2026-08-04',
-        bucketEnd: '2026-08-06',
-        overdueCount: null,
-        historyAvailable: false,
-      },
-      {
-        bucketStart: '2026-08-07',
-        bucketEnd: '2026-08-09',
-        overdueCount: 3,
-        historyAvailable: true,
-      },
-      {
-        bucketStart: '2026-08-10',
-        bucketEnd: '2026-08-12',
-        overdueCount: null,
-        historyAvailable: false,
-      },
-    ])
   })
 
   it('builds rating mix, including null Hard + Again on empty days', () => {
@@ -793,46 +755,6 @@ describe('analytics chart-data builders', () => {
         sampleSize: 1,
       },
     ])
-  })
-
-  it('returns an explicit unavailable overdue history boundary', () => {
-    expect(buildOverdueBacklogPoints(null, options)).toEqual({
-      points: [],
-      overdueHistoryAvailableFrom: null,
-    })
-    expect(
-      buildOverdueBacklogPoints(
-        [{ date: new Date('2026-08-02T12:00:00.000Z'), overdueCount: 3 }],
-        options,
-      ),
-    ).toEqual({
-      points: [
-        {
-          bucketStart: '2026-08-02',
-          bucketEnd: '2026-08-02',
-          overdueCount: 3,
-          historyAvailable: true,
-        },
-        {
-          bucketStart: '2026-08-03',
-          bucketEnd: '2026-08-03',
-          overdueCount: null,
-          historyAvailable: false,
-        },
-      ],
-      overdueHistoryAvailableFrom: '2026-08-02T12:00:00.000Z',
-    })
-    const result = buildOverdueBacklogPoints(
-      [
-        { date: new Date('2026-08-01T12:00:00.000Z'), overdueCount: 1 },
-        { date: new Date('2026-08-02T12:00:00.000Z'), overdueCount: 3 },
-        { date: new Date('2026-08-03T12:00:00.000Z'), overdueCount: 2 },
-      ],
-      options,
-    )
-    expect(result.points).toHaveLength(3)
-    expect(result.points.every((point) => point.historyAvailable)).toBe(true)
-    expect(result.overdueHistoryAvailableFrom).toBe('2026-08-01T12:00:00.000Z')
   })
 
   it('reconstructs only daily overdue counts proven by FSRS due dates', () => {
@@ -1061,62 +983,6 @@ describe('analytics chart-data builders', () => {
     ).toEqual(['2026-08-01', '2026-08-02', '2026-08-03', '2026-08-04'])
   })
 
-  it('keeps partial overdue history instead of fabricating missing dates', () => {
-    const result = buildOverdueBacklogPoints(
-      [{ date: new Date('2026-08-02T12:00:00.000Z'), overdueCount: 2 }],
-      options,
-    )
-
-    expect(result.points).toEqual([
-      {
-        bucketStart: '2026-08-02',
-        bucketEnd: '2026-08-02',
-        overdueCount: 2,
-        historyAvailable: true,
-      },
-      {
-        bucketStart: '2026-08-03',
-        bucketEnd: '2026-08-03',
-        overdueCount: null,
-        historyAvailable: false,
-      },
-    ])
-  })
-
-  it('uses the latest snapshot inside a bucket and preserves later unavailable buckets', () => {
-    const periodEnd = new Date('2026-08-30T23:59:59.999Z')
-    const buckets = buildTestBuckets({
-      requestedDays: 30,
-      periodEnd,
-    }).slice(0, 3)
-    const bucketOptions = {
-      ...options,
-      start: buckets[0]!.start,
-      end: buckets[2]!.end,
-      buckets,
-    }
-
-    expect(
-      buildOverdueBacklogPoints(
-        [{ date: new Date('2026-08-05T12:00:00.000Z'), overdueCount: 2 }],
-        bucketOptions,
-      ).points,
-    ).toEqual([
-      {
-        bucketStart: '2026-08-04',
-        bucketEnd: '2026-08-06',
-        overdueCount: 2,
-        historyAvailable: true,
-      },
-      {
-        bucketStart: '2026-08-07',
-        bucketEnd: '2026-08-09',
-        overdueCount: null,
-        historyAvailable: false,
-      },
-    ])
-  })
-
   it('separates overdue and upcoming due load across the 14-day range', () => {
     const points = buildUpcomingLoadPoints(
       [
@@ -1133,108 +999,13 @@ describe('analytics chart-data builders', () => {
     expect(points[7]).toMatchObject({ dueCount: 1 })
   })
 
-  it('sorts retention health deterministically and excludes suspended cards', () => {
-    const result = buildRetentionHealth(
-      [
-        {
-          cardId: 'b-card',
-          slug: 'b',
-          title: 'B',
-          topics: ['Graph'],
-          retrievability: 0.5,
-          targetRetention: 0.9,
-          stabilityDays: 2,
-          difficulty: 5,
-          lapseCount: 1,
-          dueAt: start,
-          createdAt: start,
-          lastReviewAt: start,
-        },
-        {
-          cardId: 'high-difficulty-card',
-          slug: 'high-difficulty',
-          title: 'High Difficulty',
-          topics: ['Dynamic Programming'],
-          retrievability: 0.95,
-          targetRetention: 0.9,
-          stabilityDays: 10,
-          difficulty: 8,
-          lapseCount: 0,
-          dueAt: new Date(end.getTime() + 1),
-          createdAt: start,
-          lastReviewAt: end,
-        },
-        {
-          cardId: 'steady-card',
-          slug: 'steady',
-          title: 'Steady',
-          topics: ['Array'],
-          retrievability: 0.95,
-          targetRetention: 0.9,
-          stabilityDays: 10,
-          difficulty: 7,
-          lapseCount: 0,
-          dueAt: new Date(end.getTime() + 1),
-          createdAt: start,
-          lastReviewAt: end,
-        },
-        {
-          cardId: 'a-card',
-          slug: 'a',
-          title: 'A',
-          topics: [],
-          retrievability: 0.5,
-          targetRetention: 0.9,
-          stabilityDays: 5,
-          difficulty: 3,
-          lapseCount: 0,
-          dueAt: start,
-          createdAt: start,
-          lastReviewAt: start,
-        },
-        {
-          cardId: 'z-card',
-          slug: 'z',
-          title: 'Z',
-          topics: [],
-          retrievability: 0.1,
-          targetRetention: 0.9,
-          stabilityDays: 1,
-          difficulty: 3,
-          lapseCount: 0,
-          dueAt: start,
-          createdAt: start,
-          lastReviewAt: start,
-          suspended: true,
-        },
-        {
-          cardId: 'new-card-id',
-          slug: 'new-card',
-          title: 'New Card',
-          topics: ['Graph'],
-          retrievability: 0.1,
-          targetRetention: 0.9,
-          stabilityDays: 0,
-          difficulty: 8,
-          lapseCount: 0,
-          dueAt: start,
-          createdAt: start,
-          lastReviewAt: null,
-        },
-      ],
-      end,
-      { fragileDifficultyThreshold: 8 },
-    )
-    expect(result.health.map((row) => row.slug)).toEqual([
-      'a',
-      'b',
-      'high-difficulty',
-      'steady',
-    ])
-    expect(result.fragile.map((row) => row.slug)).toEqual([
-      'a',
-      'b',
-      'high-difficulty',
-    ])
+  it('keeps a card due exactly at as-of in today due rather than overdue', () => {
+    const now = new Date('2026-08-13T12:00:00.000Z')
+
+    expect(buildUpcomingLoadPoints([now], now)[0]).toMatchObject({
+      dueCount: 1,
+      overdueCount: 0,
+      today: true,
+    })
   })
 })

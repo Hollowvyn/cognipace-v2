@@ -344,8 +344,14 @@ describe('background handler registration', () => {
     vi.clearAllMocks()
     backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
     backgroundMocks.getAnalyticsSummary.mockResolvedValue({
+      ...createSerializedAnalyticsSummary(),
       range: 30,
       generatedAt: '2026-01-15T12:00:00.000Z',
+      timeFrame: {
+        ...createSerializedAnalyticsSummary().timeFrame,
+        asOf: '2026-01-15T12:00:00.000Z',
+        requestedDays: 30,
+      },
       reviewDays: 3,
       totalReviews: 12,
       currentStreak: 2,
@@ -353,37 +359,8 @@ describe('background handler registration', () => {
       observedRatingQualityLabel: '75%',
       observedRatingSampleSize: 12,
       lowSample: false,
-      dueForecast14Days: Array.from({ length: 14 }, (_, index) => ({
-        date: `2026-01-${String(15 + index).padStart(2, '0')}`,
-        dueCount: index,
-      })),
-      weakProblems: [],
-      memoryProfile: {
-        totalTracked: 12,
-        dueToday: 4,
-        overdue: 2,
-        learning: 0,
-        review: 12,
-        mastered: 0,
-        suspended: 0,
-        averageRetrievability: 0.8,
-        lowSample: false,
-      },
       targetRetention: 0.9,
       predictedRecall: { value: 0.86, sampleSize: 12, lowSample: false },
-      retentionScatter: [
-        {
-          slug: 'two-sum',
-          title: 'Two Sum',
-          retrievability: 0.8,
-          daysSinceReview: 3,
-          difficulty: 5,
-          stability: 10,
-          lapseCount: 0,
-          lastReviewAt: '2026-01-12T12:00:00.000Z',
-        },
-      ],
-      retentionScatterCurve: [{ days: 0, retrievability: 1 }],
       historicalReadiness: createReadyHistoricalReadiness(),
       recallQuality: [],
       practiceRhythm: [],
@@ -400,11 +377,6 @@ describe('background handler registration', () => {
       },
       topics: [],
       stability: [],
-      overdueBacklog: [],
-      overdueHistoryAvailableFrom: null,
-      upcomingLoad: createSerializedAnalyticsSummary().upcomingLoad,
-      retentionHealth: [],
-      fragileKnowledge: [],
     })
     backgroundMocks.backupExportFullBackup.mockResolvedValue(validBackup)
     backgroundMocks.backupResetLocalData.mockResolvedValue(null)
@@ -615,26 +587,9 @@ describe('background handler registration', () => {
         sampleSize: 12,
         lowSample: false,
       },
-      weakProblems: [],
-      memoryProfile: {
-        averageRetrievability: 0.8,
-      },
       historicalReadiness: {
         requested: { ready: true },
       },
-      retentionScatter: [
-        {
-          slug: 'two-sum',
-          title: 'Two Sum',
-          retrievability: 0.8,
-          daysSinceReview: 3,
-          difficulty: 5,
-          stability: 10,
-          lapseCount: 0,
-          lastReviewAt: '2026-01-12T12:00:00.000Z',
-        },
-      ],
-      retentionScatterCurve: [{ days: 0, retrievability: 1 }],
     })
     const parsedResponse = analyticsSummarySchema.parse(response)
     expect(parsedResponse.historicalReadiness.requested.ready).toBe(true)
@@ -661,13 +616,23 @@ describe('background handler registration', () => {
   it('preserves requested timezone grouping across a DST boundary', async () => {
     const fixture = createSerializedAnalyticsSummary({
       range: 14,
+      timeFrame: {
+        ...createSerializedAnalyticsSummary().timeFrame,
+        requestedDays: 14,
+      },
       historicalReadiness: createReadyHistoricalReadiness(),
-      upcomingLoad: Array.from({ length: 14 }, (_, index) => ({
-        date: `2026-03-${String(8 + index).padStart(2, '0')}`,
-        dueCount: index === 0 ? 1 : 0,
-        overdueCount: 0,
-        today: index === 0,
-      })),
+      views: {
+        ...createSerializedAnalyticsSummary().views,
+        upcomingReviewLoad: {
+          scale: { domain: [0, 1], ticks: [0, 1] },
+          rows: Array.from({ length: 14 }, (_, index) => ({
+            date: `2026-03-${String(8 + index).padStart(2, '0')}`,
+            dueCount: index === 0 ? 1 : 0,
+            overdueCount: 0,
+            today: index === 0,
+          })),
+        },
+      },
     })
 
     backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
@@ -695,7 +660,7 @@ describe('background handler registration', () => {
     const parsed = analyticsSummarySchema.parse(response)
 
     expect(parsed.range).toBe(14)
-    expect(parsed.upcomingLoad[0]).toMatchObject({
+    expect(parsed.views.upcomingReviewLoad.rows[0]).toMatchObject({
       date: '2026-03-08',
       dueCount: 1,
       today: true,
@@ -704,8 +669,14 @@ describe('background handler registration', () => {
 
   it('does not expose low-sample observed rating quality as 0%', async () => {
     backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
+      ...createSerializedAnalyticsSummary(),
       range: 90,
       generatedAt: '2026-01-15T12:00:00.000Z',
+      timeFrame: {
+        ...createSerializedAnalyticsSummary().timeFrame,
+        asOf: '2026-01-15T12:00:00.000Z',
+        requestedDays: 90,
+      },
       reviewDays: 3,
       totalReviews: 4,
       currentStreak: 1,
@@ -713,25 +684,7 @@ describe('background handler registration', () => {
       observedRatingQualityLabel: '—',
       observedRatingSampleSize: 4,
       lowSample: true,
-      dueForecast14Days: Array.from({ length: 14 }, (_, index) => ({
-        date: `2026-01-${String(15 + index).padStart(2, '0')}`,
-        dueCount: 0,
-      })),
-      weakProblems: [],
-      memoryProfile: {
-        totalTracked: 0,
-        dueToday: 0,
-        overdue: 0,
-        learning: 0,
-        review: 0,
-        mastered: 0,
-        suspended: 0,
-        averageRetrievability: null,
-        lowSample: true,
-      },
       targetRetention: 0.9,
-      retentionScatter: [],
-      retentionScatterCurve: [],
       historicalReadiness: createReadyHistoricalReadiness(),
       predictedRecall: { value: null, sampleSize: 0, lowSample: true },
       recallQuality: [],
@@ -749,11 +702,6 @@ describe('background handler registration', () => {
       },
       topics: [],
       stability: [],
-      overdueBacklog: [],
-      overdueHistoryAvailableFrom: null,
-      upcomingLoad: createSerializedAnalyticsSummary().upcomingLoad,
-      retentionHealth: [],
-      fragileKnowledge: [],
     })
 
     const response = analyticsSummarySchema.parse(
@@ -771,6 +719,10 @@ describe('background handler registration', () => {
   it('serializes current and forecast analytics when the selected historical range is unready', async () => {
     const fixture = createSerializedAnalyticsSummary({
       range: 90,
+      timeFrame: {
+        ...createSerializedAnalyticsSummary().timeFrame,
+        requestedDays: 90,
+      },
       historicalReadiness: {
         ...createSerializedAnalyticsSummary().historicalReadiness,
         requested: {
@@ -779,32 +731,6 @@ describe('background handler registration', () => {
           ready: false,
         },
       },
-      upcomingLoad: createSerializedAnalyticsSummary().upcomingLoad,
-      retentionHealth: [
-        {
-          slug: 'two-sum',
-          title: 'Two Sum',
-          retrievability: 0.82,
-          targetRetention: 0.9,
-          daysSinceReview: 2,
-          stabilityDays: 5,
-          difficulty: 5,
-          lapseCount: 0,
-          overdueDays: 0,
-        },
-      ],
-      fragileKnowledge: [
-        {
-          slug: 'add-binary',
-          title: 'Add Binary',
-          retrievability: 0.74,
-          stabilityDays: 2,
-          difficulty: 7,
-          lapseCount: 1,
-          overdueDays: 1,
-          topics: ['Bit manipulation'],
-        },
-      ],
     })
     backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
       ...fixture,
@@ -823,9 +749,7 @@ describe('background handler registration', () => {
 
     expect(response.range).toBe(90)
     expect(response.historicalReadiness.requested.ready).toBe(false)
-    expect(response.upcomingLoad).toHaveLength(14)
-    expect(response.retentionHealth).toHaveLength(1)
-    expect(response.fragileKnowledge).toHaveLength(1)
+    expect(response.views.upcomingReviewLoad.rows).toHaveLength(14)
   })
 
   it('registers dev smoke handling with dashboard policy and response parsing', async () => {

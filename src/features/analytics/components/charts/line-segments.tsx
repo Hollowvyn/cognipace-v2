@@ -16,7 +16,9 @@ export interface LineSegmentsProps<T extends Record<string, unknown>> {
   data: readonly T[]
   dataKey: keyof T & string
   seriesKey: string
+  showMeasuredDots?: boolean
   stroke: string
+  strokeDasharray?: string
   strokeWidth?: number
   testId?: string
   type?: 'linear' | 'monotone'
@@ -132,7 +134,9 @@ export function LineSegments<T extends Record<string, unknown>>({
   data,
   dataKey,
   seriesKey,
+  showMeasuredDots = false,
   stroke,
+  strokeDasharray,
   strokeWidth = 2.5,
   testId = seriesKey,
   type = 'monotone',
@@ -149,13 +153,20 @@ export function LineSegments<T extends Record<string, unknown>>({
         activeDot={false}
         aria-hidden="true"
         data={data}
-        data-testid={semanticTooltipSourceTestId}
-        dataKey={dataKey}
-        dot={false}
+        data-testid={
+          showMeasuredDots ? `${testId}-markers` : semanticTooltipSourceTestId
+        }
+        dataKey={dataKey as never}
+        dot={
+          showMeasuredDots
+            ? { fill: 'var(--color-card)', r: 3.5, stroke, strokeWidth: 2 }
+            : false
+        }
         isAnimationActive={false}
         legendType="none"
         name={seriesKey}
         stroke="transparent"
+        {...(strokeDasharray === undefined ? {} : { strokeDasharray })}
         strokeWidth={0}
         type={type}
         {...(yAxisId === undefined ? {} : { yAxisId })}
@@ -165,6 +176,9 @@ export function LineSegments<T extends Record<string, unknown>>({
           segment.fromIndex === segment.toIndex
             ? `${testId}-single-${segment.fromIndex}`
             : `${testId}-${segment.kind}-${segment.fromIndex}-${segment.toIndex}`
+
+        const segmentStrokeDasharray =
+          segment.kind === 'bridge' ? '5 5' : strokeDasharray
 
         return (
           <Line
@@ -180,7 +194,7 @@ export function LineSegments<T extends Record<string, unknown>>({
             dataKey={
               SEGMENT_VALUE_KEY as keyof (T &
                 Record<typeof SEGMENT_VALUE_KEY, number | null>) &
-                string
+                string as never
             }
             dot={
               segment.fromIndex === segment.toIndex
@@ -192,10 +206,12 @@ export function LineSegments<T extends Record<string, unknown>>({
             legendType="none"
             name={seriesKey}
             stroke={stroke}
+            {...(segmentStrokeDasharray === undefined
+              ? {}
+              : { strokeDasharray: segmentStrokeDasharray })}
             {...(segment.kind === 'bridge'
               ? {
                   shape: createBridgeShape(segmentTestId),
-                  strokeDasharray: '5 5',
                 }
               : {})}
             strokeWidth={strokeWidth}

@@ -1,8 +1,5 @@
 export { ConsistencyChart, PracticeRhythmChart } from './consistency-chart'
 export { MemoryStrengthChart } from './memory-strength-chart'
-export { OverdueBacklogChart } from './overdue-backlog-chart'
 export { RatingsMixChart } from './ratings-mix-chart'
 export { RecallQualityChart } from './recall-quality-chart'
-export { RetentionHealthChart } from './retention-health-chart'
-export { UpcomingReviewLoadChart } from './upcoming-review-load-chart'
 export { WeakestTopicsChart } from './weakest-topics-chart'

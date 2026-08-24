@@ -4,30 +4,26 @@ import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { InlineStatus } from '@/components/ui/inline-status'
 import { Surface } from '@/components/ui/surface'
-
 import { useAnalyticsSummary } from '../api/analytics-api'
 import type {
   AnalyticsRange,
   SerializedAnalyticsSummary,
 } from '../api/analytics-contracts'
-import {
-  metricDefinitions,
-  type AnalyticsMetricDefinition,
-} from '../domain/metric-definitions'
 import { AnalyticsChartPanel } from './analytics-chart-panel'
 import { AnalyticsMetricRow } from './analytics-metric-row'
 import { AnalyticsReadinessState } from './analytics-readiness-state'
 import {
-  MemoryStrengthChart,
-  OverdueBacklogChart,
-  PracticeRhythmChart,
-  RatingsMixChart,
-  RecallQualityChart,
-  RetentionHealthChart,
-  UpcomingReviewLoadChart,
-  WeakestTopicsChart,
-} from './charts'
-import { FragileKnowledgeTable } from './fragile-knowledge-table'
+  MemoryStrengthView,
+  ObservedRecallVsFsrsView,
+  PracticeRhythmView,
+  RatingsMixView,
+  TopicPerformanceView,
+} from './historical-views'
+import { MemorySignalsView, RetentionMapView } from './current-state-views'
+import {
+  RecentOverdueBacklogView,
+  UpcomingReviewLoadView,
+} from './workload-views'
 
 export function AnalyticsScreen({
   range = 30,
@@ -71,6 +67,7 @@ export function AnalyticsScreen({
   return (
     <div className="flex min-w-0 flex-col gap-[var(--cp-surface-gap)]">
       <AnalyticsMetricRow summary={data} />
+      <AnalyticsScopeMetadata data={data} />
       {!data.historicalReadiness.requested.ready ? (
         <AnalyticsReadinessState
           compact
@@ -87,152 +84,9 @@ export function AnalyticsScreen({
         />
       ) : null}
       <AnalyticsHistoricalStory data={data} />
-      <AnalyticsWorkloadStory data={data} />
       <AnalyticsCurrentStateStory data={data} />
+      <AnalyticsWorkloadStory data={data} />
     </div>
-  )
-}
-
-function AnalyticsHistoricalStory({
-  data,
-}: {
-  data: SerializedAnalyticsSummary
-}) {
-  return (
-    <div className="grid min-w-0 gap-4">
-      {data.historicalReadiness.recallQuality.ready ? (
-        <AnalyticsChartPanel
-          description={metricDefinitions.recallQuality.explanation}
-          id="recall-quality"
-          question={metricDefinitions.recallQuality.question}
-          title={metricDefinitions.recallQuality.label}
-          warning={metricDefinitions.recallQuality.warning}
-        >
-          <RecallQualityChart data={data.recallQuality} />
-        </AnalyticsChartPanel>
-      ) : (
-        <AnalyticsChartPanel
-          description={metricDefinitions.recallQuality.explanation}
-          id="recall-quality"
-          question={metricDefinitions.recallQuality.question}
-          title={metricDefinitions.recallQuality.label}
-          warning={metricDefinitions.recallQuality.warning}
-        >
-          <AnalyticsReadinessState
-            compact
-            readiness={data.historicalReadiness.recallQuality}
-            recommendedRange={null}
-            title={metricDefinitions.recallQuality.label}
-          />
-          <RecallQualityChart data={data.recallQuality} />
-        </AnalyticsChartPanel>
-      )}
-
-      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-        <HistoricalMetricPanel
-          data={data}
-          metric="practiceRhythm"
-          render={() => <PracticeRhythmChart data={data.practiceRhythm} />}
-        />
-        <HistoricalMetricPanel
-          data={data}
-          metric="ratingsMix"
-          render={() => (
-            <RatingsMixChart data={data.ratingsMix} summary={data.hardAgain} />
-          )}
-        />
-      </div>
-
-      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-        <HistoricalMetricPanel
-          data={data}
-          metric="topics"
-          render={() => <WeakestTopicsChart data={data.topics} />}
-        />
-        <HistoricalMetricPanel
-          data={data}
-          metric="stability"
-          render={() => <MemoryStrengthChart data={data.stability} />}
-        />
-      </div>
-    </div>
-  )
-}
-
-type HistoricalMetricKey =
-  'practiceRhythm' | 'ratingsMix' | 'topics' | 'stability' | 'overdueBacklog'
-
-const historicalMetricPanels: Record<
-  HistoricalMetricKey,
-  { chartId: string; definition: AnalyticsMetricDefinition }
-> = {
-  practiceRhythm: {
-    chartId: 'practice-rhythm',
-    definition: metricDefinitions.practiceRhythm,
-  },
-  ratingsMix: {
-    chartId: 'ratings-mix',
-    definition: metricDefinitions.ratingsMix,
-  },
-  topics: {
-    chartId: 'weakest-topics',
-    definition: metricDefinitions.weakestTopics,
-  },
-  stability: {
-    chartId: 'memory-strength',
-    definition: metricDefinitions.memoryStrength,
-  },
-  overdueBacklog: {
-    chartId: 'overdue-backlog',
-    definition: metricDefinitions.overdueBacklog,
-  },
-}
-
-function HistoricalMetricPanel({
-  data,
-  metric,
-  render,
-}: {
-  data: SerializedAnalyticsSummary
-  metric: HistoricalMetricKey
-  render: () => ReactNode
-}) {
-  const { chartId, definition } = historicalMetricPanels[metric]
-  const readiness = data.historicalReadiness[metric]
-
-  return (
-    <AnalyticsChartPanel
-      description={definition.explanation}
-      id={chartId}
-      question={definition.question}
-      title={definition.label}
-      warning={definition.warning}
-    >
-      {!readiness.ready ? (
-        <AnalyticsReadinessState
-          compact
-          readiness={readiness}
-          recommendedRange={null}
-          title={definition.label}
-        />
-      ) : null}
-      {render()}
-    </AnalyticsChartPanel>
-  )
-}
-
-function UpcomingLoadPanel({ data }: { data: SerializedAnalyticsSummary }) {
-  const definition = metricDefinitions.upcomingLoad
-
-  return (
-    <AnalyticsChartPanel
-      description={definition.explanation}
-      id="upcoming-review-load"
-      question={definition.question}
-      title={definition.label}
-    >
-      <UpcomingReviewLoadChart data={data.upcomingLoad} />
-    </AnalyticsChartPanel>
   )
 }
 
@@ -243,17 +97,22 @@ function AnalyticsWorkloadStory({
 }) {
   return (
     <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-      <HistoricalMetricPanel
-        data={data}
-        metric="overdueBacklog"
-        render={() => (
-          <OverdueBacklogChart
-            data={data.overdueBacklog}
-            historyAvailableFrom={data.overdueHistoryAvailableFrom}
-          />
-        )}
-      />
-      <UpcomingLoadPanel data={data} />
+      <AnalyticsChartPanel
+        description="Daily local overdue counts reconstructed from known persisted FSRS review intervals and current card state. Unknown days are deliberately not estimated."
+        id="recent-overdue-backlog"
+        question="Is my overdue backlog staying at an acceptable level instead of accumulating?"
+        title="Recent Overdue Backlog"
+      >
+        <RecentOverdueBacklogView view={data.views.overdueBacklog} />
+      </AnalyticsChartPanel>
+      <AnalyticsChartPanel
+        description="A fixed local-date schedule for active, non-suspended FSRS cards due today and over the next 13 days."
+        id="upcoming-review-load"
+        question="What review work is currently scheduled for the next 14 days?"
+        title="Upcoming Review Load"
+      >
+        <UpcomingReviewLoadView view={data.views.upcomingReviewLoad} />
+      </AnalyticsChartPanel>
     </div>
   )
 }
@@ -263,23 +122,180 @@ function AnalyticsCurrentStateStory({
 }: {
   data: SerializedAnalyticsSummary
 }) {
-  const retentionDefinition = metricDefinitions.retentionHealth
-
   return (
     <div className="grid min-w-0 gap-4">
       <AnalyticsChartPanel
-        description={retentionDefinition.explanation}
-        id="retention-health"
-        question={retentionDefinition.question}
-        title={retentionDefinition.label}
+        description="Current FSRS retrievability and total target-crossing duration for active reviewed problems. This is model-estimated memory health, not observed recall or a due queue."
+        id="retention-map"
+        question="Which active memories are below target, and how durable are they?"
+        title="Retention Map"
       >
-        <RetentionHealthChart
-          data={data.retentionHealth}
-          targetRetention={data.targetRetention}
+        <RetentionMapView
+          timeZone={data.timeFrame.timeZone}
+          view={data.views.retentionMap}
         />
       </AnalyticsChartPanel>
-      <FragileKnowledgeTable rows={data.fragileKnowledge} />
+      <AnalyticsChartPanel
+        description="Current problems that are below recall target, overdue, or have low target-crossing durability."
+        id="memory-signals"
+        question="Which current problems need attention, and exactly why were they flagged?"
+        title="Memory Signals by Problem"
+      >
+        <MemorySignalsView view={data.views.memorySignals} />
+      </AnalyticsChartPanel>
     </div>
+  )
+}
+
+function AnalyticsScopeMetadata({
+  data,
+}: {
+  data: SerializedAnalyticsSummary
+}) {
+  const finalBucketEndKey = data.timeFrame.buckets.at(-1)?.endKey
+  return (
+    <p className="m-0 text-sm text-muted-foreground">
+      Range: {data.range} days
+      {finalBucketEndKey
+        ? ` · Period: ${formatScopeDateTime(data.timeFrame.periodStart, data.timeFrame.timeZone)}–${formatScopeDateKey(finalBucketEndKey)}`
+        : ''}{' '}
+      · Time zone: {data.timeFrame.timeZone}
+      {data.timeFrame.timeZoneFallback ? ' (fallback)' : ''} · As of:{' '}
+      {formatScopeAsOf(data.timeFrame.asOf, data.timeFrame.timeZone)}
+    </p>
+  )
+}
+
+function formatScopeDateTime(value: string, timeZone: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone,
+    year: '2-digit',
+  }).format(new Date(value))
+}
+
+function formatScopeDateKey(value: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: 'UTC',
+    year: '2-digit',
+  }).format(new Date(`${value}T00:00:00.000Z`))
+}
+
+function formatScopeAsOf(value: string, timeZone: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return 'Unknown date'
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone,
+  }).format(date)
+}
+
+function AnalyticsHistoricalStory({
+  data,
+}: {
+  data: SerializedAnalyticsSummary
+}) {
+  return (
+    <div className="grid min-w-0 gap-4">
+      <PhaseTwoPanel
+        description="Rating-derived recalled outcomes compared with reconstructed FSRS retrievability immediately before those exact reviews."
+        id="observed-recall-vs-fsrs"
+        question="How did recalled review outcomes compare with the FSRS estimate?"
+        readiness={data.historicalReadiness.recallQuality}
+        title="Observed Recall vs FSRS Estimate"
+      >
+        <ObservedRecallVsFsrsView view={data.views.observedRecallVsFsrs} />
+      </PhaseTwoPanel>
+
+      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+        <PhaseTwoPanel
+          description="FSRS's reconstructed post-review estimate of how long the memories reviewed in each bucket may remain retrievable."
+          id="memory-strength"
+          question="Are your reviewed memories staying strong for longer?"
+          readiness={data.historicalReadiness.stability}
+          title="Memory Strength"
+        >
+          <MemoryStrengthView view={data.views.memoryStrength} />
+        </PhaseTwoPanel>
+        <PhaseTwoPanel
+          description="Completed review volume and the Good + Easy share move together by time bucket; the relationship is association only."
+          id="practice-rhythm"
+          question="When you practiced more or less, how did Review Success move?"
+          readiness={data.historicalReadiness.practiceRhythm}
+          title="Practice Rhythm"
+        >
+          <PracticeRhythmView view={data.views.practiceRhythm} />
+        </PhaseTwoPanel>
+      </div>
+
+      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+        <PhaseTwoPanel
+          description="The changing share of valid Again, Hard, Good, and Easy review ratings across the selected period."
+          id="ratings-mix"
+          question="How is the balance of your review ratings changing?"
+          readiness={data.historicalReadiness.ratingsMix}
+          title="Ratings Mix"
+        >
+          <RatingsMixView view={data.views.ratingsMix} />
+        </PhaseTwoPanel>
+        <PhaseTwoPanel
+          description="Topics ranked by sufficiently sampled Good + Easy Review Success in the selected period; this is not a mastery score."
+          id="topic-performance"
+          question="Which sufficiently practiced topics had lower Review Success?"
+          readiness={data.historicalReadiness.topics}
+          showReadiness={false}
+          title="Topic Performance"
+        >
+          <TopicPerformanceView
+            selectedPeriod={`${data.range}-day selected period`}
+            view={data.views.topicPerformance}
+          />
+        </PhaseTwoPanel>
+      </div>
+    </div>
+  )
+}
+
+function PhaseTwoPanel({
+  description,
+  id,
+  question,
+  readiness,
+  showReadiness = true,
+  title,
+  children,
+}: {
+  description: string
+  id: string
+  question: string
+  readiness: SerializedAnalyticsSummary['historicalReadiness']['recallQuality']
+  showReadiness?: boolean
+  title: string
+  children: ReactNode
+}) {
+  return (
+    <AnalyticsChartPanel
+      description={description}
+      id={id}
+      question={question}
+      title={title}
+    >
+      {showReadiness && !readiness.ready ? (
+        <AnalyticsReadinessState
+          compact
+          readiness={readiness}
+          recommendedRange={null}
+          title={title}
+        />
+      ) : null}
+      {children}
+    </AnalyticsChartPanel>
   )
 }
 

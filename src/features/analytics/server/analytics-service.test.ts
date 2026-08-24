@@ -25,7 +25,7 @@ import { updateSettings } from '@/features/settings/server/settings-service'
 import { analyticsSummarySchema } from '../api/analytics-contracts'
 import { getAnalyticsSummary } from './analytics-service'
 
-describe('getAnalyticsSummary memory profile', () => {
+describe('getAnalyticsSummary dashboard views', () => {
   it.each([14, 30, 90] as const)(
     'retains the selected %s-day range in the readiness contract',
     async (range) => {
@@ -45,73 +45,9 @@ describe('getAnalyticsSummary memory profile', () => {
       })
       expect(summary.recallQuality).toEqual([])
       expect(summary.ratingsMix).toEqual([])
-      expect(summary.upcomingLoad).toHaveLength(14)
+      expect(summary.views.upcomingReviewLoad.rows).toHaveLength(14)
     },
   )
-
-  it('counts real tracked cards instead of weak-problem candidates', async () => {
-    const handle = await createTestDb()
-    const now = new Date('2026-01-15T12:00:00.000Z')
-
-    await insertTrackedCard(handle.db, {
-      problemSlug: 'two-sum',
-      status: 'review',
-      state: 'review',
-      dueAt: new Date('2026-01-16T12:00:00.000Z'),
-      lastReviewAt: new Date('2026-01-14T12:00:00.000Z'),
-    })
-    await insertTrackedCard(handle.db, {
-      problemSlug: 'two-sum-ii-input-array-is-sorted',
-      status: 'review',
-      state: 'review',
-      dueAt: new Date('2026-01-15T23:00:00.000Z'),
-      lastReviewAt: new Date('2026-01-14T12:00:00.000Z'),
-    })
-    await insertTrackedCard(handle.db, {
-      problemSlug: 'valid-palindrome',
-      status: 'learning',
-      state: 'learning',
-      dueAt: new Date('2026-01-15T11:00:00.000Z'),
-      lastReviewAt: new Date('2026-01-14T12:00:00.000Z'),
-    })
-    await insertTrackedCard(handle.db, {
-      problemSlug: 'valid-parentheses',
-      status: 'mastered',
-      state: 'review',
-      dueAt: now,
-      lastReviewAt: new Date('2026-01-14T12:00:00.000Z'),
-    })
-    await insertTrackedCard(handle.db, {
-      problemSlug: 'maximum-subarray',
-      status: 'suspended',
-      state: 'review',
-      dueAt: new Date('2026-01-15T10:00:00.000Z'),
-      lastReviewAt: new Date('2026-01-14T12:00:00.000Z'),
-      isSuspended: true,
-    })
-
-    const summary = await getAnalyticsSummary(handle.db, now)
-
-    expect(summary.weakProblems).toEqual([])
-    expect(summary.memoryProfile).toMatchObject({
-      totalTracked: 5,
-      dueToday: 3,
-      overdue: 1,
-      learning: 1,
-      review: 2,
-      mastered: 1,
-      suspended: 1,
-      lowSample: true,
-    })
-    expect(summary.dueForecast14Days[0]?.dueCount).toBe(
-      summary.memoryProfile.dueToday,
-    )
-    expect(summary.memoryProfile.averageRetrievability).not.toBeNull()
-    expect(summary.memoryProfile.averageRetrievability).toBeGreaterThanOrEqual(
-      0,
-    )
-    expect(summary.memoryProfile.averageRetrievability).toBeLessThanOrEqual(1)
-  })
 
   it('returns truthful chart payloads for an empty database', async () => {
     const handle = await createTestDb({ seed: false })
@@ -130,12 +66,13 @@ describe('getAnalyticsSummary memory profile', () => {
     ).toBe(true)
     expect(summary.topics).toEqual([])
     expect(summary.stability).toEqual([])
-    expect(summary.overdueBacklog).toEqual([])
-    expect(summary.overdueHistoryAvailableFrom).toBeNull()
-    expect(summary.upcomingLoad).toHaveLength(14)
-    expect(summary.upcomingLoad.every((point) => point.dueCount === 0)).toBe(
-      true,
-    )
+    expect(summary.views.overdueBacklog.knownDays).toBe(0)
+    expect(summary.views.upcomingReviewLoad.rows).toHaveLength(14)
+    expect(
+      summary.views.upcomingReviewLoad.rows.every(
+        (point) => point.dueCount === 0,
+      ),
+    ).toBe(true)
   })
 
   it('counts same-day pre-review predictions individually in the summary', async () => {
@@ -211,6 +148,83 @@ describe('getAnalyticsSummary memory profile', () => {
     expect(summary.observedRatingSampleSize).toBe(10)
   })
 
+  it('excludes same-local-day post-as-of reviews from Ratings Mix, Topic Performance, and its equivalent comparison', async () => {
+    const handle = await createTestDb({ seed: false })
+    const now = new Date('2026-01-31T12:00:00.000Z')
+    const previousDates = Array.from(
+      { length: 14 },
+      (_, index) => new Date(Date.UTC(2026, 0, 4 + index, 12)),
+    )
+    const selectedDates = Array.from(
+      { length: 14 },
+      (_, index) => new Date(Date.UTC(2026, 0, 18 + index, 12)),
+    )
+    const dates = [...previousDates, ...selectedDates]
+
+    for (const index of [1, 2, 3]) {
+      const slug = `post-as-of-graphs-${index}`
+      await insertAnalyticsProblem(
+        handle.db,
+        slug,
+        `Graphs ${index}`,
+        index === 1 ? ['Graphs'] : [],
+      )
+      if (index > 1) {
+        await handle.db.insert(problemTopics).values({
+          problemSlug: slug,
+          topicId: 'post-as-of-graphs-1:graphs',
+        })
+      }
+      await insertAnalyticsHistory(handle.db, slug, {
+        id: `${slug}-card:default`,
+        dates,
+        ratings: [
+          ...Array<ReviewRating>(14).fill('again'),
+          ...Array<ReviewRating>(14).fill('good'),
+        ],
+        correct: Array<boolean>(dates.length).fill(true),
+        dueAt: new Date('2026-02-01T12:00:00.000Z'),
+        stability: 8,
+        difficulty: 5,
+      })
+    }
+
+    const postAsOf = new Date('2026-01-31T13:00:00.000Z')
+    await handle.db.insert(reviewAttempts).values({
+      id: 'post-as-of-ratings-mix-review',
+      problemSlug: 'post-as-of-graphs-1',
+      cardId: 'post-as-of-graphs-1-card:default',
+      rating: 'again',
+      reviewMode: 'manual',
+      reviewedAt: postAsOf.getTime(),
+      isCorrect: false,
+      fsrsReviewLog: null,
+      createdAt: postAsOf.getTime(),
+      updatedAt: postAsOf.getTime(),
+    })
+
+    const summary = await getAnalyticsSummary(handle.db, { range: 14, now })
+
+    expect(summary.views.ratingsMix).toMatchObject({
+      selectedHardAgain: 0,
+      selectedValidRatings: 42,
+      comparison: {
+        direction: 'down',
+        previousHardAgainShare: 1,
+        previousValidRatings: 42,
+      },
+    })
+    expect(summary.views.topicPerformance.rows).toEqual([
+      expect.objectContaining({
+        topic: 'Graphs',
+        reviewSuccess: 1,
+        goodEasy: 42,
+        validRatings: 42,
+        distinctProblems: 3,
+      }),
+    ])
+  })
+
   it('keeps never-reviewed cards in tracked and workload metrics, not fragile knowledge', async () => {
     const handle = await createTestDb({ seed: false })
     const now = new Date('2026-01-31T12:00:00.000Z')
@@ -224,12 +238,12 @@ describe('getAnalyticsSummary memory profile', () => {
 
     const summary = await getAnalyticsSummary(handle.db, { range: 14, now })
 
-    expect(summary.memoryProfile.totalTracked).toBe(1)
     expect(
-      summary.upcomingLoad.reduce((sum, point) => sum + point.dueCount, 0),
+      summary.views.upcomingReviewLoad.rows.reduce(
+        (sum, point) => sum + point.dueCount,
+        0,
+      ),
     ).toBe(1)
-    expect(summary.retentionHealth).toEqual([])
-    expect(summary.fragileKnowledge).toEqual([])
   })
 
   it('derives chart metrics from full history and current FSRS state', async () => {
@@ -307,14 +321,10 @@ describe('getAnalyticsSummary memory profile', () => {
     expect(
       summary.ratingsMix.reduce((sum, point) => sum + point.again, 0),
     ).toBe(1)
-    expect(summary.upcomingLoad[0]?.overdueCount).toBe(0)
-    expect(summary.upcomingLoad[1]?.dueCount).toBe(1)
-    expect(summary.retentionHealth).toHaveLength(2)
-    expect(
-      summary.fragileKnowledge.some((row) => row.topics.includes('Graphs')),
-    ).toBe(true)
-    expect(summary.overdueBacklog.length).toBeGreaterThan(0)
-    expect(summary.overdueHistoryAvailableFrom).not.toBeNull()
+    expect(summary.views.upcomingReviewLoad.rows[0]?.overdueCount).toBe(0)
+    expect(summary.views.upcomingReviewLoad.rows[1]?.dueCount).toBe(1)
+    expect(summary.views.retentionMap.rows).toHaveLength(2)
+    expect(summary.views.overdueBacklog.rows).toHaveLength(14)
   })
 
   it.each([30, 90] as const)(
@@ -352,9 +362,7 @@ describe('getAnalyticsSummary memory profile', () => {
         activeBuckets:
           summary.historicalReadiness.overdueBacklog.requestedBuckets,
       })
-      expect(
-        summary.overdueBacklog.every((point) => point.historyAvailable),
-      ).toBe(true)
+      expect(summary.views.overdueBacklog.knownDays).toBe(range)
     },
   )
 
@@ -394,9 +402,8 @@ describe('getAnalyticsSummary memory profile', () => {
       assessments: 3,
     })
     expect(
-      summary.overdueBacklog.some(
-        (point) =>
-          point.historyAvailable === false && point.overdueCount === null,
+      summary.views.overdueBacklog.rows.some(
+        (point) => point.overdueCount === null,
       ),
     ).toBe(true)
   })
@@ -773,8 +780,8 @@ describe('getAnalyticsSummary memory profile', () => {
     expect(readiness.recallQuality).toHaveLength(
       readiness.historicalReadiness.recallQuality.effectiveBuckets,
     )
-    expect(readiness.upcomingLoad).toHaveLength(14)
-    expect(readiness.retentionHealth.length).toBeGreaterThan(0)
+    expect(readiness.views.upcomingReviewLoad.rows).toHaveLength(14)
+    expect(readiness.views.retentionMap.rows.length).toBeGreaterThan(0)
   })
 
   it('recommends only a shorter ready range than the selected range', async () => {
@@ -975,7 +982,7 @@ describe('getAnalyticsSummary memory profile', () => {
       bucketEnd: '2026-03-07',
       reviewCount: 1,
     })
-    expect(summary.upcomingLoad[0]).toMatchObject({
+    expect(summary.views.upcomingReviewLoad.rows[0]).toMatchObject({
       date: '2026-03-08',
       dueCount: 1,
     })
@@ -1148,50 +1155,6 @@ async function insertNeverReviewedCard(
     lapses: 0,
     state: 'new',
     lastReviewAt: null,
-    createdAt: now,
-    updatedAt: now,
-  })
-}
-
-async function insertTrackedCard(
-  db: Awaited<ReturnType<typeof createTestDb>>['db'],
-  input: {
-    problemSlug: string
-    status: string
-    state: string
-    dueAt: Date
-    lastReviewAt: Date
-    isSuspended?: boolean
-  },
-) {
-  const now = new Date('2026-01-01T00:00:00.000Z').getTime()
-
-  await db.insert(problemPractice).values({
-    problemSlug: input.problemSlug,
-    status: input.status,
-    firstSeenAt: now,
-    lastSeenAt: now,
-    lastReviewedAt: input.lastReviewAt.getTime(),
-    solvedCount: 1,
-    attemptCount: 1,
-    isSuspended: input.isSuspended ?? false,
-    createdAt: now,
-    updatedAt: now,
-  })
-  await db.insert(fsrsCards).values({
-    id: `${input.problemSlug}:default`,
-    problemSlug: input.problemSlug,
-    cardKind: defaultFsrsCardKind,
-    dueAt: input.dueAt.getTime(),
-    stability: 4,
-    difficulty: 5,
-    elapsedDays: 1,
-    scheduledDays: 1,
-    learningSteps: 0,
-    reps: 1,
-    lapses: 0,
-    state: input.state,
-    lastReviewAt: input.lastReviewAt.getTime(),
     createdAt: now,
     updatedAt: now,
   })

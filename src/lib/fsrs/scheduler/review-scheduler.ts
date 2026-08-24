@@ -4,6 +4,7 @@ import type { FsrsReviewLogSnapshot } from '../domain/review-log-snapshot'
 import type { ReviewRating } from '../domain/review-rating'
 import {
   calculateCardRetrievability,
+  calculateCardTargetRetentionDuration,
   createEmptyCardSnapshot,
   scheduleCardReview,
 } from '../adapter/ts-fsrs-adapter'
@@ -62,6 +63,19 @@ export function getRetrievability(
   options: FsrsSchedulingOptions = {},
 ): number {
   return calculateCardRetrievability(card, at, options)
+}
+
+/**
+ * Returns the total elapsed days after the latest review when the same FSRS
+ * forgetting curve reaches `targetRetention`, or null when that duration is
+ * not a finite positive current-card value.
+ */
+export function getTargetRetentionDuration(
+  card: FsrsCardSnapshot,
+  targetRetention: number,
+  options: FsrsSchedulingOptions = {},
+): number | null {
+  return calculateCardTargetRetentionDuration(card, targetRetention, options)
 }
 
 /** Rebuilds a card by replaying review history in chronological order. */
