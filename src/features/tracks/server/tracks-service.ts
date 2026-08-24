@@ -3,9 +3,11 @@ import type { Db } from '@/platform/db'
 import type { Problem } from '@/features/problems'
 import type { SerializedProblem } from '@/features/problems/api/problems-contracts'
 import {
+  createMissingProblems,
   getProblemLibrary,
   getProblemLibraryRowsBySlug,
 } from '@/features/problems/server/problems-service'
+import { normalizeLeetCodeSlug } from '@/lib/leetcode'
 import { getSettings } from '@/features/settings/server/settings-service'
 
 import { createTracksRepository } from '../data/tracks-repository'
@@ -24,6 +26,8 @@ import {
   type TrackProblemRowSerializationInput,
 } from '../api/tracks-serializers'
 import type {
+  TrackImportRequest,
+  TrackImportResult,
   TracksCreateTrackRequest,
   TracksClearActiveTrackRequest,
   TracksDeleteTrackRequest,
@@ -36,6 +40,97 @@ import type {
   TrackForEditResponse,
   TrackWorkspaceResponse,
 } from '../api/tracks-contracts'
+import {
+  trackImportResultSchema,
+  tracksImportTracksRequestSchema,
+} from '../api/tracks-contracts'
+
+export async function importTracks(
+  db: Db,
+  request: TrackImportRequest,
+): Promise<TrackImportResult> {
+  const validatedRequest = tracksImportTracksRequestSchema.parse(request)
+
+  const result = await db.transaction(async (transactionDb) => {
+    const transaction = transactionDb as unknown as Db
+    const tracksRepository = createTracksRepository(transaction)
+
+    for (const track of validatedRequest.file.tracks) {
+      const trackId = normalizeLeetCodeSlug(track.title)
+      const existingTrack = await tracksRepository.getTrackById(trackId)
+
+      if (existingTrack) {
+        throw new Error(
+          `Track "${track.title}" already exists. Rename or delete it explicitly before importing.`,
+        )
+      }
+    }
+
+    const problemDefinitions = new Map(
+      validatedRequest.file.problems.map((problem) => [
+        normalizeLeetCodeSlug(problem.slug),
+        problem,
+      ]),
+    )
+    const referencedProblemSlugs: string[] = []
+    const seenProblemSlugs = new Set<string>()
+
+    for (const track of validatedRequest.file.tracks) {
+      for (const group of track.groups) {
+        for (const problemSlug of group.problemSlugs) {
+          const normalizedProblemSlug = normalizeLeetCodeSlug(problemSlug)
+
+          if (seenProblemSlugs.has(normalizedProblemSlug)) {
+            continue
+          }
+
+          seenProblemSlugs.add(normalizedProblemSlug)
+          referencedProblemSlugs.push(normalizedProblemSlug)
+        }
+      }
+    }
+
+    const missingProblemResult = await createMissingProblems(
+      transaction,
+      referencedProblemSlugs.map((slug) => {
+        const definition = problemDefinitions.get(slug)
+
+        return definition
+          ? {
+              slug,
+              title: definition.title,
+              difficulty: definition.difficulty,
+              isPremium: definition.isPremium,
+            }
+          : { slug }
+      }),
+    )
+    const createdTrackIds: string[] = []
+
+    for (const track of validatedRequest.file.tracks) {
+      const createdTrack = await tracksRepository.insertTrack({
+        title: track.title,
+        description: track.description,
+        dueAt: track.dueAt,
+        groups: track.groups.map((group) => ({
+          title: group.title,
+          problemSlugs: group.problemSlugs.map(normalizeLeetCodeSlug),
+        })),
+      })
+
+      createdTrackIds.push(createdTrack.id)
+    }
+
+    return {
+      createdTrackIds,
+      createdTrackCount: createdTrackIds.length,
+      createdProblemCount: missingProblemResult.createdSlugs.length,
+      reusedProblemCount: missingProblemResult.reusedSlugs.length,
+    }
+  })
+
+  return trackImportResultSchema.parse(result)
+}
 
 export async function getActiveTrack(db: Db, now = new Date()) {
   const settings = await getSettings(db)
