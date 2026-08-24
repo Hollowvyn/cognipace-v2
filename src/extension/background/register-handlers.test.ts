@@ -45,21 +45,6 @@ import {
   serializeActiveTrack,
 } from './register-handlers'
 
-function createReadyHistoricalReadiness() {
-  const historicalReadiness =
-    createSerializedAnalyticsSummary().historicalReadiness
-
-  return {
-    ...historicalReadiness,
-    requested: {
-      ...historicalReadiness.requested,
-      ready: true,
-      failingReasons: [],
-    },
-    recommendedRange: null,
-  }
-}
-
 const backgroundMocks = vi.hoisted(() => {
   const handlers = new Map<
     string,
@@ -345,12 +330,12 @@ describe('background handler registration', () => {
     backgroundMocks.broadcastCacheInvalidation.mockResolvedValue(null)
     backgroundMocks.getAnalyticsSummary.mockResolvedValue({
       ...createSerializedAnalyticsSummary(),
-      range: 30,
+      range: 90,
       generatedAt: '2026-01-15T12:00:00.000Z',
       timeFrame: {
         ...createSerializedAnalyticsSummary().timeFrame,
         asOf: '2026-01-15T12:00:00.000Z',
-        requestedDays: 30,
+        requestedRange: 90,
       },
       reviewDays: 3,
       totalReviews: 12,
@@ -361,7 +346,6 @@ describe('background handler registration', () => {
       lowSample: false,
       targetRetention: 0.9,
       predictedRecall: { value: 0.86, sampleSize: 12, lowSample: false },
-      historicalReadiness: createReadyHistoricalReadiness(),
       recallQuality: [],
       practiceRhythm: [],
       ratingsMix: [],
@@ -559,68 +543,85 @@ describe('background handler registration', () => {
     })
   })
 
-  it('registers analytics summary handling with dashboard policy and response parsing', async () => {
-    const response = await sendRuntimeMessage('analytics.getSummary', {
-      surface: 'dashboard',
-      range: 30,
-      timeZone: 'America/New_York',
-      at: '2026-01-15T12:00:00.000Z',
-    })
+  it.each([90, 120, 'all'] as const)(
+    'round-trips %s through JSON runtime request and response parsing',
+    async (range) => {
+      const request = JSON.parse(
+        JSON.stringify({
+          surface: 'dashboard',
+          range,
+          timeZone: 'America/New_York',
+          at: '2026-01-15T12:00:00.000Z',
+        }),
+      ) as Record<string, unknown>
+      const fixture = createSerializedAnalyticsSummary({
+        range,
+        timeFrame: {
+          ...createSerializedAnalyticsSummary().timeFrame,
+          requestedRange: range,
+          periodStart:
+            range === 'all'
+              ? null
+              : createSerializedAnalyticsSummary().timeFrame.periodStart,
+          buckets:
+            range === 'all'
+              ? []
+              : createSerializedAnalyticsSummary().timeFrame.buckets,
+        },
+        predictedRecall: { value: 0.86, sampleSize: 12, lowSample: false },
+      })
+      backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
+        ...fixture,
+        observedRatingQuality: 0.75,
+        observedRatingSampleSize: 12,
+        lowSample: false,
+      })
+      const response = await sendRuntimeMessage('analytics.getSummary', request)
 
-    expectRuntimePolicy('analytics.getSummary', 'dashboard')
-    expect(backgroundMocks.getAppDb).toHaveBeenCalledTimes(1)
-    expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
-      backgroundMocks.db,
-      {
-        range: 30,
-        now: new Date('2026-01-15T12:00:00.000Z'),
-        timeZone: 'America/New_York',
-      },
-    )
-    expect(response).toMatchObject({
-      generatedAt: '2026-01-15T12:00:00.000Z',
-      reviewDays: 3,
-      totalReviews: 12,
-      currentStreak: 2,
-      observedRatingQuality: {
-        value: 0.75,
+      expectRuntimePolicy('analytics.getSummary', 'dashboard')
+      expect(backgroundMocks.getAppDb).toHaveBeenCalledTimes(1)
+      expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
+        backgroundMocks.db,
+        {
+          range,
+          now: new Date('2026-01-15T12:00:00.000Z'),
+          timeZone: 'America/New_York',
+        },
+      )
+      const parsedResponse = analyticsSummarySchema.parse(
+        JSON.parse(JSON.stringify(response)),
+      )
+      expect(parsedResponse.range).toBe(range)
+      expect(parsedResponse.timeFrame.requestedRange).toBe(range)
+      expect(parsedResponse).not.toHaveProperty('historicalReadiness')
+      expect(parsedResponse.predictedRecall).toEqual({
+        value: 0.86,
         sampleSize: 12,
         lowSample: false,
-      },
-      historicalReadiness: {
-        requested: { ready: true },
-      },
-    })
-    const parsedResponse = analyticsSummarySchema.parse(response)
-    expect(parsedResponse.historicalReadiness.requested.ready).toBe(true)
-    expect(parsedResponse.predictedRecall).toEqual({
-      value: 0.86,
-      sampleSize: 12,
-      lowSample: false,
-    })
-  })
+      })
+    },
+  )
 
   it('passes range without an undefined now option when at is absent', async () => {
     await sendRuntimeMessage('analytics.getSummary', {
       surface: 'dashboard',
-      range: 14,
+      range: 120,
       timeZone: 'UTC',
     })
 
     expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
       backgroundMocks.db,
-      { range: 14, timeZone: 'UTC' },
+      { range: 120, timeZone: 'UTC' },
     )
   })
 
   it('preserves requested timezone grouping across a DST boundary', async () => {
     const fixture = createSerializedAnalyticsSummary({
-      range: 14,
+      range: 120,
       timeFrame: {
         ...createSerializedAnalyticsSummary().timeFrame,
-        requestedDays: 14,
+        requestedRange: 120,
       },
-      historicalReadiness: createReadyHistoricalReadiness(),
       views: {
         ...createSerializedAnalyticsSummary().views,
         upcomingReviewLoad: {
@@ -644,7 +645,7 @@ describe('background handler registration', () => {
 
     const response = await sendRuntimeMessage('analytics.getSummary', {
       surface: 'dashboard',
-      range: 14,
+      range: 120,
       timeZone: 'America/New_York',
       at: '2026-03-08T05:30:00.000Z',
     })
@@ -652,14 +653,14 @@ describe('background handler registration', () => {
     expect(backgroundMocks.getAnalyticsSummary).toHaveBeenCalledWith(
       backgroundMocks.db,
       {
-        range: 14,
+        range: 120,
         now: new Date('2026-03-08T05:30:00.000Z'),
         timeZone: 'America/New_York',
       },
     )
     const parsed = analyticsSummarySchema.parse(response)
 
-    expect(parsed.range).toBe(14)
+    expect(parsed.range).toBe(120)
     expect(parsed.views.upcomingReviewLoad.rows[0]).toMatchObject({
       date: '2026-03-08',
       dueCount: 1,
@@ -675,7 +676,7 @@ describe('background handler registration', () => {
       timeFrame: {
         ...createSerializedAnalyticsSummary().timeFrame,
         asOf: '2026-01-15T12:00:00.000Z',
-        requestedDays: 90,
+        requestedRange: 90,
       },
       reviewDays: 3,
       totalReviews: 4,
@@ -685,7 +686,6 @@ describe('background handler registration', () => {
       observedRatingSampleSize: 4,
       lowSample: true,
       targetRetention: 0.9,
-      historicalReadiness: createReadyHistoricalReadiness(),
       predictedRecall: { value: null, sampleSize: 0, lowSample: true },
       recallQuality: [],
       practiceRhythm: [],
@@ -716,20 +716,12 @@ describe('background handler registration', () => {
     expect(response.observedRatingQuality.value).not.toBe(0)
   })
 
-  it('serializes current and forecast analytics when the selected historical range is unready', async () => {
+  it('serializes current and forecast analytics with sparse historical evidence', async () => {
     const fixture = createSerializedAnalyticsSummary({
       range: 90,
       timeFrame: {
         ...createSerializedAnalyticsSummary().timeFrame,
-        requestedDays: 90,
-      },
-      historicalReadiness: {
-        ...createSerializedAnalyticsSummary().historicalReadiness,
-        requested: {
-          ...createSerializedAnalyticsSummary().historicalReadiness.requested,
-          requestedDays: 90,
-          ready: false,
-        },
+        requestedRange: 90,
       },
     })
     backgroundMocks.getAnalyticsSummary.mockResolvedValueOnce({
@@ -748,7 +740,7 @@ describe('background handler registration', () => {
     )
 
     expect(response.range).toBe(90)
-    expect(response.historicalReadiness.requested.ready).toBe(false)
+    expect(response.views.observedRecallVsFsrs.evidence.tableOnly).toBe(false)
     expect(response.views.upcomingReviewLoad.rows).toHaveLength(14)
   })
 

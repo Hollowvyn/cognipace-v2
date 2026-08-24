@@ -1,15 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import type {
-  ObservedRatingQualityResult,
-  HistoricalReadiness,
-} from './summary'
-import type { AnalyticsReadiness } from './analytics-readiness'
-import { buildAnalyticsTimeFrame } from './analytics-time'
+import type { ObservedRatingQualityResult } from './summary'
 import {
-  buildObservedRatingQuality,
-  buildAnalyticsSummary,
-} from './summary'
+  buildAnalyticsTimeFrame,
+  buildSelectedAnalyticsTimeFrame,
+} from './analytics-time'
+import { buildObservedRatingQuality, buildAnalyticsSummary } from './summary'
 
 const now = new Date(2026, 0, 15, 12, 0, 0)
 const recentDate = new Date(2026, 0, 14, 12, 0, 0)
@@ -192,18 +188,18 @@ describe('buildAnalyticsSummary', () => {
     }
     const result = buildAnalyticsSummary({
       generatedAt,
-      timeFrame: buildAnalyticsTimeFrame({
+      timeFrame: buildSelectedAnalyticsTimeFrame({
         asOf: generatedAt,
-        requestedDays: 30,
+        requestedRange: 90,
+        allTimeStart: null,
         timeZone: 'UTC',
       }),
       reviewDays: 10,
       totalReviews: 42,
       currentStreak: 3,
       observedRatingQuality: retention,
-      range: 30,
+      range: 90,
       targetRetention: 0.9,
-      historicalReadiness: createHistoricalReadiness(30),
     })
 
     expect(result.generatedAt).toBe(generatedAt.toISOString())
@@ -215,14 +211,28 @@ describe('buildAnalyticsSummary', () => {
     expect(result.observedRatingSampleSize).toBe(20)
     expect(result.lowSample).toBe(false)
     expect(result.targetRetention).toBe(0.9)
+    expect(result.range).toBe(90)
+    expect(result.timeFrame.requestedRange).toBe(90)
+    expect(result.views.observedRecallVsFsrs.evidence).toEqual({
+      historyDays: 0,
+      measuredBuckets: 0,
+      observations: 0,
+      selectedBucketCount: 0,
+      tableOnly: true,
+      displayMode: 'table',
+      supportsLine: false,
+      supportsDirection: false,
+    })
+    expect(result).not.toHaveProperty('historicalReadiness')
   })
 
-  it('keeps selected-range evidence and metric readiness explicit in the summary', () => {
+  it('keeps all-time range and evidence views explicit in the summary', () => {
     const result = buildAnalyticsSummary({
       generatedAt: now,
-      timeFrame: buildAnalyticsTimeFrame({
+      timeFrame: buildSelectedAnalyticsTimeFrame({
         asOf: now,
-        requestedDays: 90,
+        requestedRange: 'all',
+        allTimeStart: null,
         timeZone: 'UTC',
       }),
       reviewDays: 0,
@@ -234,98 +244,16 @@ describe('buildAnalyticsSummary', () => {
         sampleSize: 0,
         lowSample: true,
       },
-      range: 90,
+      range: 'all',
       targetRetention: 0.9,
-      historicalReadiness: createDetailedHistoricalReadiness(),
     })
 
-    expect(
-      (result as { historicalReadiness?: unknown }).historicalReadiness,
-    ).toMatchObject({
-      requested: { requestedDays: 90 },
-      recallQuality: { ready: true },
-      recommendedRange: 30,
+    expect(result.range).toBe('all')
+    expect(result.timeFrame).toMatchObject({
+      requestedRange: 'all',
+      periodStart: null,
+      buckets: [],
     })
+    expect(result.views.ratingsMix.evidence.selectedBucketCount).toBe(0)
   })
 })
-
-function createHistoricalReadiness(
-  requestedDays: 14 | 30 | 90,
-): HistoricalReadiness {
-  const bucketDays = requestedDays === 14 ? 1 : requestedDays === 30 ? 3 : 7
-  const requestedBuckets =
-    requestedDays === 14 ? 14 : requestedDays === 30 ? 10 : 13
-  const readiness: AnalyticsReadiness = {
-    ready: false,
-    requestedDays,
-    bucketDays,
-    requestedBuckets,
-    effectiveBuckets: 0,
-    effectiveStart: null,
-    assessments: 0,
-    minimumAssessments: 12,
-    activeBuckets: 0,
-    minimumActiveBuckets: 0,
-    longestGap: 0,
-    maximumGap: 2,
-    gapRuns: 0,
-    maximumGapRuns: 1,
-    failingReasons: [
-      'no-evidence',
-      'insufficient-span',
-      'insufficient-assessments',
-      'insufficient-active-buckets',
-    ],
-  }
-
-  return {
-    requested: readiness,
-    recallQuality: readiness,
-    practiceRhythm: readiness,
-    ratingsMix: readiness,
-    topics: readiness,
-    stability: readiness,
-    overdueBacklog: readiness,
-    recommendedRange: null,
-  }
-}
-
-function createDetailedHistoricalReadiness(): HistoricalReadiness {
-  const requested: AnalyticsReadiness = {
-    ready: false,
-    requestedDays: 90,
-    bucketDays: 7,
-    requestedBuckets: 13,
-    effectiveBuckets: 8,
-    effectiveStart: '2026-06-22',
-    assessments: 32,
-    minimumAssessments: 45,
-    activeBuckets: 6,
-    minimumActiveBuckets: 7,
-    longestGap: 2,
-    maximumGap: 2,
-    gapRuns: 2,
-    maximumGapRuns: 2,
-    failingReasons: ['insufficient-assessments'],
-  }
-  const recallQuality: AnalyticsReadiness = {
-    ...requested,
-    ready: true,
-    assessments: 48,
-    activeBuckets: 7,
-    longestGap: 1,
-    gapRuns: 1,
-    failingReasons: [],
-  }
-
-  return {
-    requested,
-    recallQuality,
-    practiceRhythm: { ...requested },
-    ratingsMix: { ...requested },
-    topics: { ...requested },
-    stability: { ...requested },
-    overdueBacklog: { ...requested },
-    recommendedRange: 30,
-  }
-}

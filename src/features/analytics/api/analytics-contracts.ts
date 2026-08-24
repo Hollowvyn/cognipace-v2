@@ -1,9 +1,9 @@
 import { z } from 'zod'
 
 export const analyticsRangeSchema = z.union([
-  z.literal(14),
-  z.literal(30),
   z.literal(90),
+  z.literal(120),
+  z.literal('all'),
 ])
 
 export type AnalyticsRange = z.infer<typeof analyticsRangeSchema>
@@ -17,15 +17,56 @@ export const analyticsTimeBucketSchema = z.object({
   isPartial: z.boolean(),
 })
 
-export const analyticsTimeFrameSchema = z.object({
-  asOf: z.iso.datetime(),
-  timeZone: z.string().min(1),
-  timeZoneFallback: z.boolean(),
-  requestedDays: analyticsRangeSchema,
-  periodStart: z.iso.datetime(),
-  periodEnd: z.iso.datetime(),
-  buckets: z.array(analyticsTimeBucketSchema).min(1),
-})
+export const analyticsTimeFrameSchema = z
+  .object({
+    asOf: z.iso.datetime(),
+    timeZone: z.string().min(1),
+    timeZoneFallback: z.boolean(),
+    requestedRange: analyticsRangeSchema,
+    periodStart: z.iso.datetime().nullable(),
+    periodEnd: z.iso.datetime(),
+    bucketGrain: z.enum([
+      'week',
+      'two-weeks',
+      'month',
+      'two-months',
+      'quarter',
+      'half-year',
+      'year',
+    ]),
+    buckets: z.array(analyticsTimeBucketSchema),
+  })
+  .superRefine((timeFrame, context) => {
+    const hasPeriodStart = timeFrame.periodStart !== null
+    const hasBuckets = timeFrame.buckets.length > 0
+
+    if (timeFrame.requestedRange === 'all') {
+      if (hasPeriodStart !== hasBuckets) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            'All-time frames must have both a period start and buckets, or neither.',
+          path: hasPeriodStart ? ['buckets'] : ['periodStart'],
+        })
+      }
+      return
+    }
+
+    if (!hasPeriodStart) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Selected day ranges must include a period start.',
+        path: ['periodStart'],
+      })
+    }
+    if (!hasBuckets) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Selected day ranges must include presentation buckets.',
+        path: ['buckets'],
+      })
+    }
+  })
 
 export type AnalyticsTimeFrame = z.infer<typeof analyticsTimeFrameSchema>
 
@@ -150,6 +191,21 @@ const analyticsScaleSchema = z.object({
   domain: z.tuple([z.number(), z.number()]),
   ticks: z.array(z.number()).min(2),
 })
+
+export const analyticsEvidenceClassificationSchema = z.object({
+  historyDays: countSchema,
+  measuredBuckets: countSchema,
+  observations: countSchema,
+  selectedBucketCount: countSchema,
+  tableOnly: z.boolean(),
+  displayMode: z.enum(['table', 'single', 'marks', 'trend']),
+  supportsLine: z.boolean(),
+  supportsDirection: z.boolean(),
+})
+
+export type AnalyticsEvidenceClassification = z.infer<
+  typeof analyticsEvidenceClassificationSchema
+>
 
 const historicalRowBaseSchema = z.object({
   id: z.string().min(1),
@@ -284,21 +340,25 @@ export const analyticsViewsSchema = z
       rows: z.array(observedRecallVsFsrsRowSchema),
       scale: analyticsScaleSchema,
       targetRetention: percentageSchema,
+      evidence: analyticsEvidenceClassificationSchema,
     }),
     memoryStrength: z.object({
       rows: z.array(memoryStrengthRowSchema),
       scale: analyticsScaleSchema,
+      evidence: analyticsEvidenceClassificationSchema,
     }),
     practiceRhythm: z.object({
       rows: z.array(practiceRhythmRowSchema),
       countScale: analyticsScaleSchema,
       percentageScale: analyticsScaleSchema,
+      evidence: analyticsEvidenceClassificationSchema,
     }),
     ratingsMix: z.object({
       rows: z.array(ratingsMixRowSchema),
       selectedHardAgain: countSchema,
       selectedValidRatings: countSchema,
       comparison: ratingsMixComparisonSchema,
+      evidence: analyticsEvidenceClassificationSchema,
     }),
     topicPerformance: z.object({
       rows: z.array(topicPerformanceRowSchema).max(5),
@@ -353,17 +413,6 @@ export const analyticsViewsSchema = z
 
 export type AnalyticsViews = z.infer<typeof analyticsViewsSchema>
 
-export const historicalReadinessSchema = z.object({
-  requested: analyticsReadinessSchema,
-  recallQuality: analyticsReadinessSchema,
-  practiceRhythm: analyticsReadinessSchema,
-  ratingsMix: analyticsReadinessSchema,
-  topics: analyticsReadinessSchema,
-  stability: analyticsReadinessSchema,
-  overdueBacklog: analyticsReadinessSchema,
-  recommendedRange: analyticsRangeSchema.nullable(),
-})
-
 export const analyticsSummarySchema = z
   .object({
     range: analyticsRangeSchema,
@@ -378,7 +427,6 @@ export const analyticsSummarySchema = z
     lowSample: z.boolean(),
     targetRetention: percentageSchema,
     views: analyticsViewsSchema,
-    historicalReadiness: historicalReadinessSchema,
     recallQuality: z.array(recallQualityPointSchema),
     practiceRhythm: z.array(practiceRhythmPointSchema),
     ratingsMix: z.array(ratingsMixPointSchema),
@@ -387,23 +435,11 @@ export const analyticsSummarySchema = z
     stability: z.array(stabilityPointSchema),
   })
   .superRefine((summary, context) => {
-    if (summary.range !== summary.timeFrame.requestedDays) {
+    if (summary.range !== summary.timeFrame.requestedRange) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'The summary range must match the requested time-frame days.',
-        path: ['timeFrame', 'requestedDays'],
-      })
-    }
-
-    if (
-      summary.historicalReadiness.requested.ready &&
-      summary.historicalReadiness.recommendedRange !== null
-    ) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          'A ready requested range must not include a recommended fallback range.',
-        path: ['historicalReadiness', 'recommendedRange'],
+        message: 'The summary range must match the requested time-frame range.',
+        path: ['timeFrame', 'requestedRange'],
       })
     }
   })
