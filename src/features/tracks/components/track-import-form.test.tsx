@@ -62,7 +62,7 @@ describe('TrackImportForm', () => {
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Invalid JSON file.',
+      'Selected file is not valid JSON.',
     )
     expect(sendMessage).not.toHaveBeenCalled()
   })
@@ -81,12 +81,12 @@ describe('TrackImportForm', () => {
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      /not a Cognipace Tracks import file/i,
+      'Selected file is not a CogniPace track import.',
     )
     expect(sendMessage).not.toHaveBeenCalled()
   })
 
-  it('lets the contract report an unsupported schema version with its path', async () => {
+  it('reports the received and supported schema versions', async () => {
     const user = userEvent.setup()
     renderImportForm()
 
@@ -105,7 +105,7 @@ describe('TrackImportForm', () => {
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      /schemaVersion.*expected 1/i,
+      'Unsupported track import schema version 2. Supported version: 1.',
     )
     expect(sendMessage).not.toHaveBeenCalled()
   })

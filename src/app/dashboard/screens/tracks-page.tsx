@@ -30,16 +30,16 @@ export function TracksPage() {
         <TracksScreen
           trackActions={
             <>
-              <Button asChild size="sm">
-                <Link to={dashboardPaths.trackNew}>
-                  <Plus aria-hidden="true" />
-                  New Track
-                </Link>
-              </Button>
               <Button asChild size="sm" variant="outline">
                 <Link to={dashboardPaths.trackImport}>
                   <FileUp aria-hidden="true" />
                   Import Tracks
+                </Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link to={dashboardPaths.trackNew}>
+                  <Plus aria-hidden="true" />
+                  New Track
                 </Link>
               </Button>
             </>

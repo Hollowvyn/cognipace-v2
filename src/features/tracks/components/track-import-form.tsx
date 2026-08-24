@@ -8,6 +8,7 @@ import { Surface } from '@/components/ui/surface'
 import {
   createTrackImportPreview,
   trackImportFileSchema,
+  trackImportSchemaVersion,
   type TrackImportFile,
   type TrackImportPreview,
 } from '../api/tracks-contracts'
@@ -41,21 +42,22 @@ export function TrackImportForm({
     try {
       parsedJson = JSON.parse(await readFileText(file))
     } catch {
-      setError('Invalid JSON file. Choose a valid Tracks import file.')
+      setError('Selected file is not valid JSON.')
       return
     }
 
     if (hasWrongTrackImportApp(parsedJson)) {
-      setError(
-        'This is not a CogniPace Tracks import file. Use the Tracks import app and schema version 1 envelope.',
-      )
+      setError('Selected file is not a CogniPace track import.')
       return
     }
 
     const parsedFile = trackImportFileSchema.safeParse(parsedJson)
 
     if (!parsedFile.success) {
-      setError(formatImportValidationError(parsedFile.error))
+      setError(
+        formatUnsupportedSchemaVersion(parsedJson) ??
+          formatImportValidationError(parsedFile.error),
+      )
       return
     }
 
@@ -271,6 +273,20 @@ function hasWrongTrackImportApp(value: unknown): boolean {
     'app' in value &&
     value.app !== 'cognipace-track-import'
   )
+}
+
+function formatUnsupportedSchemaVersion(value: unknown): string | null {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !('schemaVersion' in value) ||
+    typeof value.schemaVersion !== 'number' ||
+    value.schemaVersion === trackImportSchemaVersion
+  ) {
+    return null
+  }
+
+  return `Unsupported track import schema version ${value.schemaVersion}. Supported version: ${trackImportSchemaVersion}.`
 }
 
 function formatImportValidationError(error: { issues: readonly ZodIssue[] }) {

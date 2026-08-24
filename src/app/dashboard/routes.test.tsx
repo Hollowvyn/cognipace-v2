@@ -831,6 +831,9 @@ describe('dashboard routes', () => {
     )
     expect(dashboardPaths.trackImport).toBe('/tracks/import')
     expect(dashboardModalRouteMeta.trackImport.closeTo).toBe('/tracks')
+    expect(dashboardModalRouteMeta.trackImport.description).toBe(
+      'Create tracks from a non-destructive CogniPace JSON import.',
+    )
     expect(dashboardModalRouteMeta.trackImport.relativePath).toBe('import')
     expect(dashboardModalRouteMeta.trackEdit.description).not.toMatch(
       /later phase/i,

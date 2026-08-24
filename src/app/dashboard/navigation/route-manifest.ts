@@ -155,7 +155,7 @@ export const dashboardModalRouteMeta = {
   },
   trackImport: {
     closeTo: dashboardPaths.tracks,
-    description: 'Import tracks and their problem definitions from JSON.',
+    description: 'Create tracks from a non-destructive CogniPace JSON import.',
     relativePath: 'import',
     staticData: {
       presentation: 'modal',

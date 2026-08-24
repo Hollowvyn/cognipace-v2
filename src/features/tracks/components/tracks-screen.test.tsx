@@ -78,6 +78,17 @@ describe('TracksScreen', () => {
       'href',
       '#/tracks/import',
     )
+
+    const emptyStateActions = screen.getAllByRole('link', {
+      name: /^(Import Tracks|New Track)$/,
+    })
+
+    expect(emptyStateActions.map((link) => link.textContent?.trim())).toEqual([
+      'Import Tracks',
+      'New Track',
+    ])
+    expect(emptyStateActions[0]).toHaveClass('border-border')
+    expect(emptyStateActions[1]).toHaveClass('border-primary')
   })
 
   it('renders all tracks expanded when no active track is selected', async () => {
@@ -118,6 +129,11 @@ describe('TracksScreen', () => {
     expect(
       within(allTracksActions).getByRole('link', { name: 'Import Tracks' }),
     ).toHaveAttribute('href', '#/tracks/import')
+    const allTracksActionLinks = within(allTracksActions).getAllByRole('link')
+
+    expect(
+      allTracksActionLinks.map((link) => link.textContent?.trim()),
+    ).toEqual(['Import Tracks', 'New Track'])
     expect(
       within(allTracksActions).getByRole('button', {
         name: 'All tracks shown',
@@ -1025,14 +1041,14 @@ function renderTracksScreen() {
     <TracksScreen
       trackActions={
         <>
+          <Button asChild size="sm" variant="outline">
+            <a href="#/tracks/import">Import Tracks</a>
+          </Button>
           <Button asChild size="sm">
             <a href="#/tracks/new">
               <Plus aria-hidden="true" />
               New Track
             </a>
-          </Button>
-          <Button asChild size="sm" variant="outline">
-            <a href="#/tracks/import">Import Tracks</a>
           </Button>
         </>
       }
@@ -1076,8 +1092,8 @@ function createOtherTracksAccordionElement(
       generatedAt="2026-06-01T12:00:00.000Z"
       trackActions={
         <>
-          <a href="#/tracks/new">New Track</a>
           <a href="#/tracks/import">Import Tracks</a>
+          <a href="#/tracks/new">New Track</a>
         </>
       }
       renderEditTrackAction={(track) => (
