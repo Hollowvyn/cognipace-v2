@@ -99,7 +99,7 @@ export type TrackImportRequest = z.infer<typeof tracksImportTracksRequestSchema>
 export type TracksImportTracksRequest = TrackImportRequest
 
 export const trackImportResultSchema = z.strictObject({
-  createdTrackIds: z.array(trackIdSchema).min(1),
+  createdTrackIds: z.array(z.string()),
   createdTrackCount: z.number().int().min(1),
   createdProblemCount: z.number().int().min(0),
   reusedProblemCount: z.number().int().min(0),

@@ -825,4 +825,20 @@ describe('track import contracts', () => {
       }).success,
     ).toBe(false)
   })
+
+  it('accepts an empty created track id list when the created count is nonzero', () => {
+    expect(
+      trackImportResultSchema.parse({
+        createdTrackIds: [],
+        createdTrackCount: 1,
+        createdProblemCount: 0,
+        reusedProblemCount: 0,
+      }),
+    ).toEqual({
+      createdTrackIds: [],
+      createdTrackCount: 1,
+      createdProblemCount: 0,
+      reusedProblemCount: 0,
+    })
+  })
 })
