@@ -758,8 +758,8 @@ function PracticeRhythmTable({
       headers={[
         'Bucket',
         'Completed reviews',
-        'Review Success',
         'Good + Easy',
+        'Review Success',
         'Evidence',
       ]}
       resetKey={resetKey}
@@ -767,8 +767,8 @@ function PracticeRhythmTable({
       cells={(row) => [
         bucketText(row),
         row.completedReviews,
-        formatPercent(row.reviewSuccess),
         `${row.goodEasy} of ${row.validRatings}`,
+        formatPercent(row.reviewSuccess),
         evidenceText(row.evidence),
       ]}
     />
@@ -1042,8 +1042,7 @@ export function RatingsMixTooltip({
         `Good: ${formatRatingCell(row.good, row.goodShare)}`,
         `Easy: ${formatRatingCell(row.easy, row.easyShare)}`,
         `Valid ratings: ${formatCount(row.validRatings)}`,
-        `Challenging reviews: ${formatCount(row.challengingReviews)}`,
-        `Evidence: ${evidenceText(row.evidence)}${row.isPartial ? ' · In progress' : ''}`,
+        `Partial state: ${row.isPartial ? 'In progress' : 'Complete'}`,
       ]}
     />
   ) : null

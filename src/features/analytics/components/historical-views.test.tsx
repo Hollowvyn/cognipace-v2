@@ -214,6 +214,15 @@ describe('Phase 2 historical analytics views', () => {
     expect(screen.getByText('Association, not causation.')).toBeVisible()
     await user.click(screen.getByRole('tab', { name: 'Table' }))
     expect(screen.getByRole('rowheader', { name: '08/01/26' })).toBeVisible()
+    expect(
+      screen.getAllByRole('columnheader').map((header) => header.textContent),
+    ).toEqual([
+      'Bucket',
+      'Completed reviews',
+      'Good + Easy',
+      'Review Success',
+      'Evidence',
+    ])
   })
 
   it('keeps Ratings Mix chart and table values on the same feature-owned rows', async () => {
@@ -643,7 +652,7 @@ describe('Phase 2 historical analytics views', () => {
     },
   )
 
-  it('keeps Practice Rhythm tooltip order aligned with its table and announces the active datum', () => {
+  it('keeps the locked Practice Rhythm tooltip order and announces the active datum', () => {
     const row = {
       id: '2026-08-01',
       bucketStart: '2026-08-01',
@@ -668,7 +677,7 @@ describe('Phase 2 historical analytics views', () => {
     )
   })
 
-  it('keeps Ratings Mix tooltip fields aligned with the exact table without a partial substitute', () => {
+  it('keeps the locked Ratings Mix tooltip fields and announces the active datum', () => {
     const row = {
       id: '2026-08-01',
       bucketStart: '2026-08-01',
@@ -691,9 +700,12 @@ describe('Phase 2 historical analytics views', () => {
     const tooltip = screen.getByRole('status', {
       name: '08/01/26–08/07/26 (in progress) details',
     })
-    expect(tooltip).toHaveTextContent('Challenging reviews: 1')
-    expect(tooltip).toHaveTextContent('Evidence: Measured · In progress')
-    expect(tooltip).not.toHaveTextContent('Partial state:')
+    expect(tooltip).toHaveAttribute('aria-live', 'polite')
+    expect(tooltip).toHaveAttribute('aria-atomic', 'true')
+    expect(tooltip).toHaveTextContent('Valid ratings: 4')
+    expect(tooltip).toHaveTextContent('Partial state: In progress')
+    expect(tooltip).not.toHaveTextContent('Challenging reviews:')
+    expect(tooltip).not.toHaveTextContent('Evidence:')
   })
 })
 
