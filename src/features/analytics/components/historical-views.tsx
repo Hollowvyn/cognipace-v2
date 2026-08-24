@@ -598,6 +598,7 @@ export function TopicPerformanceView({
             <Empty message="No topic has at least 10 valid ratings across 3 reviewed problems in this period." />
           )
         }
+        persistenceKey="analytics-topic-performance"
         table={<TopicPerformanceTable rows={view.rows} />}
       />
       <p className="m-0 text-sm text-muted-foreground">

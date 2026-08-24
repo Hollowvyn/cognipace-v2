@@ -68,6 +68,34 @@ function summaryWithHistoricalRows(
   }
 }
 
+function summaryWithTopicPerformance(
+  range: 90 | 120,
+): SerializedAnalyticsSummary {
+  const base = summaryWithHistoricalRows(range)
+  return {
+    ...base,
+    views: {
+      ...base.views,
+      topicPerformance: {
+        rows: [
+          {
+            id: `graphs-${range}`,
+            topic: `Graphs ${range}`,
+            reviewSuccess: 0.6,
+            goodEasy: 6,
+            validRatings: 10,
+            distinctProblems: 3,
+            evidence: 'Measured',
+          },
+        ],
+        strongerQualifyingTopics: 0,
+        lowEvidenceTopics: [],
+        additionalLowEvidenceTopics: 0,
+      },
+    },
+  }
+}
+
 describe('AnalyticsScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -236,6 +264,39 @@ describe('AnalyticsScreen', () => {
     expect(
       within(refreshedPanel).getByRole('rowheader', { name: '05/01/26' }),
     ).toBeVisible()
+  })
+
+  it('keeps the Topic Performance Table tab selected across a range remount', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage)
+      .mockResolvedValueOnce(summaryWithTopicPerformance(90))
+      .mockResolvedValueOnce(summaryWithTopicPerformance(120))
+    const harness = createQueryTestHarness()
+    const firstRender = render(<AnalyticsScreen range={90} />, {
+      wrapper: harness.wrapper,
+    })
+    let panel = await screen.findByRole('region', {
+      name: 'Topic Performance',
+    })
+
+    await user.click(within(panel).getByRole('tab', { name: 'Table' }))
+    expect(within(panel).getByRole('tab', { name: 'Table' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    firstRender.unmount()
+
+    render(<AnalyticsScreen range={120} />, { wrapper: harness.wrapper })
+    panel = await screen.findByRole('region', { name: 'Topic Performance' })
+    await waitFor(() => {
+      expect(
+        within(panel).getByRole('rowheader', { name: 'Graphs 120' }),
+      ).toBeVisible()
+    })
+    expect(within(panel).getByRole('tab', { name: 'Table' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 
   it('retains the locked historical view order and independent Topic Performance gate', async () => {
