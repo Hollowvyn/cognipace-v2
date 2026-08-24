@@ -185,6 +185,74 @@ export class ProblemsRepository {
     return this.readRequiredProblemForEdit(slug)
   }
 
+  async createMissingProblems(
+    inputs: readonly CreateMissingProblemInput[],
+    now = new Date(),
+  ): Promise<CreateMissingProblemsResult> {
+    return this.db.transaction(async (transactionDb) =>
+      createProblemsRepository(
+        transactionDb as unknown as Db,
+      ).insertMissingProblems(inputs, now),
+    )
+  }
+
+  async insertMissingProblems(
+    inputs: readonly CreateMissingProblemInput[],
+    now = new Date(),
+  ): Promise<CreateMissingProblemsResult> {
+    const normalizedInputs = normalizeMissingProblemInputs(inputs)
+
+    if (normalizedInputs.length === 0) {
+      return {
+        createdSlugs: [],
+        reusedSlugs: [],
+      }
+    }
+
+    const existingRows = await this.db
+      .select({ slug: problems.slug })
+      .from(problems)
+      .where(
+        inArray(
+          problems.slug,
+          normalizedInputs.map((input) => input.slug),
+        ),
+      )
+    const existingSlugs = new Set(existingRows.map((row) => row.slug))
+    const missingInputs = normalizedInputs.filter(
+      (input) => !existingSlugs.has(input.slug),
+    )
+    const timestamp = now.getTime()
+
+    const createdRows =
+      missingInputs.length === 0
+        ? []
+        : await this.db
+            .insert(problems)
+            .values(
+              missingInputs.map((input) => ({
+                slug: input.slug,
+                title: input.title?.trim() || titleFromSlug(input.slug),
+                difficulty: normalizeProblemDifficulty(input.difficulty),
+                isPremium: input.isPremium ?? false,
+                createdAt: timestamp,
+                updatedAt: timestamp,
+              })),
+            )
+            .onConflictDoNothing()
+            .returning({ slug: problems.slug })
+    const createdSlugs = new Set(createdRows.map((row) => row.slug))
+
+    return {
+      createdSlugs: normalizedInputs
+        .map((input) => input.slug)
+        .filter((slug) => createdSlugs.has(slug)),
+      reusedSlugs: normalizedInputs
+        .map((input) => input.slug)
+        .filter((slug) => !createdSlugs.has(slug)),
+    }
+  }
+
   async updateProblem(input: UpdateProblemInput, now = new Date()) {
     const slug = normalizeLeetCodeSlug(input.problemSlug)
     const timestamp = now.getTime()
@@ -937,6 +1005,18 @@ export interface CreateProblemInput {
   companyLabels: string[]
 }
 
+export interface CreateMissingProblemInput {
+  slug: string
+  title?: string | null | undefined
+  difficulty?: string | null | undefined
+  isPremium?: boolean | null | undefined
+}
+
+export interface CreateMissingProblemsResult {
+  createdSlugs: string[]
+  reusedSlugs: string[]
+}
+
 export interface UpdateProblemInput extends Omit<
   CreateProblemInput,
   'slugOrUrl'
@@ -956,4 +1036,24 @@ export interface BulkUpdateProblemsInput {
 
 interface UpsertProblemFromLeetCodeInput extends UpsertProblemInput {
   topicLabels?: readonly string[] | undefined
+}
+
+function normalizeMissingProblemInputs(
+  inputs: readonly CreateMissingProblemInput[],
+) {
+  const normalizedInputs = new Map<string, CreateMissingProblemInput>()
+
+  for (const input of inputs) {
+    const slug = normalizeLeetCodeSlug(input.slug)
+
+    if (!slug) {
+      throw new Error('Cannot create a missing problem without a slug.')
+    }
+
+    if (!normalizedInputs.has(slug)) {
+      normalizedInputs.set(slug, { ...input, slug })
+    }
+  }
+
+  return [...normalizedInputs.values()]
 }

@@ -19,9 +19,11 @@ import { createProxyCallback } from '@/platform/db/proxy'
 import * as schema from '@/platform/db/schema'
 import {
   companies,
+  fsrsCards,
   problemCompanies,
   problemPractice,
   problemTopics,
+  problems,
   reviewAttempts,
 } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
@@ -514,9 +516,9 @@ describe('ProblemsRepository library data', () => {
         isDue: true,
       },
     })
-    expect(
-      rowWithUndefinedRetention[0]?.state.retrievability,
-    ).toBeGreaterThan(0.9)
+    expect(rowWithUndefinedRetention[0]?.state.retrievability).toBeGreaterThan(
+      0.9,
+    )
     expect(rowWithUndefinedRetention[0]?.state.retrievability).toBeLessThan(
       0.97,
     )
@@ -554,6 +556,180 @@ describe('ProblemsRepository library data', () => {
     expect(
       problemSelect.params.filter((param) => param === 'valid-parentheses'),
     ).toHaveLength(1)
+  })
+})
+
+describe('ProblemsRepository missing-problem imports', () => {
+  it('preserves existing metadata, inserts missing rows with fallbacks, and classifies both sets', async () => {
+    const handle = await createTestDb({ seed: false })
+    const repository = createProblemsRepository(handle.db)
+    const originalCreatedAt = new Date('2026-01-01T00:00:00.000Z').getTime()
+    const originalUpdatedAt = new Date('2026-01-02T00:00:00.000Z').getTime()
+    const now = new Date('2026-01-03T00:00:00.000Z')
+
+    await handle.db.insert(problems).values({
+      slug: 'existing-problem',
+      title: 'Original Metadata',
+      difficulty: 'hard',
+      isPremium: true,
+      createdAt: originalCreatedAt,
+      updatedAt: originalUpdatedAt,
+    })
+
+    const result = await repository.createMissingProblems(
+      [
+        {
+          slug: 'Existing Problem',
+          title: 'Incoming Metadata',
+          difficulty: 'easy',
+          isPremium: false,
+        },
+        {
+          slug: 'explicit_problem',
+          title: 'Explicit Metadata',
+          difficulty: 'medium',
+          isPremium: true,
+        },
+        {
+          slug: 'fallback_problem',
+        },
+      ],
+      now,
+    )
+
+    expect(result).toEqual({
+      createdSlugs: ['explicit-problem', 'fallback-problem'],
+      reusedSlugs: ['existing-problem'],
+    })
+
+    const rows = await handle.db.select().from(problems)
+
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        {
+          slug: 'existing-problem',
+          title: 'Original Metadata',
+          difficulty: 'hard',
+          isPremium: true,
+          createdAt: originalCreatedAt,
+          updatedAt: originalUpdatedAt,
+        },
+        {
+          slug: 'explicit-problem',
+          title: 'Explicit Metadata',
+          difficulty: 'medium',
+          isPremium: true,
+          createdAt: now.getTime(),
+          updatedAt: now.getTime(),
+        },
+        {
+          slug: 'fallback-problem',
+          title: 'Fallback Problem',
+          difficulty: 'unknown',
+          isPremium: false,
+          createdAt: now.getTime(),
+          updatedAt: now.getTime(),
+        },
+      ]),
+    )
+    expect(
+      await handle.db
+        .select()
+        .from(problemPractice)
+        .where(eq(problemPractice.problemSlug, 'fallback-problem')),
+    ).toEqual([])
+    expect(
+      await handle.db
+        .select()
+        .from(fsrsCards)
+        .where(eq(fsrsCards.problemSlug, 'fallback-problem')),
+    ).toEqual([])
+    expect(
+      await handle.db
+        .select()
+        .from(reviewAttempts)
+        .where(eq(reviewAttempts.problemSlug, 'fallback-problem')),
+    ).toEqual([])
+  })
+
+  it('deduplicates normalized slugs before reading and inserting', async () => {
+    const handle = await createTestDb({ seed: false })
+    const { db, queries } = createInstrumentedDb(handle)
+    const repository = createProblemsRepository(db)
+
+    const result = await repository.createMissingProblems([
+      { slug: ' New Problem ' },
+      { slug: 'new_problem', title: 'Duplicate Metadata' },
+      { slug: 'https://leetcode.com/problems/another-problem/' },
+      { slug: 'another-problem' },
+    ])
+
+    expect(result).toEqual({
+      createdSlugs: ['new-problem', 'another-problem'],
+      reusedSlugs: [],
+    })
+
+    const problemSelect = queries.find(
+      (query) =>
+        query.method === 'all' &&
+        query.sql.includes('from "problems"') &&
+        query.sql.includes('"problems"."slug" in'),
+    )
+
+    expect(problemSelect).toBeDefined()
+    if (!problemSelect) {
+      throw new Error('Expected the problem slug select query to be captured.')
+    }
+    expect(problemSelect.params).toEqual(['new-problem', 'another-problem'])
+    expect(
+      queries.some(
+        (query) =>
+          query.method === 'all' &&
+          query.sql.toLowerCase().includes('on conflict do nothing'),
+      ),
+    ).toBe(true)
+  })
+
+  it('treats a slug that races into existence as reused without overwriting it', async () => {
+    const handle = await createTestDb({ seed: false })
+    const delegate = createProxyCallback(handle.rawDb)
+    let raced = false
+    const db: Db = drizzle(
+      async (sql, params, method) => {
+        const result = await delegate(sql, params, method)
+
+        if (
+          !raced &&
+          method === 'all' &&
+          sql.includes('from "problems"') &&
+          sql.includes('"problems"."slug" in')
+        ) {
+          raced = true
+          handle.rawDb.exec(
+            `INSERT INTO problems (slug, title, difficulty, is_premium, created_at, updated_at) VALUES ('raced-problem', 'Raced Metadata', 'hard', 1, 10, 10)`,
+          )
+        }
+
+        return result
+      },
+      { schema },
+    )
+
+    const result = await createProblemsRepository(db).createMissingProblems([
+      { slug: 'raced_problem', title: 'Incoming Metadata' },
+    ])
+
+    expect(result).toEqual({
+      createdSlugs: [],
+      reusedSlugs: ['raced-problem'],
+    })
+    await expect(
+      createProblemsRepository(handle.db).getBySlug('raced-problem'),
+    ).resolves.toMatchObject({
+      title: 'Raced Metadata',
+      difficulty: 'hard',
+      isPremium: true,
+    })
   })
 })
 

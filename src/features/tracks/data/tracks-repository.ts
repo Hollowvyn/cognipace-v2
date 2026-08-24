@@ -272,49 +272,56 @@ export class TracksRepository {
   }
 
   async createTrack(input: CreateTrackInput, now = new Date()): Promise<Track> {
-    return this.db.transaction(async (transactionDb) => {
-      const timestamp = now.getTime()
-      const normalizedTrack = normalizeTrackMutationInput(input)
-      const slug = normalizeLeetCodeSlug(normalizedTrack.title)
+    return this.db.transaction(async (transactionDb) =>
+      createTracksRepository(transactionDb as unknown as Db).insertTrack(
+        input,
+        now,
+      ),
+    )
+  }
 
-      if (!slug) {
-        throw new Error('Cannot create a track without a slug.')
-      }
+  async insertTrack(input: CreateTrackInput, now = new Date()): Promise<Track> {
+    const timestamp = now.getTime()
+    const normalizedTrack = normalizeTrackMutationInput(input)
+    const slug = normalizeLeetCodeSlug(normalizedTrack.title)
 
-      const trackId = createTrackId(slug)
-      const existingTrack = await readTrackById(transactionDb, trackId)
+    if (!slug) {
+      throw new Error('Cannot create a track without a slug.')
+    }
 
-      if (existingTrack) {
-        throw new Error(`Track "${trackId}" already exists.`)
-      }
+    const trackId = createTrackId(slug)
+    const existingTrack = await readTrackById(this.db, trackId)
 
-      await transactionDb.insert(tracks).values({
-        id: trackId,
-        slug,
-        title: normalizedTrack.title,
-        description: normalizedTrack.description,
-        dueAt: normalizedTrack.dueAt,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      })
+    if (existingTrack) {
+      throw new Error(`Track "${trackId}" already exists.`)
+    }
 
-      const normalizedGroups = normalizeGroupInputs({
-        trackId,
-        groups: normalizedTrack.groups,
-        existingGroupIds: new Set(),
-        useDefaultMainGroup: true,
-      })
-
-      await writeNewGroups(transactionDb, trackId, normalizedGroups, timestamp)
-
-      const createdTrack = await readTrackById(transactionDb, trackId)
-
-      if (!createdTrack) {
-        throw new Error(`Failed to read created track "${trackId}".`)
-      }
-
-      return createdTrack
+    await this.db.insert(tracks).values({
+      id: trackId,
+      slug,
+      title: normalizedTrack.title,
+      description: normalizedTrack.description,
+      dueAt: normalizedTrack.dueAt,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     })
+
+    const normalizedGroups = normalizeGroupInputs({
+      trackId,
+      groups: normalizedTrack.groups,
+      existingGroupIds: new Set(),
+      useDefaultMainGroup: true,
+    })
+
+    await writeNewGroups(this.db, trackId, normalizedGroups, timestamp)
+
+    const createdTrack = await readTrackById(this.db, trackId)
+
+    if (!createdTrack) {
+      throw new Error(`Failed to read created track "${trackId}".`)
+    }
+
+    return createdTrack
   }
 
   async updateTrack(input: UpdateTrackInput, now = new Date()): Promise<Track> {
