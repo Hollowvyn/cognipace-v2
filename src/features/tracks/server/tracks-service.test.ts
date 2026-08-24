@@ -970,6 +970,136 @@ describe('track import orchestration', () => {
     await expect(handle.db.select().from(problems)).resolves.toEqual([])
   })
 
+  it('rejects normalized title conflicts across case and separators', async () => {
+    const handle = await createTestDb({ seed: false })
+    await handle.db.insert(tracks).values({
+      id: 'legacy-title-record',
+      slug: 'legacy-title-record',
+      title: 'Case Variation Track',
+      description: null,
+      dueAt: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z').getTime(),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z').getTime(),
+    })
+
+    let mutationCount = 0
+    setOnMutationHook(() => {
+      mutationCount += 1
+    })
+
+    try {
+      await expect(
+        importTracks(
+          handle.db,
+          parseImportRequest({
+            schemaVersion: 1,
+            app: 'cognipace-track-import',
+            tracks: [
+              {
+                title: 'case_variation-track',
+                description: null,
+                dueAt: null,
+                groups: [
+                  {
+                    title: 'Main',
+                    problemSlugs: ['case-variation-problem'],
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
+      ).rejects.toThrow(
+        'Track "case_variation-track" already exists. Rename or delete it explicitly before importing.',
+      )
+    } finally {
+      setOnMutationHook(null)
+    }
+
+    expect(mutationCount).toBe(0)
+    await expect(handle.db.select().from(problems)).resolves.toEqual([])
+  })
+
+  it('rejects a slug-only conflict with a clear rename or delete message', async () => {
+    const handle = await createTestDb({ seed: false })
+    await handle.db.insert(tracks).values({
+      id: 'legacy-slug-record',
+      slug: 'slug-only-reservation',
+      title: 'Different Existing Track',
+      description: null,
+      dueAt: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z').getTime(),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z').getTime(),
+    })
+
+    await expect(
+      importTracks(
+        handle.db,
+        parseImportRequest({
+          schemaVersion: 1,
+          app: 'cognipace-track-import',
+          tracks: [
+            {
+              title: 'Slug Only Reservation',
+              description: null,
+              dueAt: null,
+              groups: [
+                {
+                  title: 'Main',
+                  problemSlugs: ['slug-only-problem'],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    ).rejects.toThrow(
+      'Track "Slug Only Reservation" conflicts with existing track slug "slug-only-reservation" used by "Different Existing Track". Rename or delete it explicitly before importing.',
+    )
+
+    await expect(handle.db.select().from(problems)).resolves.toEqual([])
+  })
+
+  it('preserves the generated-id conflict check when slug and title differ', async () => {
+    const handle = await createTestDb({ seed: false })
+    await handle.db.insert(tracks).values({
+      id: 'generated-id-only',
+      slug: 'different-existing-slug',
+      title: 'Different Existing Track',
+      description: null,
+      dueAt: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z').getTime(),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z').getTime(),
+    })
+
+    await expect(
+      importTracks(
+        handle.db,
+        parseImportRequest({
+          schemaVersion: 1,
+          app: 'cognipace-track-import',
+          tracks: [
+            {
+              title: 'Generated ID Only',
+              description: null,
+              dueAt: null,
+              groups: [
+                {
+                  title: 'Main',
+                  problemSlugs: ['generated-id-problem'],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    ).rejects.toThrow(
+      'Track "Generated ID Only" already exists. Rename or delete it explicitly before importing.',
+    )
+
+    await expect(handle.db.select().from(problems)).resolves.toEqual([])
+  })
+
   it('rejects a later normalized title conflict even when the existing id is arbitrary', async () => {
     const handle = await createTestDb({ seed: false })
     const existingTrack = {
@@ -1033,6 +1163,71 @@ describe('track import orchestration', () => {
       existingTrack,
     ])
     await expect(handle.db.select().from(problems)).resolves.toEqual([])
+  })
+
+  it('rejects a later-file slug conflict before any import writes', async () => {
+    const handle = await createTestDb({ seed: false })
+    const existingTrack = {
+      id: 'legacy-later-slug-record',
+      slug: 'later-slug-conflict',
+      title: 'Different Existing Track',
+      description: null,
+      dueAt: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z').getTime(),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z').getTime(),
+    }
+    await handle.db.insert(tracks).values(existingTrack)
+
+    let mutationCount = 0
+    setOnMutationHook(() => {
+      mutationCount += 1
+    })
+
+    try {
+      await expect(
+        importTracks(
+          handle.db,
+          parseImportRequest({
+            schemaVersion: 1,
+            app: 'cognipace-track-import',
+            tracks: [
+              {
+                title: 'First Import Before Conflict',
+                description: null,
+                dueAt: null,
+                groups: [
+                  {
+                    title: 'Main',
+                    problemSlugs: ['first-before-slug-conflict'],
+                  },
+                ],
+              },
+              {
+                title: 'Later Slug Conflict',
+                description: null,
+                dueAt: null,
+                groups: [
+                  {
+                    title: 'Main',
+                    problemSlugs: ['later-slug-conflict-problem'],
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
+      ).rejects.toThrow(
+        'Track "Later Slug Conflict" conflicts with existing track slug "later-slug-conflict" used by "Different Existing Track". Rename or delete it explicitly before importing.',
+      )
+    } finally {
+      setOnMutationHook(null)
+    }
+
+    expect(mutationCount).toBe(0)
+    await expect(handle.db.select().from(problems)).resolves.toEqual([])
+    await expect(handle.db.select().from(tracks)).resolves.toEqual([
+      existingTrack,
+    ])
   })
 
   it('rolls back problems, earlier tracks, and later track writes on insertion failure', async () => {

@@ -73,6 +73,28 @@ describe('TracksRepository', () => {
     expect(activeTrack?.track).not.toHaveProperty('isActive')
   })
 
+  it('reads a track by normalized slug independently of its id and title', async () => {
+    const handle = await createTestDb({ seed: false })
+    const timestamp = new Date('2026-01-01T00:00:00.000Z').getTime()
+    await handle.db.insert(tracks).values({
+      id: 'legacy-track-record',
+      slug: 'reserved-track-slug',
+      title: 'Different Track Title',
+      description: null,
+      dueAt: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+
+    await expect(
+      createTracksRepository(handle.db).getTrackBySlug('Reserved Track Slug'),
+    ).resolves.toMatchObject({
+      id: 'legacy-track-record',
+      slug: 'reserved-track-slug',
+      title: 'Different Track Title',
+    })
+  })
+
   it('maps track due date from storage', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),

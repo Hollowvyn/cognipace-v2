@@ -57,9 +57,24 @@ export async function importTracks(
 
     for (const track of validatedRequest.file.tracks) {
       const trackId = normalizeLeetCodeSlug(track.title)
-      const existingTrack =
-        (await tracksRepository.getTrackByNormalizedTitle(track.title)) ??
-        (await tracksRepository.getTrackById(trackId))
+      const existingTrackByTitle =
+        await tracksRepository.getTrackByNormalizedTitle(track.title)
+
+      if (existingTrackByTitle) {
+        throw new Error(
+          `Track "${track.title}" already exists. Rename or delete it explicitly before importing.`,
+        )
+      }
+
+      const existingTrackBySlug = await tracksRepository.getTrackBySlug(trackId)
+
+      if (existingTrackBySlug) {
+        throw new Error(
+          `Track "${track.title}" conflicts with existing track slug "${trackId}" used by "${existingTrackBySlug.title}". Rename or delete it explicitly before importing.`,
+        )
+      }
+
+      const existingTrack = await tracksRepository.getTrackById(trackId)
 
       if (existingTrack) {
         throw new Error(
