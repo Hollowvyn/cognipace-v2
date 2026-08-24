@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
@@ -860,7 +861,17 @@ describe('track import contracts', () => {
   it('keeps the NeetCode example compatible with the source-derived import contract', () => {
     const input = JSON.parse(
       readFileSync(
-        resolve(process.cwd(), 'track-imports/neetcode-150-and-250.json'),
+        import.meta.dirname
+          ? resolve(
+              import.meta.dirname,
+              '../../../../track-imports/neetcode-150-and-250.json',
+            )
+          : fileURLToPath(
+              new URL(
+                '../../../../track-imports/neetcode-150-and-250.json',
+                import.meta.url,
+              ),
+            ),
         'utf8',
       ),
     ) as unknown

@@ -143,3 +143,11 @@ of each problem within a track, the tracks contain 144 and 232 unique
 memberships respectively. Legacy duplicate memberships are omitted because
 the current Tracks model permits one track membership per problem; no padding
 or invented problems are added.
+
+To refresh both checked-in snapshots after an intentional legacy-source update,
+run `npm run tracks:refresh-neetcode` from this repository. The developer-only
+generator reads the sibling source, derives first-occurrence order and problem
+metadata, and writes the JSON artifact plus the contract-test fixture. String
+source entries use the explicit `difficulty: "unknown"` and
+`isPremium: false` fallbacks. The generator never pads named lists,
+and tests do not require the legacy sibling repository at runtime.

@@ -11,6 +11,7 @@
     "prepare:wxt": "wxt prepare",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:check": "drizzle-kit check --config drizzle.config.ts",
+    "tracks:refresh-neetcode": "node scripts/generate-neetcode-track-import.mjs",
     "typecheck": "npm run prepare:wxt && tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
     "test": "vitest run",
