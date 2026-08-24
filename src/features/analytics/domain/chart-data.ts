@@ -206,18 +206,18 @@ export function buildRecallQualityPoints(
   }
 
   return points.map((point) => ({
-      ...bucketBounds(point.bucket),
-      observedRecall: recomputeBucketRatio([point.observed]),
-      predictedRecall: recomputeBucketRatio(
-        point.predicted.map((value) => ({
-          numerator: value,
-          denominator: 1,
-        })),
-      ),
-      targetRetention: options.fsrsOptions.targetRetention,
-      reviewCount: point.reviewCount,
-      eligibleSampleSize: point.observed.denominator,
-    }))
+    ...bucketBounds(point.bucket),
+    observedRecall: recomputeBucketRatio([point.observed]),
+    predictedRecall: recomputeBucketRatio(
+      point.predicted.map((value) => ({
+        numerator: value,
+        denominator: 1,
+      })),
+    ),
+    targetRetention: options.fsrsOptions.targetRetention,
+    reviewCount: point.reviewCount,
+    eligibleSampleSize: point.observed.denominator,
+  }))
 }
 
 export function buildPredictedRecallSamples(
@@ -294,12 +294,12 @@ export function buildPracticeRhythmPoints(
   }
 
   return points.map((point) => ({
-      ...bucketBounds(point.bucket),
-      reviewCount: point.reviewCount,
-      observedCorrectness: recomputeBucketRatio([point.observed]),
-      sampleSize: point.observed.denominator,
-      associationOnly: true,
-    }))
+    ...bucketBounds(point.bucket),
+    reviewCount: point.reviewCount,
+    observedCorrectness: recomputeBucketRatio([point.observed]),
+    sampleSize: point.observed.denominator,
+    associationOnly: true,
+  }))
 }
 
 export function buildRatingsMixPoints(
@@ -307,23 +307,22 @@ export function buildRatingsMixPoints(
   options: AnalyticsRangeOptions,
 ): RatingsMixPoint[] {
   return options.buckets.map((bucket) => {
-      const counts = { again: 0, hard: 0, good: 0, easy: 0 }
-      for (const event of events)
-        if (
-          isWithinRange(event.reviewedAt, options) &&
-          isInBucket(event.reviewedAt, bucket) &&
-          hasValidReviewRating(event)
-        )
-          counts[event.rating] += 1
-      const total = sumBucketValues(Object.values(counts))
-      return {
-        ...bucketBounds(bucket),
-        ...counts,
-        total,
-        hardAgainShare:
-          total === 0 ? null : (counts.again + counts.hard) / total,
-      }
-    })
+    const counts = { again: 0, hard: 0, good: 0, easy: 0 }
+    for (const event of events)
+      if (
+        isWithinRange(event.reviewedAt, options) &&
+        isInBucket(event.reviewedAt, bucket) &&
+        hasValidReviewRating(event)
+      )
+        counts[event.rating] += 1
+    const total = sumBucketValues(Object.values(counts))
+    return {
+      ...bucketBounds(bucket),
+      ...counts,
+      total,
+      hardAgainShare: total === 0 ? null : (counts.again + counts.hard) / total,
+    }
+  })
 }
 
 export function buildHardAgainSummary(
@@ -334,23 +333,25 @@ export function buildHardAgainSummary(
   const comparisonDays = getComparisonDays(options)
   const selectedTimeFrame = options.timeFrame
   const hasComparablePeriod = comparisonDays !== null || !selectedTimeFrame
-  const previousStart = comparisonDays !== null && selectedTimeFrame
+  const previousStart =
+    comparisonDays !== null && selectedTimeFrame
       ? shiftAnalyticsCalendarDays(
-        new Date(selectedTimeFrame.periodStart ?? options.start),
-        -comparisonDays,
-        selectedTimeFrame.timeZone,
-      )
-    : new Date(
-        options.start.getTime() -
-          (options.end.getTime() - options.start.getTime()),
-      )
-  const previousEnd = comparisonDays !== null && selectedTimeFrame
-    ? shiftAnalyticsCalendarDays(
-        new Date(selectedTimeFrame.asOf),
-        -comparisonDays,
-        selectedTimeFrame.timeZone,
-      )
-    : options.start
+          new Date(selectedTimeFrame.periodStart ?? options.start),
+          -comparisonDays,
+          selectedTimeFrame.timeZone,
+        )
+      : new Date(
+          options.start.getTime() -
+            (options.end.getTime() - options.start.getTime()),
+        )
+  const previousEnd =
+    comparisonDays !== null && selectedTimeFrame
+      ? shiftAnalyticsCalendarDays(
+          new Date(selectedTimeFrame.asOf),
+          -comparisonDays,
+          selectedTimeFrame.timeZone,
+        )
+      : options.start
   const selectedRatings = events.filter(
     (event) =>
       event.reviewedAt >= options.start &&
@@ -366,8 +367,9 @@ export function buildHardAgainSummary(
       hasValidReviewRating(event),
   )
   const selectedShare = calculateHardAgainShare(selectedRatings)
-  const previousShare =
-    hasComparablePeriod ? calculateHardAgainShare(previousRatings) : null
+  const previousShare = hasComparablePeriod
+    ? calculateHardAgainShare(previousRatings)
+    : null
   const lowSample = selectedRatings.length < lowSampleThreshold
   const previousLowSample =
     !hasComparablePeriod || previousRatings.length < lowSampleThreshold
@@ -448,10 +450,10 @@ export function buildStabilityPoints(
   }
 
   return points.map((point) => ({
-      ...bucketBounds(point.bucket),
-      medianStabilityDays: medianBucketValues(point.values),
-      sampleSize: point.values.length,
-    }))
+    ...bucketBounds(point.bucket),
+    medianStabilityDays: medianBucketValues(point.values),
+    sampleSize: point.values.length,
+  }))
 }
 
 export function reconstructOverdueBacklogSnapshots(

@@ -133,9 +133,11 @@ function getMondayWeekIndex(dateKey: string): number {
 }
 
 function getEpochDay(dateKey: string): number {
-  const [year, month, day] = dateKey
-    .split('-')
-    .map(Number) as [number, number, number]
+  const [year, month, day] = dateKey.split('-').map(Number) as [
+    number,
+    number,
+    number,
+  ]
 
   return Math.floor(Date.UTC(year, month - 1, day) / 86_400_000)
 }
