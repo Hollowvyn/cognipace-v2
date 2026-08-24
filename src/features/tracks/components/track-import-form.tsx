@@ -8,13 +8,18 @@ import { Surface } from '@/components/ui/surface'
 import {
   createTrackImportPreview,
   trackImportFileSchema,
-  trackImportSchemaVersion,
   type TrackImportFile,
   type TrackImportPreview,
 } from '../api/tracks-contracts'
 import { useImportTracks } from '../api/tracks-api'
 
-export function TrackImportForm({ onCancel }: { onCancel: () => void }) {
+export function TrackImportForm({
+  onCancel,
+  onDone,
+}: {
+  onCancel: () => void
+  onDone: () => void
+}) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const importTracks = useImportTracks()
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
@@ -40,7 +45,7 @@ export function TrackImportForm({ onCancel }: { onCancel: () => void }) {
       return
     }
 
-    if (!isTrackImportEnvelope(parsedJson)) {
+    if (hasWrongTrackImportApp(parsedJson)) {
       setError(
         'This is not a CogniPace Tracks import file. Use the Tracks import app and schema version 1 envelope.',
       )
@@ -165,9 +170,13 @@ export function TrackImportForm({ onCancel }: { onCancel: () => void }) {
       {success ? <InlineStatus tone="success">{success}</InlineStatus> : null}
 
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button disabled={isPending} onClick={onCancel} variant="outline">
-          Cancel
-        </Button>
+        {success ? (
+          <Button onClick={onDone}>Done</Button>
+        ) : (
+          <Button disabled={isPending} onClick={onCancel} variant="outline">
+            Cancel
+          </Button>
+        )}
       </div>
     </div>
   )
@@ -255,16 +264,12 @@ async function readFileText(file: File) {
   })
 }
 
-function isTrackImportEnvelope(
-  value: unknown,
-): value is Record<string, unknown> {
+function hasWrongTrackImportApp(value: unknown): boolean {
   return (
     typeof value === 'object' &&
     value !== null &&
     'app' in value &&
-    'schemaVersion' in value &&
-    value.app === 'cognipace-track-import' &&
-    value.schemaVersion === trackImportSchemaVersion
+    value.app !== 'cognipace-track-import'
   )
 }
 

@@ -86,6 +86,30 @@ describe('TrackImportForm', () => {
     expect(sendMessage).not.toHaveBeenCalled()
   })
 
+  it('lets the contract report an unsupported schema version with its path', async () => {
+    const user = userEvent.setup()
+    renderImportForm()
+
+    await user.upload(
+      screen.getByLabelText('Tracks import file'),
+      createJsonFile({
+        app: 'cognipace-track-import',
+        schemaVersion: 2,
+        tracks: [
+          {
+            title: 'Interview',
+            groups: [{ title: 'Arrays', problemSlugs: ['two-sum'] }],
+          },
+        ],
+      }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /schemaVersion.*expected 1/i,
+    )
+    expect(sendMessage).not.toHaveBeenCalled()
+  })
+
   it('shows the first useful contract path and message for invalid import data', async () => {
     const user = userEvent.setup()
     renderImportForm()
@@ -157,6 +181,7 @@ describe('TrackImportForm', () => {
     const importButton = screen.getByRole('button', { name: 'Import Tracks' })
 
     await user.click(importButton)
+    await user.click(importButton)
 
     expect(importButton).toBeDisabled()
     expect(screen.getByLabelText('Tracks import file')).toBeDisabled()
@@ -170,15 +195,16 @@ describe('TrackImportForm', () => {
     })
   })
 
-  it('reports created and reused counts after a successful import', async () => {
+  it('reports created and reused counts and offers Done after a successful import', async () => {
     const user = userEvent.setup()
+    const onDone = vi.fn()
     vi.mocked(sendMessage).mockResolvedValueOnce({
       createdTrackIds: ['track-one'],
       createdTrackCount: 1,
       createdProblemCount: 2,
       reusedProblemCount: 3,
     })
-    renderImportForm()
+    renderImportForm({ onDone })
 
     await uploadValidFile(user)
     await user.click(screen.getByRole('button', { name: 'Import Tracks' }))
@@ -187,9 +213,17 @@ describe('TrackImportForm', () => {
       'Imported 1 track. Created 2 problems. Reused 3 problems.',
     )
     expect(screen.getByRole('button', { name: 'Import Tracks' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Done' })).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Cancel' }),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Done' }))
+
+    expect(onDone).toHaveBeenCalledOnce()
   })
 
-  it('keeps the ready file and modal actions available after an import failure', async () => {
+  it('keeps the ready file and allows retry after an import failure', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage).mockRejectedValueOnce(
       new Error('Track title already exists.'),
@@ -205,13 +239,30 @@ describe('TrackImportForm', () => {
     expect(screen.getByText('tracks.json')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Import Tracks' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeVisible()
+
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      createdTrackIds: ['track-one'],
+      createdTrackCount: 1,
+      createdProblemCount: 1,
+      reusedProblemCount: 0,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Import Tracks' }))
+
+    expect(sendMessage).toHaveBeenCalledTimes(2)
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Imported 1 track. Created 1 problems. Reused 0 problems.',
+    )
   })
 })
 
-function renderImportForm() {
+function renderImportForm(options: { onDone?: () => void } = {}) {
   const { wrapper } = createQueryTestHarness()
 
-  return render(<TrackImportForm onCancel={vi.fn()} />, { wrapper })
+  return render(
+    <TrackImportForm onCancel={vi.fn()} onDone={options.onDone ?? vi.fn()} />,
+    { wrapper },
+  )
 }
 
 async function uploadValidFile(user: ReturnType<typeof userEvent.setup>) {

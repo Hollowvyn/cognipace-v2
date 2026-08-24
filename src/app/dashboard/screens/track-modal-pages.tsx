@@ -40,7 +40,7 @@ export function ImportTracksModalPage() {
       title="Import Tracks"
       variant="form"
     >
-      <TrackImportForm onCancel={closeToTracks} />
+      <TrackImportForm onCancel={closeToTracks} onDone={closeToTracks} />
     </RouteModal>
   )
 }
