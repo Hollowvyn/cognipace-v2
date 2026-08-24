@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
 import type {
@@ -851,5 +854,93 @@ describe('track import contracts', () => {
         reusedProblemCount: 0,
       }).success,
     ).toBe(false)
+  })
+
+  it('keeps the NeetCode example compatible with the public import contract', () => {
+    const input = JSON.parse(
+      readFileSync(
+        resolve(process.cwd(), 'track-imports/neetcode-150-and-250.json'),
+        'utf8',
+      ),
+    ) as unknown
+    const parsed = trackImportFileSchema.parse(input)
+    const preview = createTrackImportPreview(parsed)
+    const referencedProblemSlugs = new Set(
+      parsed.tracks.flatMap((track) =>
+        track.groups.flatMap((group) => group.problemSlugs),
+      ),
+    )
+    const definedProblemSlugs = new Set(
+      parsed.problems.map((problem) => problem.slug),
+    )
+
+    expect(parsed.tracks.map((track) => track.title)).toEqual([
+      'NeetCode 150',
+      'NeetCode 250',
+    ])
+    expect(preview).toEqual({
+      trackCount: 2,
+      groupCount: 35,
+      problemCount: 240,
+      uniqueProblemCount: 240,
+    })
+    expect(parsed.problems).toHaveLength(240)
+    expect(new Set(parsed.problems.map((problem) => problem.slug)).size).toBe(
+      240,
+    )
+    expect(
+      parsed.tracks.map((track) =>
+        track.groups.reduce(
+          (count, group) => count + new Set(group.problemSlugs).size,
+          0,
+        ),
+      ),
+    ).toEqual([144, 232])
+    expect([...definedProblemSlugs].sort()).toEqual(
+      [...referencedProblemSlugs].sort(),
+    )
+    expect(
+      parsed.tracks.map((track) => track.groups.map((group) => group.title)),
+    ).toEqual([
+      [
+        'Arrays & Hashing',
+        'Sequence',
+        'Sliding Window',
+        'Stack',
+        'Binary Search',
+        'Linked List',
+        'Trees',
+        'Heap / Priority Queue',
+        'Backtracking',
+        'Tries',
+        'Graphs',
+        '1-D Dynamic Programming',
+        '2-D Dynamic Programming',
+        'Greedy',
+        'Intervals',
+        'Math & Geometry',
+        'Bit Manipulation',
+      ],
+      [
+        'Arrays & Hashing',
+        'Two Pointers',
+        'Sliding Window',
+        'Stack',
+        'Binary Search',
+        'Linked List',
+        'Trees',
+        'Heap / Priority Queue',
+        'Backtracking',
+        'Tries',
+        'Graphs',
+        'Advanced Graphs',
+        '1-D Dynamic Programming',
+        '2-D Dynamic Programming',
+        'Greedy',
+        'Intervals',
+        'Math & Geometry',
+        'Bit Manipulation',
+      ],
+    ])
   })
 })

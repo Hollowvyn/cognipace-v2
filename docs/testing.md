@@ -200,10 +200,20 @@ reloading the extension.
 5. Set a track active.
 6. Change the active group when more than one group exists.
 7. Reset track progress only when intentionally testing reset behavior.
+8. Open **Import Tracks**, select a valid JSON file, and confirm the preview
+   shows its track, group, and unique referenced-problem counts before import.
+9. Import a file containing one existing and one missing problem. Confirm the
+   result reports one reused and one created problem, and verify the new track
+   preserves group and problem order.
+10. Import the same track again. Confirm the named track conflict appears and
+    no partial problems, groups, memberships, or tracks are written.
+11. Confirm an existing problem's metadata and practice history, settings, the
+    active track, and an unrelated track are unchanged.
 
 Expected: active track state, group state, problem order, and track progress are
 local and update the dashboard without changing global practice history unless a
-review is saved.
+review is saved. Track import is atomic, non-destructive, and does not activate
+the imported track.
 
 ### Dashboard Analytics
 
@@ -347,7 +357,7 @@ Include:
 Docs-only formatting:
 
 ```sh
-npx prettier --check README.md docs/product.md docs/architecture.md docs/testing.md docs/superpowers/README.md
+npx prettier --check README.md docs/product.md docs/architecture.md docs/testing.md design.md docs/track-import.md
 ```
 
 Focused tests:
