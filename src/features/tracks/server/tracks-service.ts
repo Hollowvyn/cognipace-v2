@@ -123,15 +123,15 @@ export async function importTracks(
       createdTrackIds.push(createdTrack.id)
     }
 
-    return {
+    return trackImportResultSchema.parse({
       createdTrackIds,
       createdTrackCount: createdTrackIds.length,
       createdProblemCount: missingProblemResult.createdSlugs.length,
       reusedProblemCount: missingProblemResult.reusedSlugs.length,
-    }
+    })
   })
 
-  return trackImportResultSchema.parse(result)
+  return result
 }
 
 export async function getActiveTrack(db: Db, now = new Date()) {

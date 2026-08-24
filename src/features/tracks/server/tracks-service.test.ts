@@ -1,6 +1,7 @@
 import { asc, eq } from 'drizzle-orm'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
+import { saveReviewResult } from '@/features/practice/server/practice-service'
 import {
   trackImportResultSchema,
   tracksImportTracksRequestSchema,
@@ -838,11 +839,24 @@ describe('track import orchestration', () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
+    await makeLeetCodeActive(handle.db)
+    await saveReviewResult(handle.db, {
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: new Date('2026-01-02T12:00:00.000Z'),
+      isCorrect: true,
+      reviewAttemptId: 'preserved-review-attempt',
+    })
     await completeTrackProblem(handle.db, {
       trackId: 'leetcode-75',
       problemSlug: 'two-sum',
     })
     const before = await readStableTrackState(handle.db)
+
+    expect(before.practice).toHaveLength(1)
+    expect(before.cards).toHaveLength(1)
+    expect(before.reviewAttempts).toHaveLength(1)
+    expect(before.trackProgress).toHaveLength(1)
 
     await importTracks(
       handle.db,
@@ -1088,6 +1102,50 @@ describe('track import orchestration', () => {
       beforeSession,
     )
     expect(trackInsertCount).toBe(2)
+  })
+
+  it('rolls back writes when the import result fails validation inside the transaction', async () => {
+    const handle = await createTestDb({ seed: false })
+    const parseSpy = vi
+      .spyOn(trackImportResultSchema, 'parse')
+      .mockImplementation(() => {
+        throw new Error('forced import result validation failure')
+      })
+
+    try {
+      await expect(
+        importTracks(
+          handle.db,
+          parseImportRequest({
+            schemaVersion: 1,
+            app: 'cognipace-track-import',
+            tracks: [
+              {
+                title: 'Result Validation Import',
+                description: null,
+                dueAt: null,
+                groups: [
+                  {
+                    title: 'Main',
+                    problemSlugs: ['result-validation-problem'],
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
+      ).rejects.toThrow('forced import result validation failure')
+      expect(parseSpy).toHaveBeenCalledOnce()
+    } finally {
+      parseSpy.mockRestore()
+    }
+
+    await expect(handle.db.select().from(problems)).resolves.toEqual([])
+    await expect(handle.db.select().from(tracks)).resolves.toEqual([])
+    await expect(handle.db.select().from(trackGroups)).resolves.toEqual([])
+    await expect(handle.db.select().from(trackGroupProblems)).resolves.toEqual(
+      [],
+    )
   })
 
   it('validates requests at the service boundary and returns a schema-valid result', async () => {
