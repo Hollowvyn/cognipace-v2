@@ -425,7 +425,7 @@ describe('track import contracts', () => {
     expect(preview).toEqual({
       trackCount: 2,
       groupCount: 3,
-      problemCount: 3,
+      problemCount: 2,
       uniqueProblemCount: 2,
     })
     expectTypeOf(preview).toEqualTypeOf<TrackImportPreview>()
@@ -840,5 +840,16 @@ describe('track import contracts', () => {
       createdProblemCount: 0,
       reusedProblemCount: 0,
     })
+  })
+
+  it('rejects blank created track ids when present', () => {
+    expect(
+      trackImportResultSchema.safeParse({
+        createdTrackIds: ['   '],
+        createdTrackCount: 1,
+        createdProblemCount: 0,
+        reusedProblemCount: 0,
+      }).success,
+    ).toBe(false)
   })
 })

@@ -99,7 +99,7 @@ export type TrackImportRequest = z.infer<typeof tracksImportTracksRequestSchema>
 export type TracksImportTracksRequest = TrackImportRequest
 
 export const trackImportResultSchema = z.strictObject({
-  createdTrackIds: z.array(z.string()),
+  createdTrackIds: z.array(trackIdSchema),
   createdTrackCount: z.number().int().min(1),
   createdProblemCount: z.number().int().min(0),
   reusedProblemCount: z.number().int().min(0),
@@ -119,14 +119,11 @@ export function createTrackImportPreview(
 ): TrackImportPreview {
   const referencedProblemSlugs = new Set<string>()
   let groupCount = 0
-  let problemCount = 0
 
   for (const track of file.tracks) {
     groupCount += track.groups.length
 
     for (const group of track.groups) {
-      problemCount += group.problemSlugs.length
-
       for (const problemSlug of group.problemSlugs) {
         referencedProblemSlugs.add(normalizeLeetCodeSlug(problemSlug))
       }
@@ -136,7 +133,7 @@ export function createTrackImportPreview(
   return {
     trackCount: file.tracks.length,
     groupCount,
-    problemCount,
+    problemCount: referencedProblemSlugs.size,
     uniqueProblemCount: referencedProblemSlugs.size,
   }
 }
