@@ -34,6 +34,7 @@ const validSummary: SerializedAnalyticsSummary = {
     periodStart: '2025-10-18T05:00:00.000Z',
     periodEnd: '2026-01-16T05:00:00.000Z',
     bucketGrain: 'week',
+    allTimeUnsupported: false,
     buckets: [
       {
         key: '2025-12-17',

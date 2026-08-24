@@ -25,15 +25,18 @@ export const analyticsTimeFrameSchema = z
     requestedRange: analyticsRangeSchema,
     periodStart: z.iso.datetime().nullable(),
     periodEnd: z.iso.datetime(),
-    bucketGrain: z.enum([
-      'week',
-      'two-weeks',
-      'month',
-      'two-months',
-      'quarter',
-      'half-year',
-      'year',
-    ]),
+    bucketGrain: z
+      .enum([
+        'week',
+        'two-weeks',
+        'month',
+        'two-months',
+        'quarter',
+        'half-year',
+        'year',
+      ])
+      .nullable(),
+    allTimeUnsupported: z.boolean(),
     buckets: z.array(analyticsTimeBucketSchema),
   })
   .superRefine((timeFrame, context) => {

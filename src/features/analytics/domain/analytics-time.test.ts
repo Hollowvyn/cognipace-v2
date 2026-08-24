@@ -187,6 +187,23 @@ describe('analytics time', () => {
     })
   })
 
+  it('marks unrepresentable All-time history unsupported instead of falling back to weeks', () => {
+    expect(
+      buildSelectedAnalyticsTimeFrame({
+        asOf: new Date('2026-08-24T12:00:00.000Z'),
+        requestedRange: 'all',
+        allTimeStart: new Date('1970-01-05T12:00:00.000Z'),
+        timeZone: 'UTC',
+        bucketGrain: null,
+      }),
+    ).toMatchObject({
+      bucketGrain: null,
+      allTimeUnsupported: true,
+      periodStart: null,
+      buckets: [],
+    })
+  })
+
   it('uses calendar boundaries through the spring-forward transition', () => {
     const result = buildAnalyticsTimeFrame({
       asOf: new Date('2026-03-10T16:40:00.000Z'),

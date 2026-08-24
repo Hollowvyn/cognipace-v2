@@ -29,9 +29,6 @@ import {
   buildStabilityPoints,
   buildTopicPoints,
   buildUpcomingLoadPoints,
-  getValidStabilitySample,
-  hasObservedCorrectnessReview,
-  hasTopicRecallEvidence,
   hasValidReviewRating,
   reconstructOverdueBacklogSnapshots,
   type AnalyticsCurrentCard,
@@ -39,21 +36,23 @@ import {
   type AnalyticsReviewEvent,
 } from '../domain/chart-data'
 import {
-  calculateAnalyticsReadiness,
-  findRichestReadyRange,
-  type AnalyticsReadiness,
-} from '../domain/analytics-readiness'
-import {
   buildAnalyticsBucketsFromTimeFrame,
-  type AnalyticsBucket,
+  selectAnalyticsLongRangePolicy,
 } from '../domain/analytics-range-policy'
 import {
-  buildAnalyticsTimeFrame,
   buildForecastBounds,
+  buildSelectedAnalyticsTimeFrame,
+  resolveAnalyticsTimeZone,
+  type SelectedAnalyticsTimeFrame,
 } from '../domain/analytics-time'
-import { buildHistoricalAnalyticsViews } from '../domain/historical-presentation'
+import {
+  buildHistoricalAnalyticsPresentation,
+  type HistoricalAnalyticsEvidenceObservations,
+  type HistoricalAnalyticsViews,
+} from '../domain/historical-presentation'
 import { buildCurrentStateAnalyticsViews } from '../domain/current-state-presentation'
 import { buildWorkloadAnalyticsViews } from '../domain/workload-presentation'
+import { classifyAnalyticsEvidence } from '../domain/analytics-evidence'
 
 import {
   buildObservedRatingQuality,
@@ -71,40 +70,52 @@ export async function getAnalyticsSummary(
     nowOrOptions instanceof Date
       ? nowOrOptions
       : (nowOrOptions.now ?? new Date())
-  const range = nowOrOptions instanceof Date ? 30 : nowOrOptions.range
-  const timeZone =
+  const range = nowOrOptions instanceof Date ? 90 : nowOrOptions.range
+  const requestedTimeZone =
     nowOrOptions instanceof Date ? 'UTC' : (nowOrOptions.timeZone ?? 'UTC')
-  const presentationTimeFrame = buildAnalyticsTimeFrame({
-    asOf: now,
-    requestedDays: range,
-    timeZone,
-  })
-  const periodEnd = new Date(presentationTimeFrame.asOf)
-  const buckets = buildAnalyticsBucketsFromTimeFrame(presentationTimeFrame)
-  const periodStart = buckets[0]!.start
+  const timeZoneResolution = resolveAnalyticsTimeZone(requestedTimeZone)
+  const { timeZone } = timeZoneResolution
   const forecastBounds = buildForecastBounds({
     asOf: now,
-    timeZone: presentationTimeFrame.timeZone,
+    timeZone,
   })
   const fourteenDaysLater = new Date(forecastBounds.end)
 
-  const [
-    dayStats,
-    reviewHistory,
-    currentFsrsCards,
-    upcomingCards,
-    settings,
-  ] = await Promise.all([
-    getReviewDayStats(db),
-    getReviewHistory(db),
-    getCurrentFsrsCards(db),
-    getUpcomingCards(db, fourteenDaysLater),
-    getSettings(db),
-  ])
+  const [dayStats, reviewHistory, currentFsrsCards, upcomingCards, settings] =
+    await Promise.all([
+      getReviewDayStats(db),
+      getReviewHistory(db),
+      getCurrentFsrsCards(db),
+      getUpcomingCards(db, fourteenDaysLater),
+      getSettings(db),
+    ])
 
   const fsrsOptions = normalizeFsrsSchedulingOptions({
     targetRetention: settings.review.targetRetention,
   })
+  const allTimeStart = getEarliestEligibleRatingDate(reviewHistory, now)
+  const longRangePolicy = selectAnalyticsLongRangePolicy({
+    requestedRange: range,
+    allTimeStart,
+    asOf: now,
+    timeZone,
+  })
+  const selectedTimeFrame = buildSelectedAnalyticsTimeFrame({
+    asOf: now,
+    requestedRange: range,
+    allTimeStart,
+    timeZone,
+    bucketGrain: longRangePolicy.bucketGrain,
+  })
+  const presentationTimeFrame = {
+    ...selectedTimeFrame,
+    timeZoneFallback: timeZoneResolution.fallback,
+  }
+  const periodEnd = new Date(presentationTimeFrame.asOf)
+  const buckets = buildAnalyticsBucketsFromTimeFrame(presentationTimeFrame)
+  const periodStart = presentationTimeFrame.periodStart
+    ? new Date(presentationTimeFrame.periodStart)
+    : periodEnd
   const recentRatings = reviewHistory.map(({ rating, reviewedAt }) => ({
     rating,
     reviewedAt,
@@ -119,10 +130,12 @@ export async function getAnalyticsSummary(
     recentRatings,
     now,
     range,
-    {
-      periodStart: new Date(presentationTimeFrame.periodStart),
-      periodEnd: new Date(presentationTimeFrame.periodEnd),
-    },
+    presentationTimeFrame.periodStart
+      ? {
+          periodStart: new Date(presentationTimeFrame.periodStart),
+          periodEnd: new Date(presentationTimeFrame.periodEnd),
+        }
+      : undefined,
   )
   const chartOptions: AnalyticsRangeOptions = {
     start: periodStart,
@@ -138,7 +151,7 @@ export async function getAnalyticsSummary(
     now,
     fsrsOptions,
   )
-  const historicalViews = buildHistoricalAnalyticsViews(
+  const historicalPresentation = buildHistoricalAnalyticsPresentation(
     analyticsReviewHistory,
     {
       buckets,
@@ -174,35 +187,12 @@ export async function getAnalyticsSummary(
       timeZone: presentationTimeFrame.timeZone,
     },
   )
-  const baseViews = { ...historicalViews, ...currentStateViews }
-  const baselineEvidenceCounts = buildBucketEvidenceCounts(
-    analyticsReviewHistory,
-    buckets,
-    periodEnd,
-    hasValidReviewRating,
+  const historicalViewsWithEvidence = attachHistoricalEvidence(
+    historicalPresentation.views,
+    presentationTimeFrame,
+    historicalPresentation.evidenceObservations,
   )
-  const requestedReadiness = calculateAnalyticsReadiness({
-    requestedDays: range,
-    evidenceCounts: baselineEvidenceCounts,
-    bucketKeys: buckets.map((bucket) => bucket.key),
-  })
-  const correctnessEvidenceCounts = buildBucketEvidenceCounts(
-    analyticsReviewHistory,
-    buckets,
-    periodEnd,
-    hasObservedCorrectnessReview,
-  )
-  const recallReadiness = calculateAnalyticsReadiness({
-    requestedDays: range,
-    evidenceCounts: correctnessEvidenceCounts,
-    bucketKeys: buckets.map((bucket) => bucket.key),
-  })
-  const practiceRhythmReadiness = calculateAnalyticsReadiness({
-    requestedDays: range,
-    evidenceCounts: correctnessEvidenceCounts,
-    bucketKeys: buckets.map((bucket) => bucket.key),
-  })
-  const ratingsMixReadiness = requestedReadiness
+  const baseViews = { ...historicalViewsWithEvidence, ...currentStateViews }
 
   const recallQuality = buildRecallQualityPoints(
     analyticsReviewHistory,
@@ -217,63 +207,15 @@ export async function getAnalyticsSummary(
     analyticsReviewHistory,
     chartOptions,
   )
-  const ratingsMix = trimHistoricalPoints(
-    buildRatingsMixPoints(analyticsReviewHistory, chartOptions),
-    ratingsMixReadiness,
-  )
+  const ratingsMix = buildRatingsMixPoints(analyticsReviewHistory, chartOptions)
   const hardAgain = buildHardAgainSummary(analyticsReviewHistory, chartOptions)
   const topics = buildTopicPoints(analyticsReviewHistory, chartOptions)
-  const topicReadiness = calculateAnalyticsReadiness({
-    requestedDays: range,
-    evidenceCounts: buildBucketEvidenceCounts(
-      analyticsReviewHistory,
-      buckets,
-      periodEnd,
-      hasTopicRecallEvidence,
-    ),
-    bucketKeys: buckets.map((bucket) => bucket.key),
-  })
   const stability = buildStabilityPoints(analyticsReviewHistory, chartOptions)
-  const stabilityReadiness = calculateAnalyticsReadiness({
-    requestedDays: range,
-    evidenceCounts: buildBucketEvidenceCounts(
-      analyticsReviewHistory,
-      buckets,
-      periodEnd,
-      (event) => getValidStabilitySample(event) !== null,
-    ),
-    bucketKeys: buckets.map((bucket) => bucket.key),
-  })
   const overdueSnapshots = reconstructOverdueBacklogSnapshots(
     analyticsReviewHistory,
     analyticsCurrentCards,
     chartOptions,
   )
-  const overdueReadiness = calculateAnalyticsReadiness({
-    requestedDays: range,
-    evidenceCounts: bucketCountsFromDatedObservations(
-      buckets,
-      overdueSnapshots,
-    ),
-    bucketKeys: buckets.map((bucket) => bucket.key),
-  })
-  const historicalReadiness = {
-    requested: requestedReadiness,
-    recallQuality: recallReadiness,
-    practiceRhythm: practiceRhythmReadiness,
-    ratingsMix: ratingsMixReadiness,
-    topics: topicReadiness,
-    stability: stabilityReadiness,
-    overdueBacklog: overdueReadiness,
-    recommendedRange: requestedReadiness.ready
-      ? null
-      : findRecommendedRange(
-          analyticsReviewHistory,
-          now,
-          range,
-          presentationTimeFrame.timeZone,
-        ),
-  }
   const upcomingLoad = buildUpcomingLoadPoints(
     upcomingCards.map((card) => card.dueAt),
     now,
@@ -296,7 +238,6 @@ export async function getAnalyticsSummary(
     range,
     targetRetention: fsrsOptions.targetRetention,
     views,
-    historicalReadiness,
     predictedRecall,
     recallQuality,
     practiceRhythm,
@@ -364,84 +305,91 @@ function buildMetricSummary(
   }
 }
 
-function buildBucketEvidenceCounts(
+function getEarliestEligibleRatingDate(
   events: readonly AnalyticsReviewEvent[],
-  buckets: readonly AnalyticsBucket[],
-  periodEnd: Date,
-  isEligible: (event: AnalyticsReviewEvent) => boolean,
-): number[] {
-  return buckets.map(
-    (bucket) =>
-      events.filter(
-        (event) =>
-          event.reviewedAt >= bucket.start &&
-          event.reviewedAt <= bucket.end &&
-          event.reviewedAt <= periodEnd &&
-          isEligible(event),
-      ).length,
-  )
+  asOf: Date,
+): Date | null {
+  return events.reduce<Date | null>((earliest, event) => {
+    if (
+      !hasValidReviewRating(event) ||
+      !Number.isFinite(event.reviewedAt.getTime()) ||
+      event.reviewedAt > asOf
+    ) {
+      return earliest
+    }
+
+    return earliest === null || event.reviewedAt < earliest
+      ? event.reviewedAt
+      : earliest
+  }, null)
 }
 
-function bucketCountsFromDatedObservations<T extends { date: Date }>(
-  buckets: readonly AnalyticsBucket[],
-  observations: readonly T[],
-): number[] {
-  return buckets.map(
-    (bucket) =>
-      observations.filter(
-        (observation) =>
-          observation.date >= bucket.start && observation.date <= bucket.end,
-      ).length,
-  )
+function attachHistoricalEvidence(
+  views: HistoricalAnalyticsViews,
+  timeFrame: SelectedAnalyticsTimeFrame,
+  observations: HistoricalAnalyticsEvidenceObservations,
+) {
+  return {
+    ...views,
+    observedRecallVsFsrs: {
+      ...views.observedRecallVsFsrs,
+      evidence: classifyHistoricalViewEvidence(
+        timeFrame,
+        observations.observedRecallVsFsrs,
+      ),
+    },
+    memoryStrength: {
+      ...views.memoryStrength,
+      evidence: classifyHistoricalViewEvidence(
+        timeFrame,
+        observations.memoryStrength,
+      ),
+    },
+    practiceRhythm: {
+      ...views.practiceRhythm,
+      evidence: classifyHistoricalViewEvidence(
+        timeFrame,
+        observations.practiceRhythm,
+      ),
+    },
+    ratingsMix: {
+      ...views.ratingsMix,
+      evidence: classifyHistoricalViewEvidence(
+        timeFrame,
+        observations.ratingsMix,
+      ),
+    },
+  }
 }
 
-function trimHistoricalPoints<T extends { bucketStart: string }>(
-  points: readonly T[],
-  readiness: AnalyticsReadiness,
-): T[] {
-  if (readiness.effectiveStart === null) return []
+function classifyHistoricalViewEvidence(
+  timeFrame: SelectedAnalyticsTimeFrame,
+  observations: readonly { observedAt: Date; value: number }[],
+) {
+  const asOf = new Date(timeFrame.asOf)
 
-  const effectiveStartIndex = points.findIndex(
-    (point) => point.bucketStart === readiness.effectiveStart,
-  )
-
-  return effectiveStartIndex === -1 ? [] : points.slice(effectiveStartIndex)
-}
-
-function findRecommendedRange(
-  events: readonly AnalyticsReviewEvent[],
-  now: Date,
-  requestedDays: AnalyticsRange,
-  timeZone: string,
-): AnalyticsRange | null {
-  const ranges = ([14, 30, 90] as const)
-    .filter((range) => range < requestedDays)
-    .map((range) => {
-      const buckets = buildAnalyticsBucketsFromTimeFrame(
-        buildAnalyticsTimeFrame({
-          asOf: now,
-          requestedDays: range,
-          timeZone,
-        }),
-      )
-      const readiness = calculateAnalyticsReadiness({
-        requestedDays: range,
-        evidenceCounts: buildBucketEvidenceCounts(
-          events,
-          buckets,
-          now,
-          hasValidReviewRating,
-        ),
-        bucketKeys: buckets.map((bucket) => bucket.key),
-      })
-
-      return { range, ready: readiness.ready }
-    })
-
-  const recommendedRange = findRichestReadyRange(ranges)
-  return recommendedRange === 14 ||
-    recommendedRange === 30 ||
-    recommendedRange === 90
-    ? recommendedRange
-    : null
+  return {
+    ...classifyAnalyticsEvidence({
+      asOf,
+      periodStart: timeFrame.periodStart
+        ? new Date(timeFrame.periodStart)
+        : null,
+      timeZone: timeFrame.timeZone,
+      buckets: timeFrame.buckets.map((bucket) => {
+        const bucketStart = new Date(bucket.start)
+        const bucketEnd = new Date(bucket.end)
+        return {
+          key: bucket.key,
+          observations: observations.filter(
+            (observation) =>
+              observation.observedAt >= bucketStart &&
+              (observation.observedAt < bucketEnd ||
+                (bucket.isPartial &&
+                  observation.observedAt.getTime() === asOf.getTime())),
+          ),
+        }
+      }),
+    }),
+    selectedBucketCount: timeFrame.buckets.length,
+  }
 }

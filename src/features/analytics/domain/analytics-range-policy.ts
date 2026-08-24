@@ -2,6 +2,7 @@ import type {
   AnalyticsBucketGrain,
   AnalyticsRange,
   AnalyticsTimeFrame,
+  SelectedAnalyticsTimeFrame,
 } from './analytics-time'
 import { getAnalyticsDateKey } from './analytics-time'
 
@@ -106,7 +107,7 @@ function getCalendarBucketIndex(
   dateKey: string,
   grain: AnalyticsBucketGrain,
 ): number {
-  const [year, month] = dateKey.split('-').map(Number)
+  const [year, month] = dateKey.split('-').map(Number) as [number, number]
   const monthIndex = year * 12 + month - 1
 
   switch (grain) {
@@ -132,13 +133,15 @@ function getMondayWeekIndex(dateKey: string): number {
 }
 
 function getEpochDay(dateKey: string): number {
-  const [year, month, day] = dateKey.split('-').map(Number)
+  const [year, month, day] = dateKey
+    .split('-')
+    .map(Number) as [number, number, number]
 
   return Math.floor(Date.UTC(year, month - 1, day) / 86_400_000)
 }
 
 export function buildAnalyticsBucketsFromTimeFrame(
-  timeFrame: AnalyticsTimeFrame,
+  timeFrame: AnalyticsTimeFrame | SelectedAnalyticsTimeFrame,
 ): AnalyticsBucket[] {
   const asOf = new Date(timeFrame.asOf)
 

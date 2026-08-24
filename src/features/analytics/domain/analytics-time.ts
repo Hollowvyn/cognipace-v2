@@ -37,7 +37,8 @@ export interface SelectedAnalyticsTimeFrame {
   requestedRange: AnalyticsRange
   periodStart: string | null
   periodEnd: string
-  bucketGrain: AnalyticsBucketGrain
+  bucketGrain: AnalyticsBucketGrain | null
+  allTimeUnsupported: boolean
   buckets: AnalyticsTimeBucket[]
 }
 
@@ -100,6 +101,7 @@ export function buildSelectedAnalyticsTimeFrame(input: {
   requestedRange: AnalyticsRange
   allTimeStart: Date | null
   timeZone: string
+  bucketGrain?: AnalyticsBucketGrain | null
 }): SelectedAnalyticsTimeFrame {
   assertValidAsOf(input.asOf)
   assertSelectedRange(input.requestedRange)
@@ -111,6 +113,25 @@ export function buildSelectedAnalyticsTimeFrame(input: {
     periodEndKey,
     resolvedTimeZone.timeZone,
   )
+  const bucketGrain = input.bucketGrain ?? 'week'
+
+  if (
+    input.requestedRange === 'all' &&
+    input.allTimeStart !== null &&
+    input.bucketGrain === null
+  ) {
+    return {
+      asOf: input.asOf.toISOString(),
+      timeZone: resolvedTimeZone.timeZone,
+      timeZoneFallback: resolvedTimeZone.fallback,
+      requestedRange: input.requestedRange,
+      periodStart: null,
+      periodEnd,
+      bucketGrain: null,
+      allTimeUnsupported: true,
+      buckets: [],
+    }
+  }
 
   if (input.requestedRange === 'all' && input.allTimeStart === null) {
     return {
@@ -120,7 +141,8 @@ export function buildSelectedAnalyticsTimeFrame(input: {
       requestedRange: input.requestedRange,
       periodStart: null,
       periodEnd,
-      bucketGrain: 'week',
+      bucketGrain,
+      allTimeUnsupported: false,
       buckets: [],
     }
   }
@@ -140,11 +162,13 @@ export function buildSelectedAnalyticsTimeFrame(input: {
     requestedRange: input.requestedRange,
     periodStart: getAnalyticsLocalDayStart(firstKey, resolvedTimeZone.timeZone),
     periodEnd,
-    bucketGrain: 'week',
-    buckets: buildMondayWeekBuckets({
+    bucketGrain,
+    allTimeUnsupported: false,
+    buckets: buildSelectedBuckets({
       firstKey,
       todayKey,
       timeZone: resolvedTimeZone.timeZone,
+      bucketGrain,
     }),
   }
 }
@@ -228,6 +252,67 @@ function buildMondayWeekBuckets(
   }
 
   return buckets
+}
+
+function buildSelectedBuckets(input: {
+  firstKey: string
+  todayKey: string
+  timeZone: string
+  bucketGrain: AnalyticsBucketGrain
+}): AnalyticsTimeBucket[] {
+  if (input.bucketGrain === 'week') return buildMondayWeekBuckets(input)
+
+  const buckets: AnalyticsTimeBucket[] = []
+  let startKey = input.firstKey
+
+  while (startKey <= input.todayKey) {
+    const endKey = minDateKey(
+      getSelectedBucketEndKey(startKey, input.bucketGrain),
+      input.todayKey,
+    )
+    buckets.push(createBucket(startKey, endKey, input.todayKey, input.timeZone))
+    startKey = addAnalyticsCalendarDays(endKey, 1)
+  }
+
+  return buckets
+}
+
+function getSelectedBucketEndKey(
+  startKey: string,
+  grain: Exclude<AnalyticsBucketGrain, 'week'>,
+): string {
+  if (grain === 'two-weeks') {
+    const epochDay = getEpochDay(startKey)
+    const mondayEpochDay = Math.floor(Date.UTC(1970, 0, 5) / 86_400_000)
+    const bucketStartEpochDay =
+      Math.floor((epochDay - mondayEpochDay) / 14) * 14 + mondayEpochDay
+    return addAnalyticsCalendarDays(
+      toDateKeyFromEpochDay(bucketStartEpochDay),
+      13,
+    )
+  }
+
+  const [year, month] = parseDateKey(startKey)
+  const monthWidth =
+    grain === 'month'
+      ? 1
+      : grain === 'two-months'
+        ? 2
+        : grain === 'quarter'
+          ? 3
+          : grain === 'half-year'
+            ? 6
+            : 12
+  const monthIndex = year * 12 + month - 1
+  const bucketMonthIndex = Math.floor(monthIndex / monthWidth) * monthWidth
+  const nextBucketMonthIndex = bucketMonthIndex + monthWidth
+  const nextYear = Math.floor(nextBucketMonthIndex / 12)
+  const nextMonth = (nextBucketMonthIndex % 12) + 1
+
+  return addAnalyticsCalendarDays(
+    `${String(nextYear).padStart(4, '0')}-${String(nextMonth).padStart(2, '0')}-01`,
+    -1,
+  )
 }
 
 function createBucket(
@@ -423,6 +508,20 @@ function parseDateKey(dateKey: string): [number, number, number] {
   }
 
   return [year, month, day]
+}
+
+function getEpochDay(dateKey: string): number {
+  const [year, month, day] = parseDateKey(dateKey)
+  return Math.floor(Date.UTC(year, month - 1, day) / 86_400_000)
+}
+
+function toDateKeyFromEpochDay(epochDay: number): string {
+  const date = new Date(epochDay * 86_400_000)
+  return toDateKey(
+    date.getUTCFullYear(),
+    date.getUTCMonth() + 1,
+    date.getUTCDate(),
+  )
 }
 
 function toDateKey(year: number, month: number, day: number): string {

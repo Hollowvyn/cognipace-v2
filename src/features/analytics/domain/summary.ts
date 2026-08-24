@@ -95,10 +95,12 @@ export interface AnalyticsSummary {
 export function buildObservedRatingQuality(
   attempts: Array<{ rating: string; reviewedAt: Date }>,
   now: Date,
-  range: 14 | 30 | 90,
+  range: AnalyticsRange | 14 | 30,
   period?: ObservedRatingPeriod,
 ): ObservedRatingQualityResult {
-  const since = period?.periodStart ?? subtractDays(now, range)
+  const since =
+    period?.periodStart ??
+    (range === 'all' ? new Date(0) : subtractDays(now, range))
   const periodEnd = period?.periodEnd ?? now
   const recent = attempts.filter(
     (a) =>
