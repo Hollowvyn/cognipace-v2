@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 
 import {
   createSerializedActiveTrack,
@@ -6,17 +6,47 @@ import {
 } from '@/testing/track-fixtures'
 
 import {
+  createTrackImportPreview,
   serializedActiveTrackSchema,
   trackCompletedRatingSchema,
+  trackImportFileSchema,
+  trackImportResultSchema,
+  trackImportSchemaVersion,
   trackProblemRowSchema,
   tracksClearActiveTrackRequestSchema,
   tracksCreateTrackRequestSchema,
   tracksDeleteTrackRequestSchema,
   tracksGetWorkspaceRequestSchema,
+  tracksImportTracksRequestSchema,
   tracksResetTrackProgressRequestSchema,
   tracksSetActiveTrackRequestSchema,
   tracksUpdateTrackRequestSchema,
+  type TrackImportFile,
+  type TrackImportResult,
+  type TracksImportTracksRequest,
 } from './tracks-contracts'
+
+function createImportTrack(
+  title: string,
+  problemSlugs: string[] = ['two-sum'],
+) {
+  return {
+    title,
+    groups: [{ title: 'Arrays', problemSlugs }],
+  }
+}
+
+function createImportFile(
+  tracks: ReturnType<typeof createImportTrack>[] = [
+    createImportTrack('Interview Track'),
+  ],
+) {
+  return {
+    schemaVersion: 1,
+    app: 'cognipace-track-import',
+    tracks,
+  }
+}
 
 describe('tracks runtime contracts', () => {
   it('accepts a valid active track response without legacy active flags', () => {
@@ -200,6 +230,432 @@ describe('tracks runtime contracts', () => {
     expect(
       tracksClearActiveTrackRequestSchema.safeParse({
         surface: 'popup',
+      }).success,
+    ).toBe(false)
+  })
+})
+
+describe('track import contracts', () => {
+  it('accepts a valid strict file and applies optional field defaults', () => {
+    const parsed = trackImportFileSchema.parse({
+      schemaVersion: trackImportSchemaVersion,
+      app: 'cognipace-track-import',
+      problems: [
+        { slug: 'two-sum' },
+        {
+          slug: 'valid-parentheses',
+          title: 'Valid Parentheses',
+          difficulty: 'easy',
+          isPremium: true,
+        },
+      ],
+      tracks: [
+        {
+          title: 'Interview Track',
+          groups: [
+            {
+              title: 'Arrays',
+              problemSlugs: ['two-sum', 'valid-parentheses'],
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(trackImportSchemaVersion).toBe(1)
+    expect(parsed.problems).toEqual([
+      {
+        slug: 'two-sum',
+        difficulty: 'unknown',
+        isPremium: false,
+      },
+      {
+        slug: 'valid-parentheses',
+        title: 'Valid Parentheses',
+        difficulty: 'easy',
+        isPremium: true,
+      },
+    ])
+    expect(parsed.tracks[0]).toMatchObject({
+      description: null,
+      dueAt: null,
+    })
+    expectTypeOf(parsed).toMatchTypeOf<TrackImportFile>()
+  })
+
+  it('defaults an omitted top-level problems array', () => {
+    expect(trackImportFileSchema.parse(createImportFile()).problems).toEqual([])
+  })
+
+  it('rejects the wrong app envelope and unknown top-level fields', () => {
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        app: 'cognipace-backup',
+      }).success,
+    ).toBe(false)
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        unsupported: true,
+      }).success,
+    ).toBe(false)
+  })
+
+  it('rejects unknown fields throughout nested import objects', () => {
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        problems: [{ slug: 'two-sum', unsupported: true }],
+      }).success,
+    ).toBe(false)
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        tracks: [
+          {
+            ...createImportTrack('Interview Track'),
+            unsupported: true,
+          },
+        ],
+      }).success,
+    ).toBe(false)
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        tracks: [
+          {
+            title: 'Interview Track',
+            groups: [
+              {
+                title: 'Arrays',
+                problemSlugs: ['two-sum'],
+                unsupported: true,
+              },
+            ],
+          },
+        ],
+      }).success,
+    ).toBe(false)
+  })
+
+  it('rejects normalized duplicate track titles', () => {
+    expect(
+      trackImportFileSchema.safeParse(
+        createImportFile([
+          createImportTrack('NeetCode 150'),
+          createImportTrack('neetcode_150'),
+        ]),
+      ).success,
+    ).toBe(false)
+  })
+
+  it('rejects normalized duplicate memberships across groups in one track', () => {
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        tracks: [
+          {
+            title: 'Interview Track',
+            groups: [
+              { title: 'Arrays', problemSlugs: ['Two Sum'] },
+              { title: 'Hash Maps', problemSlugs: ['two_sum'] },
+            ],
+          },
+        ],
+      }).success,
+    ).toBe(false)
+  })
+
+  it('rejects duplicate top-level problem definitions after normalization', () => {
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        problems: [{ slug: 'Two Sum' }, { slug: 'two_sum' }],
+      }).success,
+    ).toBe(false)
+  })
+
+  it('allows the same normalized problem slug in different tracks', () => {
+    expect(
+      trackImportFileSchema.safeParse(
+        createImportFile([
+          createImportTrack('First Track', ['Two Sum']),
+          createImportTrack('Second Track', ['two_sum']),
+        ]),
+      ).success,
+    ).toBe(true)
+  })
+
+  it('creates a preview with unique normalized referenced problem counts', () => {
+    const file = trackImportFileSchema.parse({
+      ...createImportFile(),
+      tracks: [
+        {
+          title: 'First Track',
+          groups: [
+            { title: 'Arrays', problemSlugs: ['Two Sum'] },
+            {
+              title: 'Stacks',
+              problemSlugs: ['valid_parentheses'],
+            },
+          ],
+        },
+        createImportTrack('Second Track', ['two-sum']),
+      ],
+    })
+
+    expect(createTrackImportPreview(file)).toEqual({
+      trackCount: 2,
+      groupCount: 3,
+      problemCount: 2,
+    })
+  })
+
+  it('accepts 20 tracks and rejects 21 tracks', () => {
+    const createTracks = (count: number) =>
+      Array.from({ length: count }, (_, index) =>
+        createImportTrack(`Track ${index + 1}`),
+      )
+
+    expect(
+      trackImportFileSchema.safeParse(createImportFile(createTracks(20)))
+        .success,
+    ).toBe(true)
+    expect(
+      trackImportFileSchema.safeParse(createImportFile(createTracks(21)))
+        .success,
+    ).toBe(false)
+  })
+
+  it('accepts 100 groups and rejects 101 groups per track', () => {
+    const createGroups = (count: number) =>
+      Array.from({ length: count }, (_, index) => ({
+        title: `Group ${index + 1}`,
+        problemSlugs: [`problem-${index + 1}`],
+      }))
+    const createFileWithGroups = (count: number) => ({
+      ...createImportFile(),
+      tracks: [
+        {
+          title: 'Interview Track',
+          groups: createGroups(count),
+        },
+      ],
+    })
+
+    expect(
+      trackImportFileSchema.safeParse(createFileWithGroups(100)).success,
+    ).toBe(true)
+    expect(
+      trackImportFileSchema.safeParse(createFileWithGroups(101)).success,
+    ).toBe(false)
+  })
+
+  it('accepts 1,000 memberships and rejects 1,001 memberships per track', () => {
+    const createMemberships = (count: number) =>
+      Array.from({ length: count }, (_, index) => `problem-${index + 1}`)
+
+    expect(
+      trackImportFileSchema.safeParse(
+        createImportFile([
+          createImportTrack('Interview Track', createMemberships(1_000)),
+        ]),
+      ).success,
+    ).toBe(true)
+    expect(
+      trackImportFileSchema.safeParse(
+        createImportFile([
+          createImportTrack('Interview Track', createMemberships(1_001)),
+        ]),
+      ).success,
+    ).toBe(false)
+  })
+
+  it('accepts 5,000 problem definitions and rejects 5,001 definitions', () => {
+    const createProblems = (count: number) =>
+      Array.from({ length: count }, (_, index) => ({
+        slug: `problem-${index + 1}`,
+      }))
+
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        problems: createProblems(5_000),
+      }).success,
+    ).toBe(true)
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        problems: createProblems(5_001),
+      }).success,
+    ).toBe(false)
+  })
+
+  it('points duplicate issues to each later duplicate and names it', () => {
+    const result = trackImportFileSchema.safeParse({
+      ...createImportFile(),
+      problems: [{ slug: 'Two Sum' }, { slug: 'two_sum' }],
+      tracks: [
+        createImportTrack('Arrays', ['valid-parentheses']),
+        {
+          title: 'arrays',
+          groups: [
+            { title: 'First', problemSlugs: ['Two Sum'] },
+            { title: 'Second', problemSlugs: ['two_sum'] },
+          ],
+        },
+      ],
+    })
+
+    expect(result.success).toBe(false)
+    if (result.success) {
+      return
+    }
+
+    const findIssue = (path: PropertyKey[]) =>
+      result.error.issues.find(
+        (issue) => JSON.stringify(issue.path) === JSON.stringify(path),
+      )
+    const duplicateTrackIssue = findIssue(['tracks', 1, 'title'])
+    const duplicateMembershipIssue = findIssue([
+      'tracks',
+      1,
+      'groups',
+      1,
+      'problemSlugs',
+      0,
+    ])
+    const duplicateProblemIssue = findIssue(['problems', 1, 'slug'])
+
+    expect(duplicateTrackIssue?.path).toEqual(['tracks', 1, 'title'])
+    expect(duplicateTrackIssue?.message).toContain('"arrays"')
+    expect(duplicateMembershipIssue?.path).toEqual([
+      'tracks',
+      1,
+      'groups',
+      1,
+      'problemSlugs',
+      0,
+    ])
+    expect(duplicateMembershipIssue?.message).toContain('"two-sum"')
+    expect(duplicateProblemIssue?.path).toEqual(['problems', 1, 'slug'])
+    expect(duplicateProblemIssue?.message).toContain('"two-sum"')
+  })
+
+  it('rejects slugs and titles that normalize to empty strings', () => {
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        tracks: [createImportTrack('!!!')],
+      }).success,
+    ).toBe(false)
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        tracks: [createImportTrack('Interview Track', ['!!!'])],
+      }).success,
+    ).toBe(false)
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        problems: [{ slug: 'two-sum', title: '!!!' }],
+      }).success,
+    ).toBe(false)
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        tracks: [
+          {
+            title: 'Interview Track',
+            groups: [{ title: '!!!', problemSlugs: ['two-sum'] }],
+          },
+        ],
+      }).success,
+    ).toBe(false)
+  })
+
+  it('requires ISO due dates when a track due date is supplied', () => {
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        tracks: [
+          {
+            ...createImportTrack('Interview Track'),
+            dueAt: '2026-12-31T23:59:59.000Z',
+          },
+        ],
+      }).success,
+    ).toBe(true)
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        tracks: [
+          {
+            ...createImportTrack('Interview Track'),
+            dueAt: '2026-12-31',
+          },
+        ],
+      }).success,
+    ).toBe(false)
+  })
+
+  it('validates strict dashboard import requests', () => {
+    const parsed = tracksImportTracksRequestSchema.parse({
+      surface: 'dashboard',
+      file: createImportFile(),
+    })
+
+    expect(parsed.file.problems).toEqual([])
+    expectTypeOf(parsed).toMatchTypeOf<TracksImportTracksRequest>()
+    expect(
+      tracksImportTracksRequestSchema.safeParse({
+        surface: 'popup',
+        file: createImportFile(),
+      }).success,
+    ).toBe(false)
+    expect(
+      tracksImportTracksRequestSchema.safeParse({
+        surface: 'dashboard',
+        file: createImportFile(),
+        unsupported: true,
+      }).success,
+    ).toBe(false)
+  })
+
+  it('validates strict import results and count bounds', () => {
+    const result = {
+      createdTrackIds: ['track-1'],
+      createdTrackCount: 1,
+      createdProblemCount: 0,
+      reusedProblemCount: 1,
+    }
+    const parsed = trackImportResultSchema.parse(result)
+
+    expect(parsed).toEqual(result)
+    expectTypeOf(parsed).toMatchTypeOf<TrackImportResult>()
+    expect(
+      trackImportResultSchema.safeParse({
+        ...result,
+        createdTrackCount: 0,
+      }).success,
+    ).toBe(false)
+    expect(
+      trackImportResultSchema.safeParse({
+        ...result,
+        createdProblemCount: -1,
+      }).success,
+    ).toBe(false)
+    expect(
+      trackImportResultSchema.safeParse({
+        ...result,
+        reusedProblemCount: -1,
+      }).success,
+    ).toBe(false)
+    expect(
+      trackImportResultSchema.safeParse({
+        ...result,
+        unsupported: true,
       }).success,
     ).toBe(false)
   })

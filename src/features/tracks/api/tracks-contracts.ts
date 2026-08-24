@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import {
+  problemDifficultySchema,
   problemLibraryRowSchema,
   problemSlugSchema,
   serializedProblemSchema,
@@ -14,6 +15,113 @@ export const activeTrackSurfaceSchema = z.enum(['popup', 'dashboard'])
 export const trackIdSchema = z.string().trim().min(1)
 
 export const trackGroupIdSchema = z.string().trim().min(1)
+
+export const trackImportSchemaVersion = 1
+
+const normalizedImportTitleSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .refine((title) => normalizeLeetCodeSlug(title).length > 0, {
+    message: 'Title must contain at least one letter or number.',
+  })
+
+const normalizedImportProblemSlugSchema = problemSlugSchema.refine(
+  (problemSlug) => normalizeLeetCodeSlug(problemSlug).length > 0,
+  { message: 'Problem slug must contain at least one letter or number.' },
+)
+
+const trackImportProblemSchema = z.strictObject({
+  slug: normalizedImportProblemSlugSchema,
+  title: normalizedImportTitleSchema.optional(),
+  difficulty: problemDifficultySchema.default('unknown'),
+  isPremium: z.boolean().default(false),
+})
+
+const trackImportGroupSchema = z.strictObject({
+  title: normalizedImportTitleSchema,
+  problemSlugs: z.array(normalizedImportProblemSlugSchema).nonempty(),
+})
+
+const trackImportTrackSchema = z
+  .strictObject({
+    title: normalizedImportTitleSchema,
+    description: z.string().trim().nullable().default(null),
+    dueAt: z.iso.datetime().nullable().default(null),
+    groups: z.array(trackImportGroupSchema).min(1).max(100),
+  })
+  .superRefine((track, context) => {
+    addDuplicateProblemSlugIssues(track, context)
+
+    const problemMembershipCount = track.groups.reduce(
+      (count, group) => count + group.problemSlugs.length,
+      0,
+    )
+
+    if (problemMembershipCount > 1_000) {
+      context.addIssue({
+        code: 'custom',
+        message: 'A track can reference at most 1,000 problem memberships.',
+        path: ['groups'],
+      })
+    }
+  })
+
+export const trackImportFileSchema = z
+  .strictObject({
+    schemaVersion: z.literal(trackImportSchemaVersion),
+    app: z.literal('cognipace-track-import'),
+    problems: z
+      .array(trackImportProblemSchema)
+      .max(5_000)
+      .default(() => []),
+    tracks: z.array(trackImportTrackSchema).min(1).max(20),
+  })
+  .superRefine((file, context) => {
+    addDuplicateTrackImportTitleIssues(file, context)
+    addDuplicateTrackImportProblemIssues(file, context)
+  })
+
+export type TrackImportFile = z.infer<typeof trackImportFileSchema>
+
+export const tracksImportTracksRequestSchema = z.strictObject({
+  surface: trackDashboardSurfaceSchema,
+  file: trackImportFileSchema,
+})
+
+export type TracksImportTracksRequest = z.infer<
+  typeof tracksImportTracksRequestSchema
+>
+
+export const trackImportResultSchema = z.strictObject({
+  createdTrackIds: z.array(trackIdSchema).min(1),
+  createdTrackCount: z.number().int().min(1),
+  createdProblemCount: z.number().int().min(0),
+  reusedProblemCount: z.number().int().min(0),
+})
+
+export type TrackImportResult = z.infer<typeof trackImportResultSchema>
+
+export function createTrackImportPreview(file: TrackImportFile) {
+  const referencedProblemSlugs = new Set<string>()
+  let groupCount = 0
+
+  for (const track of file.tracks) {
+    groupCount += track.groups.length
+
+    for (const group of track.groups) {
+      for (const problemSlug of group.problemSlugs) {
+        referencedProblemSlugs.add(normalizeLeetCodeSlug(problemSlug))
+      }
+    }
+  }
+
+  return {
+    trackCount: file.tracks.length,
+    groupCount,
+    problemCount: referencedProblemSlugs.size,
+  }
+}
 
 export const trackCompletedRatingSchema = z.enum(['good', 'easy'])
 
@@ -290,6 +398,52 @@ function addDuplicateProblemSlugIssues(
 
       seenProblemSlugs.add(normalizedSlug)
     })
+  })
+}
+
+function addDuplicateTrackImportTitleIssues(
+  file: TrackImportFile,
+  context: z.RefinementCtx,
+) {
+  const seenTrackTitles = new Set<string>()
+
+  file.tracks.forEach((track, trackIndex) => {
+    const normalizedTitle = normalizeLeetCodeSlug(track.title)
+
+    if (seenTrackTitles.has(normalizedTitle)) {
+      context.addIssue({
+        code: 'custom',
+        message: `Track "${normalizedTitle}" appears more than once in this import.`,
+        path: ['tracks', trackIndex, 'title'],
+      })
+
+      return
+    }
+
+    seenTrackTitles.add(normalizedTitle)
+  })
+}
+
+function addDuplicateTrackImportProblemIssues(
+  file: TrackImportFile,
+  context: z.RefinementCtx,
+) {
+  const seenProblemSlugs = new Set<string>()
+
+  file.problems.forEach((problem, problemIndex) => {
+    const normalizedSlug = normalizeLeetCodeSlug(problem.slug)
+
+    if (seenProblemSlugs.has(normalizedSlug)) {
+      context.addIssue({
+        code: 'custom',
+        message: `Problem definition "${normalizedSlug}" appears more than once in this import.`,
+        path: ['problems', problemIndex, 'slug'],
+      })
+
+      return
+    }
+
+    seenProblemSlugs.add(normalizedSlug)
   })
 }
 
