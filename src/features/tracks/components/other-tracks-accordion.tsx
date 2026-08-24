@@ -14,13 +14,13 @@ import { TrackActions, type RenderTrackEditAction } from './track-actions'
 export function OtherTracksAccordion({
   activeTrackId,
   generatedAt,
-  newTrackAction,
+  trackActions,
   renderEditTrackAction,
   tracks,
 }: {
   activeTrackId: string | null
   generatedAt: string
-  newTrackAction?: ReactNode
+  trackActions?: ReactNode
   renderEditTrackAction: RenderTrackEditAction
   tracks: readonly SerializedTrackWorkspaceRow[]
 }) {
@@ -41,7 +41,7 @@ export function OtherTracksAccordion({
     }
   }, [tracks.length])
 
-  if (tracks.length === 0 && !newTrackAction) {
+  if (tracks.length === 0 && !trackActions) {
     return null
   }
 
@@ -95,7 +95,7 @@ export function OtherTracksAccordion({
           className="flex shrink-0 flex-wrap items-center gap-2 md:justify-end"
           onClick={(event) => event.stopPropagation()}
         >
-          {newTrackAction}
+          {trackActions}
           {tracks.length > 0 ? (
             <IconButton
               aria-expanded={isOpen}

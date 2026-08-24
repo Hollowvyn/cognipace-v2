@@ -1,5 +1,5 @@
 import { Link, Outlet } from '@tanstack/react-router'
-import { Pencil, Plus } from 'lucide-react'
+import { FileUp, Pencil, Plus } from 'lucide-react'
 
 import {
   DashboardPage,
@@ -28,13 +28,21 @@ export function TracksPage() {
       </DashboardPageHeader>
       <DashboardPageBody>
         <TracksScreen
-          newTrackAction={
-            <Button asChild size="sm">
-              <Link to={dashboardPaths.trackNew}>
-                <Plus aria-hidden="true" />
-                New Track
-              </Link>
-            </Button>
+          trackActions={
+            <>
+              <Button asChild size="sm">
+                <Link to={dashboardPaths.trackNew}>
+                  <Plus aria-hidden="true" />
+                  New Track
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link to={dashboardPaths.trackImport}>
+                  <FileUp aria-hidden="true" />
+                  Import Tracks
+                </Link>
+              </Button>
+            </>
           }
           renderEditProblemAction={(problem) => (
             <Button asChild size="sm" variant="ghost">

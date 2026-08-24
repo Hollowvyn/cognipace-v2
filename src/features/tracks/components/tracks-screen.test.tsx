@@ -74,6 +74,10 @@ describe('TracksScreen', () => {
       'href',
       '#/tracks/new',
     )
+    expect(screen.getByRole('link', { name: 'Import Tracks' })).toHaveAttribute(
+      'href',
+      '#/tracks/import',
+    )
   })
 
   it('renders all tracks expanded when no active track is selected', async () => {
@@ -111,6 +115,9 @@ describe('TracksScreen', () => {
     expect(
       within(allTracksActions).getByRole('link', { name: 'New Track' }),
     ).toHaveAttribute('href', '#/tracks/new')
+    expect(
+      within(allTracksActions).getByRole('link', { name: 'Import Tracks' }),
+    ).toHaveAttribute('href', '#/tracks/import')
     expect(
       within(allTracksActions).getByRole('button', {
         name: 'All tracks shown',
@@ -205,6 +212,9 @@ describe('TracksScreen', () => {
     expect(
       within(allTracksActions).getByRole('link', { name: 'New Track' }),
     ).toHaveAttribute('href', '#/tracks/new')
+    expect(
+      within(allTracksActions).getByRole('link', { name: 'Import Tracks' }),
+    ).toHaveAttribute('href', '#/tracks/import')
     expect(
       within(allTracksActions).getByRole('button', {
         name: 'Show all tracks',
@@ -1013,13 +1023,18 @@ function renderTracksScreen() {
 
   return render(
     <TracksScreen
-      newTrackAction={
-        <Button asChild size="sm">
-          <a href="#/tracks/new">
-            <Plus aria-hidden="true" />
-            New Track
-          </a>
-        </Button>
+      trackActions={
+        <>
+          <Button asChild size="sm">
+            <a href="#/tracks/new">
+              <Plus aria-hidden="true" />
+              New Track
+            </a>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <a href="#/tracks/import">Import Tracks</a>
+          </Button>
+        </>
       }
       renderEditProblemAction={(problem: SerializedProblem) => (
         <Button asChild size="sm" variant="ghost">
@@ -1059,7 +1074,12 @@ function createOtherTracksAccordionElement(
     <OtherTracksAccordion
       activeTrackId="leetcode-75"
       generatedAt="2026-06-01T12:00:00.000Z"
-      newTrackAction={<a href="#/tracks/new">New Track</a>}
+      trackActions={
+        <>
+          <a href="#/tracks/new">New Track</a>
+          <a href="#/tracks/import">Import Tracks</a>
+        </>
+      }
       renderEditTrackAction={(track) => (
         <a href={`#/tracks/${track.id}/edit`}>Edit Track</a>
       )}

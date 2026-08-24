@@ -511,6 +511,7 @@ describe('dashboard routes', () => {
 
   it.each([
     ['/tracks/new', 'Tracks', /New Track/i, null],
+    ['/tracks/import', 'Tracks', /Import Tracks/i, null],
     ['/tracks/leetcode-75/edit', 'Tracks', /Edit/i, null],
     ['/tracks/problems/two-sum/edit', 'Tracks', /Edit/i, null],
     ['/library/tracks/new?draft=missing-draft', 'Library', /New Track/i, null],
@@ -552,6 +553,19 @@ describe('dashboard routes', () => {
     expect(sendMessage).toHaveBeenCalledWith('tracks.getTrackForEdit', {
       surface: 'dashboard',
     })
+  })
+
+  it('/tracks/import renders the import form over Tracks', async () => {
+    renderDashboard('/tracks/import')
+
+    expect(await screen.findByRole('heading', { name: 'Tracks' })).toBeVisible()
+    const dialog = screen.getByRole('dialog', { name: 'Import Tracks' })
+
+    expect(dialog).toBeVisible()
+    expect(within(dialog).getByLabelText('Tracks import file')).toBeVisible()
+    expect(
+      within(dialog).getByRole('button', { name: 'Choose JSON file' }),
+    ).toBeVisible()
   })
 
   it('/library/tracks/new direct route handles a missing selection draft', async () => {
@@ -757,6 +771,7 @@ describe('dashboard routes', () => {
 
   it.each([
     ['/tracks/new', '/tracks'],
+    ['/tracks/import', '/tracks'],
     ['/tracks/leetcode-75/edit', '/tracks'],
     ['/tracks/problems/two-sum/edit', '/tracks'],
     ['/library/tracks/new?draft=missing-draft', '/library'],
@@ -811,6 +826,12 @@ describe('dashboard routes', () => {
     expect(dashboardModalRouteMeta.trackNew.description).not.toMatch(
       /later phase/i,
     )
+    expect(dashboardModalRouteMeta.trackImport.staticData.presentation).toBe(
+      'modal',
+    )
+    expect(dashboardPaths.trackImport).toBe('/tracks/import')
+    expect(dashboardModalRouteMeta.trackImport.closeTo).toBe('/tracks')
+    expect(dashboardModalRouteMeta.trackImport.relativePath).toBe('import')
     expect(dashboardModalRouteMeta.trackEdit.description).not.toMatch(
       /later phase/i,
     )
@@ -917,7 +938,7 @@ describe('dashboard routes', () => {
 
     expect(routePaths).not.toEqual(
       expect.arrayContaining([
-        expect.stringMatching(/delete|reset|backup|import|data-management/i),
+        expect.stringMatching(/delete|reset|backup|data-management/i),
       ]),
     )
   })

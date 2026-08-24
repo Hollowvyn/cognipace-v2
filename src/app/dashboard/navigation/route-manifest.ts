@@ -31,6 +31,7 @@ export const dashboardPaths = {
   settings: '/settings',
   devSmoke: '/dev/smoke',
   trackNew: '/tracks/new',
+  trackImport: '/tracks/import',
   trackEdit: '/tracks/$trackId/edit',
   trackProblemEdit: '/tracks/problems/$problemSlug/edit',
   libraryTrackNew: '/library/tracks/new',
@@ -150,6 +151,16 @@ export const dashboardModalRouteMeta = {
       presentation: 'modal',
       section: 'tracks',
       title: 'New Track',
+    },
+  },
+  trackImport: {
+    closeTo: dashboardPaths.tracks,
+    description: 'Import tracks and their problem definitions from JSON.',
+    relativePath: 'import',
+    staticData: {
+      presentation: 'modal',
+      section: 'tracks',
+      title: 'Import Tracks',
     },
   },
   trackEdit: {

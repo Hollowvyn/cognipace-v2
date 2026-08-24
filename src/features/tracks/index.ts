@@ -12,6 +12,7 @@ export {
   type TrackTargetStatusTone,
 } from './domain'
 export { LibrarySelectionTrackForm } from './components/library-selection-track-form'
+export { TrackImportForm } from './components/track-import-form'
 export { TrackForm } from './components/track-form'
 export {
   TracksScreen,

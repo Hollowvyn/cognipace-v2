@@ -7,7 +7,11 @@ import {
   dashboardModalRouteMeta,
   dashboardPaths,
 } from '@/app/dashboard/navigation/route-manifest'
-import { LibrarySelectionTrackForm, TrackForm } from '@/features/tracks'
+import {
+  LibrarySelectionTrackForm,
+  TrackForm,
+  TrackImportForm,
+} from '@/features/tracks'
 
 export function NewTrackModalPage() {
   const closeToTracks = useCloseToTracks()
@@ -23,6 +27,20 @@ export function NewTrackModalPage() {
         onCancel={closeToTracks}
         onSaved={closeToTracks}
       />
+    </RouteModal>
+  )
+}
+
+export function ImportTracksModalPage() {
+  const closeToTracks = useCloseToTracks()
+
+  return (
+    <RouteModal
+      closeTo={dashboardModalRouteMeta.trackImport.closeTo}
+      title="Import Tracks"
+      variant="form"
+    >
+      <TrackImportForm onCancel={closeToTracks} />
     </RouteModal>
   )
 }
