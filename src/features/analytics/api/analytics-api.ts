@@ -7,7 +7,7 @@ import { queryKeys } from '@/platform/query/query-keys'
 
 export const analyticsQueryKeys = queryKeys.analytics
 
-export function useAnalyticsSummary(range: AnalyticsRange = 30) {
+export function useAnalyticsSummary(range: AnalyticsRange = 90) {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
   return useQuery({

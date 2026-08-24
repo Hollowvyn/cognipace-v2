@@ -11,7 +11,7 @@ import { AnalyticsRangeControl, AnalyticsScreen } from '@/features/analytics'
 
 export function AnalyticsPage() {
   const { headerActions } = useDashboardChrome()
-  const { range } = useSearch({ from: '/analytics' })
+  const { range = 90 } = useSearch({ from: '/analytics' })
 
   return (
     <DashboardPage className="mx-auto w-full max-w-[64rem]">

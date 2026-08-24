@@ -109,12 +109,16 @@ const analyticsRoute = createRoute({
   component: AnalyticsPage,
   validateSearch: (search: Record<string, unknown>) => {
     const rawRange =
-      typeof search.range === 'string' ? Number(search.range) : search.range
+      search.range === 'all'
+        ? search.range
+        : typeof search.range === 'string'
+          ? Number(search.range)
+          : search.range
     const parsed = analyticsRangeSchema.safeParse(rawRange)
     const context =
       typeof search.context === 'string' ? { context: search.context } : {}
 
-    return { range: parsed.success ? parsed.data : 30, ...context }
+    return { range: parsed.success ? parsed.data : 90, ...context }
   },
   staticData: dashboardRouteMeta.analytics.staticData,
 })
