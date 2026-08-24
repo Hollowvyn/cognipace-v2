@@ -178,7 +178,7 @@ describe('workload analytics views', () => {
     const { unmount } = render(
       <UpcomingTooltip
         active
-        payload={[{ payload: upcomingReviewLoad.rows[0] }]}
+        payload={[{ payload: upcomingReviewLoad.rows[0]! }]}
       />,
     )
 

@@ -479,10 +479,13 @@ function buildRatingsMixComparison(
       options.end,
       options,
     ) &&
-    hasTrendEvidence(events, previousBuckets, previousStart, previousEnd, {
-      ...options,
-      end: previousEnd,
-    })
+    hasTrendEvidence(
+      events,
+      previousBuckets,
+      previousStart,
+      previousEnd,
+      options,
+    )
   const selectedShare =
     selectedValidRatings === 0 ? null : selectedHardAgain / selectedValidRatings
   const previousHardAgainShare =

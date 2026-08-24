@@ -26,30 +26,50 @@ import { analyticsSummarySchema } from '../api/analytics-contracts'
 import { getAnalyticsSummary } from './analytics-service'
 
 describe('getAnalyticsSummary service regressions', () => {
-  /* eslint-disable @typescript-eslint/no-unsafe-member-access -- preserved retired readiness contract assertions */
-  it.skip.each([14, 30] as const)(
-    'retains the selected %s-day range in the readiness contract',
+  it.each([90, 120, 'all'] as const)(
+    'retains the selected %s range in the evidence-backed contract',
     async (range) => {
-      const handle = await createTestDb()
+      const handle = await createTestDb({ seed: false })
       const now = new Date('2026-01-15T12:00:00.000Z')
 
       const summary = await getAnalyticsSummary(handle.db, { range, now })
 
       expect(summary.range).toBe(range)
-      expect(summary.historicalReadiness.requested.requestedDays).toBe(range)
+      expect(summary.timeFrame.requestedRange).toBe(range)
       expect(summary.observedRatingQuality).toBeNull()
-      expect(summary.historicalReadiness.requested.ready).toBe(false)
+      expect(summary).not.toHaveProperty('historicalReadiness')
       expect(summary.predictedRecall).toEqual({
         value: null,
         sampleSize: 0,
         lowSample: true,
       })
-      expect(summary.recallQuality).toEqual([])
-      expect(summary.ratingsMix).toEqual([])
+      expect(summary.views.observedRecallVsFsrs.evidence).toMatchObject({
+        observations: 0,
+        measuredBuckets: 0,
+        displayMode: 'table',
+        tableOnly: true,
+      })
+      expect(summary.views.memoryStrength.evidence).toMatchObject({
+        observations: 0,
+        measuredBuckets: 0,
+        displayMode: 'table',
+        tableOnly: true,
+      })
+      expect(summary.views.practiceRhythm.evidence).toMatchObject({
+        observations: 0,
+        measuredBuckets: 0,
+        displayMode: 'table',
+        tableOnly: true,
+      })
+      expect(summary.views.ratingsMix.evidence).toMatchObject({
+        observations: 0,
+        measuredBuckets: 0,
+        displayMode: 'table',
+        tableOnly: true,
+      })
       expect(summary.views.upcomingReviewLoad.rows).toHaveLength(14)
     },
   )
-  /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 
   it('returns truthful chart payloads for an empty database', async () => {
     const handle = await createTestDb({ seed: false })
@@ -572,44 +592,6 @@ describe('getAnalyticsSummary service regressions', () => {
     ).toBe(7)
   })
 
-  /* eslint-disable @typescript-eslint/no-unsafe-member-access -- preserved retired readiness contract assertions */
-  it.skip('counts only persisted correctness observations for retired practice-rhythm readiness', async () => {
-    const handle = await createTestDb({ seed: false })
-    const now = new Date('2026-08-13T12:00:00.000Z')
-    const dates = Array.from({ length: 14 }, (_, index) => {
-      const date = new Date('2026-07-31T12:00:00.000Z')
-      date.setDate(date.getDate() + index)
-      return date
-    })
-
-    await insertAnalyticsProblem(
-      handle.db,
-      'mixed-practice-correctness',
-      'Mixed practice correctness',
-      [],
-    )
-    await insertAnalyticsHistory(handle.db, 'mixed-practice-correctness', {
-      id: 'mixed-practice-correctness:default',
-      dates,
-      ratings: Array<ReviewRating>(dates.length).fill('good'),
-      correct: dates.map((_, index) =>
-        index === 0 || index === 7 ? null : true,
-      ),
-      dueAt: new Date('2026-08-14T12:00:00.000Z'),
-      stability: 10,
-      difficulty: 5,
-    })
-
-    const summary = await getAnalyticsSummary(handle.db, { range: 14, now })
-
-    expect(summary.historicalReadiness.practiceRhythm).toMatchObject({
-      ready: true,
-      assessments: 12,
-      activeBuckets: 12,
-    })
-  })
-  /* eslint-enable @typescript-eslint/no-unsafe-member-access */
-
   it('counts only persisted correctness observations for recall quality', async () => {
     const handle = await createTestDb({ seed: false })
     const now = new Date('2026-08-13T12:00:00.000Z')
@@ -684,213 +666,24 @@ describe('getAnalyticsSummary service regressions', () => {
     })
   })
 
-  it.skip('keeps a selected unready range and recommends a retired shorter range', async () => {
-    const handle = await createTestDb({ seed: false })
-    const now = new Date('2026-08-13T12:00:00.000Z')
-    const dates = Array.from({ length: 24 }, (_, index) => {
-      const date = new Date('2026-07-21T12:00:00.000Z')
-      date.setDate(date.getDate() + index)
-      return date
-    })
-
-    await insertAnalyticsProblem(
-      handle.db,
-      'range-evidence',
-      'Range evidence',
-      ['Graphs'],
-    )
-    await insertAnalyticsHistory(handle.db, 'range-evidence', {
-      id: 'range-evidence:default',
-      dates,
-      ratings: Array<ReviewRating>(dates.length).fill('good'),
-      correct: Array<boolean>(dates.length).fill(true),
-      dueAt: new Date('2026-08-14T12:00:00.000Z'),
-      stability: 10,
-      difficulty: 5,
-    })
-
-    const summary = await getAnalyticsSummary(handle.db, { range: 90, now })
-    const readiness = summary as typeof summary & {
-      historicalReadiness: {
-        requested: { requestedDays: number; bucketDays: number; ready: boolean }
-        recallQuality: { effectiveBuckets: number }
-        recommendedRange: number | null
-      }
-    }
-
-    expect(readiness.range).toBe(90)
-    expect(readiness.historicalReadiness.requested.ready).toBe(false)
-    expect(readiness.historicalReadiness.requested).toMatchObject({
-      requestedDays: 90,
-      bucketDays: 7,
-      ready: false,
-      effectiveStart: '2026-07-20',
-    })
-    expect(readiness.historicalReadiness.recommendedRange).toBe(30)
-    expect(readiness.recallQuality).toHaveLength(
-      readiness.historicalReadiness.recallQuality.effectiveBuckets,
-    )
-    expect(readiness.views.upcomingReviewLoad.rows).toHaveLength(14)
-    expect(readiness.views.retentionMap.rows.length).toBeGreaterThan(0)
-  })
-
-  /* eslint-disable @typescript-eslint/no-unsafe-member-access -- preserved retired readiness contract assertions */
-  it.skip('recommends only a retired shorter ready range than the selected range', async () => {
-    const handle = await createTestDb({ seed: false })
-    const now = new Date('2026-08-13T12:00:00.000Z')
-    const dates = Array.from({ length: 14 }, (_, index) => {
-      const date = new Date('2026-07-31T12:00:00.000Z')
-      date.setDate(date.getDate() + index)
-      return date
-    })
-
-    await insertAnalyticsProblem(
-      handle.db,
-      'shorter-range-evidence',
-      'Shorter range evidence',
-      [],
-    )
-    await insertAnalyticsHistory(handle.db, 'shorter-range-evidence', {
-      id: 'shorter-range-evidence:default',
-      dates,
-      ratings: Array<ReviewRating>(dates.length).fill('good'),
-      correct: Array<boolean>(dates.length).fill(true),
-      dueAt: new Date('2026-08-14T12:00:00.000Z'),
-      stability: 10,
-      difficulty: 5,
-    })
-
-    const selected30 = await getAnalyticsSummary(handle.db, {
-      range: 30,
-      now,
-    })
-    const selected90 = await getAnalyticsSummary(handle.db, {
-      range: 90,
-      now,
-    })
-    const selected14 = await getAnalyticsSummary(handle.db, {
-      range: 14,
-      now,
-    })
-
-    expect(selected30.historicalReadiness.requested.ready).toBe(false)
-    expect(selected30.historicalReadiness.recommendedRange).toBe(14)
-    expect(selected90.historicalReadiness.requested.ready).toBe(false)
-    expect(selected90.historicalReadiness.recommendedRange).toBe(14)
-    expect(selected14.historicalReadiness.requested.ready).toBe(true)
-    expect(selected14.historicalReadiness.recommendedRange).toBeNull()
-  })
-
-  it.skip('never recommends a ready longer range for a retired selected range', async () => {
-    const handle = await createTestDb({ seed: false })
-    const now = new Date('2026-08-13T12:00:00.000Z')
-    const earlierDates = Array.from({ length: 31 }, (_, index) => {
-      const date = new Date('2026-05-16T12:00:00.000Z')
-      date.setDate(date.getDate() + index * 2)
-      return date
-    })
-    const recentDates = Array.from({ length: 14 }, (_, index) => {
-      const date = new Date('2026-07-31T12:00:00.000Z')
-      date.setDate(date.getDate() + index)
-      return date
-    })
-    const dates = [...earlierDates, ...recentDates]
-
-    await insertAnalyticsProblem(
-      handle.db,
-      'longer-range-evidence',
-      'Longer range evidence',
-      [],
-    )
-    await insertAnalyticsHistory(handle.db, 'longer-range-evidence', {
-      id: 'longer-range-evidence:default',
-      dates,
-      ratings: Array<ReviewRating>(dates.length).fill('good'),
-      correct: Array<boolean>(dates.length).fill(true),
-      dueAt: new Date('2026-08-14T12:00:00.000Z'),
-      stability: 10,
-      difficulty: 5,
-    })
-
-    const selected30 = await getAnalyticsSummary(handle.db, {
-      range: 30,
-      now,
-    })
-    const selected90 = await getAnalyticsSummary(handle.db, {
-      range: 90,
-      now,
-    })
-
-    expect(selected30.historicalReadiness.requested.ready).toBe(false)
-    expect(selected90.historicalReadiness.requested.ready).toBe(true)
-    expect(selected30.historicalReadiness.recommendedRange).toBe(14)
-  })
-
-  it.skip('calculates retired readiness from each metric’s eligible evidence', async () => {
-    const handle = await createTestDb({ seed: false })
-    const now = new Date('2026-08-13T12:00:00.000Z')
-    const dates = Array.from({ length: 24 }, (_, index) => {
-      const date = new Date('2026-07-21T12:00:00.000Z')
-      date.setDate(date.getDate() + index)
-      return date
-    })
-
-    await insertAnalyticsProblem(
-      handle.db,
-      'topicless-evidence',
-      'Topicless',
-      [],
-    )
-    await insertAnalyticsHistory(handle.db, 'topicless-evidence', {
-      id: 'topicless-evidence:default',
-      dates,
-      ratings: Array<ReviewRating>(dates.length).fill('good'),
-      correct: Array<boolean>(dates.length).fill(true),
-      dueAt: new Date('2026-08-14T12:00:00.000Z'),
-      stability: 10,
-      difficulty: 5,
-    })
-
-    const summary = await getAnalyticsSummary(handle.db, { range: 30, now })
-    const readiness = summary as typeof summary & {
-      historicalReadiness: {
-        requested: { ready: boolean }
-        topics: { ready: boolean; failingReasons: string[] }
-        recommendedRange: number | null
-      }
-    }
-
-    expect(readiness.historicalReadiness.requested.ready).toBe(true)
-    expect(readiness.historicalReadiness.requested.ready).toBe(true)
-    expect(readiness.historicalReadiness.recommendedRange).toBeNull()
-    expect(readiness.historicalReadiness.topics.ready).toBe(false)
-    expect(readiness.historicalReadiness.topics.failingReasons).toContain(
-      'no-evidence',
-    )
-  })
-
-  it.skip.each([
-    [14, 1],
-    [30, 3],
-    [90, 7],
-  ] as const)(
-    'uses %s-day selected history with %s-day presentation buckets',
-    async (range, bucketDays) => {
+  it.each([90, 120] as const)(
+    'uses weekly presentation buckets for the selected %s-day history',
+    async (range) => {
       const handle = await createTestDb({ seed: false })
       const summary = await getAnalyticsSummary(handle.db, {
         range,
         now: new Date('2026-08-13T12:00:00.000Z'),
       })
-      const readiness = summary as typeof summary & {
-        historicalReadiness: { requested: { bucketDays: number } }
-      }
 
-      expect(readiness.historicalReadiness.requested.bucketDays).toBe(
-        bucketDays,
-      )
+      expect(summary.timeFrame.bucketGrain).toBe('week')
+      expect(summary.timeFrame.buckets.length).toBeGreaterThan(0)
+      expect(
+        summary.timeFrame.buckets.every((bucket) =>
+          /^\d{4}-\d{2}-\d{2}$/.test(bucket.startKey),
+        ),
+      ).toBe(true)
     },
   )
-  /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 
   it('keeps the serialized summary deterministic for the same range and time', async () => {
     const handle = await createTestDb({ seed: false })
