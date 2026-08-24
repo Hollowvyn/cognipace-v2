@@ -26,7 +26,7 @@ import {
 } from './workload-views'
 
 export function AnalyticsScreen({
-  range = 30,
+  range = 90,
 }: {
   range?: AnalyticsRange | undefined
 }) {

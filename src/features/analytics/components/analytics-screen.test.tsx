@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
 import type {
+  AnalyticsRange,
   ReadinessFailure,
   SerializedAnalyticsSummary,
 } from '@/features/analytics/api/analytics-contracts'
@@ -270,6 +271,19 @@ describe('AnalyticsScreen', () => {
     renderAnalyticsScreen()
 
     expect(screen.getByText('Loading analytics...')).toBeVisible()
+  })
+
+  it('defaults analytics requests to the 90-day range', () => {
+    vi.mocked(sendMessage).mockReturnValueOnce(new Promise(() => {}))
+
+    renderAnalyticsScreen()
+
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+    expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
+      surface: 'dashboard',
+      range: 90,
+      timeZone,
+    })
   })
 
   it('renders error state then succeeds after retry', async () => {
@@ -757,7 +771,7 @@ describe('AnalyticsScreen', () => {
   })
 })
 
-function renderAnalyticsScreen(range?: 14 | 30 | 90) {
+function renderAnalyticsScreen(range?: AnalyticsRange) {
   const harness = createQueryTestHarness()
   render(<AnalyticsScreen range={range} />, { wrapper: harness.wrapper })
   return harness
