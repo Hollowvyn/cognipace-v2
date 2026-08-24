@@ -83,6 +83,8 @@ export {
   type TrackForEditResponse,
   type TrackGroupInput,
   type TrackImportFile,
+  type TrackImportPreview,
+  type TrackImportRequest,
   type TrackImportResult,
   type TrackMutationInput,
   type TrackProblemRow,

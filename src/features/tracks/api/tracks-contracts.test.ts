@@ -1,5 +1,9 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
+import type {
+  TrackImportPreview as PublicTrackImportPreview,
+  TrackImportRequest as PublicTrackImportRequest,
+} from '@/features/tracks'
 import {
   createSerializedActiveTrack,
   createTrackProblemRow,
@@ -22,6 +26,8 @@ import {
   tracksSetActiveTrackRequestSchema,
   tracksUpdateTrackRequestSchema,
   type TrackImportFile,
+  type TrackImportPreview,
+  type TrackImportRequest,
   type TrackImportResult,
   type TracksImportTracksRequest,
 } from './tracks-contracts'
@@ -302,6 +308,15 @@ describe('track import contracts', () => {
     ).toBe(false)
   })
 
+  it('rejects unsupported schema versions', () => {
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        schemaVersion: 2,
+      }).success,
+    ).toBe(false)
+  })
+
   it('rejects unknown fields throughout nested import objects', () => {
     expect(
       trackImportFileSchema.safeParse({
@@ -405,11 +420,107 @@ describe('track import contracts', () => {
       ],
     })
 
-    expect(createTrackImportPreview(file)).toEqual({
+    const preview = createTrackImportPreview(file)
+
+    expect(preview).toEqual({
       trackCount: 2,
       groupCount: 3,
-      problemCount: 2,
+      problemCount: 3,
+      uniqueProblemCount: 2,
     })
+    expectTypeOf(preview).toEqualTypeOf<TrackImportPreview>()
+    expectTypeOf<PublicTrackImportPreview>().toEqualTypeOf<TrackImportPreview>()
+  })
+
+  it('accepts 200-character slugs and rejects 201-character slugs', () => {
+    const maxSlug = 'a'.repeat(200)
+    const tooLongSlug = 'a'.repeat(201)
+
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        problems: [{ slug: maxSlug }],
+        tracks: [createImportTrack('Interview Track', [maxSlug])],
+      }).success,
+    ).toBe(true)
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        problems: [{ slug: tooLongSlug }],
+      }).success,
+    ).toBe(false)
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        tracks: [createImportTrack('Interview Track', [tooLongSlug])],
+      }).success,
+    ).toBe(false)
+  })
+
+  it('accepts 200-character titles and rejects 201-character titles', () => {
+    const maxTitle = 'a'.repeat(200)
+    const tooLongTitle = 'a'.repeat(201)
+
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        problems: [{ slug: 'two-sum', title: maxTitle }],
+        tracks: [
+          {
+            title: maxTitle,
+            groups: [{ title: maxTitle, problemSlugs: ['two-sum'] }],
+          },
+        ],
+      }).success,
+    ).toBe(true)
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        problems: [{ slug: 'two-sum', title: tooLongTitle }],
+      }).success,
+    ).toBe(false)
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        tracks: [createImportTrack(tooLongTitle)],
+      }).success,
+    ).toBe(false)
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        tracks: [
+          {
+            title: 'Interview Track',
+            groups: [{ title: tooLongTitle, problemSlugs: ['two-sum'] }],
+          },
+        ],
+      }).success,
+    ).toBe(false)
+  })
+
+  it('accepts 1,000-character descriptions and rejects 1,001 characters', () => {
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        tracks: [
+          {
+            ...createImportTrack('Interview Track'),
+            description: 'a'.repeat(1_000),
+          },
+        ],
+      }).success,
+    ).toBe(true)
+    expect(
+      trackImportFileSchema.safeParse({
+        ...createImportFile(),
+        tracks: [
+          {
+            ...createImportTrack('Interview Track'),
+            description: 'a'.repeat(1_001),
+          },
+        ],
+      }).success,
+    ).toBe(false)
   })
 
   it('accepts 20 tracks and rejects 21 tracks', () => {
@@ -459,17 +570,70 @@ describe('track import contracts', () => {
     expect(
       trackImportFileSchema.safeParse(
         createImportFile([
-          createImportTrack('Interview Track', createMemberships(1_000)),
+          {
+            title: 'Interview Track',
+            groups: [
+              { title: 'First', problemSlugs: createMemberships(500) },
+              {
+                title: 'Second',
+                problemSlugs: createMemberships(500).map(
+                  (slug) => `second-${slug}`,
+                ),
+              },
+            ],
+          },
         ]),
       ).success,
     ).toBe(true)
     expect(
       trackImportFileSchema.safeParse(
         createImportFile([
-          createImportTrack('Interview Track', createMemberships(1_001)),
+          {
+            title: 'Interview Track',
+            groups: [
+              { title: 'First', problemSlugs: createMemberships(500) },
+              {
+                title: 'Second',
+                problemSlugs: createMemberships(501).map(
+                  (slug) => `second-${slug}`,
+                ),
+              },
+            ],
+          },
         ]),
       ).success,
     ).toBe(false)
+  })
+
+  it('accepts 1,000 memberships and reports 1,001 as a per-group limit violation', () => {
+    const createMemberships = (count: number) =>
+      Array.from({ length: count }, (_, index) => `problem-${index + 1}`)
+
+    expect(
+      trackImportFileSchema.safeParse(
+        createImportFile([
+          createImportTrack('Interview Track', createMemberships(1_000)),
+        ]),
+      ).success,
+    ).toBe(true)
+
+    const result = trackImportFileSchema.safeParse(
+      createImportFile([
+        createImportTrack('Interview Track', createMemberships(1_001)),
+      ]),
+    )
+
+    expect(result.success).toBe(false)
+    if (result.success) {
+      return
+    }
+
+    expect(result.error.issues).toContainEqual(
+      expect.objectContaining({
+        code: 'too_big',
+        path: ['tracks', 0, 'groups', 0, 'problemSlugs'],
+      }),
+    )
   })
 
   it('accepts 5,000 problem definitions and rejects 5,001 definitions', () => {
@@ -607,7 +771,9 @@ describe('track import contracts', () => {
     })
 
     expect(parsed.file.problems).toEqual([])
+    expectTypeOf(parsed).toEqualTypeOf<TrackImportRequest>()
     expectTypeOf(parsed).toMatchTypeOf<TracksImportTracksRequest>()
+    expectTypeOf<PublicTrackImportRequest>().toEqualTypeOf<TrackImportRequest>()
     expect(
       tracksImportTracksRequestSchema.safeParse({
         surface: 'popup',

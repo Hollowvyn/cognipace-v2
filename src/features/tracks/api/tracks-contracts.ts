@@ -22,14 +22,16 @@ const normalizedImportTitleSchema = z
   .string()
   .trim()
   .min(1)
+  .max(200)
   .refine((title) => normalizeLeetCodeSlug(title).length > 0, {
     message: 'Title must contain at least one letter or number.',
   })
 
-const normalizedImportProblemSlugSchema = problemSlugSchema.refine(
-  (problemSlug) => normalizeLeetCodeSlug(problemSlug).length > 0,
-  { message: 'Problem slug must contain at least one letter or number.' },
-)
+const normalizedImportProblemSlugSchema = problemSlugSchema
+  .max(200)
+  .refine((problemSlug) => normalizeLeetCodeSlug(problemSlug).length > 0, {
+    message: 'Problem slug must contain at least one letter or number.',
+  })
 
 const trackImportProblemSchema = z.strictObject({
   slug: normalizedImportProblemSlugSchema,
@@ -40,13 +42,16 @@ const trackImportProblemSchema = z.strictObject({
 
 const trackImportGroupSchema = z.strictObject({
   title: normalizedImportTitleSchema,
-  problemSlugs: z.array(normalizedImportProblemSlugSchema).nonempty(),
+  problemSlugs: z
+    .array(normalizedImportProblemSlugSchema)
+    .nonempty()
+    .max(1_000),
 })
 
 const trackImportTrackSchema = z
   .strictObject({
     title: normalizedImportTitleSchema,
-    description: z.string().trim().nullable().default(null),
+    description: z.string().trim().max(1_000).nullable().default(null),
     dueAt: z.iso.datetime().nullable().default(null),
     groups: z.array(trackImportGroupSchema).min(1).max(100),
   })
@@ -89,9 +94,9 @@ export const tracksImportTracksRequestSchema = z.strictObject({
   file: trackImportFileSchema,
 })
 
-export type TracksImportTracksRequest = z.infer<
-  typeof tracksImportTracksRequestSchema
->
+export type TrackImportRequest = z.infer<typeof tracksImportTracksRequestSchema>
+
+export type TracksImportTracksRequest = TrackImportRequest
 
 export const trackImportResultSchema = z.strictObject({
   createdTrackIds: z.array(trackIdSchema).min(1),
@@ -102,14 +107,26 @@ export const trackImportResultSchema = z.strictObject({
 
 export type TrackImportResult = z.infer<typeof trackImportResultSchema>
 
-export function createTrackImportPreview(file: TrackImportFile) {
+export type TrackImportPreview = {
+  trackCount: number
+  groupCount: number
+  problemCount: number
+  uniqueProblemCount: number
+}
+
+export function createTrackImportPreview(
+  file: TrackImportFile,
+): TrackImportPreview {
   const referencedProblemSlugs = new Set<string>()
   let groupCount = 0
+  let problemCount = 0
 
   for (const track of file.tracks) {
     groupCount += track.groups.length
 
     for (const group of track.groups) {
+      problemCount += group.problemSlugs.length
+
       for (const problemSlug of group.problemSlugs) {
         referencedProblemSlugs.add(normalizeLeetCodeSlug(problemSlug))
       }
@@ -119,7 +136,8 @@ export function createTrackImportPreview(file: TrackImportFile) {
   return {
     trackCount: file.tracks.length,
     groupCount,
-    problemCount: referencedProblemSlugs.size,
+    problemCount,
+    uniqueProblemCount: referencedProblemSlugs.size,
   }
 }
 
