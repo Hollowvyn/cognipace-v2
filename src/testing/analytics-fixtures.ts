@@ -50,6 +50,7 @@ export function createSerializedAnalyticsSummary(
       periodStart: '2026-03-02T00:00:00.000Z',
       periodEnd: '2026-05-31T00:00:00.000Z',
       bucketGrain: 'week',
+      allTimeUnsupported: false,
       buckets: [
         {
           key: '2026-05-01',
