@@ -20,29 +20,28 @@ describe('TrackImportForm', () => {
     vi.clearAllMocks()
   })
 
-  it('explains the import shape and offers a JSON picker before a file is chosen', () => {
+  it('explains the import shape in accessible details and offers a JSON picker before a file is chosen', async () => {
+    const user = userEvent.setup()
     renderImportForm()
 
     expect(screen.getByText(/existing problems are reused/i)).toBeVisible()
     expect(screen.getByText(/missing problems are created/i)).toBeVisible()
-    expect(
-      screen.getByText((_, element) => {
-        const text = element?.textContent ?? ''
-        return (
-          element?.tagName === 'P' &&
-          /schemaVersion.*app.*tracks.*groups.*problemSlugs/i.test(text)
-        )
-      }),
-    ).toBeVisible()
-    expect(
-      screen.getByText((_, element) => {
-        const text = element?.textContent ?? ''
-        return element?.tagName === 'P' && /canonical.*slug/i.test(text)
-      }),
-    ).toBeVisible()
-    expect(
-      screen.getByText(/defaults.*fallbacks.*strict.*limits/i),
-    ).toBeVisible()
+    const summary = screen.getByText('Recommended JSON shape')
+    const details = summary.closest('details')
+
+    expect(details).toBeInTheDocument()
+    expect(details).not.toHaveAttribute('open')
+    expect(summary.tagName).toBe('SUMMARY')
+
+    await user.click(summary)
+
+    expect(details).toBeVisible()
+    expect(details).toHaveTextContent(
+      /schemaVersion.*app.*top-level.*problems.*tracks.*groups.*problemSlugs/i,
+    )
+    expect(details).toHaveTextContent(
+      /defaults.*unknown.*isPremium.*false.*strict.*20 tracks.*5,000 problems/i,
+    )
     expect(screen.getByLabelText('Tracks import file')).toHaveAttribute(
       'accept',
       'application/json,.json',
@@ -253,6 +252,23 @@ describe('TrackImportForm', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Imported 1 track. Created 1 problems. Reused 0 problems.',
     )
+  })
+
+  it('uses the fallback message when an import failure has no safe runtime message', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockRejectedValueOnce({
+      reason: 'unexpected failure',
+    })
+    renderImportForm()
+
+    await uploadValidFile(user)
+    await user.click(screen.getByRole('button', { name: 'Import Tracks' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Track import failed.',
+    )
+    expect(screen.getByText('tracks.json')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Import Tracks' })).toBeEnabled()
   })
 })
 

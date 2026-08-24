@@ -81,7 +81,7 @@ export function TrackImportForm({
         `Imported ${result.createdTrackCount} ${result.createdTrackCount === 1 ? 'track' : 'tracks'}. Created ${result.createdProblemCount} problems. Reused ${result.reusedProblemCount} problems.`,
       )
     } catch (caughtError) {
-      setError(readErrorMessage(caughtError, 'Failed to import tracks.'))
+      setError(readErrorMessage(caughtError, 'Track import failed.'))
     }
   }
 
@@ -100,17 +100,26 @@ export function TrackImportForm({
               from the import file.
             </p>
           </div>
-          <p className="m-0 text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
-            Use the strict envelope literals <code>schemaVersion: 1</code> and{' '}
-            <code>app: &quot;cognipace-track-import&quot;</code>, define each
-            problem once in top-level <code>problems</code>, then list
-            <code>tracks</code> with <code>groups</code> and canonical LeetCode{' '}
-            <code>problemSlugs</code>.
-          </p>
-          <p className="m-0 text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
-            Omitted descriptions, dates, and problem details use defaults or
-            fallbacks. The contract is strict and enforces import limits.
-          </p>
+          <details className="grid gap-2 text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">
+            <summary className="cursor-pointer font-semibold text-foreground">
+              Recommended JSON shape
+            </summary>
+            <p className="m-0">
+              Use the strict envelope literals <code>schemaVersion: 1</code> and{' '}
+              <code>app: &quot;cognipace-track-import&quot;</code>. Define each
+              problem once in top-level <code>problems</code>, then list
+              <code>tracks</code> with <code>groups</code> and canonical
+              LeetCode <code>problemSlugs</code> references.
+            </p>
+            <p className="m-0">
+              Omitted track descriptions and dates default to <code>null</code>;
+              problem difficulty defaults to <code>&quot;unknown&quot;</code>{' '}
+              and <code>isPremium</code> to <code>false</code>. The contract is
+              strict: use up to 20 tracks, 5,000 problems, 100 groups per track,
+              1,000 slugs per group, and 1,000 problem memberships per track.
+              Extra fields are rejected.
+            </p>
+          </details>
         </Surface>
       ) : null}
 
