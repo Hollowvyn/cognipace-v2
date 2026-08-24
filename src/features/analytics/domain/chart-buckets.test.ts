@@ -53,15 +53,13 @@ describe('chart buckets', () => {
     ])
   })
 
-  it('classifies a permitted two-bucket hole as a bridge', () => {
-    expect(classifyLineContinuity([0.8, null, null, 0.84])).toEqual([
-      { kind: 'bridge', fromIndex: 0, toIndex: 3 },
-    ])
+  it('breaks the line across two or more unknown buckets', () => {
+    expect(classifyLineContinuity([0.8, null, null, 0.84])).toEqual([])
   })
 
-  it('bridges any gap between measured points', () => {
-    expect(classifyLineContinuity([0.8, null, null, null, 0.84])).toEqual([
-      { kind: 'bridge', fromIndex: 0, toIndex: 4 },
+  it('classifies one unknown bucket between measured points as a bridge', () => {
+    expect(classifyLineContinuity([0.8, null, 0.84])).toEqual([
+      { kind: 'bridge', fromIndex: 0, toIndex: 2 },
     ])
   })
 
