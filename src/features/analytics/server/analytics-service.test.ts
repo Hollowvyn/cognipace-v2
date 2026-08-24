@@ -1025,24 +1025,24 @@ describe('getAnalyticsSummary long-range evidence', () => {
       inProgress: true,
     })
     expect(workloadViews[0]?.upcomingReviewLoad.rows).toHaveLength(14)
-    expect(workloadViews[0]?.upcomingReviewLoad.rows.map((row) => row.date)).toEqual(
-      [
-        '2026-03-08',
-        '2026-03-09',
-        '2026-03-10',
-        '2026-03-11',
-        '2026-03-12',
-        '2026-03-13',
-        '2026-03-14',
-        '2026-03-15',
-        '2026-03-16',
-        '2026-03-17',
-        '2026-03-18',
-        '2026-03-19',
-        '2026-03-20',
-        '2026-03-21',
-      ],
-    )
+    expect(
+      workloadViews[0]?.upcomingReviewLoad.rows.map((row) => row.date),
+    ).toEqual([
+      '2026-03-08',
+      '2026-03-09',
+      '2026-03-10',
+      '2026-03-11',
+      '2026-03-12',
+      '2026-03-13',
+      '2026-03-14',
+      '2026-03-15',
+      '2026-03-16',
+      '2026-03-17',
+      '2026-03-18',
+      '2026-03-19',
+      '2026-03-20',
+      '2026-03-21',
+    ])
   })
 
   it('reconstructs the same 120-day backlog across historical selections', async () => {
@@ -1053,7 +1053,12 @@ describe('getAnalyticsSummary long-range evidence', () => {
       (_, index) => new Date(Date.UTC(2025, 10, 9 + index, 12)),
     )
 
-    await insertAnalyticsProblem(handle.db, 'fixed-workload', 'Fixed Workload', [])
+    await insertAnalyticsProblem(
+      handle.db,
+      'fixed-workload',
+      'Fixed Workload',
+      [],
+    )
     await insertAnalyticsHistory(handle.db, 'fixed-workload', {
       id: 'fixed-workload:default',
       dates,
