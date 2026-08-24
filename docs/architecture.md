@@ -92,10 +92,10 @@ Not every feature needs every folder. Add only the folder needed for the change.
 ## Feature Ownership
 
 - `app-shell`: popup, dashboard, and overlay shell data composition.
-- `analytics`: local dashboard analytics read models: evidence-gated
-  historical charts, current retention health, fragile knowledge, future load,
-  and explainable readiness. It owns chart presentation contracts but not
-  practice persistence or FSRS scheduling.
+- `analytics`: local dashboard read models for evidence-gated historical
+  charts, current Retention Map and Memory Signals, overdue history, and future
+  load. It owns chart presentation contracts but not practice persistence or
+  FSRS scheduling.
 - `overlay-session`: LeetCode overlay UI state, timer, draft fields, page sync,
   submission automation, and review action orchestration.
 - `practice`: FSRS-backed practice state, review logs, scheduling details,
@@ -204,8 +204,9 @@ per-chart database calls. Its data flow is:
 ```text
 review and FSRS inputs
 -> analytics range policy
--> effective evidence window and readiness
+-> full-history FSRS replay
 -> metric-specific presentation buckets
+-> metric-specific evidence classification
 -> Zod runtime contract
 -> explicit chart components
 ```
@@ -213,40 +214,43 @@ review and FSRS inputs
 The owners in that flow are:
 
 - `src/features/analytics/domain/analytics-range-policy.ts` selects and builds
-  local-date bucket boundaries. The current contract supports 14-day daily,
-  30-day three-day, and 90-day weekly presentation buckets.
-- `src/features/analytics/domain/analytics-readiness.ts` derives the effective
-  window and readiness gates. `S`, `A`, `G`, `K`, and `E` mean eligible
-  assessments, active buckets, longest gap, gap runs, and effective buckets.
+  local-date bucket boundaries. The public contract supports 90 and 120 local
+  calendar days with clipped Monday-start weeks, plus All time with the finest
+  approved calendar grain that produces at most 48 buckets.
+- `src/features/analytics/domain/analytics-evidence.ts` classifies each
+  historical metric from eligible history days (`H`), measured buckets (`M`),
+  and observations (`S`). Under 30 eligible days is Table-only; one measured
+  bucket is a single mark; two to five are unconnected marks; at least six
+  measured buckets and 30 observations supports a descriptive line.
 - `src/features/analytics/domain/chart-buckets.ts` and
-  `src/features/analytics/domain/chart-data.ts` aggregate each metric only from
-  eligible evidence, preserve unknown buckets as `null`, and classify solid or
-  dashed next-valid-point line continuity. Practice Rhythm retains zero-volume
-  buckets after its first supported bucket.
+  `src/features/analytics/domain/chart-data.ts` aggregate raw eligible evidence
+  into calendar buckets, preserve empty periods as `null` rows, and classify
+  line continuity. Adjacent measurements are solid, exactly one empty bucket
+  may be bridged with a dashed segment, and two or more empty buckets break the
+  line.
 - `src/features/analytics/api/analytics-contracts.ts` validates the serialized
   read model with Zod before it crosses the extension runtime boundary.
 - `src/features/analytics/components/charts/chart-definitions.ts` is the typed
   chart catalogue: title, question, data meaning, eligibility, aggregation,
   semantic series, and sparse-state copy. `LineSegments` in
   `src/features/analytics/components/charts/line-segments.tsx` renders measured
-  runs and dashed next-valid-point bridges without interpolating data.
+  runs, one-empty-bucket dashed bridges, and longer breaks without interpolating
+  data.
 - `src/lib/leetcode/domain/problem-url.ts` owns canonical problem URLs; the
-  retention details and fragile-knowledge rows use `createLeetCodeProblemUrl`
+  Retention Map details and Memory Signals rows use `createLeetCodeProblemUrl`
   rather than constructing links in chart components.
 
-The Analytics service applies the range policy, calculates readiness separately
-for each metric's eligibility rules, trims only unsupported leading history, and
-then builds its Zod-validated summary. Historical readiness is exposed as
-confidence context; it does not suppress available Recall Quality, Practice
-Rhythm, Memory Strength, or Recent Overdue Backlog points. Current Retention
-Health, Fragile Knowledge, and the fixed 14-day Upcoming Review Load do not
-depend on the historical range being ready.
+The Analytics service reads the complete ordered review sequence, replays FSRS
+before applying display-period filtering, aggregates retained raw evidence, and
+then builds its Zod-validated summary. It does not average displayed percentages
+or compress inactive calendar time. Historical response views expose evidence
+classification, not legacy readiness or shorter-range recommendation fields.
 
-Readiness diagnostics are a read-only view of that same production
-calculation—not a second implementation. They include `S/A/G/K/E`, selected
-bucket boundaries, gate thresholds, and which evidence each metric accepted or
-rejected. Treat the diagnostics as an explanation of the serialized chart data;
-do not use them to recalculate a competing result in the UI. Queue summaries
+Views 1–5 follow the selected 90-day, 120-day, or All-time frame. Views 6–7 are
+current-state views. View 8 always returns 120 daily local-date rows ending
+today, including known zeroes and explicit unknowns. View 9 always returns today
+plus the next 13 local dates, with overdue work separated from scheduled due
+work. These fixed and current views remain selector-independent. Queue summaries
 expose `dueToday`, `newAvailable`, `queueLoad`, and `recommendationReason`
 aliases while preserving legacy queue fields for existing consumers.
 

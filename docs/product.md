@@ -109,12 +109,10 @@ Current behavior:
   selective import sections, and performs explicit full local clear/reset.
 - The dashboard header shows compact pull and push shortcuts after GitHub Gist
   sync is configured.
-- Analytics shows local review-day totals, all-time review counts, current
-  streak, low-sample-aware observed rating quality, a tracked-card memory
-  profile, current retention health, fragile knowledge, and a fixed 14-day
-  upcoming-review forecast. Its historical charts use the selected 14-, 30-,
-  or 90-day range as evidence-gated presentation windows rather than promising
-  a trend from sparse local history.
+- Analytics shows historical review outcomes, current memory signals, a fixed
+  120-day overdue backlog, and an upcoming-review forecast for today plus the
+  next 13 local dates. Its historical selector offers 90 days, 120 days, and
+  All time, with evidence gates that keep sparse local history truthful.
 - Overview currently reserves route ownership for a future guided-practice home.
 
 ### Background Service Worker
@@ -193,39 +191,33 @@ and practice patterns, current memory state, workload, and weak-area
 inspection. It is read-only and derived from local practice state; it does not
 introduce hosted reporting or account behavior.
 
-Historical Analytics uses adaptive presentation buckets and evidence gates:
+Historical Analytics uses explicit calendar ranges and metric-specific evidence:
 
-- The implemented range choices are 14 days with daily buckets, 30 days with
-  three-day buckets, and 90 days with weekly buckets. The selection is always
-  explicit and never silently changes to a shorter period.
-- For each metric, Analytics removes only unsupported leading buckets from its
-  presentation window. Internal and trailing gaps remain unknown; it does not
-  fill them with invented values. When the selected range is not ready, the
-  page explains the relevant evidence shortfall and can offer the richest
-  shorter ready range as a link; the available chart still remains visible.
-- Practice Rhythm keeps every bucket after the first supported practice bucket.
-  A bucket with no reviews is plotted as zero review volume, while correctness
-  remains unknown unless an eligible correctness assessment exists.
-- A dashed line bridge means two measured values are separated by a missing-
-  evidence gap. It is a visual connection only, never an interpolated data
-  value. Historical line charts connect each measured point to the next valid
-  point so sparse history does not create a broken visual story; unknown
-  buckets still do not receive markers or tooltip values.
-- Readiness is metric-specific and explainable. A range or metric can be held
-  back for too little usable span, too few eligible assessments or active
-  buckets, a gap that is too long, or too many gaps. Readiness is guidance for
-  confidence, not a reason to hide an otherwise available chart.
+- The public choices are 90 days, 120 days, and All time; 90 days is the
+  default. Fixed ranges use clipped Monday-start weeks. All time uses the finest
+  approved calendar grain that produces at most 48 buckets.
+- FSRS history is replayed in full before selected-period events are filtered
+  into display buckets. Ratios and shares are derived after raw numerators and
+  denominators are aggregated.
+- Empty calendar periods remain visible as Not measured rows and X positions.
+  The axis is elapsed calendar time, never compressed practice or event order.
+- Each historical metric reports eligible history days (`H`), measured buckets
+  (`M`), and observations (`S`). Fewer than 30 eligible history days shows the
+  evidence state and exact Table only. With at least 30 days, one measured
+  bucket shows one mark, two to five show unconnected marks, and a descriptive
+  line requires at least six measured buckets and 30 observations.
+- Historical lines are solid between adjacent measured buckets, dashed across
+  exactly one empty bucket, and broken across two or more empty buckets. A gap
+  never receives a synthetic marker, value, or tooltip.
+- Every chart has a Table using the same presentation rows. Full dates use
+  `MM/DD/YY`, and multi-date buckets use `MM/DD/YY–MM/DD/YY`.
 
-Historical readiness does not hide useful analytics. Recall Quality, Practice
-Rhythm, Memory Strength, and Recent Overdue Backlog keep showing available
-points when a historical selected range is unready; a one-point series says
-that it is not enough for a trend yet. Retention Health, Fragile Knowledge, and
-the fixed 14-day Upcoming Review Load remain available as current or forecast
-views. Retention Health compares each active problem's current FSRS
-retrievability with the configured target; its hover/focus preview can be
-pinned for details and provides a canonical LeetCode link. Fragile Knowledge
-highlights current cards with risk signals and shows five rows per page with
-canonical LeetCode problem links.
+Current-state Retention Map and Memory Signals by Problem do not depend on the
+historical selector. Recent Overdue Backlog always covers the preceding 120
+local dates as daily rows, and Upcoming Review Load always covers today plus the
+next 13 local dates. Retention Map details support pointer and keyboard
+inspection, pinning, dismissal, and a canonical LeetCode link. Memory Signals
+shows five rows per page with canonical LeetCode problem links.
 
 Observed correctness is the persisted share of eligible assessments marked
 correct. It is not FSRS-predicted recall, retention, or a record of first-try

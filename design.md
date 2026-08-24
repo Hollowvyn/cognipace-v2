@@ -169,3 +169,32 @@ Shapes are disciplined but adopt a more approachable **Rounded** profile. This b
 - Do not show persistent explanation banners or helper paragraphs in the normal state.
 - Use stateful controls, concise inline feedback, and native tooltips for secondary explanations.
 - The normal populated popup should answer: what to review now, and what to study next.
+
+## CogniPace Analytics Rules
+
+- The historical range control offers 90 days, 120 days, and All time. Keep the
+  exact range, timezone, and as-of scope visible and announce range refreshes
+  politely to assistive technology.
+- Preserve elapsed calendar time and every presentation row. Empty periods are
+  Not measured positions; never compress them into review-event order.
+- Use solid line segments for adjacent measurements, a dashed bridge across
+  exactly one empty bucket, and a break across two or more empty buckets. Do not
+  put a marker or tooltip value in a gap.
+- Evidence controls the mark: under 30 eligible history days is Table-only; one
+  measured bucket is one mark; two to five are unconnected marks; a line needs
+  at least six measured buckets and 30 observations. Use quiet evidence copy,
+  not repeated warning banners or shorter-range recommendations.
+- Every chart has a semantic Table backed by the same presentation rows. Use
+  `MM/DD/YY` for full dates and `MM/DD/YY–MM/DD/YY` for bucket spans; compact
+  axes may abbreviate while keeping the first and last labels.
+- Tooltips supplement rather than replace exact Tables. They must work with
+  pointer and keyboard input, preserve visible focus, use semantic labels, and
+  never rely on color alone. Interactive Retention Map details may be pinned and
+  dismissed with the same-point toggle, close control, Escape, or outside click,
+  with focus restored afterward.
+- Current-state Views 6–7 do not change with the historical selector. View 8 is
+  a fixed 120-day daily local backlog; View 9 is today plus 13 local dates.
+- At narrow widths, reduce tick density and optional in-plot labels before
+  removing data. Tables may scroll horizontally, but controls, tooltips,
+  dialogs, pagination, and keyboard focus must remain usable at 200–400% zoom,
+  forced colors, and reduced motion.
