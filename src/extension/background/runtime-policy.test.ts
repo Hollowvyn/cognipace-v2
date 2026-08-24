@@ -185,11 +185,9 @@ describe('runtime-policy', () => {
 
   it('rejects popup, content-script, and unknown track import senders', () => {
     expect(() =>
-      assertCanSenderCallExtensionMethod(
-        'tracks.importTracks',
-        'dashboard',
-        { url: 'chrome-extension://extension-id/popup.html' },
-      ),
+      assertCanSenderCallExtensionMethod('tracks.importTracks', 'dashboard', {
+        url: 'chrome-extension://extension-id/popup.html',
+      }),
     ).toThrow(/cannot claim/)
 
     expect(() =>
@@ -334,10 +332,7 @@ describe('runtime-policy', () => {
         ),
       ).toBe(true)
       expect(
-        canCallExtensionMethod(
-          'genai.recommendLeetCodeAssessment',
-          'popup',
-        ),
+        canCallExtensionMethod('genai.recommendLeetCodeAssessment', 'popup'),
       ).toBe(false)
       expect(
         canCallExtensionMethod(

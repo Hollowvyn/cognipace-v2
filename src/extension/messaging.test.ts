@@ -30,8 +30,8 @@ describe('extension messaging protocol', () => {
     const sendTrackImportMessage = () =>
       sendMessage('tracks.importTracks', request)
 
-    expectTypeOf(
-      sendTrackImportMessage,
-    ).returns.toEqualTypeOf<Promise<TrackImportResult>>()
+    expectTypeOf(sendTrackImportMessage).returns.toEqualTypeOf<
+      Promise<TrackImportResult>
+    >()
   })
 })

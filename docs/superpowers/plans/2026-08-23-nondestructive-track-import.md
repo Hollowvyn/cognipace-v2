@@ -121,9 +121,7 @@ const validImport = {
       title: 'Interview Track',
       description: null,
       dueAt: null,
-      groups: [
-        { title: 'Arrays', problemSlugs: ['two-sum', 'valid-anagram'] },
-      ],
+      groups: [{ title: 'Arrays', problemSlugs: ['two-sum', 'valid-anagram'] }],
     },
   ],
 } as const
@@ -182,7 +180,9 @@ it('rejects normalized duplicate track titles and problem memberships', () => {
 })
 
 it('summarizes unique referenced problems for the preview', () => {
-  expect(createTrackImportPreview(trackImportFileSchema.parse(validImport))).toEqual({
+  expect(
+    createTrackImportPreview(trackImportFileSchema.parse(validImport)),
+  ).toEqual({
     trackCount: 1,
     groupCount: 1,
     problemCount: 2,
@@ -238,7 +238,10 @@ export const trackImportFileSchema = z
   .strictObject({
     schemaVersion: z.literal(trackImportSchemaVersion),
     app: z.literal('cognipace-track-import'),
-    problems: z.array(trackImportProblemSchema).max(5_000).default(() => []),
+    problems: z
+      .array(trackImportProblemSchema)
+      .max(5_000)
+      .default(() => []),
     tracks: z.array(trackImportTrackSchema).min(1).max(20),
   })
   .superRefine(addTrackImportDuplicateIssues)
@@ -461,7 +464,9 @@ it('inserts a track through a caller-owned transaction', async () => {
     { title: 'Arrays', position: 1 },
     { title: 'Stack', position: 2 },
   ])
-  await expect(repository.getMemberships('imported-plan')).resolves.toMatchObject([
+  await expect(
+    repository.getMemberships('imported-plan'),
+  ).resolves.toMatchObject([
     { problemSlug: 'two-sum', position: 1 },
     { problemSlug: 'valid-parentheses', position: 1 },
   ])
