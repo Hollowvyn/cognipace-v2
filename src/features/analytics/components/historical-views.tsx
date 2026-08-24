@@ -20,6 +20,7 @@ import { LineSegments } from './charts/line-segments'
 import { formatCount, formatDays, formatPercent } from './charts/chart-shared'
 
 const chartDimension = { width: 640, height: 288 }
+const historicalTickGap = 48
 
 export function ObservedRecallVsFsrsView({
   view,
@@ -73,7 +74,7 @@ export function ObservedRecallVsFsrsView({
                     allowDuplicatedCategory={false}
                     dataKey="bucketStart"
                     interval="preserveStartEnd"
-                    minTickGap={32}
+                    minTickGap={historicalTickGap}
                     tickFormatter={(value) =>
                       formatRowBucket(
                         view.rows.find((row) => row.bucketStart === value),
@@ -187,7 +188,7 @@ export function MemoryStrengthView({
                   allowDuplicatedCategory={false}
                   dataKey="bucketStart"
                   interval="preserveStartEnd"
-                  minTickGap={32}
+                  minTickGap={historicalTickGap}
                   tickFormatter={(value) =>
                     formatRowBucket(
                       chartRows.find((row) => row.bucketStart === value),
@@ -204,20 +205,24 @@ export function MemoryStrengthView({
                   width={48}
                 />
                 <ChartTooltip content={<MemoryTooltip />} />
-                <Area
-                  dataKey="iqrBase"
-                  fill="transparent"
-                  stackId="memory-strength-iqr"
-                  stroke="transparent"
-                />
-                <Area
-                  data-testid="memory-strength-iqr-band"
-                  dataKey="iqrRange"
-                  fill="var(--cp-analytics-healthy)"
-                  fillOpacity={0.18}
-                  stackId="memory-strength-iqr"
-                  stroke="none"
-                />
+                {view.evidence.supportsLine ? (
+                  <>
+                    <Area
+                      dataKey="iqrBase"
+                      fill="transparent"
+                      stackId="memory-strength-iqr"
+                      stroke="transparent"
+                    />
+                    <Area
+                      data-testid="memory-strength-iqr-band"
+                      dataKey="iqrRange"
+                      fill="var(--cp-analytics-healthy)"
+                      fillOpacity={0.18}
+                      stackId="memory-strength-iqr"
+                      stroke="none"
+                    />
+                  </>
+                ) : null}
                 <LineSegments
                   connectSegments={view.evidence.supportsLine}
                   data={chartRows}
@@ -298,7 +303,7 @@ export function PracticeRhythmView({
                   allowDuplicatedCategory={false}
                   dataKey="bucketStart"
                   interval="preserveStartEnd"
-                  minTickGap={32}
+                  minTickGap={historicalTickGap}
                   tickFormatter={(value) =>
                     formatRowBucket(
                       view.rows.find((row) => row.bucketStart === value),
@@ -428,7 +433,7 @@ export function RatingsMixView({
                     allowDuplicatedCategory={false}
                     dataKey="bucketStart"
                     interval="preserveStartEnd"
-                    minTickGap={32}
+                    minTickGap={historicalTickGap}
                     tickFormatter={(value) =>
                       formatRowBucket(
                         view.rows.find((row) => row.bucketStart === value),
@@ -753,8 +758,8 @@ function PracticeRhythmTable({
       headers={[
         'Bucket',
         'Completed reviews',
-        'Good + Easy',
         'Review Success',
+        'Good + Easy',
         'Evidence',
       ]}
       resetKey={resetKey}
@@ -762,8 +767,8 @@ function PracticeRhythmTable({
       cells={(row) => [
         bucketText(row),
         row.completedReviews,
-        `${row.goodEasy} of ${row.validRatings}`,
         formatPercent(row.reviewSuccess),
+        `${row.goodEasy} of ${row.validRatings}`,
         evidenceText(row.evidence),
       ]}
     />
@@ -1000,7 +1005,7 @@ function MemoryTooltip({
     />
   ) : null
 }
-function RhythmTooltip({
+export function RhythmTooltip({
   active,
   payload,
 }: {
@@ -1020,7 +1025,7 @@ function RhythmTooltip({
     />
   ) : null
 }
-function RatingsMixTooltip({
+export function RatingsMixTooltip({
   active,
   payload,
 }: {
@@ -1037,7 +1042,8 @@ function RatingsMixTooltip({
         `Good: ${formatRatingCell(row.good, row.goodShare)}`,
         `Easy: ${formatRatingCell(row.easy, row.easyShare)}`,
         `Valid ratings: ${formatCount(row.validRatings)}`,
-        `Partial state: ${row.isPartial ? 'In progress' : 'Complete'}`,
+        `Challenging reviews: ${formatCount(row.challengingReviews)}`,
+        `Evidence: ${evidenceText(row.evidence)}${row.isPartial ? ' · In progress' : ''}`,
       ]}
     />
   ) : null
@@ -1071,7 +1077,13 @@ function TopicPerformanceTooltip({
 }
 function TooltipBox({ title, values }: { title: string; values: string[] }) {
   return (
-    <div className="rounded border border-border bg-popover p-2 text-xs shadow">
+    <div
+      aria-atomic="true"
+      aria-label={`${title} details`}
+      aria-live="polite"
+      className="rounded border border-border bg-popover p-2 text-xs shadow"
+      role="status"
+    >
       <p className="m-0 font-semibold">{title}</p>
       {values.map((value) => (
         <p className="m-0" key={value}>

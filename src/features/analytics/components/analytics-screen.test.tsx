@@ -149,6 +149,58 @@ describe('AnalyticsScreen', () => {
     expect(screen.queryByText(/Invalid Date/)).not.toBeInTheDocument()
   })
 
+  it('politely announces refreshed 90-day, 120-day, and All-time scopes', async () => {
+    const base = createSerializedAnalyticsSummary()
+    const allTime = {
+      ...base,
+      range: 'all' as const,
+      timeFrame: {
+        ...base.timeFrame,
+        requestedRange: 'all' as const,
+        periodStart: null,
+        bucketGrain: null,
+        buckets: [],
+      },
+    }
+    vi.mocked(sendMessage)
+      .mockResolvedValueOnce(summaryWithHistoricalRows(90))
+      .mockResolvedValueOnce(summaryWithHistoricalRows(120))
+      .mockResolvedValueOnce(allTime)
+    const harness = createQueryTestHarness()
+    const { rerender } = render(<AnalyticsScreen range={90} />, {
+      wrapper: harness.wrapper,
+    })
+
+    let scope = await screen.findByRole('status', {
+      name: 'Analytics range and time scope',
+    })
+    expect(scope).toHaveAttribute('aria-live', 'polite')
+    expect(scope).toHaveAttribute('aria-atomic', 'true')
+    expect(scope).toHaveTextContent('Range: 90 days')
+
+    rerender(<AnalyticsScreen range={120} />)
+    await waitFor(() => {
+      expect(
+        screen.getByRole('status', {
+          name: 'Analytics range and time scope',
+        }),
+      ).toHaveTextContent('Range: 120 days')
+    })
+
+    rerender(<AnalyticsScreen range="all" />)
+    await waitFor(() => {
+      expect(
+        screen.getByRole('status', {
+          name: 'Analytics range and time scope',
+        }),
+      ).toHaveTextContent('Range: All time')
+    })
+    scope = screen.getByRole('status', {
+      name: 'Analytics range and time scope',
+    })
+    expect(scope).not.toHaveTextContent('Invalid Date')
+  })
+
   it('keeps the selected Table tab and resets its pagination after a range change', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage)
@@ -172,6 +224,7 @@ describe('AnalyticsScreen', () => {
         'analytics.getSummary',
         expect.objectContaining({ range: 120 }),
       )
+      expect(screen.getByText('Page 1 of 2')).toBeVisible()
     })
     const refreshedPanel = await screen.findByRole('region', {
       name: 'Observed Recall vs FSRS Estimate',

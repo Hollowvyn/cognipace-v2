@@ -7,7 +7,9 @@ import {
   MemoryStrengthView,
   ObservedRecallVsFsrsView,
   PracticeRhythmView,
+  RatingsMixTooltip,
   RatingsMixView,
+  RhythmTooltip,
   TopicPerformanceView,
 } from './historical-views'
 
@@ -433,6 +435,9 @@ describe('Phase 2 historical analytics views', () => {
       screen.getAllByTestId('memory-strength-markers').length,
     ).toBeGreaterThan(0)
     expect(
+      screen.queryByTestId('memory-strength-iqr-band'),
+    ).not.toBeInTheDocument()
+    expect(
       screen.queryByTestId(/^memory-strength-(solid|bridge|single)-/),
     ).not.toBeInTheDocument()
 
@@ -455,6 +460,9 @@ describe('Phase 2 historical analytics views', () => {
     expect(
       screen.getAllByTestId('memory-strength-markers').length,
     ).toBeGreaterThan(1)
+    expect(
+      screen.queryByTestId('memory-strength-iqr-band'),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByTestId(/^memory-strength-(solid|bridge|single)-/),
     ).not.toBeInTheDocument()
@@ -596,4 +604,120 @@ describe('Phase 2 historical analytics views', () => {
       screen.getByRole('rowheader', { name: '08/01/26–08/07/26' }),
     ).toBeVisible()
   })
+
+  it.each([
+    ['90 days', 14],
+    ['120 days', 18],
+    ['All time', 48],
+  ])(
+    'retains every elapsed %s row while thinning only ticks and keeping edge labels',
+    (_label, rowCount) => {
+      const rows = createDenseMemoryRows(rowCount)
+      const { unmount } = render(
+        <MemoryStrengthView
+          view={{
+            rows,
+            scale: { domain: [0, 20], ticks: [0, 10, 20] },
+            evidence: trendEvidence,
+          }}
+        />,
+      )
+
+      expect(
+        document.querySelectorAll(
+          'circle[data-testid="memory-strength-markers"]',
+        ),
+      ).toHaveLength(rowCount)
+
+      const ticks = Array.from(
+        document.querySelectorAll(
+          '.recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-label text',
+        ),
+        (node) => node.textContent,
+      )
+      expect(ticks.length).toBeLessThan(rowCount)
+      expect(ticks[0]).toBe(formatCompactDate(rows[0]!.bucketStart))
+      expect(ticks.at(-1)).toBe(formatCompactDate(rows.at(-1)!.bucketStart))
+
+      unmount()
+    },
+  )
+
+  it('keeps Practice Rhythm tooltip order aligned with its table and announces the active datum', () => {
+    const row = {
+      id: '2026-08-01',
+      bucketStart: '2026-08-01',
+      bucketEnd: '2026-08-07',
+      isPartial: false,
+      completedReviews: 4,
+      goodEasy: 3,
+      validRatings: 4,
+      reviewSuccess: 0.75,
+      evidence: 'measured' as const,
+    }
+    render(<RhythmTooltip active payload={[{ payload: row }]} />)
+
+    const tooltip = screen.getByRole('status', {
+      name: '08/01/26–08/07/26 details',
+    })
+    expect(tooltip).toHaveAttribute('aria-live', 'polite')
+    expect(tooltip).toHaveAttribute('aria-atomic', 'true')
+    const copy = tooltip.textContent ?? ''
+    expect(copy.indexOf('Review Success: 75%')).toBeLessThan(
+      copy.indexOf('Good + Easy: 3 of 4'),
+    )
+  })
+
+  it('keeps Ratings Mix tooltip fields aligned with the exact table without a partial substitute', () => {
+    const row = {
+      id: '2026-08-01',
+      bucketStart: '2026-08-01',
+      bucketEnd: '2026-08-07',
+      isPartial: true,
+      again: 1,
+      hard: 0,
+      good: 2,
+      easy: 1,
+      againShare: 0.25,
+      hardShare: 0,
+      goodShare: 0.5,
+      easyShare: 0.25,
+      validRatings: 4,
+      challengingReviews: 1,
+      evidence: 'measured' as const,
+    }
+    render(<RatingsMixTooltip active payload={[{ payload: row }]} />)
+
+    const tooltip = screen.getByRole('status', {
+      name: '08/01/26–08/07/26 (in progress) details',
+    })
+    expect(tooltip).toHaveTextContent('Challenging reviews: 1')
+    expect(tooltip).toHaveTextContent('Evidence: Measured · In progress')
+    expect(tooltip).not.toHaveTextContent('Partial state:')
+  })
 })
+
+function createDenseMemoryRows(rowCount: number) {
+  return Array.from({ length: rowCount }, (_, index) => {
+    const date = new Date(Date.UTC(2025, 0, 1 + index * 7))
+    const dateKey = date.toISOString().slice(0, 10)
+    return {
+      id: dateKey,
+      bucketStart: dateKey,
+      bucketEnd: dateKey,
+      isPartial: false,
+      medianStrengthDays: 5 + (index % 5),
+      q1: 4 + (index % 5),
+      q3: 6 + (index % 5),
+      eligibleReviews: 4,
+      medianChangeDays: 1,
+      provenance: 'reconstructed' as const,
+      evidence: 'measured' as const,
+    }
+  })
+}
+
+function formatCompactDate(dateKey: string) {
+  const [, month, day] = dateKey.split('-')
+  return `${month}/${day}`
+}

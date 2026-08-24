@@ -139,7 +139,13 @@ function AnalyticsScopeMetadata({
 }) {
   const finalBucketEndKey = data.timeFrame.buckets.at(-1)?.endKey
   return (
-    <p className="m-0 text-sm text-muted-foreground">
+    <p
+      aria-atomic="true"
+      aria-label="Analytics range and time scope"
+      aria-live="polite"
+      className="m-0 text-sm text-muted-foreground"
+      role="status"
+    >
       Range: {formatRange(data.range)}
       {data.timeFrame.periodStart !== null && finalBucketEndKey
         ? ` · Period: ${formatScopeDateTime(data.timeFrame.periodStart, data.timeFrame.timeZone)}–${formatScopeDateKey(finalBucketEndKey)}`
