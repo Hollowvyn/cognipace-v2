@@ -43,11 +43,13 @@ import {
   syncStatusSchema,
   todayQueueSchema,
   trackForEditResponseSchema,
+  trackImportResultSchema,
   tracksClearActiveTrackRequestSchema,
   tracksCreateTrackRequestSchema,
   tracksDeleteTrackRequestSchema,
   tracksGetTrackForEditRequestSchema,
   tracksGetWorkspaceRequestSchema,
+  tracksImportTracksRequestSchema,
   tracksNullResponseSchema,
   tracksResetTrackProgressRequestSchema,
   tracksRequestSchema,
@@ -142,6 +144,7 @@ import {
   getActiveTrack,
   getTrackForEdit,
   getWorkspace,
+  importTracks,
   resetTrackProgress,
   setActiveGroup,
   setActiveTrack,
@@ -1011,6 +1014,25 @@ export function registerBackgroundHandlers() {
     )
     return getAppDb().then(async ({ db }) =>
       trackForEditResponseSchema.parse(await getTrackForEdit(db, request)),
+    )
+  })
+
+  onMessage('tracks.importTracks', ({ data, sender }) => {
+    const request = tracksImportTracksRequestSchema.parse(data)
+
+    assertCanSenderCallExtensionMethod(
+      'tracks.importTracks',
+      request.surface,
+      sender,
+    )
+    return runDbMutation(
+      async (db) =>
+        trackImportResultSchema.parse(await importTracks(db, request)),
+      () =>
+        broadcastTracksInvalidation({
+          source: request.surface,
+          tags: ['tracks', 'problems'],
+        }),
     )
   })
 

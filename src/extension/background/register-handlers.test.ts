@@ -9,11 +9,13 @@ import {
   syncActionResultSchema,
   syncStatusSchema,
   trackForEditResponseSchema,
+  trackImportResultSchema,
   tracksClearActiveTrackRequestSchema,
   tracksCreateTrackRequestSchema,
   tracksDeleteTrackRequestSchema,
   tracksGetTrackForEditRequestSchema,
   tracksGetWorkspaceRequestSchema,
+  tracksImportTracksRequestSchema,
   tracksResetTrackProgressRequestSchema,
   tracksSetActiveGroupRequestSchema,
   tracksSetActiveTrackRequestSchema,
@@ -107,6 +109,7 @@ const backgroundMocks = vi.hoisted(() => {
     getProblemLibrary: vi.fn(),
     createProblem: vi.fn(),
     createTrack: vi.fn(),
+    importTracks: vi.fn(),
     clearActiveTrack: vi.fn(),
     deleteTrack: vi.fn(),
     bulkUpdateProblems: vi.fn(),
@@ -271,6 +274,7 @@ vi.mock(
 
 vi.mock('@/features/tracks/server/tracks-service', () => ({
   createTrack: backgroundMocks.createTrack,
+  importTracks: backgroundMocks.importTracks,
   deleteTrack: backgroundMocks.deleteTrack,
   getActiveTrack: backgroundMocks.getActiveTrack,
   getTrackForEdit: backgroundMocks.getTrackForEdit,
@@ -418,6 +422,7 @@ describe('background handler registration', () => {
     backgroundMocks.getProblemLibrary.mockResolvedValue(problemLibraryResponse)
     backgroundMocks.createProblem.mockResolvedValue(problemForEditResponse)
     backgroundMocks.createTrack.mockResolvedValue(trackForEditResponse)
+    backgroundMocks.importTracks.mockResolvedValue(trackImportResult)
     backgroundMocks.deleteTrack.mockResolvedValue(undefined)
     backgroundMocks.bulkUpdateProblems.mockResolvedValue(undefined)
     backgroundMocks.getPracticeDetails.mockResolvedValue(practiceDetails)
@@ -1381,6 +1386,51 @@ describe('background handler registration', () => {
       trackForEditResponseSchema.parse(createResponse),
     )
     expect(editResponse).toEqual(trackForEditResponseSchema.parse(editResponse))
+  })
+
+  it('imports tracks through the dashboard runtime with result parsing and invalidation', async () => {
+    const request = createTrackImportRequest()
+
+    const response = await sendRuntimeMessage('tracks.importTracks', request)
+
+    expectRuntimePolicy('tracks.importTracks', 'dashboard')
+    expect(backgroundMocks.importTracks).toHaveBeenCalledWith(
+      backgroundMocks.db,
+      tracksImportTracksRequestSchema.parse(request),
+    )
+    expect(response).toEqual(trackImportResultSchema.parse(response))
+    expect(backgroundMocks.broadcastCacheInvalidation).toHaveBeenCalledWith({
+      reason: 'tracks-updated',
+      source: 'dashboard',
+      tags: ['tracks', 'problems'],
+    })
+    expectFlushBeforeBroadcast()
+  })
+
+  it('rejects invalid track import requests before mutation side effects', () => {
+    expect(() =>
+      sendRuntimeMessage('tracks.importTracks', {
+        surface: 'dashboard',
+        file: { tracks: [] },
+      }),
+    ).toThrow()
+
+    expect(backgroundMocks.importTracks).not.toHaveBeenCalled()
+    expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
+  })
+
+  it('does not flush or broadcast when track import fails', async () => {
+    backgroundMocks.importTracks.mockRejectedValueOnce(
+      new Error('Track import failed.'),
+    )
+
+    await expect(
+      sendRuntimeMessage('tracks.importTracks', createTrackImportRequest()),
+    ).rejects.toThrow('Track import failed.')
+
+    expect(backgroundMocks.flushDbSnapshot).not.toHaveBeenCalled()
+    expect(backgroundMocks.broadcastCacheInvalidation).not.toHaveBeenCalled()
   })
 
   it('flushes and broadcasts tracks invalidation after active selection writes', async () => {
@@ -2432,6 +2482,24 @@ function createTrackRequest() {
   } as const
 }
 
+function createTrackImportRequest() {
+  return {
+    surface: 'dashboard',
+    file: {
+      schemaVersion: 1,
+      app: 'cognipace-track-import',
+      tracks: [
+        {
+          title: 'Imported Track',
+          description: null,
+          dueAt: null,
+          groups: [{ title: 'Arrays', problemSlugs: ['two-sum'] }],
+        },
+      ],
+    },
+  } as const
+}
+
 function createDeferred<T>() {
   let resolve!: (value: T) => void
   let reject!: (error: unknown) => void
@@ -2816,3 +2884,9 @@ const validBackup = backupFileSchema.parse({
   },
 })
 const validBackupSummary = createBackupSummary(validBackup)
+const trackImportResult = {
+  createdTrackIds: ['imported-track'],
+  createdTrackCount: 1,
+  createdProblemCount: 1,
+  reusedProblemCount: 0,
+}
