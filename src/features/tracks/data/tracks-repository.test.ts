@@ -73,6 +73,28 @@ describe('TracksRepository', () => {
     expect(activeTrack?.track).not.toHaveProperty('isActive')
   })
 
+  it('reads a track by normalized slug independently of its id and title', async () => {
+    const handle = await createTestDb({ seed: false })
+    const timestamp = new Date('2026-01-01T00:00:00.000Z').getTime()
+    await handle.db.insert(tracks).values({
+      id: 'legacy-track-record',
+      slug: 'reserved-track-slug',
+      title: 'Different Track Title',
+      description: null,
+      dueAt: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })
+
+    await expect(
+      createTracksRepository(handle.db).getTrackBySlug('Reserved Track Slug'),
+    ).resolves.toMatchObject({
+      id: 'legacy-track-record',
+      slug: 'reserved-track-slug',
+      title: 'Different Track Title',
+    })
+  })
+
   it('maps track due date from storage', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
@@ -521,6 +543,83 @@ describe('TracksRepository', () => {
         position: 1,
       },
     ])
+  })
+
+  it('inserts a track, groups, and memberships through a caller-owned transaction', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    const now = new Date('2026-01-02T00:00:00.000Z')
+
+    const created = await handle.db.transaction(async (transactionDb) =>
+      createTracksRepository(transactionDb as unknown as Db).insertTrack(
+        {
+          title: ' Transaction Track ',
+          description: '  ',
+          dueAt: null,
+          groups: [
+            {
+              title: ' First Group ',
+              problemSlugs: [
+                ' Two Sum!! ',
+                'https://leetcode.com/problems/valid-parentheses/',
+              ],
+            },
+            {
+              title: 'Second_Group',
+              problemSlugs: ['3SUM'],
+            },
+          ],
+        },
+        now,
+      ),
+    )
+
+    expect(created).toMatchObject({
+      id: 'transaction-track',
+      slug: 'transaction-track',
+      title: 'Transaction Track',
+      description: null,
+      dueAt: null,
+    })
+    await expect(
+      createTracksRepository(handle.db).getGroups(created.id),
+    ).resolves.toEqual([
+      {
+        id: 'transaction-track:first-group',
+        trackId: 'transaction-track',
+        title: 'First Group',
+        position: 1,
+      },
+      {
+        id: 'transaction-track:second-group',
+        trackId: 'transaction-track',
+        title: 'Second_Group',
+        position: 2,
+      },
+    ])
+    await expect(
+      createTracksRepository(handle.db).getMemberships(created.id),
+    ).resolves.toMatchObject([
+      {
+        groupId: 'transaction-track:first-group',
+        problemSlug: 'two-sum',
+        problemPosition: 1,
+      },
+      {
+        groupId: 'transaction-track:first-group',
+        problemSlug: 'valid-parentheses',
+        problemPosition: 2,
+      },
+      {
+        groupId: 'transaction-track:second-group',
+        problemSlug: '3sum',
+        problemPosition: 1,
+      },
+    ])
+    await expect(
+      handle.db.select().from(trackProblemProgress),
+    ).resolves.toEqual([])
   })
 
   it('updates a track with normalized group and problem positions', async () => {

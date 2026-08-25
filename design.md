@@ -169,3 +169,16 @@ Shapes are disciplined but adopt a more approachable **Rounded** profile. This b
 - Do not show persistent explanation banners or helper paragraphs in the normal state.
 - Use stateful controls, concise inline feedback, and native tooltips for secondary explanations.
 - The normal populated popup should answer: what to review now, and what to study next.
+
+## Dashboard Tracks Rules
+
+- `Import Tracks` is an outline action paired with the primary `New Track`
+  action wherever the Tracks action group appears.
+- Import details belong in a route modal over the Tracks workspace so the
+  dashboard keeps its compact hierarchy and the underlying track context stays
+  visible.
+- The modal should present a quiet file-selection state, a clear ready preview,
+  explicit import action, and concise success or conflict feedback.
+- Import is never implicit: selecting a file validates it, while persistence
+  requires the explicit `Import Tracks` action. Imported tracks remain inactive
+  until the user activates one through the normal Tracks workflow.

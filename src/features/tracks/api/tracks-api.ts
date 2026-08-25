@@ -5,6 +5,8 @@ import { invalidateTaggedQueries } from '@/platform/query/cache-invalidation'
 import { queryKeys } from '@/platform/query/query-keys'
 
 import type {
+  TrackImportRequest,
+  TrackImportResult,
   TracksCreateTrackRequest,
   TracksClearActiveTrackRequest,
   TracksDeleteTrackRequest,
@@ -33,6 +35,10 @@ export function getTrackForEditViaRuntime(
   request: TracksGetTrackForEditRequest,
 ) {
   return sendMessage('tracks.getTrackForEdit', request)
+}
+
+export function importTracksViaRuntime(request: TrackImportRequest) {
+  return sendMessage('tracks.importTracks', request)
 }
 
 export function setActiveTrackViaRuntime(request: TracksSetActiveTrackRequest) {
@@ -86,6 +92,13 @@ export function useTrackForEdit(request: TracksGetTrackForEditRequest) {
     queryKey: tracksQueryKeys.edit(request.trackId),
     queryFn: () => getTrackForEditViaRuntime(request),
   })
+}
+
+export function useImportTracks() {
+  return useTrackMutation<TrackImportRequest, TrackImportResult>(
+    importTracksViaRuntime,
+    ['tracks', 'problems'],
+  )
 }
 
 export function useSetActiveTrack() {

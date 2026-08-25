@@ -105,7 +105,8 @@ Not every feature needs every folder. Add only the folder needed for the change.
   difficulty, premium status, and page upserts.
 - `queue`: review recommendation composition for today.
 - `tracks`: curriculum tracks, groups, ordered memberships, active track and
-  group state, progress, and dashboard track management.
+  group state, progress, dashboard track management, and the versioned
+  non-destructive JSON import workflow.
 - `settings`: persisted preferences, defaults, validation, and settings form
   behavior.
 - `sync`: GitHub Gist configuration, sync metadata, directional pull/push
@@ -168,6 +169,30 @@ UI hook or surface action
 - After database writes, flush the database snapshot before broadcasting cache
   invalidation.
 - Broadcast invalidation tags for every query family affected by a write.
+
+### Track Import Flow
+
+Track import is owned by `src/features/tracks` and is reachable only from the
+dashboard. The form parses the selected JSON file with the production
+`trackImportFileSchema` and shows a local preview. The explicit import action
+passes the validated file through the dashboard-authorized runtime method to
+the Tracks service, which performs one transaction:
+
+```text
+Tracks import form
+-> trackImportFileSchema and preview
+-> dashboard runtime request and sender authorization
+-> Tracks import service
+-> insert only missing Problems + create Tracks/groups/memberships
+-> snapshot flush and tracks/problems invalidation
+```
+
+Problem identity is the normalized LeetCode slug. Existing problem metadata,
+practice state, settings, active-track state, and unrelated tracks are not
+updated. Track IDs are derived from normalized titles; a conflict rejects the
+whole import. No schema migration is needed, and imported tracks are never
+activated automatically. Public file rules and defaults live in
+[`docs/track-import.md`](./track-import.md).
 
 ## State And Data Flow
 

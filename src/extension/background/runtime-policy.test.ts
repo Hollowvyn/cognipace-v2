@@ -175,11 +175,35 @@ describe('runtime-policy', () => {
       'tracks.updateTrack',
       'tracks.deleteTrack',
       'tracks.resetTrackProgress',
+      'tracks.importTracks',
     ]) {
       expect(canCallExtensionMethod(method, 'dashboard')).toBe(true)
       expect(canCallExtensionMethod(method, 'popup')).toBe(false)
       expect(canCallExtensionMethod(method, 'content-script')).toBe(false)
     }
+  })
+
+  it('rejects popup, content-script, and unknown track import senders', () => {
+    expect(() =>
+      assertCanSenderCallExtensionMethod('tracks.importTracks', 'dashboard', {
+        url: 'chrome-extension://extension-id/popup.html',
+      }),
+    ).toThrow(/cannot claim/)
+
+    expect(() =>
+      assertCanSenderCallExtensionMethod('tracks.importTracks', 'dashboard', {
+        tab: { id: 7 },
+        url: 'https://leetcode.com/problems/two-sum/',
+      }),
+    ).toThrow(/cannot claim/)
+
+    expect(() =>
+      assertCanSenderCallExtensionMethod(
+        'tracks.importTracks',
+        'dashboard',
+        {},
+      ),
+    ).toThrow(/Unable to resolve sender surface/)
   })
 
   it('keeps backup and local reset methods dashboard-only', () => {
@@ -308,10 +332,7 @@ describe('runtime-policy', () => {
         ),
       ).toBe(true)
       expect(
-        canCallExtensionMethod(
-          'genai.recommendLeetCodeAssessment',
-          'popup',
-        ),
+        canCallExtensionMethod('genai.recommendLeetCodeAssessment', 'popup'),
       ).toBe(false)
       expect(
         canCallExtensionMethod(

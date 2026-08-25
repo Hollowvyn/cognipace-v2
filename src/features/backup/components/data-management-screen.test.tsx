@@ -71,6 +71,21 @@ describe('DataManagementScreen', () => {
     ).toBeTruthy()
   })
 
+  it('keeps Tracks out of the planned selective-import areas', () => {
+    const { wrapper } = createQueryTestHarness()
+
+    render(<DataManagementScreen />, { wrapper })
+
+    const selectiveImport = screen.getByRole('region', {
+      name: 'Selective import',
+    })
+
+    expect(within(selectiveImport).getByText('Topics')).toBeVisible()
+    expect(within(selectiveImport).getByText('Companies')).toBeVisible()
+    expect(within(selectiveImport).getByText('Problems')).toBeVisible()
+    expect(within(selectiveImport).queryByText('Tracks')).toBeNull()
+  })
+
   it('validates an imported backup, shows the selected file, and keeps restore calm', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage).mockResolvedValue(validSummary)

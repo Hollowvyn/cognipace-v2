@@ -92,6 +92,14 @@ export class TracksRepository {
     return readTrackById(this.db, trackId)
   }
 
+  async getTrackByNormalizedTitle(title: string): Promise<Track | null> {
+    return readTrackByNormalizedTitle(this.db, title)
+  }
+
+  async getTrackBySlug(slug: string): Promise<Track | null> {
+    return readTrackBySlug(this.db, slug)
+  }
+
   async getSession(): Promise<TrackSessionState> {
     return readSessionState(this.db)
   }
@@ -272,49 +280,56 @@ export class TracksRepository {
   }
 
   async createTrack(input: CreateTrackInput, now = new Date()): Promise<Track> {
-    return this.db.transaction(async (transactionDb) => {
-      const timestamp = now.getTime()
-      const normalizedTrack = normalizeTrackMutationInput(input)
-      const slug = normalizeLeetCodeSlug(normalizedTrack.title)
+    return this.db.transaction(async (transactionDb) =>
+      createTracksRepository(transactionDb as unknown as Db).insertTrack(
+        input,
+        now,
+      ),
+    )
+  }
 
-      if (!slug) {
-        throw new Error('Cannot create a track without a slug.')
-      }
+  async insertTrack(input: CreateTrackInput, now = new Date()): Promise<Track> {
+    const timestamp = now.getTime()
+    const normalizedTrack = normalizeTrackMutationInput(input)
+    const slug = normalizeLeetCodeSlug(normalizedTrack.title)
 
-      const trackId = createTrackId(slug)
-      const existingTrack = await readTrackById(transactionDb, trackId)
+    if (!slug) {
+      throw new Error('Cannot create a track without a slug.')
+    }
 
-      if (existingTrack) {
-        throw new Error(`Track "${trackId}" already exists.`)
-      }
+    const trackId = createTrackId(slug)
+    const existingTrack = await readTrackById(this.db, trackId)
 
-      await transactionDb.insert(tracks).values({
-        id: trackId,
-        slug,
-        title: normalizedTrack.title,
-        description: normalizedTrack.description,
-        dueAt: normalizedTrack.dueAt,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      })
+    if (existingTrack) {
+      throw new Error(`Track "${trackId}" already exists.`)
+    }
 
-      const normalizedGroups = normalizeGroupInputs({
-        trackId,
-        groups: normalizedTrack.groups,
-        existingGroupIds: new Set(),
-        useDefaultMainGroup: true,
-      })
-
-      await writeNewGroups(transactionDb, trackId, normalizedGroups, timestamp)
-
-      const createdTrack = await readTrackById(transactionDb, trackId)
-
-      if (!createdTrack) {
-        throw new Error(`Failed to read created track "${trackId}".`)
-      }
-
-      return createdTrack
+    await this.db.insert(tracks).values({
+      id: trackId,
+      slug,
+      title: normalizedTrack.title,
+      description: normalizedTrack.description,
+      dueAt: normalizedTrack.dueAt,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     })
+
+    const normalizedGroups = normalizeGroupInputs({
+      trackId,
+      groups: normalizedTrack.groups,
+      existingGroupIds: new Set(),
+      useDefaultMainGroup: true,
+    })
+
+    await writeNewGroups(this.db, trackId, normalizedGroups, timestamp)
+
+    const createdTrack = await readTrackById(this.db, trackId)
+
+    if (!createdTrack) {
+      throw new Error(`Failed to read created track "${trackId}".`)
+    }
+
+    return createdTrack
   }
 
   async updateTrack(input: UpdateTrackInput, now = new Date()): Promise<Track> {
@@ -678,6 +693,43 @@ async function readTrackById(
     .select()
     .from(tracks)
     .where(eq(tracks.id, trackId.trim()))
+    .limit(1)
+
+  return rows[0] ? mapTrack(rows[0]) : null
+}
+
+async function readTrackByNormalizedTitle(
+  db: TracksReadDb,
+  title: string,
+): Promise<Track | null> {
+  const normalizedTitle = normalizeLeetCodeSlug(title)
+
+  if (!normalizedTitle) {
+    return null
+  }
+
+  const rows = await db.select().from(tracks)
+  const matchingRow = rows.find(
+    (row) => normalizeLeetCodeSlug(row.title) === normalizedTitle,
+  )
+
+  return matchingRow ? mapTrack(matchingRow) : null
+}
+
+async function readTrackBySlug(
+  db: TracksReadDb,
+  slug: string,
+): Promise<Track | null> {
+  const normalizedSlug = normalizeLeetCodeSlug(slug)
+
+  if (!normalizedSlug) {
+    return null
+  }
+
+  const rows = await db
+    .select()
+    .from(tracks)
+    .where(eq(tracks.slug, normalizedSlug))
     .limit(1)
 
   return rows[0] ? mapTrack(rows[0]) : null

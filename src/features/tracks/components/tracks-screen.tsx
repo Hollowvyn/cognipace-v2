@@ -18,13 +18,13 @@ import {
 import { OtherTracksAccordion } from './other-tracks-accordion'
 
 export interface TracksScreenProps {
-  newTrackAction: ReactNode
+  trackActions: ReactNode
   renderEditProblemAction: RenderProblemEditAction
   renderEditTrackAction: RenderTrackEditAction
 }
 
 export function TracksScreen({
-  newTrackAction,
+  trackActions,
   renderEditProblemAction,
   renderEditTrackAction,
 }: TracksScreenProps) {
@@ -47,7 +47,7 @@ export function TracksScreen({
 
   return (
     <TracksWorkspaceView
-      newTrackAction={newTrackAction}
+      trackActions={trackActions}
       renderEditProblemAction={renderEditProblemAction}
       renderEditTrackAction={renderEditTrackAction}
       workspace={workspace}
@@ -56,18 +56,18 @@ export function TracksScreen({
 }
 
 function TracksWorkspaceView({
-  newTrackAction,
+  trackActions,
   renderEditProblemAction,
   renderEditTrackAction,
   workspace,
 }: {
-  newTrackAction: ReactNode
+  trackActions: ReactNode
   renderEditProblemAction: RenderProblemEditAction
   renderEditTrackAction: RenderTrackEditAction
   workspace: TrackWorkspaceResponse
 }) {
   if (workspace.tracks.length === 0) {
-    return <NoTracksState newTrackAction={newTrackAction} />
+    return <NoTracksState trackActions={trackActions} />
   }
 
   if (!workspace.activeTrack) {
@@ -77,7 +77,7 @@ function TracksWorkspaceView({
         <OtherTracksAccordion
           activeTrackId={null}
           generatedAt={workspace.generatedAt}
-          newTrackAction={newTrackAction}
+          trackActions={trackActions}
           renderEditTrackAction={renderEditTrackAction}
           tracks={workspace.tracks}
         />
@@ -99,7 +99,7 @@ function TracksWorkspaceView({
       <OtherTracksAccordion
         activeTrackId={workspace.activeTrack.track.id}
         generatedAt={workspace.generatedAt}
-        newTrackAction={newTrackAction}
+        trackActions={trackActions}
         renderEditTrackAction={renderEditTrackAction}
         tracks={workspace.tracks}
       />
@@ -135,7 +135,7 @@ function TracksErrorState({ onRetry }: { onRetry: () => void }) {
   )
 }
 
-function NoTracksState({ newTrackAction }: { newTrackAction: ReactNode }) {
+function NoTracksState({ trackActions }: { trackActions: ReactNode }) {
   return (
     <TracksFrame>
       <Surface className="grid w-full gap-3">
@@ -148,7 +148,7 @@ function NoTracksState({ newTrackAction }: { newTrackAction: ReactNode }) {
             practice path.
           </p>
         </div>
-        <div>{newTrackAction}</div>
+        <div className="flex flex-wrap items-center gap-2">{trackActions}</div>
       </Surface>
     </TracksFrame>
   )

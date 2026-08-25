@@ -11,6 +11,7 @@ import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import {
   tracksQueryKeys,
+  importTracksViaRuntime,
   useActiveTrack,
   useClearActiveTrack,
   useCreateTrack,
@@ -21,8 +22,10 @@ import {
   useTrackForEdit,
   useTrackWorkspace,
   useUpdateTrack,
+  useImportTracks,
 } from './tracks-api'
 import type {
+  TrackImportRequest,
   TracksCreateTrackRequest,
   TracksDeleteTrackRequest,
   TracksResetTrackProgressRequest,
@@ -106,6 +109,16 @@ describe('tracks API hooks', () => {
       expect(result.current.data).toBe(trackForEditResponse)
     })
     expect(sendMessage).toHaveBeenCalledWith('tracks.getTrackForEdit', request)
+  })
+
+  it('sends track import payloads through the runtime boundary', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(trackImportResult)
+    const request = createTrackImportRequest()
+
+    await expect(importTracksViaRuntime(request)).resolves.toBe(
+      trackImportResult,
+    )
+    expect(sendMessage).toHaveBeenCalledWith('tracks.importTracks', request)
   })
 
   it('invalidates track queries after active track and group mutations', async () => {
@@ -204,8 +217,34 @@ describe('tracks API hooks', () => {
       useHook: useResetTrackProgress,
       invalidatedQueryKeys,
     })
+    await expectTrackMutation({
+      method: 'tracks.importTracks',
+      request: createTrackImportRequest(),
+      response: trackImportResult,
+      useHook: useImportTracks,
+      invalidatedQueryKeys,
+    })
   })
 })
+
+function createTrackImportRequest() {
+  return {
+    surface: 'dashboard',
+    file: {
+      schemaVersion: 1,
+      app: 'cognipace-track-import',
+      problems: [],
+      tracks: [
+        {
+          title: 'Imported Track',
+          description: null,
+          dueAt: null,
+          groups: [{ title: 'Arrays', problemSlugs: ['two-sum'] }],
+        },
+      ],
+    },
+  } satisfies TrackImportRequest
+}
 
 async function expectTrackMutation<TRequest>(input: {
   method: string
@@ -234,3 +273,9 @@ async function expectTrackMutation<TRequest>(input: {
 const activeTrack = createSerializedActiveTrack()
 const workspaceResponse = createTrackWorkspaceResponse()
 const trackForEditResponse = createTrackForEditResponse()
+const trackImportResult = {
+  createdTrackIds: ['imported-track'],
+  createdTrackCount: 1,
+  createdProblemCount: 1,
+  reusedProblemCount: 0,
+}

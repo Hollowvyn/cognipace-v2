@@ -7,6 +7,7 @@ import type { Db } from '@/platform/db'
 
 import {
   createProblemsRepository,
+  type CreateMissingProblemInput,
   type ProblemLibraryReadOptions,
 } from '../data/problems-repository'
 import type {
@@ -33,6 +34,13 @@ export interface UpsertProblemFromPageInput extends Omit<
   slug?: string | null | undefined
   url: string
   topicLabels?: readonly string[] | undefined
+}
+
+export function createMissingProblems(
+  db: Db,
+  inputs: readonly CreateMissingProblemInput[],
+) {
+  return createProblemsRepository(db).insertMissingProblems(inputs)
 }
 
 export async function upsertProblemFromPage(

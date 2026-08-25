@@ -46,7 +46,7 @@ Implemented or meaningfully wired:
 - LeetCode content-script overlay
 - Dashboard shell and navigation
 - Library/Problems management
-- Tracks workspace and management
+- Tracks workspace, management, and non-destructive JSON import
 - Settings
 - Backup, restore, and clear local data from Settings
 - Analytics dashboard route for local review-health reporting
@@ -102,11 +102,16 @@ Current behavior:
 - Library manages problem rows, filters, details, create/edit modals, and problem
   practice actions.
 - Tracks manages active track workspace, groups, ordered problems, progress,
-  create/edit, activation, deletion, and reset progress.
+  create/edit, activation, deletion, reset progress, and non-destructive JSON
+  import. Import reuses existing problems by normalized slug, creates missing
+  problems with safe defaults, rejects existing track conflicts, and never
+  activates or replaces local state.
 - Settings manages persisted user preferences through a dirty-state form workflow.
 - Data Management in Settings exports full local backups, validates and restores
   full backups, configures optional GitHub Gist pseudo-sync, shows planned
-  selective import sections, and performs explicit full local clear/reset.
+  selective import sections for topics, companies, and problems, and performs
+  explicit full local clear/reset. Tracks use their dedicated import workflow
+  instead of the planned selective-backup placeholder.
 - The dashboard header shows compact pull and push shortcuts after GitHub Gist
   sync is configured.
 - Analytics shows local review-day totals, all-time review counts, current
@@ -163,7 +168,12 @@ not include a topic graph management UI.
 
 Tracks owns curriculum progression. Track completion is separate from global
 practice history, and active track/session state is local database state. Tracks
-can contain groups and ordered problem memberships.
+can contain groups and ordered problem memberships. The dashboard's Import
+Tracks workflow accepts a versioned JSON file, previews it before persistence,
+reuses existing Library problems by normalized slug, creates missing problems,
+and atomically creates new inactive tracks. See
+[`docs/track-import.md`](./track-import.md) for the public contract and
+authoring rules.
 
 ### Settings
 
@@ -288,7 +298,7 @@ These are possible future directions, not approved work by default:
 
 - overview home polish
 - richer analytics
-- selective import conflict policies for topics, companies, tracks, and problems
+- selective import conflict policies for topics, companies, and problems
 - improved notification strategy beyond the current local due-review reminder
 - passphrase lock for local BYOK secrets
 - enterprise KMS-backed secret wrapping
@@ -303,6 +313,7 @@ The current product stage is successful when a user can:
 - open a LeetCode problem page and log a review from the overlay
 - inspect and maintain Library problems
 - manage tracks and active progression
+- import ordered tracks without replacing existing local data
 - adjust settings
 - export, restore, and clear local data from Settings
 - optionally keep extension installs aligned through GitHub Gist sync

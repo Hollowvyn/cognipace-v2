@@ -142,6 +142,8 @@ import type {
   TracksGetActiveTrackRequest,
   TracksGetTrackForEditRequest,
   TracksGetWorkspaceRequest,
+  TrackImportRequest,
+  TrackImportResult,
   TracksResetTrackProgressRequest,
   TracksSetActiveGroupRequest,
   TracksSetActiveTrackRequest,
@@ -153,6 +155,7 @@ export {
   serializedActiveTrackSchema,
   trackDeleteResponseSchema,
   trackForEditResponseSchema,
+  trackImportResultSchema,
   tracksNullResponseSchema,
   tracksClearActiveTrackRequestSchema,
   tracksCreateTrackRequestSchema,
@@ -160,6 +163,7 @@ export {
   tracksGetActiveTrackRequestSchema,
   tracksGetTrackForEditRequestSchema,
   tracksGetWorkspaceRequestSchema,
+  tracksImportTracksRequestSchema,
   tracksResetTrackProgressRequestSchema,
   tracksSetActiveGroupRequestSchema,
   tracksSetActiveTrackRequestSchema,
@@ -170,6 +174,8 @@ export type {
   SerializedActiveTrack,
   TrackDeleteResponse,
   TrackForEditResponse,
+  TrackImportRequest,
+  TrackImportResult,
   TracksClearActiveTrackRequest,
   TracksCreateTrackRequest,
   TracksDeleteTrackRequest,
@@ -383,6 +389,7 @@ export interface ProtocolMap {
   'tracks.getTrackForEdit'(
     request: TracksGetTrackForEditRequest,
   ): TrackForEditResponse
+  'tracks.importTracks'(request: TrackImportRequest): TrackImportResult
   'tracks.setActiveTrack'(request: TracksSetActiveTrackRequest): null
   'tracks.clearActiveTrack'(request: TracksClearActiveTrackRequest): null
   'tracks.setActiveGroup'(request: TracksSetActiveGroupRequest): null
@@ -450,6 +457,7 @@ export const protocolMethodNames = [
   'tracks.getActiveTrack',
   'tracks.getWorkspace',
   'tracks.getTrackForEdit',
+  'tracks.importTracks',
   'tracks.setActiveTrack',
   'tracks.clearActiveTrack',
   'tracks.setActiveGroup',

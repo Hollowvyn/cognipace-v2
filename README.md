@@ -85,6 +85,7 @@ entrypoints -> app -> features -> platform/lib/components
 - [Product](./docs/product.md): app purpose, current feature behavior, scope, non-goals, and future candidates.
 - [Architecture](./docs/architecture.md): source layout, ownership boundaries, runtime messaging, local data flow, and common change recipes.
 - [Testing](./docs/testing.md): local setup, Chrome loading, manual smoke flows, reset guidance, and validation commands.
+- [Track import](./docs/track-import.md): JSON contract, conflict behavior, authoring guidance, and the NeetCode example artifact.
 - [Contributing](./CONTRIBUTING.md): workflow, coding rules, review checklist, and validation expectations.
 - [Agent Guide](./AGENTS.md): required reading order and safety rules for AI agents.
 - [Design](./design.md): compact extension UI direction, surface-specific UX rules, and visual tokens.

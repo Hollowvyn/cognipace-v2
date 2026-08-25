@@ -1,6 +1,6 @@
 import { Surface } from '@/components/ui/surface'
 
-const plannedImportAreas = ['Topics', 'Companies', 'Tracks', 'Problems']
+const plannedImportAreas = ['Topics', 'Companies', 'Problems']
 
 export function SelectiveImportPanel() {
   return (

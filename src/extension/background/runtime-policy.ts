@@ -45,6 +45,7 @@ const methodSurfaceAccess = {
   'tracks.getActiveTrack': ['popup', 'dashboard'],
   'tracks.getWorkspace': ['dashboard'],
   'tracks.getTrackForEdit': ['dashboard'],
+  'tracks.importTracks': ['dashboard'],
   'tracks.setActiveTrack': ['dashboard'],
   'tracks.clearActiveTrack': ['dashboard'],
   'tracks.setActiveGroup': ['dashboard'],

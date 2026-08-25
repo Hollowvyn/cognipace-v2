@@ -350,6 +350,11 @@ or merge.
 - Popup changes should include the extension popup smoke checklist.
 - Dashboard route or dashboard workflow changes should include the affected
   dashboard smoke checklist.
+- Tracks import changes should include the valid-file preview and success flow,
+  a duplicate-track conflict with no partial writes, and preservation checks for
+  existing problem metadata, practice state, settings, active-track state, and
+  unrelated tracks. The human engineer must run these flows and attach visual
+  proof before review or merge; an agent must not claim that proof is complete.
 - Overlay changes should include the LeetCode problem-page smoke checklist.
 - Background, sync, GenAI, notification, secret, or runtime changes should
   include the relevant hidden `/dev/smoke`, service-worker, or focused manual
