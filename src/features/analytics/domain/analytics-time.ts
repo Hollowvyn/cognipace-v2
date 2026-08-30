@@ -27,7 +27,6 @@ interface TimeZoneResolution {
 const historicalRanges: readonly AnalyticsHistoricalRange[] = [14, 30, 90]
 
 const formatters = new Map<string, Intl.DateTimeFormat>()
-
 function getFormatter(timeZone: string, type: 'date' | 'datetime'): Intl.DateTimeFormat {
   const key = `${timeZone}:${type}`
   let formatter = formatters.get(key)
