@@ -26,6 +26,25 @@ interface TimeZoneResolution {
 
 const historicalRanges: readonly AnalyticsHistoricalRange[] = [14, 30, 90]
 
+const formatters = new Map<string, Intl.DateTimeFormat>()
+
+function getFormatter(timeZone: string, type: 'date' | 'datetime'): Intl.DateTimeFormat {
+  const key = `${timeZone}:${type}`
+  let formatter = formatters.get(key)
+  if (!formatter) {
+    const options: Intl.DateTimeFormatOptions = type === 'date'
+      ? { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }
+      : { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }
+
+    // Performance optimization: Cache Intl.DateTimeFormat instances
+    // Repeated instantiation inside loops or frequently called functions is a known bottleneck.
+    formatter = new Intl.DateTimeFormat('en-US-u-ca-gregory-nu-latn', options)
+    formatters.set(key, formatter)
+  }
+  return formatter
+}
+
+
 export function resolveAnalyticsTimeZone(
   requested: string,
 ): TimeZoneResolution {
@@ -173,12 +192,7 @@ function createBucket(
 }
 
 export function getAnalyticsDateKey(date: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-US-u-ca-gregory-nu-latn', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
+  const parts = getFormatter(timeZone, 'date')
     .formatToParts(date)
     .reduce<Record<string, string>>((result, part) => {
       if (
@@ -215,16 +229,7 @@ export function getAnalyticsLocalDayStart(
 
 function getTimeZoneOffsetMilliseconds(date: Date, timeZone: string): number {
   const wholeSecondDate = new Date(Math.floor(date.getTime() / 1000) * 1000)
-  const parts = new Intl.DateTimeFormat('en-US-u-ca-gregory-nu-latn', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  })
+  const parts = getFormatter(timeZone, 'datetime')
     .formatToParts(wholeSecondDate)
     .reduce<Record<string, string>>((result, part) => {
       if (
@@ -272,16 +277,7 @@ export function shiftAnalyticsCalendarDays(
   days: number,
   timeZone: string,
 ): Date {
-  const localParts = new Intl.DateTimeFormat('en-US-u-ca-gregory-nu-latn', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  })
+  const localParts = getFormatter(timeZone, 'datetime')
     .formatToParts(date)
     .reduce<Record<string, number>>((result, part) => {
       if (
