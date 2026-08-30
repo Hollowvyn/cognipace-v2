@@ -209,13 +209,16 @@ function ChartStyle({ config, id }: { config: ChartConfig; id: string }) {
     return null
   }
 
+  // Sanitize ID to prevent CSS injection and XSS
+  const sanitizedId = id.replace(/[^a-zA-Z0-9_-]/g, '')
+
   return (
     <style
       dangerouslySetInnerHTML={{
         __html: Object.entries(CHART_THEMES)
           .map(
             ([theme, selector]) => `
-${selector} [data-chart="${id}"] {
+${selector} [data-chart="${sanitizedId}"] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color =
@@ -538,7 +541,10 @@ function getPayloadFill(payload: unknown): string | undefined {
 
 function isChartTooltipTuple(
   value:
-    React.ReactNode | [React.ReactNode, React.ReactNode] | null | undefined,
+    | React.ReactNode
+    | [React.ReactNode, React.ReactNode]
+    | null
+    | undefined,
 ): value is [React.ReactNode, React.ReactNode] {
   return Array.isArray(value) && value.length === 2
 }
