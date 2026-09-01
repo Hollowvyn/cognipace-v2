@@ -115,7 +115,8 @@ describe('tracks runtime contracts', () => {
     ).toBe(false)
   })
 
-  it('only accepts completed ratings that can complete track progress', () => {
+  it('only accepts recalled ratings that can complete track progress', () => {
+    expect(trackCompletedRatingSchema.safeParse('hard').success).toBe(true)
     expect(trackCompletedRatingSchema.safeParse('good').success).toBe(true)
     expect(trackCompletedRatingSchema.safeParse('easy').success).toBe(true)
     expect(trackCompletedRatingSchema.safeParse('again').success).toBe(false)
@@ -142,7 +143,7 @@ describe('tracks runtime contracts', () => {
         completion: {
           status: 'completed',
           completedAt: '2026-01-01T00:00:00.000Z',
-          completedRating: 'good',
+          completedRating: 'hard',
           reviewAttemptId: 'review-two-sum-1',
         },
       },
@@ -159,7 +160,7 @@ describe('tracks runtime contracts', () => {
     ).toEqual({
       status: 'completed',
       completedAt: '2026-01-01T00:00:00.000Z',
-      completedRating: 'good',
+      completedRating: 'hard',
       reviewAttemptId: 'review-two-sum-1',
     })
   })

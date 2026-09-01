@@ -219,6 +219,22 @@ describe('backup contracts', () => {
     })
   })
 
+  it('preserves hard as a recalled track completion rating', () => {
+    const backup = createValidBackupFixture()
+    const [progress] = backup.data.tracks.progress
+
+    if (!progress) {
+      throw new Error('Expected the backup fixture to include track progress.')
+    }
+
+    progress.completedRating = 'hard'
+
+    expect(
+      parseBackupFileForCurrentApp(backup).data.tracks.progress[0]
+        ?.completedRating,
+    ).toBe('hard')
+  })
+
   it('normalizes v2 backups into v3 topic graph backups', () => {
     const fixture = createValidBackupFixture()
     const v2Backup = {
