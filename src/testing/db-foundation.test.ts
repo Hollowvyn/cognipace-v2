@@ -264,6 +264,51 @@ describe('db foundation', () => {
         updated_at
       )
       VALUES ('leetcode-75:arrays', 'leetcode-75', 'Arrays', 1, 1000, 1000);
+      INSERT INTO fsrs_cards (
+        id,
+        problem_slug,
+        card_kind,
+        due_at,
+        stability,
+        difficulty,
+        elapsed_days,
+        scheduled_days,
+        learning_steps,
+        reps,
+        lapses,
+        state,
+        last_review_at,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        'two-sum:recall',
+        'two-sum',
+        'recall',
+        1000,
+        1,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        'review',
+        1000,
+        1000,
+        1000
+      );
+      INSERT INTO review_attempts (
+        id,
+        problem_slug,
+        card_id,
+        rating,
+        review_mode,
+        reviewed_at,
+        created_at,
+        updated_at
+      )
+      VALUES ('review-1', 'two-sum', 'two-sum:recall', 'good', 'manual', 1000, 1000, 1000);
       INSERT INTO track_group_problems (
         track_group_id,
         track_id,
@@ -280,7 +325,7 @@ describe('db foundation', () => {
         created_at,
         updated_at
       )
-      VALUES ('leetcode-75', 'two-sum', null, 1000, 'good', 1000, 1000);
+      VALUES ('leetcode-75', 'two-sum', 'review-1', 1000, 'good', 1000, 1000);
     `)
 
     handle.rawDb.exec(migration0007)
@@ -290,7 +335,7 @@ describe('db foundation', () => {
         handle.rawDb,
         'SELECT track_id, problem_slug, review_attempt_id, completed_at, completed_rating, created_at, updated_at FROM track_problem_progress',
       ),
-    ).toEqual([['leetcode-75', 'two-sum', null, 1000, 'good', 1000, 1000]])
+    ).toEqual([['leetcode-75', 'two-sum', 'review-1', 1000, 'good', 1000, 1000]])
 
     expect(
       readSqliteRows(
