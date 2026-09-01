@@ -105,12 +105,14 @@ npm run db:generate
 npm run db:check
 npm run lint
 npm run check
+npm run build
 ```
 
 Focused repository, workflow, contract, and backup tests will run before the
-full checks. A human engineer must also run the Tracks and cross-surface review
-smoke flows for both a `hard` completion and an `again` non-completion, with
-screenshot or screen-recording proof before PR review or merge.
+full checks and extension build. A human engineer must also run the Tracks and
+cross-surface review smoke flows for both a `hard` completion and an `again`
+non-completion, with screenshot or screen-recording proof before PR review or
+merge.
 
 ## Non-Goals
 
