@@ -214,6 +214,12 @@ reloading the extension.
     after first completing an active-track problem: save a later `again` review
     for that already-completed problem and confirm the completed count and
     completion state remain unchanged.
+11. Exercise controlling-review correction in Study Plan mode: save a `good`
+    review for an active-track problem, use the overlay's update action to
+    change that same review to `hard`, and confirm the problem remains complete
+    with the updated rating. Change the same review to `again` and confirm the
+    completion clears; change it back to `hard` or `good` and confirm the
+    completion is restored.
 
 Expected: active track state, group state, problem order, and track progress are
 local and update the dashboard without changing global practice history unless a

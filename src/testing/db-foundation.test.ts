@@ -335,7 +335,9 @@ describe('db foundation', () => {
         handle.rawDb,
         'SELECT track_id, problem_slug, review_attempt_id, completed_at, completed_rating, created_at, updated_at FROM track_problem_progress',
       ),
-    ).toEqual([['leetcode-75', 'two-sum', 'review-1', 1000, 'good', 1000, 1000]])
+    ).toEqual([
+      ['leetcode-75', 'two-sum', 'review-1', 1000, 'good', 1000, 1000],
+    ])
 
     expect(
       readSqliteRows(

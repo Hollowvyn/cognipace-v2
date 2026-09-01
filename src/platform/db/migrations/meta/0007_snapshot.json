@@ -25,9 +25,7 @@
       "indexes": {
         "companies_label_unique": {
           "name": "companies_label_unique",
-          "columns": [
-            "label"
-          ],
+          "columns": ["label"],
           "isUnique": true
         }
       },
@@ -148,17 +146,12 @@
       "indexes": {
         "fsrs_cards_due_idx": {
           "name": "fsrs_cards_due_idx",
-          "columns": [
-            "due_at"
-          ],
+          "columns": ["due_at"],
           "isUnique": false
         },
         "fsrs_cards_problem_slug_kind_unique": {
           "name": "fsrs_cards_problem_slug_kind_unique",
-          "columns": [
-            "problem_slug",
-            "card_kind"
-          ],
+          "columns": ["problem_slug", "card_kind"],
           "isUnique": true
         }
       },
@@ -167,12 +160,8 @@
           "name": "fsrs_cards_problem_slug_problems_slug_fk",
           "tableFrom": "fsrs_cards",
           "tableTo": "problems",
-          "columnsFrom": [
-            "problem_slug"
-          ],
-          "columnsTo": [
-            "slug"
-          ],
+          "columnsFrom": ["problem_slug"],
+          "columnsTo": ["slug"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -202,9 +191,7 @@
       "indexes": {
         "problem_companies_company_idx": {
           "name": "problem_companies_company_idx",
-          "columns": [
-            "company_id"
-          ],
+          "columns": ["company_id"],
           "isUnique": false
         }
       },
@@ -213,12 +200,8 @@
           "name": "problem_companies_problem_slug_problems_slug_fk",
           "tableFrom": "problem_companies",
           "tableTo": "problems",
-          "columnsFrom": [
-            "problem_slug"
-          ],
-          "columnsTo": [
-            "slug"
-          ],
+          "columnsFrom": ["problem_slug"],
+          "columnsTo": ["slug"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -226,22 +209,15 @@
           "name": "problem_companies_company_id_companies_id_fk",
           "tableFrom": "problem_companies",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "problem_companies_problem_slug_company_id_pk": {
-          "columns": [
-            "problem_slug",
-            "company_id"
-          ],
+          "columns": ["problem_slug", "company_id"],
           "name": "problem_companies_problem_slug_company_id_pk"
         }
       },
@@ -384,23 +360,17 @@
       "indexes": {
         "problem_practice_status_idx": {
           "name": "problem_practice_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "problem_practice_last_reviewed_idx": {
           "name": "problem_practice_last_reviewed_idx",
-          "columns": [
-            "last_reviewed_at"
-          ],
+          "columns": ["last_reviewed_at"],
           "isUnique": false
         },
         "problem_practice_suspended_idx": {
           "name": "problem_practice_suspended_idx",
-          "columns": [
-            "is_suspended"
-          ],
+          "columns": ["is_suspended"],
           "isUnique": false
         }
       },
@@ -409,12 +379,8 @@
           "name": "problem_practice_problem_slug_problems_slug_fk",
           "tableFrom": "problem_practice",
           "tableTo": "problems",
-          "columnsFrom": [
-            "problem_slug"
-          ],
-          "columnsTo": [
-            "slug"
-          ],
+          "columnsFrom": ["problem_slug"],
+          "columnsTo": ["slug"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -444,9 +410,7 @@
       "indexes": {
         "problem_topics_topic_idx": {
           "name": "problem_topics_topic_idx",
-          "columns": [
-            "topic_id"
-          ],
+          "columns": ["topic_id"],
           "isUnique": false
         }
       },
@@ -455,12 +419,8 @@
           "name": "problem_topics_problem_slug_problems_slug_fk",
           "tableFrom": "problem_topics",
           "tableTo": "problems",
-          "columnsFrom": [
-            "problem_slug"
-          ],
-          "columnsTo": [
-            "slug"
-          ],
+          "columnsFrom": ["problem_slug"],
+          "columnsTo": ["slug"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -468,22 +428,15 @@
           "name": "problem_topics_topic_id_topics_id_fk",
           "tableFrom": "problem_topics",
           "tableTo": "topics",
-          "columnsFrom": [
-            "topic_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["topic_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "problem_topics_problem_slug_topic_id_pk": {
-          "columns": [
-            "problem_slug",
-            "topic_id"
-          ],
+          "columns": ["problem_slug", "topic_id"],
           "name": "problem_topics_problem_slug_topic_id_pk"
         }
       },
@@ -668,23 +621,17 @@
       "indexes": {
         "review_attempts_problem_slug_idx": {
           "name": "review_attempts_problem_slug_idx",
-          "columns": [
-            "problem_slug"
-          ],
+          "columns": ["problem_slug"],
           "isUnique": false
         },
         "review_attempts_card_idx": {
           "name": "review_attempts_card_idx",
-          "columns": [
-            "card_id"
-          ],
+          "columns": ["card_id"],
           "isUnique": false
         },
         "review_attempts_reviewed_at_idx": {
           "name": "review_attempts_reviewed_at_idx",
-          "columns": [
-            "reviewed_at"
-          ],
+          "columns": ["reviewed_at"],
           "isUnique": false
         }
       },
@@ -693,12 +640,8 @@
           "name": "review_attempts_problem_slug_problems_slug_fk",
           "tableFrom": "review_attempts",
           "tableTo": "problems",
-          "columnsFrom": [
-            "problem_slug"
-          ],
-          "columnsTo": [
-            "slug"
-          ],
+          "columnsFrom": ["problem_slug"],
+          "columnsTo": ["slug"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -706,12 +649,8 @@
           "name": "review_attempts_card_id_fsrs_cards_id_fk",
           "tableFrom": "review_attempts",
           "tableTo": "fsrs_cards",
-          "columnsFrom": [
-            "card_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["card_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -793,9 +732,7 @@
       "indexes": {
         "topic_aliases_topic_idx": {
           "name": "topic_aliases_topic_idx",
-          "columns": [
-            "topic_id"
-          ],
+          "columns": ["topic_id"],
           "isUnique": false
         }
       },
@@ -804,12 +741,8 @@
           "name": "topic_aliases_topic_id_topics_id_fk",
           "tableFrom": "topic_aliases",
           "tableTo": "topics",
-          "columnsFrom": [
-            "topic_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["topic_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -853,16 +786,12 @@
       "indexes": {
         "topic_relations_parent_idx": {
           "name": "topic_relations_parent_idx",
-          "columns": [
-            "parent_topic_id"
-          ],
+          "columns": ["parent_topic_id"],
           "isUnique": false
         },
         "topic_relations_child_idx": {
           "name": "topic_relations_child_idx",
-          "columns": [
-            "child_topic_id"
-          ],
+          "columns": ["child_topic_id"],
           "isUnique": false
         }
       },
@@ -871,12 +800,8 @@
           "name": "topic_relations_parent_topic_id_topics_id_fk",
           "tableFrom": "topic_relations",
           "tableTo": "topics",
-          "columnsFrom": [
-            "parent_topic_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parent_topic_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -884,22 +809,15 @@
           "name": "topic_relations_child_topic_id_topics_id_fk",
           "tableFrom": "topic_relations",
           "tableTo": "topics",
-          "columnsFrom": [
-            "child_topic_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["child_topic_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "topic_relations_parent_topic_id_child_topic_id_pk": {
-          "columns": [
-            "parent_topic_id",
-            "child_topic_id"
-          ],
+          "columns": ["parent_topic_id", "child_topic_id"],
           "name": "topic_relations_parent_topic_id_child_topic_id_pk"
         }
       },
@@ -948,9 +866,7 @@
       "indexes": {
         "topics_label_unique": {
           "name": "topics_label_unique",
-          "columns": [
-            "label"
-          ],
+          "columns": ["label"],
           "isUnique": true
         }
       },
@@ -994,24 +910,17 @@
       "indexes": {
         "track_group_problems_track_problem_unique": {
           "name": "track_group_problems_track_problem_unique",
-          "columns": [
-            "track_id",
-            "problem_slug"
-          ],
+          "columns": ["track_id", "problem_slug"],
           "isUnique": true
         },
         "track_group_problems_track_idx": {
           "name": "track_group_problems_track_idx",
-          "columns": [
-            "track_id"
-          ],
+          "columns": ["track_id"],
           "isUnique": false
         },
         "track_group_problems_problem_slug_idx": {
           "name": "track_group_problems_problem_slug_idx",
-          "columns": [
-            "problem_slug"
-          ],
+          "columns": ["problem_slug"],
           "isUnique": false
         }
       },
@@ -1020,12 +929,8 @@
           "name": "track_group_problems_track_id_tracks_id_fk",
           "tableFrom": "track_group_problems",
           "tableTo": "tracks",
-          "columnsFrom": [
-            "track_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["track_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1033,12 +938,8 @@
           "name": "track_group_problems_problem_slug_problems_slug_fk",
           "tableFrom": "track_group_problems",
           "tableTo": "problems",
-          "columnsFrom": [
-            "problem_slug"
-          ],
-          "columnsTo": [
-            "slug"
-          ],
+          "columnsFrom": ["problem_slug"],
+          "columnsTo": ["slug"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1046,24 +947,15 @@
           "name": "track_group_problems_group_track_fk",
           "tableFrom": "track_group_problems",
           "tableTo": "track_groups",
-          "columnsFrom": [
-            "track_group_id",
-            "track_id"
-          ],
-          "columnsTo": [
-            "id",
-            "track_id"
-          ],
+          "columnsFrom": ["track_group_id", "track_id"],
+          "columnsTo": ["id", "track_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "track_group_problems_track_group_id_problem_slug_pk": {
-          "columns": [
-            "track_group_id",
-            "problem_slug"
-          ],
+          "columns": ["track_group_id", "problem_slug"],
           "name": "track_group_problems_track_group_id_problem_slug_pk"
         }
       },
@@ -1119,17 +1011,12 @@
       "indexes": {
         "track_groups_track_idx": {
           "name": "track_groups_track_idx",
-          "columns": [
-            "track_id"
-          ],
+          "columns": ["track_id"],
           "isUnique": false
         },
         "track_groups_id_track_unique": {
           "name": "track_groups_id_track_unique",
-          "columns": [
-            "id",
-            "track_id"
-          ],
+          "columns": ["id", "track_id"],
           "isUnique": true
         }
       },
@@ -1138,12 +1025,8 @@
           "name": "track_groups_track_id_tracks_id_fk",
           "tableFrom": "track_groups",
           "tableTo": "tracks",
-          "columnsFrom": [
-            "track_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["track_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1208,16 +1091,12 @@
       "indexes": {
         "track_problem_progress_review_attempt_idx": {
           "name": "track_problem_progress_review_attempt_idx",
-          "columns": [
-            "review_attempt_id"
-          ],
+          "columns": ["review_attempt_id"],
           "isUnique": false
         },
         "track_problem_progress_problem_slug_idx": {
           "name": "track_problem_progress_problem_slug_idx",
-          "columns": [
-            "problem_slug"
-          ],
+          "columns": ["problem_slug"],
           "isUnique": false
         }
       },
@@ -1226,12 +1105,8 @@
           "name": "track_problem_progress_review_attempt_id_review_attempts_id_fk",
           "tableFrom": "track_problem_progress",
           "tableTo": "review_attempts",
-          "columnsFrom": [
-            "review_attempt_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["review_attempt_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1239,24 +1114,15 @@
           "name": "track_problem_progress_membership_fk",
           "tableFrom": "track_problem_progress",
           "tableTo": "track_group_problems",
-          "columnsFrom": [
-            "track_id",
-            "problem_slug"
-          ],
-          "columnsTo": [
-            "track_id",
-            "problem_slug"
-          ],
+          "columnsFrom": ["track_id", "problem_slug"],
+          "columnsTo": ["track_id", "problem_slug"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "track_problem_progress_track_id_problem_slug_pk": {
-          "columns": [
-            "track_id",
-            "problem_slug"
-          ],
+          "columns": ["track_id", "problem_slug"],
           "name": "track_problem_progress_track_id_problem_slug_pk"
         }
       },
@@ -1313,12 +1179,8 @@
           "name": "track_session_active_track_id_tracks_id_fk",
           "tableFrom": "track_session",
           "tableTo": "tracks",
-          "columnsFrom": [
-            "active_track_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["active_track_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1326,12 +1188,8 @@
           "name": "track_session_active_group_id_track_groups_id_fk",
           "tableFrom": "track_session",
           "tableTo": "track_groups",
-          "columnsFrom": [
-            "active_group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["active_group_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1396,9 +1254,7 @@
       "indexes": {
         "tracks_slug_unique": {
           "name": "tracks_slug_unique",
-          "columns": [
-            "slug"
-          ],
+          "columns": ["slug"],
           "isUnique": true
         }
       },
