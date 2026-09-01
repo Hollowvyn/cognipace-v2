@@ -9,6 +9,9 @@ import migration0001 from '@/platform/db/migrations/0001_lively_namor.sql?raw'
 import migration0002 from '@/platform/db/migrations/0002_add_track_due_at.sql?raw'
 import migration0003 from '@/platform/db/migrations/0003_problem_slugs_and_constraints.sql?raw'
 import migration0004 from '@/platform/db/migrations/0004_tracks_phase_3.sql?raw'
+import migration0005 from '@/platform/db/migrations/0005_concerned_jubilee.sql?raw'
+import migration0006 from '@/platform/db/migrations/0006_polite_vindicator.sql?raw'
+import migration0007 from '@/platform/db/migrations/0007_track_simple_recall.sql?raw'
 import { createDb, createSqliteWasmLocator } from '@/platform/db'
 import { execProxy, isMutationStatement } from '@/platform/db/proxy'
 import { seedInitialCatalog } from '@/platform/db/seed'
@@ -214,6 +217,124 @@ describe('db foundation', () => {
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'track_problem_progress'",
       ),
     ).toEqual([['track_problem_progress']])
+  })
+
+  it('preserves completed track progress while upgrading the 0007 completion constraint', async () => {
+    const handle = await createDb({
+      locateWasm: createSqliteWasmLocator(),
+    })
+
+    handle.rawDb.exec(
+      [
+        migration0000,
+        migration0001,
+        migration0002,
+        migration0003,
+        migration0004,
+        migration0005,
+        migration0006,
+      ].join('\n'),
+    )
+    handle.rawDb.exec(`
+      INSERT INTO problems (
+        slug,
+        title,
+        difficulty,
+        is_premium,
+        created_at,
+        updated_at
+      )
+      VALUES ('two-sum', 'Two Sum', 'easy', false, 1000, 1000);
+      INSERT INTO tracks (
+        id,
+        slug,
+        title,
+        description,
+        created_at,
+        updated_at,
+        due_at
+      )
+      VALUES ('leetcode-75', 'leetcode-75', 'LeetCode 75', null, 1000, 1000, null);
+      INSERT INTO track_groups (
+        id,
+        track_id,
+        title,
+        position,
+        created_at,
+        updated_at
+      )
+      VALUES ('leetcode-75:arrays', 'leetcode-75', 'Arrays', 1, 1000, 1000);
+      INSERT INTO track_group_problems (
+        track_group_id,
+        track_id,
+        problem_slug,
+        position
+      )
+      VALUES ('leetcode-75:arrays', 'leetcode-75', 'two-sum', 1);
+      INSERT INTO track_problem_progress (
+        track_id,
+        problem_slug,
+        review_attempt_id,
+        completed_at,
+        completed_rating,
+        created_at,
+        updated_at
+      )
+      VALUES ('leetcode-75', 'two-sum', null, 1000, 'good', 1000, 1000);
+    `)
+
+    handle.rawDb.exec(migration0007)
+
+    expect(
+      readSqliteRows(
+        handle.rawDb,
+        'SELECT track_id, problem_slug, review_attempt_id, completed_at, completed_rating, created_at, updated_at FROM track_problem_progress',
+      ),
+    ).toEqual([['leetcode-75', 'two-sum', null, 1000, 'good', 1000, 1000]])
+
+    expect(
+      readSqliteRows(
+        handle.rawDb,
+        "PRAGMA table_info('track_problem_progress')",
+      )
+        .filter((row) => Number(row[5]) > 0)
+        .map((row) => String(row[1])),
+    ).toEqual(['track_id', 'problem_slug'])
+
+    expect(
+      readSqliteRows(
+        handle.rawDb,
+        "PRAGMA foreign_key_list('track_problem_progress')",
+      ).map((row) => [String(row[2]), String(row[3]), String(row[4])]),
+    ).toEqual(
+      expect.arrayContaining([
+        ['review_attempts', 'review_attempt_id', 'id'],
+        ['track_group_problems', 'track_id', 'track_id'],
+        ['track_group_problems', 'problem_slug', 'problem_slug'],
+      ]),
+    )
+    expect(readSqliteIndexNames(handle.rawDb)).toEqual(
+      expect.arrayContaining([
+        'track_problem_progress_review_attempt_idx',
+        'track_problem_progress_problem_slug_idx',
+      ]),
+    )
+
+    handle.rawDb.exec(
+      "UPDATE track_problem_progress SET completed_rating = 'hard' WHERE track_id = 'leetcode-75' AND problem_slug = 'two-sum'",
+    )
+    expect(
+      readSqliteRows(
+        handle.rawDb,
+        'SELECT completed_at, completed_rating FROM track_problem_progress',
+      ),
+    ).toEqual([[1000, 'hard']])
+
+    expect(() =>
+      handle.rawDb.exec(
+        "UPDATE track_problem_progress SET completed_rating = 'invalid' WHERE track_id = 'leetcode-75' AND problem_slug = 'two-sum'",
+      ),
+    ).toThrow()
   })
 
   it('migrates legacy problem ids to slug-backed problem identity', async () => {
