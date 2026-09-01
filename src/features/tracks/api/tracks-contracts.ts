@@ -15,7 +15,7 @@ export const trackIdSchema = z.string().trim().min(1)
 
 export const trackGroupIdSchema = z.string().trim().min(1)
 
-export const trackCompletedRatingSchema = z.enum(['good', 'easy'])
+export const trackCompletedRatingSchema = z.enum(['hard', 'good', 'easy'])
 
 export type TrackCompletedRating = z.infer<typeof trackCompletedRatingSchema>
 
