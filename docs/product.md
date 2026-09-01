@@ -165,9 +165,12 @@ Tracks owns curriculum progression. Track completion is separate from global
 practice history, and active track/session state is local database state. Tracks
 can contain groups and ordered problem memberships.
 
-Active-track completion follows simple recall: `hard`, `good`, and `easy`
-reviews complete a track problem, while `again` leaves it incomplete. FSRS
-scheduling and global practice history remain separate from track completion.
+While Study Plan mode is active and the problem belongs to the active track,
+`hard`, `good`, and `easy` reviews complete that track problem. `again` does not
+complete a currently incomplete track problem. Free Practice does not write
+active-track progress, and a later `again` review does not clear an existing
+completion. FSRS scheduling and global practice history remain separate from
+track completion.
 
 ### Settings
 
