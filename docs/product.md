@@ -165,6 +165,10 @@ Tracks owns curriculum progression. Track completion is separate from global
 practice history, and active track/session state is local database state. Tracks
 can contain groups and ordered problem memberships.
 
+Active-track completion follows simple recall: `hard`, `good`, and `easy`
+reviews complete a track problem, while `again` leaves it incomplete. FSRS
+scheduling and global practice history remain separate from track completion.
+
 ### Settings
 
 Settings owns persisted preferences, defaults, validation, and the dashboard

@@ -199,11 +199,16 @@ reloading the extension.
 4. Create or edit a track.
 5. Set a track active.
 6. Change the active group when more than one group exists.
-7. Reset track progress only when intentionally testing reset behavior.
+7. From the overlay, save a `hard` review for an incomplete problem in the
+   active track, then confirm Tracks counts it complete and advances guidance.
+8. Reset that track's progress only when intentionally testing reset behavior,
+   save an `again` review for the same active-track problem, and confirm it
+   remains incomplete.
 
 Expected: active track state, group state, problem order, and track progress are
 local and update the dashboard without changing global practice history unless a
-review is saved.
+review is saved. `hard`, `good`, and `easy` count as recalled track completions;
+`again` does not.
 
 ### Dashboard Analytics
 
