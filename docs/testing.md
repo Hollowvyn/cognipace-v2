@@ -205,16 +205,23 @@ reloading the extension.
    completed count increments and its Next problem changes.
 8. Reset track progress only when intentionally testing reset behavior, then
    confirm the active track's completed count returns to zero.
-9. Open the same active-track problem in the LeetCode overlay and save an
-   `again` review. Confirm its completed count does not increment and the
-   problem remains incomplete.
+9. Run the incomplete-problem edge path independently: use a currently
+   incomplete active-track problem (the current Next problem, including after
+   the reset path if it was run), save an `again` review in the LeetCode
+   overlay, and confirm the completed count does not increment and the problem
+   remains incomplete.
+10. Run the monotonic-preservation edge path independently, without resetting
+    after first completing an active-track problem: save a later `again` review
+    for that already-completed problem and confirm the completed count and
+    completion state remain unchanged.
 
 Expected: active track state, group state, problem order, and track progress are
 local and update the dashboard without changing global practice history unless a
 review is saved. While Study Plan mode is active, `hard`, `good`, and `easy`
 count as recalled track completions; `again` does not complete a currently
-incomplete problem. Free Practice does not write active-track progress, and a
-later `again` review does not clear an existing completion.
+incomplete problem and does not clear a previously completed active-track
+problem when reviewed later. Free Practice does not write active-track
+progress.
 
 ### Dashboard Analytics
 
