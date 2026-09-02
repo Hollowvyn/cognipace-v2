@@ -762,7 +762,7 @@ describe('practice core', () => {
     expect(progressRows).toEqual([])
   })
 
-  it('study plan review completes hard recall but keeps again incomplete', async () => {
+  it('completes hard recall while again stays incomplete and preserves completion', async () => {
     const handle = await createTestDb()
     const tracksRepository = createTracksRepository(handle.db)
 
@@ -800,6 +800,17 @@ describe('practice core', () => {
       defaultUserSettings,
     )
 
+    await saveReviewResultWithTrackProgress(
+      handle.db,
+      {
+        problemSlug: 'two-sum',
+        rating: 'again',
+        reviewedAt: new Date('2026-01-03T10:00:00.000Z'),
+        reviewAttemptId: 'workflow-again-after-hard-1',
+      },
+      defaultUserSettings,
+    )
+
     const catalogAfterAgain = await tracksRepository.getTrackCatalog()
     expect(
       readTrackProgress(catalogAfterAgain, 'leetcode-75').completedCount,
@@ -824,49 +835,6 @@ describe('practice core', () => {
         }),
       ]),
     )
-  })
-
-  it('keeps hard completion when a later again review repeats the active-track problem', async () => {
-    const handle = await createTestDb()
-    const tracksRepository = createTracksRepository(handle.db)
-    const hardReviewedAt = new Date('2026-01-01T10:00:00.000Z')
-    const againReviewedAt = new Date('2026-01-02T10:00:00.000Z')
-
-    await tracksRepository.setActiveTrack('leetcode-75')
-    await saveReviewResultWithTrackProgress(
-      handle.db,
-      {
-        problemSlug: 'two-sum',
-        rating: 'hard',
-        reviewedAt: hardReviewedAt,
-        reviewAttemptId: 'workflow-hard-monotonic-1',
-      },
-      defaultUserSettings,
-    )
-
-    await saveReviewResultWithTrackProgress(
-      handle.db,
-      {
-        problemSlug: 'two-sum',
-        rating: 'again',
-        reviewedAt: againReviewedAt,
-        reviewAttemptId: 'workflow-again-monotonic-1',
-      },
-      defaultUserSettings,
-    )
-
-    const catalog = await tracksRepository.getTrackCatalog()
-    const [progress] = await handle.db.select().from(trackProblemProgress)
-
-    expect(readTrackProgress(catalog, 'leetcode-75').completedCount).toBe(1)
-    expect(progress).toMatchObject({
-      trackId: 'leetcode-75',
-      problemSlug: 'two-sum',
-      reviewAttemptId: 'workflow-hard-monotonic-1',
-      completedAt: hardReviewedAt.getTime(),
-      completedRating: 'hard',
-    })
-    expect(progress?.completedAt).not.toBeNull()
   })
 
   it('study plan override from good to hard keeps active-track completion', async () => {
@@ -940,46 +908,6 @@ describe('practice core', () => {
       reviewAttemptId: 'workflow-easy-to-again-1',
       completedAt: null,
       completedRating: null,
-    })
-  })
-
-  it('study plan override from hard to good keeps active-track completion and updates the rating', async () => {
-    const handle = await createTestDb()
-    const tracksRepository = createTracksRepository(handle.db)
-
-    await tracksRepository.setActiveTrack('leetcode-75')
-    await saveReviewResultWithTrackProgress(
-      handle.db,
-      {
-        problemSlug: 'two-sum',
-        rating: 'hard',
-        reviewedAt: new Date('2026-01-01T10:00:00.000Z'),
-        reviewAttemptId: 'workflow-hard-to-good-1',
-      },
-      defaultUserSettings,
-    )
-
-    const catalogBeforeOverride = await tracksRepository.getTrackCatalog()
-    expect(
-      readTrackProgress(catalogBeforeOverride, 'leetcode-75').completedCount,
-    ).toBe(1)
-
-    await overrideLastReviewResultWithTrackProgress(
-      handle.db,
-      {
-        problemSlug: 'two-sum',
-        rating: 'good',
-      },
-      defaultUserSettings,
-    )
-
-    const catalog = await tracksRepository.getTrackCatalog()
-    const [progress] = await handle.db.select().from(trackProblemProgress)
-
-    expect(readTrackProgress(catalog, 'leetcode-75').completedCount).toBe(1)
-    expect(progress).toMatchObject({
-      reviewAttemptId: 'workflow-hard-to-good-1',
-      completedRating: 'good',
     })
   })
 

@@ -199,35 +199,24 @@ reloading the extension.
 4. Create or edit a track.
 5. Set a track active.
 6. Change the active group when more than one group exists.
-7. Confirm the practice mode is Study Plan. In the active Tracks workspace,
-   identify the current incomplete Next problem and open that exact problem in
-   the LeetCode overlay. Save a `hard` review, then confirm the track's
-   completed count increments and its Next problem changes.
-8. Reset track progress only when intentionally testing reset behavior, then
-   confirm the active track's completed count returns to zero.
-9. Run the incomplete-problem edge path independently: use a currently
-   incomplete active-track problem (the current Next problem, including after
-   the reset path if it was run), save an `again` review in the LeetCode
-   overlay, and confirm the completed count does not increment and the problem
-   remains incomplete.
-10. Run the monotonic-preservation edge path independently, without resetting
-    after first completing an active-track problem: save a later `again` review
-    for that already-completed problem and confirm the completed count and
-    completion state remain unchanged.
-11. Exercise controlling-review correction in Study Plan mode: save a `good`
-    review for an active-track problem, use the overlay's update action to
-    change that same review to `hard`, and confirm the problem remains complete
-    with the updated rating. Change the same review to `again` and confirm the
-    completion clears; change it back to `hard` or `good` and confirm the
-    completion is restored.
+7. In Study Plan mode, open the active track's current incomplete Next problem
+   in the LeetCode overlay and exercise each case independently:
+
+   | Action                                               | Expected track progress                      |
+   | ---------------------------------------------------- | -------------------------------------------- |
+   | Save `hard`                                          | Completed count increments and Next changes. |
+   | Save `again` for an incomplete problem               | The problem remains incomplete.              |
+   | Save `again` after completing the problem            | Its completion remains unchanged.            |
+   | Update one review `good` → `hard` → `again` → `good` | Completion stays, clears, then returns.      |
+
+8. Reset track progress only when intentionally testing reset behavior; confirm
+   the completed count returns to zero.
 
 Expected: active track state, group state, problem order, and track progress are
 local and update the dashboard without changing global practice history unless a
-review is saved. While Study Plan mode is active, `hard`, `good`, and `easy`
-count as recalled track completions; `again` does not complete a currently
-incomplete problem and does not clear a previously completed active-track
-problem when reviewed later. Free Practice does not write active-track
-progress.
+review is saved. In Study Plan mode, `hard`, `good`, and `easy` complete track
+problems; `again` neither completes an incomplete problem nor clears an earlier
+completion. Free Practice does not write active-track progress.
 
 ### Dashboard Analytics
 
