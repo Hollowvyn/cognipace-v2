@@ -918,7 +918,7 @@ describe('TracksRepository', () => {
     ])
   })
 
-  it('stores incomplete active-track progress for hard review attempts', async () => {
+  it('completes active-track progress for hard review attempts', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
@@ -949,8 +949,8 @@ describe('TracksRepository', () => {
         trackId: 'leetcode-75',
         problemSlug: 'two-sum',
         reviewAttemptId: 'review-hard-1',
-        completedAt: null,
-        completedRating: null,
+        completedAt: reviewedAt.getTime(),
+        completedRating: 'hard',
       },
     ])
   })
@@ -1160,9 +1160,9 @@ describe('TracksRepository', () => {
       {
         trackId: 'leetcode-75',
         problemSlug: 'two-sum',
-        reviewAttemptId: 'review-good-before-hard',
-        completedAt: goodReviewedAt.getTime(),
-        completedRating: 'good',
+        reviewAttemptId: 'review-hard-after-good',
+        completedAt: hardReviewedAt.getTime(),
+        completedRating: 'hard',
       },
     ])
   })

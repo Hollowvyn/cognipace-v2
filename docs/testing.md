@@ -199,11 +199,24 @@ reloading the extension.
 4. Create or edit a track.
 5. Set a track active.
 6. Change the active group when more than one group exists.
-7. Reset track progress only when intentionally testing reset behavior.
+7. In Study Plan mode, open the active track's current incomplete Next problem
+   in the LeetCode overlay and exercise each case independently:
+
+   | Action                                               | Expected track progress                      |
+   | ---------------------------------------------------- | -------------------------------------------- |
+   | Save `hard`                                          | Completed count increments and Next changes. |
+   | Save `again` for an incomplete problem               | The problem remains incomplete.              |
+   | Save `again` after completing the problem            | Its completion remains unchanged.            |
+   | Update one review `good` → `hard` → `again` → `good` | Completion stays, clears, then returns.      |
+
+8. Reset track progress only when intentionally testing reset behavior; confirm
+   the completed count returns to zero.
 
 Expected: active track state, group state, problem order, and track progress are
 local and update the dashboard without changing global practice history unless a
-review is saved.
+review is saved. In Study Plan mode, `hard`, `good`, and `easy` complete track
+problems; `again` neither completes an incomplete problem nor clears an earlier
+completion. Free Practice does not write active-track progress.
 
 ### Dashboard Analytics
 

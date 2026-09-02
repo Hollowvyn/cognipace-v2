@@ -35,7 +35,7 @@ export interface TrackSessionState {
   updatedAt: Date
 }
 
-export type TrackCompletedRating = 'good' | 'easy'
+export type TrackCompletedRating = 'hard' | 'good' | 'easy'
 
 export type TrackProblemCompletion =
   | { status: 'incomplete'; reviewAttemptId: string | null }

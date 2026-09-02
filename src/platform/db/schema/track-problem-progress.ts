@@ -40,7 +40,7 @@ export const trackProblemProgress = sqliteTable(
     }).onDelete('cascade'),
     check(
       'track_problem_progress_completion_pair_check',
-      sql`((${table.completedAt} is null and ${table.completedRating} is null) or (${table.completedAt} is not null and ${table.completedRating} is not null and ${table.completedRating} in ('good', 'easy')))`,
+      sql`((${table.completedAt} is null and ${table.completedRating} is null) or (${table.completedAt} is not null and ${table.completedRating} is not null and ${table.completedRating} in ('hard', 'good', 'easy')))`,
     ),
     index('track_problem_progress_review_attempt_idx').on(
       table.reviewAttemptId,

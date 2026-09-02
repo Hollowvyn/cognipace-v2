@@ -1155,7 +1155,7 @@ function normalizeDueAt(dueAt: Date | string | null) {
 function parseTrackCompletedRating(
   rating: string | null,
 ): TrackCompletedRating | null {
-  if (rating === 'good' || rating === 'easy') {
+  if (rating === 'hard' || rating === 'good' || rating === 'easy') {
     return rating
   }
 
