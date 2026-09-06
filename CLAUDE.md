@@ -52,6 +52,17 @@ Use repo-local skills under `.agents/skills` when they match the work:
 Use documentation lookup tooling for current library, framework, SDK, API, CLI,
 or cloud-service questions. Resolve the library first, then query current docs.
 
+## Sub-projects
+
+- `interviewer/` — speech-to-speech mock coding interviewer. Self-contained
+  two-service bundle (`interviewer/agent/` Python worker, `interviewer/web/`
+  Next.js app) that share a LiveKit project. Read `interviewer/CLAUDE.md`
+  before modifying anything inside; read `interviewer/ARCHITECTURE.md` if you
+  need to reason about the gate, the rubric, or how the agent and browser
+  talk. The bundle is kept in-tree as historical reference for the ported
+  prompts and rubric that CogniPace's native interview mode reuses; it is
+  not built or deployed as part of the CogniPace extension.
+
 ## Authority
 
 - `docs/product.md` owns current product behavior and scope.

@@ -1,0 +1,25 @@
+# env
+.env
+.env.local
+.env.*.local
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# node
+node_modules/
+.next/
+next-env.d.ts
+dist/
+build/
+.turbo/
+
+# editors / os
+.DS_Store
+.vscode/
+.idea/
+*.swp

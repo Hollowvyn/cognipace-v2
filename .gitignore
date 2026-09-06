@@ -16,6 +16,7 @@ dist-ssr
 .superpowers/
 test-results
 *.local
+.env
 
 # Editor directories and files
 .vscode/*

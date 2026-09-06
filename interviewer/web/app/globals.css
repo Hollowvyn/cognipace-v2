@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/*
+ * Palette. Warm graphite + amber -> sage two-step for rubric progression,
+ * vermilion reserved for the "missing" hint and the unlock moment.
+ */
+:root {
+  --ink: #0d0e10;
+  --charcoal: #17191d;
+  --slate: #22252b;
+  --stone: #7a756d;
+  --paper: #efe9df;
+  --bone: #dcd6cc;
+  --amber: #d4a34a;
+  --sage: #8ba889;
+  --vermilion: #d24a30;
+}
+
+@theme inline {
+  --color-background: var(--ink);
+  --color-foreground: var(--paper);
+  --color-ink: var(--ink);
+  --color-charcoal: var(--charcoal);
+  --color-slate: var(--slate);
+  --color-stone: var(--stone);
+  --color-paper: var(--paper);
+  --color-bone: var(--bone);
+  --color-amber: var(--amber);
+  --color-sage: var(--sage);
+  --color-vermilion: var(--vermilion);
+  --font-serif: var(--font-fraunces);
+  --font-mono: var(--font-mono);
+  --font-sans: var(--font-mono);
+}
+
+html,
+body {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+body {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-feature-settings: "ss01", "cv04";
+}
+
+/* Selection uses the vermilion accent so it feels warm against the ink. */
+::selection {
+  background: var(--vermilion);
+  color: var(--ink);
+}
+
+/* Reduced motion: kill non-essential transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
