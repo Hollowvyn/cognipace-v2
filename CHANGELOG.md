@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/Hollowvyn/cognipace-v2/compare/v1.2.0...v1.3.0) (2026-09-06)
+
+
+### Features
+
+* **analytics:** ship locked nine-view dashboard ([#119](https://github.com/Hollowvyn/cognipace-v2/issues/119)) ([7558bd9](https://github.com/Hollowvyn/cognipace-v2/commit/7558bd93bb89096df3b5336137ab680f0351a27d))
+* **tracks:** count hard recall as completion ([#126](https://github.com/Hollowvyn/cognipace-v2/issues/126)) ([847d35a](https://github.com/Hollowvyn/cognipace-v2/commit/847d35a4fbadcd92727c5f009bb9938bc98405ac))
+
+
+### Bug Fixes
+
+* **build:** bump drizzle-kit to 0.31 for CLI + orm 0.45 compat ([#145](https://github.com/Hollowvyn/cognipace-v2/issues/145)) ([20c3f31](https://github.com/Hollowvyn/cognipace-v2/commit/20c3f31f1aaa357b758cbf72cc160b5c05e45ac5))
+
 ## [1.2.0](https://github.com/Hollowvyn/cognipace-v2/compare/v1.1.0...v1.2.0) (2026-08-21)
 
 
