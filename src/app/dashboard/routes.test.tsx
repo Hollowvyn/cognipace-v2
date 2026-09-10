@@ -9,7 +9,7 @@ import type { SyncActionResult } from '@/features/sync'
 import { createLibrarySelectionTrackDraft } from '@/features/tracks'
 import { createDashboardAppShellData } from '@/testing/app-shell-fixtures'
 import { createSerializedAnalyticsSummary } from '@/testing/analytics-fixtures'
-import type { ReadinessFailure } from '@/features/analytics/api/analytics-contracts'
+import { useAnalyticsSummary } from '@/features/analytics/api/analytics-api'
 import {
   createProblemForEditResponse,
   createProblemLibraryResponse,
@@ -33,6 +33,19 @@ import { dashboardModalRouteMeta } from './navigation/route-manifest'
 vi.mock('@/extension/messaging', () => ({
   sendMessage: vi.fn(),
 }))
+
+vi.mock('@/features/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/analytics')>()
+
+  return {
+    ...actual,
+    AnalyticsScreen: ({ range }: { range: 90 | 120 | 'all' }) => {
+      useAnalyticsSummary(range)
+
+      return <div data-testid="analytics-screen" data-range={range} />
+    },
+  }
+})
 
 let analyticsSummary = createSerializedAnalyticsSummary()
 const analyticsTimeZone =
@@ -198,87 +211,38 @@ describe('dashboard routes', () => {
   })
 
   it('updates the analytics URL and runtime request when the range changes', async () => {
-    const { router, user } = renderDashboard('/analytics?range=14')
+    const { router, user } = renderDashboard(
+      '/analytics?range=90&context=retention-health',
+    )
 
     expect(
-      await screen.findByRole('button', { name: '14 days' }),
+      await screen.findByRole('button', { name: '90 days' }),
     ).toHaveAttribute('aria-pressed', 'true')
     expect(
       screen.getByRole('group', { name: 'Analytics time range' }),
     ).toHaveClass('w-full', 'flex-wrap')
 
-    await user.click(screen.getByRole('button', { name: '90 days' }))
+    await user.click(screen.getByRole('button', { name: 'All time' }))
 
     await waitFor(() => {
-      expect(router.state.location.search).toEqual({ range: 90 })
+      expect(router.state.location.search).toEqual({
+        context: 'retention-health',
+        range: 'all',
+      })
       expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
         surface: 'dashboard',
-        range: 90,
+        range: 'all',
         timeZone: analyticsTimeZone,
       })
     })
-    expect(screen.getByRole('button', { name: '90 days' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'All time' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
   })
 
-  it('preserves analytics search context when a readiness recommendation changes the range', async () => {
-    const readiness = {
-      ...analyticsSummary.historicalReadiness.requested,
-      requestedDays: 90,
-      bucketDays: 7,
-      requestedBuckets: 13,
-      effectiveBuckets: 6,
-      effectiveStart: '2026-05-01',
-      assessments: 32,
-      minimumAssessments: 45,
-      activeBuckets: 4,
-      minimumActiveBuckets: 5,
-      failingReasons: [
-        'insufficient-span',
-        'insufficient-assessments',
-        'insufficient-active-buckets',
-      ] as ReadinessFailure[],
-    }
-    analyticsSummary = createSerializedAnalyticsSummary({
-      range: 90,
-      historicalReadiness: {
-        requested: readiness,
-        recallQuality: readiness,
-        practiceRhythm: readiness,
-        ratingsMix: readiness,
-        topics: readiness,
-        stability: readiness,
-        overdueBacklog: readiness,
-        recommendedRange: 30,
-      },
-    })
-
-    const { router } = renderDashboard(
-      '/analytics?range=90&context=retention-health',
-    )
-
-    const recommendation = await screen.findByRole('link', {
-      name: 'Use ready 30-day view',
-    })
-
-    expect(recommendation).toHaveAttribute(
-      'href',
-      expect.stringContaining('context=retention-health'),
-    )
-    expect(recommendation).toHaveAttribute(
-      'href',
-      expect.stringContaining('range=30'),
-    )
-    expect(router.state.location.search).toEqual({
-      context: 'retention-health',
-      range: 90,
-    })
-  })
-
-  it.each(['14', '30', '90'])(
-    'passes the numeric analytics range from %s URL search params',
+  it.each(['90', '120'])(
+    'passes the supported numeric analytics range from %s URL search params',
     async (range) => {
       renderDashboard(`/analytics?range=${range}`)
 
@@ -295,8 +259,33 @@ describe('dashboard routes', () => {
     },
   )
 
-  it.each(['/analytics', '/analytics?range=7', '/analytics?range='])(
-    'defaults malformed analytics range URL %s to 30',
+  it('passes the all-time analytics range without numeric coercion', async () => {
+    renderDashboard('/analytics?range=all')
+
+    await screen.findByRole('heading', {
+      name: 'How your memory is changing',
+    })
+    await waitFor(() =>
+      expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
+        surface: 'dashboard',
+        range: 'all',
+        timeZone: analyticsTimeZone,
+      }),
+    )
+    expect(screen.getByRole('button', { name: 'All time' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it.each([
+    '/analytics',
+    '/analytics?range=7',
+    '/analytics?range=',
+    '/analytics?range=14',
+    '/analytics?range=30',
+  ])(
+    'defaults absent, malformed, or retired analytics range URL %s to 90',
     async (path) => {
       renderDashboard(path)
 
@@ -306,9 +295,13 @@ describe('dashboard routes', () => {
       await waitFor(() =>
         expect(sendMessage).toHaveBeenCalledWith('analytics.getSummary', {
           surface: 'dashboard',
-          range: 30,
+          range: 90,
           timeZone: analyticsTimeZone,
         }),
+      )
+      expect(screen.getByRole('button', { name: '90 days' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
       )
     },
   )

@@ -76,9 +76,11 @@ function buildOverdueBacklogRows(
   snapshots: readonly AnalyticsOverdueSnapshot[],
   timeFrame: AnalyticsTimeFrame,
 ): OverdueBacklogRow[] {
-  const firstKey = timeFrame.buckets[0]?.startKey
-  const lastKey = timeFrame.buckets.at(-1)?.endKey
-  if (!firstKey || !lastKey) return []
+  const lastKey = getAnalyticsDateKey(
+    new Date(timeFrame.asOf),
+    timeFrame.timeZone,
+  )
+  const firstKey = addAnalyticsCalendarDays(lastKey, -119)
 
   const snapshotsByDate = new Map(
     snapshots.map((snapshot) => [

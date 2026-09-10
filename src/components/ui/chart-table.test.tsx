@@ -78,4 +78,23 @@ describe('ChartTable', () => {
     expect(chartTab).toHaveAttribute('aria-selected', 'true')
     expect(chartTab).toHaveFocus()
   })
+
+  it('renders the exact table directly without a decorative tablist in table-only mode', () => {
+    render(
+      <ChartTable
+        chart={<div aria-label="Unsupported trend plot" role="img" />}
+        mode="table-only"
+        table={<table aria-label="Sparse evidence exact values" />}
+      />,
+    )
+
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Chart' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('img', { name: 'Unsupported trend plot' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('table', { name: 'Sparse evidence exact values' }),
+    ).toBeVisible()
+  })
 })

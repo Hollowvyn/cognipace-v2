@@ -18,6 +18,18 @@ describe('chart buckets', () => {
     ).toBe(0.1)
   })
 
+  it('coarsens ratios from raw numerators and denominators, including unequal daily samples', () => {
+    const dailyRatios = [1, 0]
+
+    expect(
+      recomputeBucketRatio([
+        { numerator: 1, denominator: 1 },
+        { numerator: 0, denominator: 99 },
+      ]),
+    ).toBe(0.01)
+    expect(dailyRatios.reduce((sum, ratio) => sum + ratio, 0) / 2).toBe(0.5)
+  })
+
   it('aggregates sums, medians, and last values without mutating samples', () => {
     const values = [7, 1, 4]
 
@@ -27,21 +39,27 @@ describe('chart buckets', () => {
     expect(values).toEqual([7, 1, 4])
   })
 
+  it('derives a coarsened median from every raw sample rather than bucket medians', () => {
+    const rawSamples = [1, 1, 1, 100]
+    const dailyMedians = [1, 100]
+
+    expect(medianBucketValues(rawSamples)).toBe(1)
+    expect(medianBucketValues(dailyMedians)).toBe(50.5)
+  })
+
   it('classifies solid adjacency', () => {
     expect(classifyLineContinuity([0.8, 0.84])).toEqual([
       { kind: 'solid', fromIndex: 0, toIndex: 1 },
     ])
   })
 
-  it('classifies a permitted two-bucket hole as a bridge', () => {
-    expect(classifyLineContinuity([0.8, null, null, 0.84])).toEqual([
-      { kind: 'bridge', fromIndex: 0, toIndex: 3 },
-    ])
+  it('breaks the line across two or more unknown buckets', () => {
+    expect(classifyLineContinuity([0.8, null, null, 0.84])).toEqual([])
   })
 
-  it('bridges any gap between measured points', () => {
-    expect(classifyLineContinuity([0.8, null, null, null, 0.84])).toEqual([
-      { kind: 'bridge', fromIndex: 0, toIndex: 4 },
+  it('classifies one unknown bucket between measured points as a bridge', () => {
+    expect(classifyLineContinuity([0.8, null, 0.84])).toEqual([
+      { kind: 'bridge', fromIndex: 0, toIndex: 2 },
     ])
   })
 
@@ -53,5 +71,4 @@ describe('chart buckets', () => {
     ])
     expect(values).toEqual([null, 0.8, 0.84, null])
   })
-
 })

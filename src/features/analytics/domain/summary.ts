@@ -1,8 +1,8 @@
 import { isReviewRating } from '@/lib/fsrs'
 
-import type { AnalyticsReadiness } from './analytics-readiness'
+import type { AnalyticsEvidenceClassification } from './analytics-evidence'
 import type { HistoricalAnalyticsViews } from './historical-presentation'
-import type { AnalyticsTimeFrame } from './analytics-time'
+import type { AnalyticsRange, AnalyticsTimeFrame } from './analytics-time'
 
 export interface ObservedRatingQualityResult {
   value: number | null
@@ -22,6 +22,32 @@ export interface AnalyticsMetricSummary {
   lowSample: boolean
 }
 
+export interface AnalyticsHistoricalEvidence extends AnalyticsEvidenceClassification {
+  selectedBucketCount: number
+}
+
+type EvidenceBackedHistoricalView<T> = T & {
+  evidence: AnalyticsHistoricalEvidence
+}
+
+export type AnalyticsViews = Omit<
+  HistoricalAnalyticsViews,
+  'observedRecallVsFsrs' | 'memoryStrength' | 'practiceRhythm' | 'ratingsMix'
+> & {
+  observedRecallVsFsrs: EvidenceBackedHistoricalView<
+    HistoricalAnalyticsViews['observedRecallVsFsrs']
+  >
+  memoryStrength: EvidenceBackedHistoricalView<
+    HistoricalAnalyticsViews['memoryStrength']
+  >
+  practiceRhythm: EvidenceBackedHistoricalView<
+    HistoricalAnalyticsViews['practiceRhythm']
+  >
+  ratingsMix: EvidenceBackedHistoricalView<
+    HistoricalAnalyticsViews['ratingsMix']
+  >
+}
+
 export interface AnalyticsSummaryInput {
   generatedAt: Date
   timeFrame: AnalyticsTimeFrame
@@ -29,10 +55,9 @@ export interface AnalyticsSummaryInput {
   totalReviews: number
   currentStreak: number
   observedRatingQuality: ObservedRatingQualityResult
-  range: 14 | 30 | 90
+  range: AnalyticsRange
   targetRetention: number
-  views?: HistoricalAnalyticsViews
-  historicalReadiness: HistoricalReadiness
+  views?: AnalyticsViews
   predictedRecall?: AnalyticsMetricSummary
   recallQuality?: import('./chart-data').RecallQualityPoint[]
   practiceRhythm?: import('./chart-data').PracticeRhythmPoint[]
@@ -40,17 +65,6 @@ export interface AnalyticsSummaryInput {
   hardAgain?: import('./chart-data').HardAgainSummary
   topics?: import('./chart-data').TopicPoint[]
   stability?: import('./chart-data').StabilityPoint[]
-}
-
-export interface HistoricalReadiness {
-  requested: AnalyticsReadiness
-  recallQuality: AnalyticsReadiness
-  practiceRhythm: AnalyticsReadiness
-  ratingsMix: AnalyticsReadiness
-  topics: AnalyticsReadiness
-  stability: AnalyticsReadiness
-  overdueBacklog: AnalyticsReadiness
-  recommendedRange: 14 | 30 | 90 | null
 }
 
 export interface AnalyticsSummary {
@@ -61,12 +75,11 @@ export interface AnalyticsSummary {
   currentStreak: number
   observedRatingQuality: number | null
   observedRatingQualityLabel: string
-  range: 14 | 30 | 90
+  range: AnalyticsRange
   observedRatingSampleSize: number
   lowSample: boolean
   targetRetention: number
-  views: HistoricalAnalyticsViews
-  historicalReadiness: HistoricalReadiness
+  views: AnalyticsViews
   predictedRecall: AnalyticsMetricSummary
   recallQuality: import('./chart-data').RecallQualityPoint[]
   practiceRhythm: import('./chart-data').PracticeRhythmPoint[]
@@ -79,10 +92,12 @@ export interface AnalyticsSummary {
 export function buildObservedRatingQuality(
   attempts: Array<{ rating: string; reviewedAt: Date }>,
   now: Date,
-  range: 14 | 30 | 90,
+  range: AnalyticsRange,
   period?: ObservedRatingPeriod,
 ): ObservedRatingQualityResult {
-  const since = period?.periodStart ?? subtractDays(now, range)
+  const since =
+    period?.periodStart ??
+    (range === 'all' ? new Date(0) : subtractDays(now, range))
   const periodEnd = period?.periodEnd ?? now
   const recent = attempts.filter(
     (a) =>
@@ -122,7 +137,6 @@ export function buildAnalyticsSummary(
     range: input.range,
     targetRetention: input.targetRetention,
     views: input.views ?? emptyHistoricalViews(input.targetRetention),
-    historicalReadiness: input.historicalReadiness,
     predictedRecall: input.predictedRecall ?? {
       value: null,
       sampleSize: 0,
@@ -146,23 +160,35 @@ export function buildAnalyticsSummary(
   }
 }
 
-function emptyHistoricalViews(
-  targetRetention: number,
-): HistoricalAnalyticsViews {
+function emptyHistoricalViews(targetRetention: number): AnalyticsViews {
+  const evidence: AnalyticsHistoricalEvidence = {
+    historyDays: 0,
+    measuredBuckets: 0,
+    observations: 0,
+    selectedBucketCount: 0,
+    tableOnly: true,
+    displayMode: 'table',
+    supportsLine: false,
+    supportsDirection: false,
+  }
+
   return {
     observedRecallVsFsrs: {
       rows: [],
       scale: { domain: [0, 1], ticks: [0, 1] },
       targetRetention,
+      evidence,
     },
     memoryStrength: {
       rows: [],
       scale: { domain: [0, 2], ticks: [0, 1, 2] },
+      evidence,
     },
     practiceRhythm: {
       rows: [],
       countScale: { domain: [0, 1], ticks: [0, 1] },
       percentageScale: { domain: [0, 1], ticks: [0, 1] },
+      evidence,
     },
     ratingsMix: {
       rows: [],
@@ -174,6 +200,7 @@ function emptyHistoricalViews(
         difference: null,
         direction: null,
       },
+      evidence,
     },
     topicPerformance: {
       rows: [],

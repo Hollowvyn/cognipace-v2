@@ -15,119 +15,138 @@ import { ChartTable } from '@/components/ui/chart-table'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 
 import type { AnalyticsViews } from '../api/analytics-contracts'
+import { AnalyticsEvidenceState } from './analytics-evidence-state'
 import { LineSegments } from './charts/line-segments'
-import {
-  formatBucketLabel,
-  formatCount,
-  formatDays,
-  formatPercent,
-} from './charts/chart-shared'
+import { formatCount, formatDays, formatPercent } from './charts/chart-shared'
 
 const chartDimension = { width: 640, height: 288 }
+const historicalTickGap = 48
 
 export function ObservedRecallVsFsrsView({
   view,
+  resetKey,
+  persistenceKey,
 }: {
   view: AnalyticsViews['observedRecallVsFsrs']
+  resetKey?: string
+  persistenceKey?: string
 }) {
   const hasValues = view.rows.some((row) => row.observedRecall !== null)
   return (
-    <ChartTable
-      chart={
-        hasValues ? (
-          <div className="grid gap-2">
-            <ChartContainer
-              accessibleDescription={`Paired review outcomes and reconstructed FSRS estimates. Scale: ${formatPercent(view.scale.domain[0])}–${formatPercent(view.scale.domain[1])}.`}
-              accessibleName="Observed Recall vs FSRS Estimate chart"
-              aria-label="Observed Recall vs FSRS Estimate chart"
-              className="aspect-auto h-80 min-h-[20rem]"
-              config={{
-                observedRecall: {
-                  label: 'Observed recall',
-                  color: 'var(--cp-analytics-observed)',
-                },
-                fsrsEstimate: {
-                  label: 'FSRS estimate',
-                  color: 'var(--cp-analytics-predicted)',
-                },
-              }}
-              initialDimension={chartDimension}
-              role="img"
-            >
-              <ComposedChart
-                accessibilityLayer
-                data={view.rows}
-                margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+    <div className="grid gap-2">
+      <AnalyticsEvidenceState
+        evidence={view.evidence}
+        title="Observed Recall vs FSRS Estimate"
+      />
+      <ChartTable
+        chart={
+          hasValues ? (
+            <div className="grid gap-2">
+              <ChartContainer
+                accessibleDescription={`Paired review outcomes and reconstructed FSRS estimates. Scale: ${formatPercent(view.scale.domain[0])}–${formatPercent(view.scale.domain[1])}.`}
+                accessibleName="Observed Recall vs FSRS Estimate chart"
+                aria-label="Observed Recall vs FSRS Estimate chart"
+                className="aspect-auto h-80 min-h-[20rem]"
+                config={{
+                  observedRecall: {
+                    label: 'Observed recall',
+                    color: 'var(--cp-analytics-observed)',
+                  },
+                  fsrsEstimate: {
+                    label: 'FSRS estimate',
+                    color: 'var(--cp-analytics-predicted)',
+                  },
+                }}
+                initialDimension={chartDimension}
+                role="img"
               >
-                <CartesianGrid stroke="var(--color-border)" vertical={false} />
-                <XAxis
-                  axisLine={false}
-                  allowDuplicatedCategory={false}
-                  dataKey="bucketStart"
-                  minTickGap={32}
-                  tickFormatter={(value) =>
-                    formatRowBucket(
-                      view.rows.find((row) => row.bucketStart === value),
-                    )
-                  }
-                  tickLine={false}
-                />
-                <YAxis
-                  axisLine={false}
-                  domain={view.scale.domain}
-                  ticks={view.scale.ticks}
-                  tickFormatter={formatPercent}
-                  tickLine={false}
-                  width={44}
-                />
-                <ChartTooltip content={<RecallTooltip />} />
-                <ReferenceLine
-                  label="Target retention"
-                  stroke="var(--cp-analytics-target)"
-                  strokeDasharray="5 5"
-                  y={view.targetRetention}
-                />
-                <LineSegments
+                <ComposedChart
+                  accessibilityLayer
                   data={view.rows}
-                  dataKey="observedRecall"
-                  seriesKey="Observed recall"
-                  showMeasuredDots
-                  stroke="var(--cp-analytics-observed)"
-                  testId="observed-recall"
-                  type="linear"
-                />
-                <LineSegments
-                  data={view.rows}
-                  dataKey="fsrsEstimate"
-                  seriesKey="FSRS estimate"
-                  showMeasuredDots
-                  stroke="var(--cp-analytics-predicted)"
-                  strokeDasharray="6 3"
-                  testId="fsrs-estimate"
-                  type="linear"
-                />
-              </ComposedChart>
-            </ChartContainer>
-            <RecallLegend />
-          </div>
-        ) : (
-          <Empty message="No reviews in this period have both a valid rating and an FSRS estimate." />
-        )
-      }
-      table={
-        <ObservedRecallTable
-          rows={view.rows}
-          resetKey={view.rows.map((row) => row.id).join('|')}
-        />
-      }
-    />
+                  margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+                >
+                  <CartesianGrid
+                    stroke="var(--color-border)"
+                    vertical={false}
+                  />
+                  <XAxis
+                    axisLine={false}
+                    allowDuplicatedCategory={false}
+                    dataKey="bucketStart"
+                    interval="preserveStartEnd"
+                    minTickGap={historicalTickGap}
+                    tickFormatter={(value) =>
+                      formatRowBucket(
+                        view.rows.find((row) => row.bucketStart === value),
+                      )
+                    }
+                    tickLine={false}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    domain={view.scale.domain}
+                    ticks={view.scale.ticks}
+                    tickFormatter={formatPercent}
+                    tickLine={false}
+                    width={44}
+                  />
+                  <ChartTooltip content={<RecallTooltip />} />
+                  <ReferenceLine
+                    label="Target retention"
+                    stroke="var(--cp-analytics-target)"
+                    strokeDasharray="5 5"
+                    y={view.targetRetention}
+                  />
+                  <LineSegments
+                    connectSegments={view.evidence.supportsLine}
+                    data={view.rows}
+                    dataKey="observedRecall"
+                    seriesKey="Observed recall"
+                    showMeasuredDots
+                    stroke="var(--cp-analytics-observed)"
+                    testId="observed-recall"
+                    type="linear"
+                  />
+                  <LineSegments
+                    connectSegments={view.evidence.supportsLine}
+                    data={view.rows}
+                    dataKey="fsrsEstimate"
+                    seriesKey="FSRS estimate"
+                    showMeasuredDots
+                    stroke="var(--cp-analytics-predicted)"
+                    strokeDasharray="6 3"
+                    testId="fsrs-estimate"
+                    type="linear"
+                  />
+                </ComposedChart>
+              </ChartContainer>
+              <RecallLegend />
+            </div>
+          ) : (
+            <Empty message="No reviews in this period have both a valid rating and an FSRS estimate." />
+          )
+        }
+        table={
+          <ObservedRecallTable
+            rows={view.rows}
+            resetKey={tableResetKey(view.rows, resetKey)}
+          />
+        }
+        mode={view.evidence.tableOnly ? 'table-only' : 'chart-table'}
+        {...(persistenceKey === undefined ? {} : { persistenceKey })}
+      />
+    </div>
   )
 }
 
 export function MemoryStrengthView({
   view,
+  resetKey,
+  persistenceKey,
 }: {
   view: AnalyticsViews['memoryStrength']
+  resetKey?: string
+  persistenceKey?: string
 }) {
   const hasValues = view.rows.some((row) => row.medianStrengthDays !== null)
   const chartRows = view.rows.map((row) => ({
@@ -136,93 +155,111 @@ export function MemoryStrengthView({
     iqrRange: row.q1 === null || row.q3 === null ? null : row.q3 - row.q1,
   }))
   return (
-    <ChartTable
-      chart={
-        hasValues ? (
-          <ChartContainer
-            accessibleDescription={`Median post-review FSRS stability. Scale: ${formatDays(view.scale.domain[0])}–${formatDays(view.scale.domain[1])}.`}
-            accessibleName="Memory Strength chart"
-            aria-label="Memory Strength chart"
-            className="aspect-auto h-72 min-h-[18rem]"
-            config={{
-              medianStrengthDays: {
-                label: 'Median strength',
-                color: 'var(--cp-analytics-healthy)',
-              },
-            }}
-            initialDimension={chartDimension}
-            role="img"
-          >
-            <ComposedChart
-              accessibilityLayer
-              data={chartRows}
-              margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+    <div className="grid gap-2">
+      <AnalyticsEvidenceState
+        evidence={view.evidence}
+        title="Memory Strength"
+      />
+      <ChartTable
+        chart={
+          hasValues ? (
+            <ChartContainer
+              accessibleDescription={`Median post-review FSRS stability. Scale: ${formatDays(view.scale.domain[0])}–${formatDays(view.scale.domain[1])}.`}
+              accessibleName="Memory Strength chart"
+              aria-label="Memory Strength chart"
+              className="aspect-auto h-72 min-h-[18rem]"
+              config={{
+                medianStrengthDays: {
+                  label: 'Median strength',
+                  color: 'var(--cp-analytics-healthy)',
+                },
+              }}
+              initialDimension={chartDimension}
+              role="img"
             >
-              <CartesianGrid stroke="var(--color-border)" vertical={false} />
-              <XAxis
-                axisLine={false}
-                allowDuplicatedCategory={false}
-                dataKey="bucketStart"
-                minTickGap={32}
-                tickFormatter={(value) =>
-                  formatRowBucket(
-                    chartRows.find((row) => row.bucketStart === value),
-                  )
-                }
-                tickLine={false}
-              />
-              <YAxis
-                axisLine={false}
-                domain={view.scale.domain}
-                ticks={view.scale.ticks}
-                tickFormatter={formatDays}
-                tickLine={false}
-                width={48}
-              />
-              <ChartTooltip content={<MemoryTooltip />} />
-              <Area
-                dataKey="iqrBase"
-                fill="transparent"
-                stackId="memory-strength-iqr"
-                stroke="transparent"
-              />
-              <Area
-                data-testid="memory-strength-iqr-band"
-                dataKey="iqrRange"
-                fill="var(--cp-analytics-healthy)"
-                fillOpacity={0.18}
-                stackId="memory-strength-iqr"
-                stroke="none"
-              />
-              <LineSegments
+              <ComposedChart
+                accessibilityLayer
                 data={chartRows}
-                dataKey="medianStrengthDays"
-                seriesKey="Median strength"
-                showMeasuredDots
-                stroke="var(--cp-analytics-healthy)"
-                testId="memory-strength"
-                type="linear"
-              />
-            </ComposedChart>
-          </ChartContainer>
-        ) : (
-          <Empty message="No valid post-review FSRS stability is available in this period." />
-        )
-      }
-      table={
-        <MemoryStrengthTable
-          rows={view.rows}
-          resetKey={view.rows.map((row) => row.id).join('|')}
-        />
-      }
-    />
+                margin={{ bottom: 4, left: 0, right: 8, top: 8 }}
+              >
+                <CartesianGrid stroke="var(--color-border)" vertical={false} />
+                <XAxis
+                  axisLine={false}
+                  allowDuplicatedCategory={false}
+                  dataKey="bucketStart"
+                  interval="preserveStartEnd"
+                  minTickGap={historicalTickGap}
+                  tickFormatter={(value) =>
+                    formatRowBucket(
+                      chartRows.find((row) => row.bucketStart === value),
+                    )
+                  }
+                  tickLine={false}
+                />
+                <YAxis
+                  axisLine={false}
+                  domain={view.scale.domain}
+                  ticks={view.scale.ticks}
+                  tickFormatter={formatDays}
+                  tickLine={false}
+                  width={48}
+                />
+                <ChartTooltip content={<MemoryTooltip />} />
+                {view.evidence.supportsLine ? (
+                  <>
+                    <Area
+                      dataKey="iqrBase"
+                      fill="transparent"
+                      stackId="memory-strength-iqr"
+                      stroke="transparent"
+                    />
+                    <Area
+                      data-testid="memory-strength-iqr-band"
+                      dataKey="iqrRange"
+                      fill="var(--cp-analytics-healthy)"
+                      fillOpacity={0.18}
+                      stackId="memory-strength-iqr"
+                      stroke="none"
+                    />
+                  </>
+                ) : null}
+                <LineSegments
+                  connectSegments={view.evidence.supportsLine}
+                  data={chartRows}
+                  dataKey="medianStrengthDays"
+                  seriesKey="Median strength"
+                  showMeasuredDots
+                  stroke="var(--cp-analytics-healthy)"
+                  testId="memory-strength"
+                  type="linear"
+                />
+              </ComposedChart>
+            </ChartContainer>
+          ) : (
+            <Empty message="No valid post-review FSRS stability is available in this period." />
+          )
+        }
+        table={
+          <MemoryStrengthTable
+            rows={view.rows}
+            resetKey={tableResetKey(view.rows, resetKey)}
+          />
+        }
+        mode={view.evidence.tableOnly ? 'table-only' : 'chart-table'}
+        {...(persistenceKey === undefined ? {} : { persistenceKey })}
+      />
+    </div>
   )
 }
 
 export function PracticeRhythmView({
   view,
+  resetKey,
+  persistenceKey,
 }: {
   view: AnalyticsViews['practiceRhythm']
+  resetKey?: string
+  persistenceKey?: string
 }) {
   const hasReviews = view.rows.some((row) => row.completedReviews > 0)
   return (
@@ -230,6 +267,10 @@ export function PracticeRhythmView({
       <p className="m-0 text-sm font-medium text-foreground">
         Association, not causation.
       </p>
+      <AnalyticsEvidenceState
+        evidence={view.evidence}
+        title="Practice Rhythm"
+      />
       <ChartTable
         chart={
           hasReviews ? (
@@ -261,7 +302,8 @@ export function PracticeRhythmView({
                   axisLine={false}
                   allowDuplicatedCategory={false}
                   dataKey="bucketStart"
-                  minTickGap={32}
+                  interval="preserveStartEnd"
+                  minTickGap={historicalTickGap}
                   tickFormatter={(value) =>
                     formatRowBucket(
                       view.rows.find((row) => row.bucketStart === value),
@@ -290,6 +332,7 @@ export function PracticeRhythmView({
                 />
                 <ChartTooltip content={<RhythmTooltip />} />
                 <Bar
+                  data-testid="practice-rhythm-bars"
                   dataKey="completedReviews"
                   fill="var(--cp-analytics-practice-volume)"
                   isAnimationActive={false}
@@ -298,10 +341,12 @@ export function PracticeRhythmView({
                   yAxisId="count"
                 />
                 <LineSegments
+                  connectSegments={view.evidence.supportsLine}
                   data={view.rows}
                   dataKey="reviewSuccess"
                   seriesKey="Review Success"
                   stroke="var(--cp-analytics-observed)"
+                  testId="review-success"
                   type="linear"
                   yAxisId="success"
                 />
@@ -314,9 +359,11 @@ export function PracticeRhythmView({
         table={
           <PracticeRhythmTable
             rows={view.rows}
-            resetKey={view.rows.map((row) => row.id).join('|')}
+            resetKey={tableResetKey(view.rows, resetKey)}
           />
         }
+        mode={view.evidence.tableOnly ? 'table-only' : 'chart-table'}
+        {...(persistenceKey === undefined ? {} : { persistenceKey })}
       />
     </div>
   )
@@ -324,8 +371,12 @@ export function PracticeRhythmView({
 
 export function RatingsMixView({
   view,
+  resetKey,
+  persistenceKey,
 }: {
   view: AnalyticsViews['ratingsMix']
+  resetKey?: string
+  persistenceKey?: string
 }) {
   const hasRatings = view.rows.some((row) => row.validRatings > 0)
   const challengingShare =
@@ -335,6 +386,7 @@ export function RatingsMixView({
 
   return (
     <div className="grid gap-2">
+      <AnalyticsEvidenceState evidence={view.evidence} title="Ratings Mix" />
       <ChartTable
         chart={
           hasRatings ? (
@@ -380,7 +432,8 @@ export function RatingsMixView({
                     axisLine={false}
                     allowDuplicatedCategory={false}
                     dataKey="bucketStart"
-                    minTickGap={32}
+                    interval="preserveStartEnd"
+                    minTickGap={historicalTickGap}
                     tickFormatter={(value) =>
                       formatRowBucket(
                         view.rows.find((row) => row.bucketStart === value),
@@ -398,6 +451,7 @@ export function RatingsMixView({
                   />
                   <ChartTooltip content={<RatingsMixTooltip />} />
                   <Bar
+                    data-testid="ratings-mix-stacks"
                     dataKey="againShare"
                     fill="var(--cp-analytics-again)"
                     isAnimationActive={false}
@@ -436,9 +490,11 @@ export function RatingsMixView({
         table={
           <RatingsMixTable
             rows={view.rows}
-            resetKey={view.rows.map((row) => row.id).join('|')}
+            resetKey={tableResetKey(view.rows, resetKey)}
           />
         }
+        mode={view.evidence.tableOnly ? 'table-only' : 'chart-table'}
+        {...(persistenceKey === undefined ? {} : { persistenceKey })}
       />
       <p className="m-0 text-sm text-muted-foreground">
         This period&apos;s rating mix is based on{' '}
@@ -447,7 +503,8 @@ export function RatingsMixView({
         {formatCount(view.selectedValidRatings)} (
         {formatPercent(challengingShare)}).
       </p>
-      {view.comparison.direction !== null &&
+      {view.evidence.supportsDirection &&
+      view.comparison.direction !== null &&
       view.comparison.difference !== null &&
       view.comparison.previousHardAgainShare !== null ? (
         <p className="m-0 text-sm text-muted-foreground">
@@ -541,6 +598,7 @@ export function TopicPerformanceView({
             <Empty message="No topic has at least 10 valid ratings across 3 reviewed problems in this period." />
           )
         }
+        persistenceKey="analytics-topic-performance"
         table={<TopicPerformanceTable rows={view.rows} />}
       />
       <p className="m-0 text-sm text-muted-foreground">
@@ -948,7 +1006,7 @@ function MemoryTooltip({
     />
   ) : null
 }
-function RhythmTooltip({
+export function RhythmTooltip({
   active,
   payload,
 }: {
@@ -968,7 +1026,7 @@ function RhythmTooltip({
     />
   ) : null
 }
-function RatingsMixTooltip({
+export function RatingsMixTooltip({
   active,
   payload,
 }: {
@@ -1019,7 +1077,13 @@ function TopicPerformanceTooltip({
 }
 function TooltipBox({ title, values }: { title: string; values: string[] }) {
   return (
-    <div className="rounded border border-border bg-popover p-2 text-xs shadow">
+    <div
+      aria-atomic="true"
+      aria-label={`${title} details`}
+      aria-live="polite"
+      className="rounded border border-border bg-popover p-2 text-xs shadow"
+      role="status"
+    >
       <p className="m-0 font-semibold">{title}</p>
       {values.map((value) => (
         <p className="m-0" key={value}>
@@ -1039,7 +1103,10 @@ function Empty({ message }: { message: string }) {
 function formatRowBucket(
   row: { bucketStart: string; bucketEnd: string } | undefined,
 ) {
-  return row ? formatBucketLabel(row.bucketStart, row.bucketEnd) : ''
+  if (!row) return ''
+  return row.bucketStart === row.bucketEnd
+    ? formatAxisDate(row.bucketStart)
+    : `${formatAxisDate(row.bucketStart)}–${formatAxisDate(row.bucketEnd)}`
 }
 function bucketText(row: {
   bucketStart: string
@@ -1133,4 +1200,21 @@ function formatTableBucket(bucketStart: string, bucketEnd: string) {
   return bucketStart === bucketEnd
     ? formatTableDate(bucketStart)
     : `${formatTableDate(bucketStart)}–${formatTableDate(bucketEnd)}`
+}
+
+const axisDateFormatter = new Intl.DateTimeFormat('en-US', {
+  day: '2-digit',
+  month: '2-digit',
+  timeZone: 'UTC',
+})
+
+function formatAxisDate(dateKey: string) {
+  return axisDateFormatter.format(new Date(`${dateKey}T00:00:00.000Z`))
+}
+
+function tableResetKey(
+  rows: readonly { id: string }[],
+  rangeKey: string | undefined,
+) {
+  return `${rangeKey ?? ''}:${rows.map((row) => row.id).join('|')}`
 }

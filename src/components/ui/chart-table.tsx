@@ -4,15 +4,20 @@ import { useId, useState } from 'react'
 import { cn } from '@/utils/cn'
 
 type ChartTableView = 'chart' | 'table'
+type ChartTableMode = 'chart-table' | 'table-only'
 
 export interface ChartTableProps {
   chart: ReactNode
   chartLabel?: string
   className?: string
   defaultView?: ChartTableView
+  mode?: ChartTableMode
+  persistenceKey?: string
   table: ReactNode
   tableLabel?: string
 }
+
+const sessionViews = new Map<string, ChartTableView>()
 
 /** A visible, semantic exact-value alternative for a feature-owned chart. */
 export function ChartTable({
@@ -20,17 +25,34 @@ export function ChartTable({
   chartLabel = 'Chart',
   className,
   defaultView = 'chart',
+  mode = 'chart-table',
+  persistenceKey,
   table,
   tableLabel = 'Table',
 }: ChartTableProps) {
-  const [view, setView] = useState<ChartTableView>(defaultView)
+  const [view, setView] = useState<ChartTableView>(() =>
+    persistenceKey === undefined
+      ? defaultView
+      : (sessionViews.get(persistenceKey) ?? defaultView),
+  )
   const tabListId = useId()
   const chartTabId = `${tabListId}-chart-tab`
   const chartPanelId = `${tabListId}-chart-panel`
   const tableTabId = `${tabListId}-table-tab`
   const tablePanelId = `${tabListId}-table-panel`
 
-  const selectView = (nextView: ChartTableView) => setView(nextView)
+  const selectView = (nextView: ChartTableView) => {
+    if (persistenceKey !== undefined) {
+      sessionViews.set(persistenceKey, nextView)
+    }
+    setView(nextView)
+  }
+
+  if (mode === 'table-only') {
+    return (
+      <div className={cn('min-w-0 overflow-x-auto', className)}>{table}</div>
+    )
+  }
 
   return (
     <div className={cn('grid min-w-0 gap-3', className)}>

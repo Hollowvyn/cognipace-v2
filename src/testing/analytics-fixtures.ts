@@ -25,59 +25,32 @@ export const analyticsChartPointFixtures = {
   ],
 } satisfies Pick<SerializedAnalyticsSummary, 'practiceRhythm' | 'ratingsMix'>
 
-function createUnreadyReadiness(): SerializedAnalyticsSummary['historicalReadiness']['requested'] {
-  return {
-    ready: false,
-    requestedDays: 30,
-    bucketDays: 3,
-    requestedBuckets: 10,
-    effectiveBuckets: 0,
-    effectiveStart: null,
-    assessments: 0,
-    minimumAssessments: 24,
-    activeBuckets: 0,
-    minimumActiveBuckets: 0,
-    longestGap: 0,
-    maximumGap: 2,
-    gapRuns: 0,
-    maximumGapRuns: 1,
-    failingReasons: [
-      'no-evidence',
-      'insufficient-span',
-      'insufficient-assessments',
-      'insufficient-active-buckets',
-    ],
-  }
-}
-
-function createHistoricalReadiness(): SerializedAnalyticsSummary['historicalReadiness'] {
-  const readiness = createUnreadyReadiness()
-
-  return {
-    requested: readiness,
-    recallQuality: { ...readiness },
-    practiceRhythm: { ...readiness },
-    ratingsMix: { ...readiness },
-    topics: { ...readiness },
-    stability: { ...readiness },
-    overdueBacklog: { ...readiness },
-    recommendedRange: null,
-  }
+const historicalEvidence = {
+  historyDays: 30,
+  measuredBuckets: 1,
+  observations: 8,
+  selectedBucketCount: 5,
+  tableOnly: false,
+  displayMode: 'single' as const,
+  supportsLine: false,
+  supportsDirection: false,
 }
 
 export function createSerializedAnalyticsSummary(
   overrides?: Partial<SerializedAnalyticsSummary>,
 ): SerializedAnalyticsSummary {
   return {
-    range: 30,
+    range: 90,
     generatedAt: '2026-05-30T00:00:00.000Z',
     timeFrame: {
       asOf: '2026-05-30T00:00:00.000Z',
       timeZone: 'UTC',
       timeZoneFallback: false,
-      requestedDays: 30,
-      periodStart: '2026-05-01T00:00:00.000Z',
+      requestedRange: 90,
+      periodStart: '2026-03-02T00:00:00.000Z',
       periodEnd: '2026-05-31T00:00:00.000Z',
+      bucketGrain: 'week',
+      allTimeUnsupported: false,
       buckets: [
         {
           key: '2026-05-01',
@@ -102,15 +75,18 @@ export function createSerializedAnalyticsSummary(
         rows: [],
         scale: { domain: [0, 1], ticks: [0, 1] },
         targetRetention: 0.9,
+        evidence: historicalEvidence,
       },
       memoryStrength: {
         rows: [],
         scale: { domain: [0, 2], ticks: [0, 1, 2] },
+        evidence: historicalEvidence,
       },
       practiceRhythm: {
         rows: [],
         countScale: { domain: [0, 1], ticks: [0, 1] },
         percentageScale: { domain: [0, 1], ticks: [0, 1] },
+        evidence: historicalEvidence,
       },
       ratingsMix: {
         rows: [],
@@ -122,6 +98,7 @@ export function createSerializedAnalyticsSummary(
           difference: null,
           direction: null,
         },
+        evidence: historicalEvidence,
       },
       topicPerformance: {
         rows: [],
@@ -158,7 +135,6 @@ export function createSerializedAnalyticsSummary(
         scale: { domain: [0, 1], ticks: [0, 1] },
       },
     },
-    historicalReadiness: createHistoricalReadiness(),
     recallQuality: [],
     practiceRhythm: [],
     ratingsMix: [],

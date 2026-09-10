@@ -218,6 +218,62 @@ describe('current-state analytics views', () => {
     expect(screen.getByRole('rowheader', { name: 'Refreshed 1' })).toBeVisible()
   })
 
+  it('keeps the current cohort intact when selector-driven data rerenders', () => {
+    const memorySignals: AnalyticsViews['memorySignals'] = {
+      totalQualifying: 1,
+      rows: [
+        {
+          rank: 1,
+          slug: 'graph-traversal',
+          title: 'Graph Traversal',
+          reasons: [{ kind: 'below-recall', label: 'Below recall 70%' }],
+        },
+      ],
+    }
+    const { rerender } = render(
+      <>
+        <RetentionMapView view={retentionMap} />
+        <MemorySignalsView view={memorySignals} />
+      </>,
+    )
+
+    expect(
+      screen.getByText(
+        'Showing the 1 highest-priority problems of 31 eligible.',
+      ),
+    ).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Graph Traversal' })).toBeVisible()
+
+    rerender(
+      <>
+        <RetentionMapView
+          view={{
+            ...retentionMap,
+            rows: retentionMap.rows.map((row) => ({ ...row })),
+          }}
+        />
+        <MemorySignalsView
+          view={{
+            ...memorySignals,
+            rows: memorySignals.rows.map((row) => ({ ...row })),
+          }}
+        />
+      </>,
+    )
+
+    expect(
+      screen.getByText(
+        'Showing the 1 highest-priority problems of 31 eligible.',
+      ),
+    ).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Graph Traversal' })).toBeVisible()
+    expect(
+      screen.getByText(
+        '1 qualifying problem; showing the first 1 by severity.',
+      ),
+    ).toBeVisible()
+  })
+
   it('keeps one roving chart tab stop in retained rank order across statuses', async () => {
     render(
       <RetentionMapView

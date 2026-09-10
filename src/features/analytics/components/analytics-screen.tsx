@@ -1,5 +1,4 @@
 import { RefreshCw } from 'lucide-react'
-import type { ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { InlineStatus } from '@/components/ui/inline-status'
@@ -10,8 +9,8 @@ import type {
   SerializedAnalyticsSummary,
 } from '../api/analytics-contracts'
 import { AnalyticsChartPanel } from './analytics-chart-panel'
+import { AnalyticsEvidenceState } from './analytics-evidence-state'
 import { AnalyticsMetricRow } from './analytics-metric-row'
-import { AnalyticsReadinessState } from './analytics-readiness-state'
 import {
   MemoryStrengthView,
   ObservedRecallVsFsrsView,
@@ -26,7 +25,7 @@ import {
 } from './workload-views'
 
 export function AnalyticsScreen({
-  range = 30,
+  range = 90,
 }: {
   range?: AnalyticsRange | undefined
 }) {
@@ -68,21 +67,7 @@ export function AnalyticsScreen({
     <div className="flex min-w-0 flex-col gap-[var(--cp-surface-gap)]">
       <AnalyticsMetricRow summary={data} />
       <AnalyticsScopeMetadata data={data} />
-      {!data.historicalReadiness.requested.ready ? (
-        <AnalyticsReadinessState
-          compact
-          readiness={data.historicalReadiness.requested}
-          recommendedRange={data.historicalReadiness.recommendedRange}
-        />
-      ) : null}
-      {data.historicalReadiness.requested.ready &&
-      hasTrimmedLeadingHistory(data.historicalReadiness.requested) ? (
-        <AnalyticsReadinessState
-          compact
-          readiness={data.historicalReadiness.requested}
-          recommendedRange={null}
-        />
-      ) : null}
+      <AnalyticsEvidenceState summary />
       <AnalyticsHistoricalStory data={data} />
       <AnalyticsCurrentStateStory data={data} />
       <AnalyticsWorkloadStory data={data} />
@@ -154,9 +139,15 @@ function AnalyticsScopeMetadata({
 }) {
   const finalBucketEndKey = data.timeFrame.buckets.at(-1)?.endKey
   return (
-    <p className="m-0 text-sm text-muted-foreground">
-      Range: {data.range} days
-      {finalBucketEndKey
+    <p
+      aria-atomic="true"
+      aria-label="Analytics range and time scope"
+      aria-live="polite"
+      className="m-0 text-sm text-muted-foreground"
+      role="status"
+    >
+      Range: {formatRange(data.range)}
+      {data.timeFrame.periodStart !== null && finalBucketEndKey
         ? ` · Period: ${formatScopeDateTime(data.timeFrame.periodStart, data.timeFrame.timeZone)}–${formatScopeDateKey(finalBucketEndKey)}`
         : ''}{' '}
       · Time zone: {data.timeFrame.timeZone}
@@ -203,107 +194,81 @@ function AnalyticsHistoricalStory({
 }) {
   return (
     <div className="grid min-w-0 gap-4">
-      <PhaseTwoPanel
+      <AnalyticsChartPanel
         description="Rating-derived recalled outcomes compared with reconstructed FSRS retrievability immediately before those exact reviews."
         id="observed-recall-vs-fsrs"
         question="How did recalled review outcomes compare with the FSRS estimate?"
-        readiness={data.historicalReadiness.recallQuality}
         title="Observed Recall vs FSRS Estimate"
       >
-        <ObservedRecallVsFsrsView view={data.views.observedRecallVsFsrs} />
-      </PhaseTwoPanel>
+        <ObservedRecallVsFsrsView
+          persistenceKey="analytics-observed-recall-vs-fsrs"
+          resetKey={String(data.range)}
+          view={data.views.observedRecallVsFsrs}
+        />
+      </AnalyticsChartPanel>
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-        <PhaseTwoPanel
+        <AnalyticsChartPanel
           description="FSRS's reconstructed post-review estimate of how long the memories reviewed in each bucket may remain retrievable."
           id="memory-strength"
           question="Are your reviewed memories staying strong for longer?"
-          readiness={data.historicalReadiness.stability}
           title="Memory Strength"
         >
-          <MemoryStrengthView view={data.views.memoryStrength} />
-        </PhaseTwoPanel>
-        <PhaseTwoPanel
+          <MemoryStrengthView
+            persistenceKey="analytics-memory-strength"
+            resetKey={String(data.range)}
+            view={data.views.memoryStrength}
+          />
+        </AnalyticsChartPanel>
+        <AnalyticsChartPanel
           description="Completed review volume and the Good + Easy share move together by time bucket; the relationship is association only."
           id="practice-rhythm"
           question="When you practiced more or less, how did Review Success move?"
-          readiness={data.historicalReadiness.practiceRhythm}
           title="Practice Rhythm"
         >
-          <PracticeRhythmView view={data.views.practiceRhythm} />
-        </PhaseTwoPanel>
+          <PracticeRhythmView
+            persistenceKey="analytics-practice-rhythm"
+            resetKey={String(data.range)}
+            view={data.views.practiceRhythm}
+          />
+        </AnalyticsChartPanel>
       </div>
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-        <PhaseTwoPanel
+        <AnalyticsChartPanel
           description="The changing share of valid Again, Hard, Good, and Easy review ratings across the selected period."
           id="ratings-mix"
           question="How is the balance of your review ratings changing?"
-          readiness={data.historicalReadiness.ratingsMix}
           title="Ratings Mix"
         >
-          <RatingsMixView view={data.views.ratingsMix} />
-        </PhaseTwoPanel>
-        <PhaseTwoPanel
+          <RatingsMixView
+            persistenceKey="analytics-ratings-mix"
+            resetKey={String(data.range)}
+            view={data.views.ratingsMix}
+          />
+        </AnalyticsChartPanel>
+        <AnalyticsChartPanel
           description="Topics ranked by sufficiently sampled Good + Easy Review Success in the selected period; this is not a mastery score."
           id="topic-performance"
           question="Which sufficiently practiced topics had lower Review Success?"
-          readiness={data.historicalReadiness.topics}
-          showReadiness={false}
           title="Topic Performance"
         >
           <TopicPerformanceView
-            selectedPeriod={`${data.range}-day selected period`}
+            selectedPeriod={formatSelectedPeriod(data.range)}
             view={data.views.topicPerformance}
           />
-        </PhaseTwoPanel>
+        </AnalyticsChartPanel>
       </div>
     </div>
   )
 }
 
-function PhaseTwoPanel({
-  description,
-  id,
-  question,
-  readiness,
-  showReadiness = true,
-  title,
-  children,
-}: {
-  description: string
-  id: string
-  question: string
-  readiness: SerializedAnalyticsSummary['historicalReadiness']['recallQuality']
-  showReadiness?: boolean
-  title: string
-  children: ReactNode
-}) {
-  return (
-    <AnalyticsChartPanel
-      description={description}
-      id={id}
-      question={question}
-      title={title}
-    >
-      {showReadiness && !readiness.ready ? (
-        <AnalyticsReadinessState
-          compact
-          readiness={readiness}
-          recommendedRange={null}
-          title={title}
-        />
-      ) : null}
-      {children}
-    </AnalyticsChartPanel>
-  )
+function formatRange(range: AnalyticsRange): string {
+  return range === 'all' ? 'All time' : `${range} days`
 }
 
-function hasTrimmedLeadingHistory(
-  readiness: SerializedAnalyticsSummary['historicalReadiness']['requested'],
-): boolean {
-  return (
-    readiness.effectiveStart !== null &&
-    readiness.effectiveBuckets < readiness.requestedBuckets
-  )
+function formatSelectedPeriod(range: AnalyticsRange): string {
+  return range === 'all'
+    ? 'All-time selected period'
+    : `${range}-day selected period`
 }

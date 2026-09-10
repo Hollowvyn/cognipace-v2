@@ -23,6 +23,7 @@ vi.mock('recharts', () => ({
     return (
       <path
         data-connect-nulls={stringifySvgAttribute(props.connectNulls ?? false)}
+        data-has-dot={String(Boolean(props.dot))}
         data-has-connect-nulls={String(Object.hasOwn(props, 'connectNulls'))}
         data-key-type={typeof props.dataKey}
         data-has-tooltip-type={String(Object.hasOwn(props, 'tooltipType'))}
@@ -41,12 +42,16 @@ vi.mock('recharts', () => ({
 
 import { DASHED_LINE_EVIDENCE_LABEL, LineSegments } from './line-segments'
 
-function renderSegments(values: Array<number | null>) {
+function renderSegments(
+  values: Array<number | null>,
+  options: { connectSegments?: boolean } = {},
+) {
   render(
     <svg>
       <LineSegments
         data={values.map((value, index) => ({ index, value }))}
         dataKey="value"
+        {...options}
         seriesKey="observedCorrectness"
         stroke="var(--cp-analytics-observed)"
       />
@@ -95,13 +100,15 @@ describe('LineSegments', () => {
     expect(semanticSource).toHaveAttribute('data-has-connect-nulls', 'false')
   })
 
-  it('bridges a long evidence gap with the same dashed treatment', () => {
+  it('breaks the path across two or more unknown buckets', () => {
     renderSegments([0.8, null, null, null, 0.84])
 
-    expect(screen.getByTestId('observedCorrectness-bridge-0-4')).toHaveAttribute(
-      'stroke-dasharray',
-      '5 5',
-    )
+    expect(
+      screen.queryByTestId('observedCorrectness-bridge-0-4'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByTestId(/observedCorrectness-(solid|bridge)/),
+    ).not.toBeInTheDocument()
   })
 
   it('does not create a marker, tooltip datum, or segment for missing-only data', () => {
@@ -132,6 +139,17 @@ describe('LineSegments', () => {
 
     expect(
       screen.queryByTestId('observedCorrectness-semantic-tooltip-source'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('renders measured markers without visible segments when connections are disabled', () => {
+    renderSegments([0.8, null, 0.84], { connectSegments: false })
+
+    const markers = screen.getByTestId('observedCorrectness-markers')
+    expect(markers).toHaveAttribute('data-has-dot', 'true')
+    expect(markers).toHaveAttribute('data-values', '[0.8,null,0.84]')
+    expect(
+      screen.queryByTestId(/observedCorrectness-(solid|bridge)/),
     ).not.toBeInTheDocument()
   })
 

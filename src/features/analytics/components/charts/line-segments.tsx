@@ -13,6 +13,7 @@ interface LineSegment {
 }
 
 export interface LineSegmentsProps<T extends Record<string, unknown>> {
+  connectSegments?: boolean
   data: readonly T[]
   dataKey: keyof T & string
   seriesKey: string
@@ -131,6 +132,7 @@ function createBridgeShape(testId: string) {
 }
 
 export function LineSegments<T extends Record<string, unknown>>({
+  connectSegments = true,
   data,
   dataKey,
   seriesKey,
@@ -142,10 +144,14 @@ export function LineSegments<T extends Record<string, unknown>>({
   type = 'monotone',
   yAxisId,
 }: LineSegmentsProps<T>) {
-  const segments = buildLineSegments(data, dataKey)
+  const hasMeasuredValues = data.some(
+    (point) => getNumericValue(point[dataKey]) !== null,
+  )
+  const segments = connectSegments ? buildLineSegments(data, dataKey) : []
+  const shouldShowMeasuredDots = showMeasuredDots || !connectSegments
   const semanticTooltipSourceTestId = `${testId}-semantic-tooltip-source`
 
-  if (segments.length === 0) return null
+  if (!hasMeasuredValues) return null
 
   return (
     <>
@@ -154,11 +160,13 @@ export function LineSegments<T extends Record<string, unknown>>({
         aria-hidden="true"
         data={data}
         data-testid={
-          showMeasuredDots ? `${testId}-markers` : semanticTooltipSourceTestId
+          shouldShowMeasuredDots
+            ? `${testId}-markers`
+            : semanticTooltipSourceTestId
         }
         dataKey={dataKey as never}
         dot={
-          showMeasuredDots
+          shouldShowMeasuredDots
             ? { fill: 'var(--color-card)', r: 3.5, stroke, strokeWidth: 2 }
             : false
         }

@@ -206,10 +206,10 @@ describe('analytics chart-data builders', () => {
       fsrsReviewLog: validLog(99),
     })
 
-    expect(buildRecallQualityPoints([invalidRating], options)).toEqual([])
-    expect(buildPracticeRhythmPoints([invalidRating], options)).toEqual([])
+    expect(buildRecallQualityPoints([invalidRating], options)).toHaveLength(3)
+    expect(buildPracticeRhythmPoints([invalidRating], options)).toHaveLength(3)
     expect(buildTopicPoints([invalidRating], options)).toEqual([])
-    expect(buildStabilityPoints([invalidRating], options)).toEqual([])
+    expect(buildStabilityPoints([invalidRating], options)).toHaveLength(3)
   })
 
   it('excludes invalid ratings from mixed observed metric aggregations', () => {
@@ -475,7 +475,7 @@ describe('analytics chart-data builders', () => {
     )
   })
 
-  it('keeps post-start practice buckets while other metrics trim unsupported leading buckets', () => {
+  it('keeps every selected bucket when leading metrics are unsupported', () => {
     const periodEnd = new Date('2026-08-30T23:59:59.999Z')
     const buckets = buildTestBuckets({
       requestedDays: 30,
@@ -502,6 +502,12 @@ describe('analytics chart-data builders', () => {
     ]
 
     expect(buildRecallQualityPoints(events, bucketOptions)).toMatchObject([
+      {
+        bucketStart: '2026-08-01',
+        reviewCount: 0,
+        observedRecall: null,
+        predictedRecall: null,
+      },
       { bucketStart: '2026-08-04', reviewCount: 1 },
       {
         bucketStart: '2026-08-07',
@@ -511,14 +517,17 @@ describe('analytics chart-data builders', () => {
       },
     ])
     expect(buildPracticeRhythmPoints(events, bucketOptions)).toMatchObject([
+      { bucketStart: '2026-08-01', reviewCount: 0, sampleSize: 0 },
       { bucketStart: '2026-08-04', reviewCount: 1, sampleSize: 1 },
       { bucketStart: '2026-08-07', reviewCount: 0, sampleSize: 0 },
     ])
     expect(buildRatingsMixPoints(events, bucketOptions)).toMatchObject([
+      { bucketStart: '2026-08-01', total: 0 },
       { bucketStart: '2026-08-04', total: 1 },
       { bucketStart: '2026-08-07', total: 0 },
     ])
     expect(buildStabilityPoints(events, bucketOptions)).toMatchObject([
+      { bucketStart: '2026-08-01', sampleSize: 0 },
       { bucketStart: '2026-08-04', sampleSize: 1 },
       { bucketStart: '2026-08-07', sampleSize: 0 },
     ])
@@ -628,12 +637,13 @@ describe('analytics chart-data builders', () => {
     const asOf = new Date('2026-03-08T05:30:00.000Z')
     const timeFrame = buildAnalyticsTimeFrame({
       asOf,
-      requestedDays: 14,
+      requestedRange: 90,
+      allTimeStart: null,
       timeZone: 'America/New_York',
     })
     const periodOptions = {
       ...options,
-      start: new Date(timeFrame.periodStart),
+      start: new Date(timeFrame.periodStart!),
       end: asOf,
       timeFrame,
     }
@@ -641,14 +651,14 @@ describe('analytics chart-data builders', () => {
       event({
         id: `local-previous-${index}`,
         reviewedAt: new Date(
-          `2026-02-22T05:${String(index).padStart(2, '0')}:00.000Z`,
+          `2025-12-08T05:${String(index).padStart(2, '0')}:00.000Z`,
         ),
         rating: 'good',
       }),
     )
     const partialDayAfterPrevious = event({
       id: 'partial-day-after-previous',
-      reviewedAt: new Date('2026-02-22T06:00:00.000Z'),
+      reviewedAt: new Date('2025-12-08T06:00:00.000Z'),
       rating: 'again',
     })
 
@@ -695,11 +705,15 @@ describe('analytics chart-data builders', () => {
       rating: 'again',
     })
 
-    expect(buildRecallQualityPoints([futureReview], currentOptions)).toEqual([])
-    expect(buildPracticeRhythmPoints([futureReview], currentOptions)).toEqual(
-      [],
-    )
-    expect(buildRatingsMixPoints([futureReview], currentOptions)).toEqual([])
+    expect(buildRecallQualityPoints([futureReview], currentOptions)).toEqual([
+      expect.objectContaining({ reviewCount: 0, observedRecall: null }),
+    ])
+    expect(buildPracticeRhythmPoints([futureReview], currentOptions)).toEqual([
+      expect.objectContaining({ reviewCount: 0, observedCorrectness: null }),
+    ])
+    expect(buildRatingsMixPoints([futureReview], currentOptions)).toEqual([
+      expect.objectContaining({ total: 0, hardAgainShare: null }),
+    ])
   })
 
   it('groups weakest topics, skips missing topics, and marks low samples', () => {

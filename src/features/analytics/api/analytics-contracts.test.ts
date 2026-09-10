@@ -3,67 +3,38 @@ import { describe, expect, it } from 'vitest'
 import { analyticsChartPointFixtures } from '@/testing/analytics-fixtures'
 
 import {
-  analyticsReadinessSchema,
   analyticsRangeSchema,
   analyticsSummaryRequestSchema,
   analyticsSummarySchema,
   hardAgainSummarySchema,
   practiceRhythmPointSchema,
   ratingsMixPointSchema,
-  type AnalyticsReadiness,
   type SerializedAnalyticsSummary,
 } from './analytics-contracts'
 
-const readiness: AnalyticsReadiness = {
-  ready: false,
-  requestedDays: 90,
-  bucketDays: 7,
-  requestedBuckets: 13,
-  effectiveBuckets: 8,
-  effectiveStart: '2026-06-22',
-  assessments: 32,
-  minimumAssessments: 45,
-  activeBuckets: 6,
-  minimumActiveBuckets: 7,
-  longestGap: 2,
-  maximumGap: 2,
-  gapRuns: 2,
-  maximumGapRuns: 2,
-  failingReasons: ['insufficient-assessments'],
-}
-
-const readyReadiness: AnalyticsReadiness = {
-  ...readiness,
-  ready: true,
-  failingReasons: [],
-}
-
-function withRequestedReadiness(
-  requested: AnalyticsReadiness,
-  recommendedRange: 14 | 30 | 90 | null,
-) {
-  return {
-    requested,
-    recallQuality: readiness,
-    practiceRhythm: readiness,
-    ratingsMix: readiness,
-    topics: readiness,
-    stability: readiness,
-    overdueBacklog: readiness,
-    recommendedRange,
-  }
+const historicalEvidence = {
+  historyDays: 90,
+  measuredBuckets: 12,
+  observations: 42,
+  selectedBucketCount: 13,
+  tableOnly: false,
+  displayMode: 'trend' as const,
+  supportsLine: true,
+  supportsDirection: true,
 }
 
 const validSummary: SerializedAnalyticsSummary = {
-  range: 30,
+  range: 90,
   generatedAt: '2026-01-15T12:00:00.000Z',
   timeFrame: {
     asOf: '2026-01-15T12:00:00.000Z',
     timeZone: 'America/New_York',
     timeZoneFallback: false,
-    requestedDays: 30,
-    periodStart: '2025-12-17T05:00:00.000Z',
+    requestedRange: 90,
+    periodStart: '2025-10-18T05:00:00.000Z',
     periodEnd: '2026-01-16T05:00:00.000Z',
+    bucketGrain: 'week',
+    allTimeUnsupported: false,
     buckets: [
       {
         key: '2025-12-17',
@@ -96,15 +67,18 @@ const validSummary: SerializedAnalyticsSummary = {
       rows: [],
       scale: { domain: [0, 1], ticks: [0, 1] },
       targetRetention: 0.9,
+      evidence: historicalEvidence,
     },
     memoryStrength: {
       rows: [],
       scale: { domain: [0, 2], ticks: [0, 1, 2] },
+      evidence: historicalEvidence,
     },
     practiceRhythm: {
       rows: [],
       countScale: { domain: [0, 1], ticks: [0, 1] },
       percentageScale: { domain: [0, 1], ticks: [0, 1] },
+      evidence: historicalEvidence,
     },
     ratingsMix: {
       rows: [],
@@ -116,6 +90,7 @@ const validSummary: SerializedAnalyticsSummary = {
         difference: null,
         direction: null,
       },
+      evidence: historicalEvidence,
     },
     topicPerformance: {
       rows: [],
@@ -152,7 +127,6 @@ const validSummary: SerializedAnalyticsSummary = {
       scale: { domain: [0, 1], ticks: [0, 1] },
     },
   },
-  historicalReadiness: withRequestedReadiness(readiness, null),
   recallQuality: [],
   practiceRhythm: [],
   ratingsMix: [],
@@ -195,17 +169,17 @@ describe('analyticsSummaryRequestSchema', () => {
     expect(
       analyticsSummaryRequestSchema.parse({
         surface: 'dashboard',
-        range: 30,
+        range: 90,
         timeZone: 'America/New_York',
       }),
     ).toEqual({
       surface: 'dashboard',
-      range: 30,
+      range: 90,
       timeZone: 'America/New_York',
     })
   })
 
-  it.each([14, 30, 90] as const)('accepts range %s', (range) => {
+  it.each([90, 120, 'all'] as const)('accepts range %s', (range) => {
     expect(
       analyticsSummaryRequestSchema.parse({
         surface: 'dashboard',
@@ -219,21 +193,24 @@ describe('analyticsSummaryRequestSchema', () => {
     })
   })
 
-  it.each([undefined, 7, '30'])('rejects invalid range %s', (range) => {
-    expect(
-      analyticsSummaryRequestSchema.safeParse({
-        surface: 'dashboard',
-        range,
-        timeZone: 'UTC',
-      }).success,
-    ).toBe(false)
-  })
+  it.each([undefined, 14, 30, 7, '90', '120', 'everything'])(
+    'rejects invalid range %s',
+    (range) => {
+      expect(
+        analyticsSummaryRequestSchema.safeParse({
+          surface: 'dashboard',
+          range,
+          timeZone: 'UTC',
+        }).success,
+      ).toBe(false)
+    },
+  )
 
   it.each([undefined, '', 42])('rejects an invalid timezone %s', (timeZone) => {
     expect(
       analyticsSummaryRequestSchema.safeParse({
         surface: 'dashboard',
-        range: 30,
+        range: 90,
         timeZone,
       }).success,
     ).toBe(false)
@@ -243,13 +220,13 @@ describe('analyticsSummaryRequestSchema', () => {
     expect(
       analyticsSummaryRequestSchema.parse({
         surface: 'dashboard',
-        range: 30,
+        range: 90,
         timeZone: 'America/New_York',
         at: '2026-01-15T12:00:00.000Z',
       }),
     ).toEqual({
       surface: 'dashboard',
-      range: 30,
+      range: 90,
       timeZone: 'America/New_York',
       at: '2026-01-15T12:00:00.000Z',
     })
@@ -275,13 +252,13 @@ describe('analyticsSummarySchema', () => {
     )
   })
 
-  it('rejects a summary whose range differs from its time-frame requested days', () => {
+  it('rejects a summary whose range differs from its requested range', () => {
     const result = analyticsSummarySchema.safeParse({
       ...validSummary,
-      range: 30,
+      range: 120,
       timeFrame: {
         ...validSummary.timeFrame,
-        requestedDays: 14,
+        requestedRange: 90,
       },
     })
 
@@ -290,7 +267,7 @@ describe('analyticsSummarySchema', () => {
       expect(result.error.issues).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            path: ['timeFrame', 'requestedDays'],
+            path: ['timeFrame', 'requestedRange'],
           }),
         ]),
       )
@@ -304,68 +281,80 @@ describe('analyticsSummarySchema', () => {
     expect(analyticsSummarySchema.safeParse(validSummary).success).toBe(true)
   })
 
-  it('serializes evidence readiness for the requested range and each historical metric', () => {
-    expect(analyticsReadinessSchema.parse(readiness)).toEqual(readiness)
+  it('serializes classifier-backed evidence for each historical view', () => {
+    const parsed = analyticsSummarySchema.parse(validSummary)
 
-    const parsed = analyticsSummarySchema.parse({
-      ...validSummary,
-      historicalReadiness: withRequestedReadiness(readiness, 30),
-    }) as { historicalReadiness?: unknown }
-
-    expect(parsed.historicalReadiness).toEqual({
-      requested: readiness,
-      recallQuality: readiness,
-      practiceRhythm: readiness,
-      ratingsMix: readiness,
-      topics: readiness,
-      stability: readiness,
-      overdueBacklog: readiness,
-      recommendedRange: 30,
-    })
+    expect(parsed.views.observedRecallVsFsrs.evidence).toEqual(
+      historicalEvidence,
+    )
+    expect(parsed.views.memoryStrength.evidence).toEqual(historicalEvidence)
+    expect(parsed.views.practiceRhythm.evidence).toEqual(historicalEvidence)
+    expect(parsed.views.ratingsMix.evidence).toEqual(historicalEvidence)
   })
 
   it('accepts a valid full summary', () => {
     expect(analyticsSummarySchema.safeParse(validSummary).success).toBe(true)
   })
 
-  it('rejects a fallback recommendation when the requested range is ready', () => {
-    const result = analyticsSummarySchema.safeParse({
-      ...validSummary,
-      historicalReadiness: withRequestedReadiness(readyReadiness, 14),
-    })
-
-    expect(result.success).toBe(false)
-    if (!result.success)
-      expect(result.error.issues).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            path: ['historicalReadiness', 'recommendedRange'],
-          }),
-        ]),
-      )
-  })
-
-  it('serializes an unready historical selection with feature-owned current and workload views', () => {
+  it('does not expose legacy historical readiness or a recommended range', () => {
     const parsed = analyticsSummarySchema.parse({
       ...validSummary,
-      range: 90,
+      historicalReadiness: { recommendedRange: 14 },
+    }) as Record<string, unknown>
+
+    expect(parsed).not.toHaveProperty('historicalReadiness')
+  })
+
+  it('serializes all-time summary range without numeric coercion', () => {
+    const parsed = analyticsSummarySchema.parse({
+      ...validSummary,
+      range: 'all',
       timeFrame: {
         ...validSummary.timeFrame,
-        requestedDays: 90,
-      },
-      historicalReadiness: {
-        ...validSummary.historicalReadiness,
-        requested: {
-          ...readiness,
-          requestedDays: 90,
-          ready: false,
-        },
+        requestedRange: 'all',
+        periodStart: null,
+        buckets: [],
       },
     })
 
-    expect(parsed.range).toBe(90)
-    expect(parsed.historicalReadiness.requested.ready).toBe(false)
+    expect(parsed.range).toBe('all')
+    expect(parsed.timeFrame.requestedRange).toBe('all')
     expect(parsed.views.upcomingReviewLoad.rows).toHaveLength(14)
+  })
+
+  it.each([
+    {
+      label: 'a 90-day range without a start or buckets',
+      range: 90,
+      timeFrame: { requestedRange: 90, periodStart: null, buckets: [] },
+    },
+    {
+      label: 'a 120-day range without a start',
+      range: 120,
+      timeFrame: { requestedRange: 120, periodStart: null },
+    },
+    {
+      label: 'an empty all-time range with buckets',
+      range: 'all',
+      timeFrame: { requestedRange: 'all', periodStart: null },
+    },
+    {
+      label: 'a populated all-time range without buckets',
+      range: 'all',
+      timeFrame: {
+        requestedRange: 'all',
+        periodStart: '2025-01-01T00:00:00.000Z',
+        buckets: [],
+      },
+    },
+  ])('rejects $label', ({ range, timeFrame }) => {
+    expect(
+      analyticsSummarySchema.safeParse({
+        ...validSummary,
+        range,
+        timeFrame: { ...validSummary.timeFrame, ...timeFrame },
+      }).success,
+    ).toBe(false)
   })
 
   it('keeps the fixed workload forecast anchored at today and overdue only today', () => {
@@ -426,7 +415,6 @@ describe('analyticsSummarySchema', () => {
   it('accepts chart payloads without duplicate period metadata', () => {
     const chartReadySummary = {
       ...validSummary,
-      historicalReadiness: withRequestedReadiness(readyReadiness, null),
       recallQuality: [
         {
           bucketStart: '2026-01-15',
@@ -442,7 +430,7 @@ describe('analyticsSummarySchema', () => {
     }
 
     expect(analyticsSummarySchema.parse(chartReadySummary)).toMatchObject({
-      range: 30,
+      range: 90,
       recallQuality: chartReadySummary.recallQuality,
       practiceRhythm: chartReadySummary.practiceRhythm,
       ratingsMix: chartReadySummary.ratingsMix,
@@ -543,12 +531,13 @@ describe('hardAgainSummarySchema', () => {
 })
 
 describe('analyticsRangeSchema', () => {
-  it('accepts only the supported numeric ranges', () => {
+  it('accepts the selected long-range values without coercing all', () => {
     expect(
-      [14, 30, 90].every(
+      [90, 120, 'all'].every(
         (range) => analyticsRangeSchema.safeParse(range).success,
       ),
     ).toBe(true)
+    expect(analyticsRangeSchema.parse('all')).toBe('all')
   })
 })
 

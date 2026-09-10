@@ -464,7 +464,7 @@ function UpcomingLoadChart({
   )
 }
 
-function BacklogTooltip({
+export function BacklogTooltip({
   active,
   payload,
 }: {
@@ -484,12 +484,11 @@ function BacklogTooltip({
           ? 'Not measured'
           : formatCount(row.overdueCount)}
       </p>
-      {row.inProgress ? <p className="m-0">In progress</p> : null}
     </div>
   )
 }
 
-function UpcomingTooltip({
+export function UpcomingTooltip({
   active,
   payload,
 }: {

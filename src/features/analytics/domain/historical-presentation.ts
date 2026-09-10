@@ -16,15 +16,12 @@ import {
   type AnalyticsBucket,
 } from './analytics-range-policy'
 import {
-  calculateAnalyticsReadiness,
-  type AnalyticsReadiness,
-} from './analytics-readiness'
-import {
   addAnalyticsCalendarDays,
   buildAnalyticsTimeFrame,
   shiftAnalyticsCalendarDays,
   type AnalyticsTimeFrame,
 } from './analytics-time'
+import { classifyAnalyticsEvidence } from './analytics-evidence'
 import {
   buildAdaptiveDurationScale,
   buildAdaptivePercentageDomain,
@@ -176,10 +173,29 @@ export interface RatingsMixComparison {
   direction: 'up' | 'down' | 'flat' | null
 }
 
+export interface HistoricalAnalyticsEvidenceObservations {
+  observedRecallVsFsrs: Array<{ observedAt: Date; value: number }>
+  memoryStrength: Array<{ observedAt: Date; value: number }>
+  practiceRhythm: Array<{ observedAt: Date; value: number }>
+  ratingsMix: Array<{ observedAt: Date; value: number }>
+}
+
+export interface HistoricalAnalyticsPresentation {
+  views: HistoricalAnalyticsViews
+  evidenceObservations: HistoricalAnalyticsEvidenceObservations
+}
+
 export function buildHistoricalAnalyticsViews(
   events: readonly HistoricalAnalyticsReviewEvent[],
   options: HistoricalPresentationOptions,
 ): HistoricalAnalyticsViews {
+  return buildHistoricalAnalyticsPresentation(events, options).views
+}
+
+export function buildHistoricalAnalyticsPresentation(
+  events: readonly HistoricalAnalyticsReviewEvent[],
+  options: HistoricalPresentationOptions,
+): HistoricalAnalyticsPresentation {
   const pairedByEvent = buildPairedReviews(events, options)
   const stabilityByEvent = buildStabilityObservations(events, options)
   const observedRows = options.buckets.map((bucket) => {
@@ -316,7 +332,7 @@ export function buildHistoricalAnalyticsViews(
     rhythmRows.map((row) => row.completedReviews),
   )
 
-  return {
+  const views: HistoricalAnalyticsViews = {
     observedRecallVsFsrs: {
       rows: observedRows,
       scale: percentageScale(
@@ -380,6 +396,34 @@ export function buildHistoricalAnalyticsViews(
       scale: { domain: [0, 1], ticks: [0, 1] },
     },
   }
+
+  return {
+    views,
+    evidenceObservations: {
+      observedRecallVsFsrs: pairedByEvent.map((pair) => ({
+        observedAt: pair.reviewedAt,
+        value: pair.rating === 'again' ? 0 : 1,
+      })),
+      memoryStrength: stabilityByEvent.map((sample) => ({
+        observedAt: sample.reviewedAt,
+        value: sample.postReviewStability,
+      })),
+      practiceRhythm: events.flatMap((event) =>
+        event.reviewedAt >= options.start &&
+        event.reviewedAt <= options.end &&
+        isReviewRating(event.rating)
+          ? [{ observedAt: event.reviewedAt, value: 1 }]
+          : [],
+      ),
+      ratingsMix: events.flatMap((event) =>
+        event.reviewedAt >= options.start &&
+        event.reviewedAt <= options.end &&
+        isReviewRating(event.rating)
+          ? [{ observedAt: event.reviewedAt, value: 1 }]
+          : [],
+      ),
+    },
+  }
 }
 
 function buildRatingsMixComparison(
@@ -388,22 +432,25 @@ function buildRatingsMixComparison(
   selectedHardAgain: number,
   selectedValidRatings: number,
 ): RatingsMixComparison {
+  const comparisonDays = getComparisonDays(options.timeFrame)
+  if (comparisonDays === null) {
+    return {
+      previousHardAgainShare: null,
+      previousValidRatings: 0,
+      difference: null,
+      direction: null,
+    }
+  }
+
   const previousStart = shiftAnalyticsCalendarDays(
     options.start,
-    -options.timeFrame.requestedDays,
+    -comparisonDays,
     options.timeFrame.timeZone,
   )
   const previousEnd = shiftAnalyticsCalendarDays(
     new Date(options.timeFrame.asOf),
-    -options.timeFrame.requestedDays,
+    -comparisonDays,
     options.timeFrame.timeZone,
-  )
-  const previousBuckets = buildAnalyticsBucketsFromTimeFrame(
-    buildAnalyticsTimeFrame({
-      asOf: previousEnd,
-      requestedDays: options.timeFrame.requestedDays,
-      timeZone: options.timeFrame.timeZone,
-    }),
   )
   const previousRatings = events.filter(
     (event) =>
@@ -415,17 +462,27 @@ function buildRatingsMixComparison(
     (event) => event.rating === 'again' || event.rating === 'hard',
   ).length
   const previousValidRatings = previousRatings.length
+  const previousBuckets = buildPreviousComparisonBuckets(
+    options.timeFrame,
+    previousEnd,
+    comparisonDays,
+  )
   const qualifies =
-    isRatingsMixComparisonReady(
-      selectedValidRatings,
-      calculateRatingsMixReadiness(events, options.buckets, options),
+    selectedValidRatings >= 10 &&
+    previousValidRatings >= 10 &&
+    hasTrendEvidence(
+      events,
+      options.buckets,
+      options.start,
+      options.end,
+      options,
     ) &&
-    isRatingsMixComparisonReady(
-      previousValidRatings,
-      calculateRatingsMixReadiness(events, previousBuckets, {
-        ...options,
-        end: previousEnd,
-      }),
+    hasTrendEvidence(
+      events,
+      previousBuckets,
+      previousStart,
+      previousEnd,
+      options,
     )
   const selectedShare =
     selectedValidRatings === 0 ? null : selectedHardAgain / selectedValidRatings
@@ -453,32 +510,52 @@ function buildRatingsMixComparison(
   }
 }
 
-function calculateRatingsMixReadiness(
-  events: readonly HistoricalAnalyticsReviewEvent[],
-  buckets: readonly AnalyticsBucket[],
-  options: Pick<HistoricalPresentationOptions, 'end' | 'timeFrame'>,
-): AnalyticsReadiness {
-  return calculateAnalyticsReadiness({
-    requestedDays: options.timeFrame.requestedDays,
-    evidenceCounts: buckets.map(
-      (bucket) =>
-        events.filter(
-          (event) =>
-            event.reviewedAt >= bucket.start &&
-            event.reviewedAt <= bucket.end &&
-            event.reviewedAt <= options.end &&
-            isReviewRating(event.rating),
-        ).length,
-    ),
-    bucketKeys: buckets.map((bucket) => bucket.key),
+function buildPreviousComparisonBuckets(
+  timeFrame: AnalyticsTimeFrame,
+  asOf: Date,
+  requestedRange: 90 | 120,
+): AnalyticsBucket[] {
+  const previousTimeFrame = buildAnalyticsTimeFrame({
+    asOf,
+    requestedRange,
+    allTimeStart: null,
+    timeZone: timeFrame.timeZone,
+    bucketGrain: timeFrame.bucketGrain,
   })
+
+  return buildAnalyticsBucketsFromTimeFrame(previousTimeFrame)
 }
 
-function isRatingsMixComparisonReady(
-  validRatings: number,
-  readiness: AnalyticsReadiness,
+function hasTrendEvidence(
+  events: readonly HistoricalAnalyticsReviewEvent[],
+  buckets: readonly AnalyticsBucket[],
+  start: Date,
+  end: Date,
+  options: Pick<HistoricalPresentationOptions, 'timeZone'>,
 ): boolean {
-  return validRatings >= 10 && readiness.ready
+  return classifyAnalyticsEvidence({
+    asOf: end,
+    periodStart: start,
+    timeZone: options.timeZone,
+    buckets: buckets.map((bucket) => ({
+      key: bucket.key,
+      observations: events.flatMap((event) =>
+        event.reviewedAt >= bucket.start &&
+        event.reviewedAt <= bucket.end &&
+        event.reviewedAt >= start &&
+        event.reviewedAt <= end &&
+        isReviewRating(event.rating)
+          ? [{ observedAt: event.reviewedAt, value: 1 }]
+          : [],
+      ),
+    })),
+  }).supportsDirection
+}
+
+function getComparisonDays(timeFrame: AnalyticsTimeFrame): 90 | 120 | null {
+  return typeof timeFrame.requestedRange === 'number'
+    ? timeFrame.requestedRange
+    : null
 }
 
 function buildTopicPerformance(
