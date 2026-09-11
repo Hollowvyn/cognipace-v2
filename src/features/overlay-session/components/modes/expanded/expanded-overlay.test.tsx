@@ -71,6 +71,42 @@ describe('ExpandedOverlay', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('keeps the submitted footer shrinkable for a long next title', () => {
+    const longTitle = 'Find First and Last Position of Element in Sorted Array'
+
+    renderExpanded({
+      view: {
+        overlay: {
+          ...createSubmittedOverlay(),
+          nextStep: {
+            status: 'ready',
+            value: {
+              ...nextStep,
+              problem: {
+                ...nextStep.problem,
+                title: longTitle,
+              },
+              title: longTitle,
+            },
+            message: null,
+          },
+        },
+      },
+    })
+
+    const nextCard = screen.getByRole('region', { name: 'Up next' })
+
+    expect(nextCard.parentElement).toHaveClass(
+      'min-w-0',
+      'grid-cols-[minmax(0,1fr)]',
+    )
+    expect(screen.getByRole('heading', { name: longTitle })).toHaveClass(
+      'truncate',
+    )
+    expect(screen.getByRole('button', { name: 'Restart' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open' })).toBeInTheDocument()
+  })
+
   it('opens the next problem in the same tab from the post-submit card', () => {
     renderExpanded({
       view: {
