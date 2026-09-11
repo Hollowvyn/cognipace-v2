@@ -283,15 +283,23 @@ smoke testing.
 3. Start, pause, and reset the timer.
 4. Expand the overlay.
 5. Focus the Help shelf’s YouTube action, confirm its tooltip, activate it, and
-   confirm a new tab opens with the current problem title; repeat during a
-   title-unavailable page-load edge state and confirm the slug fallback.
-6. Select a rating or use fail.
-7. Submit or update a review.
-8. Dock and restore the overlay.
+   confirm a new tab opens with the current problem title.
+6. Use Chrome DevTools Network request blocking, or an equivalent deterministic
+   setup, to block the page metadata/GraphQL request. Reload the LeetCode
+   problem until the overlay has a slug but no title, then activate Help and
+   confirm the new tab opens the slug search. Remove the block and reload
+   afterward.
+7. Select a rating or use fail.
+8. Submit or update a review.
+9. Dock and restore the overlay.
 
 Expected: the overlay remains recoverable, does not dominate the LeetCode page,
 the Help action is keyboard accessible and opens the title/slug search without
 replacing LeetCode, and saved review results update CogniPace state.
+
+For this behavior-changing overlay update, a human engineer must run the title
+happy path and slug-fallback edge path and attach screenshot or screen-recording
+proof before PR review or merge. Automated checks do not replace that proof.
 
 ### Cross-Surface Refresh
 
