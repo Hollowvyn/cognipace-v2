@@ -34,8 +34,7 @@ Insert this test after `renders post-submit update actions without duplicate sub
 
 ```tsx
 it('keeps the submitted footer shrinkable for a long next title', () => {
-  const longTitle =
-    'Find First and Last Position of Element in Sorted Array'
+  const longTitle = 'Find First and Last Position of Element in Sorted Array'
 
   renderExpanded({
     view: {
@@ -200,4 +199,3 @@ List every exact command run, every skipped command with its reason, remaining
 risk, release impact, and rollback notes in the handoff. The rollback is to
 revert `fix(overlay): contain expanded footer width`; there are no data,
 permission, runtime, or migration effects.
-
