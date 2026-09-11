@@ -49,6 +49,11 @@ describe('OverlayHelpSection', () => {
           name: 'Search YouTube for this problem',
         }),
       ).toBeDisabled()
+      expect(
+        screen.getByRole('button', {
+          name: 'Search YouTube for this problem',
+        }),
+      ).toHaveAccessibleDescription('Problem details are still loading')
       expect(screen.queryByRole('link')).not.toBeInTheDocument()
     },
   )
