@@ -2,6 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { sendMessage } from '@/extension/messaging'
+import { createSerializedAnalyticsSummary } from '@/testing/analytics-fixtures'
 import { createQueryTestHarness } from '@/testing/query-test-harness'
 
 import { analyticsQueryKeys, useAnalyticsSummary } from './analytics-api'
@@ -21,8 +22,8 @@ describe('analytics runtime API', () => {
   })
 
   it('calls sendMessage with analytics.getSummary and a dashboard surface request', async () => {
-    const payload = { generatedAt: '2026-01-15T12:00:00.000Z', reviewDays: 5 }
-    vi.mocked(sendMessage).mockResolvedValueOnce(payload as never)
+    const payload = createSerializedAnalyticsSummary()
+    vi.mocked(sendMessage).mockResolvedValueOnce(payload)
 
     const { wrapper } = createQueryTestHarness()
     const { result } = renderHook(() => useAnalyticsSummary(90), { wrapper })
@@ -35,6 +36,26 @@ describe('analytics runtime API', () => {
       range: 90,
       timeZone,
     })
-    expect(result.current.data).toBe(payload)
+    expect(result.current.data).toEqual(payload)
+  })
+
+  it('rejects incompatible summaries before dashboard components render them', async () => {
+    const summary = createSerializedAnalyticsSummary()
+
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...summary,
+      views: {
+        ...summary.views,
+        observedRecallVsFsrs: {
+          rows: summary.views.observedRecallVsFsrs.rows,
+        },
+      },
+    } as never)
+
+    const { wrapper } = createQueryTestHarness()
+    const { result } = renderHook(() => useAnalyticsSummary(90), { wrapper })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.error).toHaveProperty('name', 'ZodError')
   })
 })

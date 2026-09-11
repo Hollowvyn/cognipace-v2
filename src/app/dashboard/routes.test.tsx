@@ -243,6 +243,10 @@ describe('dashboard routes', () => {
     }
     analyticsSummary = createSerializedAnalyticsSummary({
       range: 90,
+      timeFrame: {
+        ...analyticsSummary.timeFrame,
+        requestedDays: 90,
+      },
       historicalReadiness: {
         requested: readiness,
         recallQuality: readiness,
