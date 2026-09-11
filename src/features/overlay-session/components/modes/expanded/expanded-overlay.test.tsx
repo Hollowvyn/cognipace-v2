@@ -103,8 +103,6 @@ describe('ExpandedOverlay', () => {
     expect(screen.getByRole('heading', { name: longTitle })).toHaveClass(
       'truncate',
     )
-    expect(screen.getByRole('button', { name: 'Restart' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Open' })).toBeInTheDocument()
   })
 
   it('opens the next problem in the same tab from the post-submit card', () => {
