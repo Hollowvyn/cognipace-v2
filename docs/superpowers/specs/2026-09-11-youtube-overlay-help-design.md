@@ -69,9 +69,7 @@ small feature-owned Help component. That component owns the Help shelf and its
 single link, while a pure overlay-session helper owns YouTube URL construction.
 The helper accepts a search term and returns a complete YouTube results URL.
 
-The URL is derived when rendering and is never stored. If another CogniPace
-surface later reuses YouTube search, the pure helper can be promoted to a small
-shared integration module without changing the Help component's input contract.
+The URL is derived when rendering and is never stored.
 
 ## URL Construction And Fallbacks
 

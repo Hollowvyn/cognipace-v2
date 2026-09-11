@@ -29,5 +29,4 @@ export {
 export {
   createYouTubeSearchUrl,
   selectOverlayHelpSearchQuery,
-  type OverlayHelpSearchInput,
 } from './help-search'

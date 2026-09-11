@@ -1,4 +1,4 @@
-export type OverlayHelpSearchInput = {
+type OverlayHelpSearchInput = {
   metadataTitle: string | null | undefined
   problemTitle: string | null | undefined
   problemSlug: string | null | undefined

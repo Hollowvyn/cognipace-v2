@@ -27,14 +27,12 @@ export function OverlayHelpSection({ searchQuery }: OverlayHelpSectionProps) {
 
   return (
     <section aria-labelledby="overlay-help-heading">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2
-          className="font-mono text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-          id="overlay-help-heading"
-        >
-          Help
-        </h2>
-      </div>
+      <h2
+        className="mb-3 font-mono text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+        id="overlay-help-heading"
+      >
+        Help
+      </h2>
 
       {searchUrl ? (
         <IconButton
