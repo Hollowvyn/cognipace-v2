@@ -182,7 +182,7 @@ export function ExpandedOverlay({
           </div>
         </div>
 
-        <div className="grid shrink-0 gap-3 border-t border-border bg-card p-3">
+        <div className="grid min-w-0 shrink-0 grid-cols-[minmax(0,1fr)] gap-3 border-t border-border bg-card p-3">
           <OverlayActions
             feedback={overlay.feedback}
             hasSubmittedChanges={hasSubmittedSessionChanges(overlay)}
