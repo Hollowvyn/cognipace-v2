@@ -282,12 +282,28 @@ smoke testing.
 2. Confirm the CogniPace overlay appears after page context is read.
 3. Start, pause, and reset the timer.
 4. Expand the overlay.
-5. Select a rating or use fail.
-6. Submit or update a review.
-7. Dock and restore the overlay.
+5. Focus the Help shelf’s YouTube action, confirm its tooltip, activate it, and
+   confirm a new tab opens with the current problem title.
+6. From `chrome://extensions`, reload the CogniPace extension to clear its
+   in-memory metadata cache.
+7. Open this deliberately invalid, never-before-used LeetCode problem URL in a
+   new tab: `https://leetcode.com/problems/cognipace-slug-fallback-smoke-9f2c7/`.
+8. Confirm the overlay has no canonical title or problem context yet, while the
+   parsed URL slug is visible and the Help action is enabled. Activate Help and
+   verify the new tab’s search term is exactly
+   `cognipace-slug-fallback-smoke-9f2c7`.
+9. Close the test tab and remove any temporary DevTools blocking rule if used.
+10. Select a rating or use fail.
+11. Submit or update a review.
+12. Dock and restore the overlay.
 
 Expected: the overlay remains recoverable, does not dominate the LeetCode page,
-and saved review results update CogniPace state.
+the Help action is keyboard accessible and opens the title/slug search without
+replacing LeetCode, and saved review results update CogniPace state.
+
+For this behavior-changing overlay update, a human engineer must run the title
+happy path and slug-fallback edge path and attach screenshot or screen-recording
+proof before PR review or merge. Automated checks do not replace that proof.
 
 ### Cross-Surface Refresh
 

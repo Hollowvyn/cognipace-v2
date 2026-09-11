@@ -91,6 +91,7 @@ Current behavior:
 - expanded submit, fail, update, restart, and rating controls
 - structured draft fields managed through the overlay session
 - settings access from the overlay
+- compact expanded-mode Help access that opens a YouTube search for the current problem in a new tab
 - page metadata and problem context sync through content-script/runtime messages
 
 ### Dashboard

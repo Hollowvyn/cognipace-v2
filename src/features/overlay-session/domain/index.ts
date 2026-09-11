@@ -26,3 +26,7 @@ export {
   type OverlayAssessmentSessionContext,
   type OverlaySubmissionSource,
 } from './session-context'
+export {
+  createYouTubeSearchUrl,
+  selectOverlayHelpSearchQuery,
+} from './help-search'

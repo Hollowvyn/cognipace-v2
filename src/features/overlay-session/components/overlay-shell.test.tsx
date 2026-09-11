@@ -23,10 +23,15 @@ vi.mock('./modes/expanded/expanded-overlay', () => ({
     view,
   }: {
     themeMode: string
-    view: { problemTitle: string }
+    view: { helpSearchQuery: string | null; problemTitle: string }
   }) => (
-    <div>
-      Expanded mode: {view.problemTitle}: {themeMode}
+    <div
+      data-help-search-query={view.helpSearchQuery ?? 'unavailable'}
+      data-problem-title={view.problemTitle}
+      data-testid="expanded-overlay"
+    >
+      Expanded mode: {view.problemTitle}: {themeMode}; Help query:{' '}
+      {view.helpSearchQuery ?? 'unavailable'}
     </div>
   ),
 }))
@@ -34,7 +39,7 @@ vi.mock('./modes/expanded/expanded-overlay', () => ({
 describe('OverlayShell', () => {
   it.each([
     ['collapsed', 'Collapsed mode: light'],
-    ['expanded', 'Expanded mode: Two Sum: light'],
+    ['expanded', 'Expanded mode: Two Sum: light; Help query: Two Sum'],
     ['docked', 'Docked mode: light'],
   ] as const)('routes to the %s mode', (visualMode, text) => {
     render(
@@ -55,6 +60,127 @@ describe('OverlayShell', () => {
     )
 
     expect(screen.getByText(text)).toBeInTheDocument()
+  })
+
+  it('falls back to the LeetCode slug for the expanded Help query', () => {
+    const session = createSession()
+
+    render(
+      <OverlayShell
+        {...createSession({
+          context: {
+            ...session.context!,
+            problem: null,
+          },
+          location: {
+            host: 'leetcode.com',
+            slug: 'search-in-rotated-sorted-array',
+            url: 'https://leetcode.com/problems/search-in-rotated-sorted-array/',
+          },
+          overlay: {
+            ...initialOverlaySessionState,
+            visualMode: 'expanded',
+          },
+        })}
+      />,
+    )
+
+    expect(
+      screen.getByText(
+        'Expanded mode: search-in-rotated-sorted-array: system; Help query: search-in-rotated-sorted-array',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps fallback metadata visible while Help uses the stored title', () => {
+    render(
+      <OverlayShell
+        {...createSession({
+          metadata: createFallbackMetadata('Fallback page title'),
+          overlay: {
+            ...initialOverlaySessionState,
+            visualMode: 'expanded',
+          },
+        })}
+      />,
+    )
+
+    const expandedOverlay = screen.getByTestId('expanded-overlay')
+
+    expect(expandedOverlay).toHaveAttribute(
+      'data-problem-title',
+      'Fallback page title',
+    )
+    expect(expandedOverlay).toHaveAttribute('data-help-search-query', 'Two Sum')
+  })
+
+  it('keeps fallback metadata visible while Help uses the slug without context', () => {
+    const location = {
+      host: 'leetcode.com',
+      slug: 'search-in-rotated-sorted-array',
+      url: 'https://leetcode.com/problems/search-in-rotated-sorted-array/',
+    }
+
+    render(
+      <OverlayShell
+        {...createSession({
+          context: null,
+          location,
+          metadata: createFallbackMetadata('Fallback page title', location),
+          overlay: {
+            ...initialOverlaySessionState,
+            visualMode: 'expanded',
+          },
+        })}
+      />,
+    )
+
+    const expandedOverlay = screen.getByTestId('expanded-overlay')
+
+    expect(expandedOverlay).toHaveAttribute(
+      'data-problem-title',
+      'Fallback page title',
+    )
+    expect(expandedOverlay).toHaveAttribute(
+      'data-help-search-query',
+      'search-in-rotated-sorted-array',
+    )
+  })
+
+  it('prefers captured metadata for display and Help', () => {
+    const location = {
+      host: 'leetcode.com',
+      slug: 'search-in-rotated-sorted-array',
+      url: 'https://leetcode.com/problems/search-in-rotated-sorted-array/',
+    }
+
+    render(
+      <OverlayShell
+        {...createSession({
+          location,
+          metadata: {
+            ...createFallbackMetadata('Captured page title', location),
+            confidence: 'high',
+            source: 'graphql',
+          },
+          overlay: {
+            ...initialOverlaySessionState,
+            visualMode: 'expanded',
+          },
+        })}
+      />,
+    )
+
+    const expandedOverlay = screen.getByTestId('expanded-overlay')
+
+    expect(expandedOverlay).toHaveAttribute(
+      'data-problem-title',
+      'Captured page title',
+    )
+    expect(expandedOverlay).toHaveAttribute(
+      'data-help-search-query',
+      'Captured page title',
+    )
   })
 })
 
@@ -123,5 +249,26 @@ function createSession(
     },
     aiRecommendation: { status: 'idle' },
     ...overrides,
+  }
+}
+
+function createFallbackMetadata(
+  title: string,
+  location = {
+    host: 'leetcode.com',
+    slug: 'two-sum',
+    url: 'https://leetcode.com/problems/two-sum/',
+  },
+): NonNullable<LeetCodeOverlaySession['metadata']> {
+  return {
+    capturedAt: 1,
+    confidence: 'low',
+    difficulty: 'Unknown',
+    frontendId: null,
+    isPremium: null,
+    location,
+    source: 'fallback',
+    title,
+    topics: [],
   }
 }

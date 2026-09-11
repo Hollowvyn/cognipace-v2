@@ -1,5 +1,6 @@
 import type { ThemeMode } from '@/features/settings'
 
+import { selectOverlayHelpSearchQuery } from '../domain'
 import type { LeetCodeOverlaySession } from '../hooks/use-leetcode-overlay-session'
 import { CollapsedOverlay } from './modes/collapsed/collapsed-overlay'
 import { DockedOverlay } from './modes/docked/docked-overlay'
@@ -24,6 +25,11 @@ export function OverlayShell({
     context?.problem?.title ??
     location?.slug ??
     'Reading page'
+  const helpSearchQuery = selectOverlayHelpSearchQuery({
+    metadataTitle: metadata?.source !== 'fallback' ? metadata?.title : null,
+    problemTitle: context?.problem?.title,
+    problemSlug: location?.slug,
+  })
   const canUseProblem = Boolean(context?.problem) && status === 'ready'
   const themeMode: ThemeMode = context?.appearance.themeMode ?? 'system'
 
@@ -52,6 +58,7 @@ export function OverlayShell({
           context,
           draft,
           elapsedSeconds: timer.elapsedSeconds,
+          helpSearchQuery,
           isOverTarget: timer.isOverTarget,
           overlay,
           problemTitle,

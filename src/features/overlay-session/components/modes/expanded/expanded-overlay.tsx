@@ -22,6 +22,7 @@ import {
   OverlaySubmissionSummary,
 } from './overlay-context-strip'
 import { OverlayHeader } from './overlay-header'
+import { OverlayHelpSection } from './overlay-help-section'
 import { OverlayLogFields } from './overlay-log-fields'
 import { OverlayNextCard } from './overlay-next-card'
 import { OverlayTimerCard } from './overlay-timer-card'
@@ -35,6 +36,7 @@ type ExpandedOverlayViewModel = {
     setField: (field: OverlayDraftField, value: string) => void
   }
   elapsedSeconds: number
+  helpSearchQuery: string | null
   isOverTarget: boolean
   overlay: OverlaySessionState
   problemTitle: string
@@ -74,6 +76,7 @@ export function ExpandedOverlay({
     context,
     draft,
     elapsedSeconds,
+    helpSearchQuery,
     isOverTarget,
     overlay,
     problemTitle,
@@ -166,6 +169,8 @@ export function ExpandedOverlay({
                 </span>
               </InlineStatus>
             ) : null}
+
+            <OverlayHelpSection searchQuery={helpSearchQuery} />
 
             <OverlayLogFields
               disabled={isMutating || isSubmittedLocked}
