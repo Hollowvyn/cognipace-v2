@@ -87,6 +87,56 @@ describe('OverlayShell', () => {
       ),
     ).toBeInTheDocument()
   })
+
+  it('ignores fallback metadata in favor of the stored problem title', () => {
+    render(
+      <OverlayShell
+        {...createSession({
+          metadata: createFallbackMetadata('Fallback page title'),
+          overlay: {
+            ...initialOverlaySessionState,
+            visualMode: 'expanded',
+          },
+        })}
+      />,
+    )
+
+    expect(
+      screen.getByText('Expanded mode: Two Sum: system; Help query: Two Sum'),
+    ).toBeInTheDocument()
+  })
+
+  it('ignores fallback metadata in favor of the LeetCode slug', () => {
+    const session = createSession()
+    const location = {
+      host: 'leetcode.com',
+      slug: 'search-in-rotated-sorted-array',
+      url: 'https://leetcode.com/problems/search-in-rotated-sorted-array/',
+    }
+
+    render(
+      <OverlayShell
+        {...createSession({
+          context: {
+            ...session.context!,
+            problem: null,
+          },
+          location,
+          metadata: createFallbackMetadata('Fallback page title', location),
+          overlay: {
+            ...initialOverlaySessionState,
+            visualMode: 'expanded',
+          },
+        })}
+      />,
+    )
+
+    expect(
+      screen.getByText(
+        'Expanded mode: search-in-rotated-sorted-array: system; Help query: search-in-rotated-sorted-array',
+      ),
+    ).toBeInTheDocument()
+  })
 })
 
 function createSession(
@@ -154,5 +204,26 @@ function createSession(
     },
     aiRecommendation: { status: 'idle' },
     ...overrides,
+  }
+}
+
+function createFallbackMetadata(
+  title: string,
+  location = {
+    host: 'leetcode.com',
+    slug: 'two-sum',
+    url: 'https://leetcode.com/problems/two-sum/',
+  },
+): NonNullable<LeetCodeOverlaySession['metadata']> {
+  return {
+    capturedAt: 1,
+    confidence: 'low',
+    difficulty: 'Unknown',
+    frontendId: null,
+    isPremium: null,
+    location,
+    source: 'fallback',
+    title,
+    topics: [],
   }
 }

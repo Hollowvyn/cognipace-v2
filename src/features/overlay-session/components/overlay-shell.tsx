@@ -20,13 +20,11 @@ export function OverlayShell({
   status,
   timer,
 }: OverlayShellProps) {
+  const metadataTitle = metadata?.source !== 'fallback' ? metadata?.title : null
   const problemTitle =
-    metadata?.title ??
-    context?.problem?.title ??
-    location?.slug ??
-    'Reading page'
+    metadataTitle ?? context?.problem?.title ?? location?.slug ?? 'Reading page'
   const helpSearchQuery = selectOverlayHelpSearchQuery({
-    metadataTitle: metadata?.title,
+    metadataTitle,
     problemTitle: context?.problem?.title,
     problemSlug: location?.slug,
   })
