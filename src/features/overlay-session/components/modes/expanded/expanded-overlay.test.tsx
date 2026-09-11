@@ -137,6 +137,20 @@ describe('ExpandedOverlay', () => {
       screen.getByRole('region', { name: 'AI recommendation' }),
     ).toBeInTheDocument()
   })
+
+  it('places the Help shelf before the structured log', () => {
+    renderExpanded()
+
+    const help = screen.getByRole('region', { name: 'Help' })
+    const structuredLog = screen.getByRole('region', {
+      name: 'Structured Log',
+    })
+
+    expect(
+      help.compareDocumentPosition(structuredLog) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
 })
 
 function renderExpanded(overrides?: Parameters<typeof createProps>[0]) {
@@ -174,6 +188,7 @@ function createProps(
         setField: vi.fn(),
       },
       elapsedSeconds: 0,
+      helpSearchQuery: 'Two Sum',
       isOverTarget: false,
       overlay: {
         ...initialOverlaySessionState,

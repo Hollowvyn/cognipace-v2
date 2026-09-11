@@ -23,10 +23,11 @@ vi.mock('./modes/expanded/expanded-overlay', () => ({
     view,
   }: {
     themeMode: string
-    view: { problemTitle: string }
+    view: { helpSearchQuery: string | null; problemTitle: string }
   }) => (
     <div>
-      Expanded mode: {view.problemTitle}: {themeMode}
+      Expanded mode: {view.problemTitle}: {themeMode}; Help query:{' '}
+      {view.helpSearchQuery ?? 'unavailable'}
     </div>
   ),
 }))
@@ -34,7 +35,7 @@ vi.mock('./modes/expanded/expanded-overlay', () => ({
 describe('OverlayShell', () => {
   it.each([
     ['collapsed', 'Collapsed mode: light'],
-    ['expanded', 'Expanded mode: Two Sum: light'],
+    ['expanded', 'Expanded mode: Two Sum: light; Help query: Two Sum'],
     ['docked', 'Docked mode: light'],
   ] as const)('routes to the %s mode', (visualMode, text) => {
     render(
@@ -55,6 +56,36 @@ describe('OverlayShell', () => {
     )
 
     expect(screen.getByText(text)).toBeInTheDocument()
+  })
+
+  it('falls back to the LeetCode slug for the expanded Help query', () => {
+    const session = createSession()
+
+    render(
+      <OverlayShell
+        {...createSession({
+          context: {
+            ...session.context!,
+            problem: null,
+          },
+          location: {
+            host: 'leetcode.com',
+            slug: 'search-in-rotated-sorted-array',
+            url: 'https://leetcode.com/problems/search-in-rotated-sorted-array/',
+          },
+          overlay: {
+            ...initialOverlaySessionState,
+            visualMode: 'expanded',
+          },
+        })}
+      />,
+    )
+
+    expect(
+      screen.getByText(
+        'Expanded mode: search-in-rotated-sorted-array: system; Help query: search-in-rotated-sorted-array',
+      ),
+    ).toBeInTheDocument()
   })
 })
 
