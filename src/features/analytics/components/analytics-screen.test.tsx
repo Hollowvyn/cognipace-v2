@@ -294,6 +294,26 @@ describe('AnalyticsScreen', () => {
     expect(await screen.findByLabelText('Review Days metric')).toBeVisible()
   })
 
+  it('renders the recoverable error state for an incompatible summary', async () => {
+    const summary = createAnalyticsSummary()
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...summary,
+      views: {
+        ...summary.views,
+        observedRecallVsFsrs: {
+          rows: summary.views.observedRecallVsFsrs.rows,
+        },
+      },
+    } as never)
+
+    renderAnalyticsScreen()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Failed to load Analytics.',
+    )
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible()
+  })
+
   it('keeps the selected-period summary content above the chart story', async () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(createAnalyticsSummary())
 
@@ -562,6 +582,10 @@ describe('AnalyticsScreen', () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(
       readyAnalyticsSummary({
         range: 90,
+        timeFrame: {
+          ...baseAnalyticsSummary().timeFrame,
+          requestedDays: 90,
+        },
         historicalReadiness: {
           requested: readiness,
           recallQuality: readiness,
@@ -616,6 +640,10 @@ describe('AnalyticsScreen', () => {
     vi.mocked(sendMessage).mockResolvedValueOnce(
       readyAnalyticsSummary({
         range: 90,
+        timeFrame: {
+          ...baseAnalyticsSummary().timeFrame,
+          requestedDays: 90,
+        },
         historicalReadiness: {
           requested: readiness,
           recallQuality: readiness,
