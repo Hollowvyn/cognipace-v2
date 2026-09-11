@@ -284,11 +284,12 @@ smoke testing.
 4. Expand the overlay.
 5. Focus the Help shelf’s YouTube action, confirm its tooltip, activate it, and
    confirm a new tab opens with the current problem title.
-6. Use Chrome DevTools Network request blocking, or an equivalent deterministic
-   setup, to block the page metadata/GraphQL request. Reload the LeetCode
-   problem until the overlay has a slug but no title, then activate Help and
-   confirm the new tab opens the slug search. Remove the block and reload
-   afterward.
+6. In Chrome DevTools Network request blocking, add
+   `https://leetcode.com/graphql` as the blocking pattern. Reload the LeetCode
+   problem and observe that the overlay header still reads `Reading page` (or
+   otherwise shows no captured title), the current problem slug remains in the
+   page URL, and the Help action is enabled. Activate Help and confirm the new
+   tab opens the slug search. Remove the blocking rule and reload afterward.
 7. Select a rating or use fail.
 8. Submit or update a review.
 9. Dock and restore the overlay.
