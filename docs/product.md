@@ -89,6 +89,7 @@ Current behavior:
 - target-time awareness
 - quick submit preparation from the collapsed state
 - expanded submit, fail, update, restart, and rating controls
+- compact expanded-mode Help access that opens a YouTube search for the current problem in a new tab
 - structured draft fields managed through the overlay session
 - settings access from the overlay
 - page metadata and problem context sync through content-script/runtime messages

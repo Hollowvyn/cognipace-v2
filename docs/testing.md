@@ -282,12 +282,16 @@ smoke testing.
 2. Confirm the CogniPace overlay appears after page context is read.
 3. Start, pause, and reset the timer.
 4. Expand the overlay.
-5. Select a rating or use fail.
-6. Submit or update a review.
-7. Dock and restore the overlay.
+5. Focus the Help shelf’s YouTube action, confirm its tooltip, activate it, and
+   confirm a new tab opens with the current problem title; repeat during a
+   title-unavailable page-load edge state and confirm the slug fallback.
+6. Select a rating or use fail.
+7. Submit or update a review.
+8. Dock and restore the overlay.
 
 Expected: the overlay remains recoverable, does not dominate the LeetCode page,
-and saved review results update CogniPace state.
+the Help action is keyboard accessible and opens the title/slug search without
+replacing LeetCode, and saved review results update CogniPace state.
 
 ### Cross-Surface Refresh
 
