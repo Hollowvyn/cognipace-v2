@@ -1,7 +1,7 @@
 export type OverlayHelpSearchInput = {
-  metadataTitle?: string | null
-  problemTitle?: string | null
-  problemSlug?: string | null
+  metadataTitle: string | null | undefined
+  problemTitle: string | null | undefined
+  problemSlug: string | null | undefined
 }
 
 export function selectOverlayHelpSearchQuery(
