@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createAlarmScheduler, type AlarmAdapter } from './alarm-scheduler'
+import {
+  createAlarmScheduler,
+  type AlarmAdapter,
+  type AlarmInfo,
+} from './alarm-scheduler'
 
 describe('alarm scheduler', () => {
   let adapter: FakeAlarmAdapter
@@ -106,11 +110,6 @@ describe('alarm scheduler', () => {
     expect(run).not.toHaveBeenCalled()
   })
 })
-
-type AlarmInfo = {
-  delayInMinutes?: number
-  periodInMinutes?: number
-}
 
 type FakeAlarmAdapter = AlarmAdapter & {
   cleared: string[]
