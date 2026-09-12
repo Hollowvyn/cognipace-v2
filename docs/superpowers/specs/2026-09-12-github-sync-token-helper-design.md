@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved design. Awaiting written spec review before implementation planning.
+Approved for implementation planning.
 
 ## Context
 
