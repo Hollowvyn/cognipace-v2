@@ -12,6 +12,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
+- [`specs/2026-09-12-github-sync-token-helper-design.md`](./specs/2026-09-12-github-sync-token-helper-design.md): approved design for a compact GitHub Sync token helper that opens a fine-grained token form with a local-date name, no expiration, and only Gists write access prefilled.
 - [`specs/2026-09-01-track-simple-recall-design.md`](./specs/2026-09-01-track-simple-recall-design.md): approved design for aligning track completion with simple FSRS recall so `hard`, `good`, and `easy` advance active-track progress while `again` remains incomplete.
 - [`specs/2026-08-22-analytics-dashboard-system-design.md`](./specs/2026-08-22-analytics-dashboard-system-design.md): approved future-state design for the nine-view Analytics dashboard, shared chart system, metric contracts, evidence/date/scale rules, Chart/Table parity, accessibility, and phased migration boundary.
 - [`specs/2026-06-08-agent-governance-drift-audit-design.md`](./specs/2026-06-08-agent-governance-drift-audit-design.md): Phase F design for adding a lightweight file-path-based drift audit checklist to the canonical agent governance doc after the first hardened release cycle, without adding new scheduled automation yet.
