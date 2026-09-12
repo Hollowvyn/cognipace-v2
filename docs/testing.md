@@ -11,8 +11,13 @@ reporting useful bugs, and choosing validation commands.
 Install dependencies:
 
 ```sh
-npm install
+nvm install
+nvm use
+npm install --global npm@11.19.0
+npm ci
 ```
+
+These versions match CI and release packaging.
 
 Start WXT for local development:
 
