@@ -1,9 +1,9 @@
 import {
   CheckCircle2,
+  ExternalLink,
   GitBranch,
   KeyRound,
   Loader2,
-  ExternalLink,
   Trash2,
   UploadCloud,
 } from 'lucide-react'
