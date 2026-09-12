@@ -25,8 +25,11 @@ const createActions = (
 })
 
 afterEach(() => {
+  process.env.TZ = originalTimeZone
   vi.useRealTimers()
 })
+
+let originalTimeZone: string | undefined
 
 describe('GitHubSyncConnectionDialog', () => {
   it('groups token and Gist entry controls into single rows', () => {
@@ -81,8 +84,10 @@ describe('GitHubSyncConnectionDialog', () => {
   })
 
   it('links new token entry to the minimal prefilled GitHub token form', () => {
+    originalTimeZone = process.env.TZ
+    process.env.TZ = 'America/Los_Angeles'
     vi.useFakeTimers()
-    vi.setSystemTime(new Date(2026, 8, 12, 12, 0, 0))
+    vi.setSystemTime(new Date('2026-01-03T00:30:00.000Z'))
 
     renderDialog({ status: notConfiguredStatus })
 
@@ -99,7 +104,7 @@ describe('GitHubSyncConnectionDialog', () => {
       'https://github.com/settings/personal-access-tokens/new',
     )
     expect(Object.fromEntries(url.searchParams)).toEqual({
-      name: 'cognipace_gh_sync_2026-09-12',
+      name: 'cognipace_gh_sync_2026-01-02',
       description: 'Sync CogniPace data through a private GitHub Gist',
       expires_in: 'none',
       gists: 'write',

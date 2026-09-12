@@ -37,7 +37,8 @@ function createGitHubTokenCreationUrl(now: Date): string {
   const url = new URL(githubTokenCreationEndpoint)
 
   url.searchParams.set('name', `cognipace_gh_sync_${localDate}`)
-  url.searchParams.set('description',
+  url.searchParams.set(
+    'description',
     'Sync CogniPace data through a private GitHub Gist',
   )
   url.searchParams.set('expires_in', 'none')
