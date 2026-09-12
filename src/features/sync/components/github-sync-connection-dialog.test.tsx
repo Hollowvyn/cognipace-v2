@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type {
   SerializedSyncStatus,
@@ -22,6 +22,11 @@ const createActions = (
   onValidateStoredToken: vi.fn(),
   onValidateToken: vi.fn(),
   ...overrides,
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllEnvs()
 })
 
 describe('GitHubSyncConnectionDialog', () => {
@@ -60,6 +65,9 @@ describe('GitHubSyncConnectionDialog', () => {
     )
     expect(screen.getByLabelText(/Access token/i)).toHaveAttribute('readOnly')
     expect(screen.queryByDisplayValue(/ghp_/i)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /Create a token for CogniPace/i }),
+    ).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Replace token/i }))
 
@@ -68,6 +76,36 @@ describe('GitHubSyncConnectionDialog', () => {
       'type',
       'password',
     )
+    expect(
+      screen.getByRole('link', { name: /Create a token for CogniPace/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('links new token entry to the minimal prefilled GitHub token form', () => {
+    vi.stubEnv('TZ', 'America/Los_Angeles')
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-03T00:30:00.000Z'))
+
+    renderDialog({ status: notConfiguredStatus })
+
+    const tokenCreationLink = screen.getByRole('link', {
+      name: /Create a token for CogniPace/i,
+    })
+
+    expect(tokenCreationLink).toHaveAttribute('target', '_blank')
+    expect(tokenCreationLink).toHaveAttribute('rel', 'noopener noreferrer')
+
+    const url = new URL(tokenCreationLink.getAttribute('href') ?? '')
+
+    expect(`${url.origin}${url.pathname}`).toBe(
+      'https://github.com/settings/personal-access-tokens/new',
+    )
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      name: 'cognipace_gh_sync_2026-01-02',
+      description: 'Sync CogniPace data through a private GitHub Gist',
+      expires_in: 'none',
+      gists: 'write',
+    })
   })
 
   it('tests a typed token without saving it', async () => {

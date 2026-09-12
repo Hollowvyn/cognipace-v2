@@ -29,6 +29,18 @@ type ConnectionFeedback = {
 
 const maskedStoredToken = '................'
 
+function createGitHubTokenCreationUrl(now: Date): string {
+  const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const query = new URLSearchParams({
+    name: `cognipace_gh_sync_${localDate}`,
+    description: 'Sync CogniPace data through a private GitHub Gist',
+    expires_in: 'none',
+    gists: 'write',
+  })
+
+  return `https://github.com/settings/personal-access-tokens/new?${query}`
+}
+
 export function GitHubSyncConnectionDialog({
   actions,
   isPending,
@@ -56,6 +68,7 @@ export function GitHubSyncConnectionDialog({
   const hasSavedToken = status.tokenConfigured && !replacingToken
   const hasTokenForGistActions = hasSavedToken || tokenSavedInSession
   const tokenInputValue = hasSavedToken ? maskedStoredToken : token
+  const tokenCreationUrl = createGitHubTokenCreationUrl(new Date())
   const title = status.configured ? 'Manage GitHub Sync' : 'Connect GitHub Sync'
   const titleId = 'github-sync-connection-title'
   const descriptionId = 'github-sync-connection-description'
@@ -201,12 +214,24 @@ export function GitHubSyncConnectionDialog({
         ) : null}
 
         <div aria-labelledby={tokenGroupId} className="grid gap-2" role="group">
-          <p
-            className="m-0 text-[length:var(--cp-copy-font-size)] font-semibold"
-            id={tokenGroupId}
-          >
-            GitHub token
-          </p>
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <p
+              className="m-0 text-[length:var(--cp-copy-font-size)] font-semibold"
+              id={tokenGroupId}
+            >
+              GitHub token
+            </p>
+            {!hasSavedToken ? (
+              <a
+                className="inline-flex items-center gap-1 rounded-[var(--cp-control-radius)] text-[length:var(--cp-badge-font-size)] font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                href={tokenCreationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Create a token for CogniPace
+              </a>
+            ) : null}
+          </div>
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <label className="sr-only" htmlFor="github-sync-dialog-token">
               Access token

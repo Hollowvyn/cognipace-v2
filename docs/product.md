@@ -251,6 +251,11 @@ connected when auto-sync is paused; the Manage connection dialog supports stored
 token validation, token replacement, token deletion, and Gist connection
 changes.
 
+When entering or replacing a token, the dialog links to GitHub's fine-grained
+token form with a local-date CogniPace name, no expiration, and only Gists
+write access prefilled. Gists write includes the read access needed for pull
+actions.
+
 Local writes always save locally first, mark data as needing push, and schedule a
 safe background push through Chrome alarms. Opening popup, dashboard, or overlay
 surfaces performs a safe remote check and clean-pulls changed Gist data only
