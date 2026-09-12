@@ -3,6 +3,7 @@ import {
   GitBranch,
   KeyRound,
   Loader2,
+  ExternalLink,
   Trash2,
   UploadCloud,
 } from 'lucide-react'
@@ -28,6 +29,22 @@ type ConnectionFeedback = {
 }
 
 const maskedStoredToken = '................'
+const githubTokenCreationEndpoint =
+  'https://github.com/settings/personal-access-tokens/new'
+
+function createGitHubTokenCreationUrl(now: Date): string {
+  const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const url = new URL(githubTokenCreationEndpoint)
+
+  url.searchParams.set('name', `cognipace_gh_sync_${localDate}`)
+  url.searchParams.set('description',
+    'Sync CogniPace data through a private GitHub Gist',
+  )
+  url.searchParams.set('expires_in', 'none')
+  url.searchParams.set('gists', 'write')
+
+  return url.toString()
+}
 
 export function GitHubSyncConnectionDialog({
   actions,
@@ -56,6 +73,7 @@ export function GitHubSyncConnectionDialog({
   const hasSavedToken = status.tokenConfigured && !replacingToken
   const hasTokenForGistActions = hasSavedToken || tokenSavedInSession
   const tokenInputValue = hasSavedToken ? maskedStoredToken : token
+  const tokenCreationUrl = createGitHubTokenCreationUrl(new Date())
   const title = status.configured ? 'Manage GitHub Sync' : 'Connect GitHub Sync'
   const titleId = 'github-sync-connection-title'
   const descriptionId = 'github-sync-connection-description'
@@ -201,12 +219,22 @@ export function GitHubSyncConnectionDialog({
         ) : null}
 
         <div aria-labelledby={tokenGroupId} className="grid gap-2" role="group">
-          <p
-            className="m-0 text-[length:var(--cp-copy-font-size)] font-semibold"
-            id={tokenGroupId}
-          >
-            GitHub token
-          </p>
+          <div className="flex items-center gap-2" id={tokenGroupId}>
+            <p className="m-0 text-[length:var(--cp-copy-font-size)] font-semibold">
+              GitHub token
+            </p>
+            {!hasSavedToken ? (
+              <a
+                className="inline-flex items-center gap-1 text-sm text-primary underline"
+                href={tokenCreationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Create a token for CogniPace
+                <ExternalLink aria-hidden="true" className="size-3" />
+              </a>
+            ) : null}
+          </div>
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <label className="sr-only" htmlFor="github-sync-dialog-token">
               Access token
