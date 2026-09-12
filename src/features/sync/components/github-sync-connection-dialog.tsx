@@ -219,13 +219,16 @@ export function GitHubSyncConnectionDialog({
         ) : null}
 
         <div aria-labelledby={tokenGroupId} className="grid gap-2" role="group">
-          <div className="flex items-center gap-2" id={tokenGroupId}>
-            <p className="m-0 text-[length:var(--cp-copy-font-size)] font-semibold">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <p
+              className="m-0 text-[length:var(--cp-copy-font-size)] font-semibold"
+              id={tokenGroupId}
+            >
               GitHub token
             </p>
             {!hasSavedToken ? (
               <a
-                className="inline-flex items-center gap-1 text-sm text-primary underline"
+                className="inline-flex items-center gap-1 rounded-[var(--cp-control-radius)] text-[length:var(--cp-badge-font-size)] font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 href={tokenCreationUrl}
                 target="_blank"
                 rel="noopener noreferrer"
