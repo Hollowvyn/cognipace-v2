@@ -12,6 +12,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
+- [`specs/2026-09-12-dependency-ci-modernization-design.md`](./specs/2026-09-12-dependency-ci-modernization-design.md): approved staged design for restoring a deterministic Node/npm and CI baseline, updating npm and GitHub Actions dependencies in risk-sized batches, isolating major migrations, and adding low-noise Dependabot automation.
 - [`specs/2026-09-12-github-sync-token-helper-design.md`](./specs/2026-09-12-github-sync-token-helper-design.md): approved design for a compact GitHub Sync token helper that opens a fine-grained token form with a local-date name, no expiration, and only Gists write access prefilled.
 - [`specs/2026-09-01-track-simple-recall-design.md`](./specs/2026-09-01-track-simple-recall-design.md): approved design for aligning track completion with simple FSRS recall so `hard`, `good`, and `easy` advance active-track progress while `again` remains incomplete.
 - [`specs/2026-08-22-analytics-dashboard-system-design.md`](./specs/2026-08-22-analytics-dashboard-system-design.md): approved future-state design for the nine-view Analytics dashboard, shared chart system, metric contracts, evidence/date/scale rules, Chart/Table parity, accessibility, and phased migration boundary.
@@ -36,6 +37,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Plans
 
+- [`plans/2026-09-12-dependency-ci-phase-1-toolchain-baseline.md`](./plans/2026-09-12-dependency-ci-phase-1-toolchain-baseline.md): test-first implementation plan for pinning Node/npm, repairing the lockfile, aligning the Chrome alarm type, and making current CI and release builds use the same toolchain.
 - [`plans/2026-09-12-github-sync-token-helper.md`](./plans/2026-09-12-github-sync-token-helper.md): test-first implementation plan for a compact GitHub Sync token helper with a local-date name, no expiration, and only Gists write access prefilled.
 - [`plans/2026-09-01-track-simple-recall.md`](./plans/2026-09-01-track-simple-recall.md): test-first implementation plan for counting `hard`, `good`, and `easy` as active-track recall completion across contracts, persistence, migration, backup compatibility, and review-correction flows.
 - [`plans/2026-08-22-analytics-dashboard-system.md`](./plans/2026-08-22-analytics-dashboard-system.md): master execution map for the approved Analytics dashboard, split into five linked phase-sized implementation plans covering foundation, historical outcomes, ratings/topics, current-state diagnostics, and workload/integration.

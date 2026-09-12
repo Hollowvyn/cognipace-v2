@@ -6,6 +6,9 @@ small, local-first, and easy to reason about.
 ## Working Agreement
 
 - Start from `README.md` for orientation.
+- Use the Node version in `.nvmrc`, the npm version declared in `package.json`,
+  and `npm ci` before validation so local lockfile behavior matches CI and
+  release builds.
 - Read `docs/product.md` before product or behavior changes.
 - Read `docs/architecture.md` before runtime, database, routing,
   feature-boundary, or state-flow changes.

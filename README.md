@@ -27,9 +27,15 @@ dashboard, and the background service worker.
 ## Getting Started
 
 ```sh
-npm install
+nvm install
+nvm use
+npm install --global npm@11.19.0
+npm ci
 npm run dev
 ```
+
+`.nvmrc` pins Node and `package.json` pins npm so local installs use the same
+toolchain as CI and release builds.
 
 `npm run dev` starts WXT for local extension development. Load the generated
 extension from `.output/chrome-mv3` when testing in Chrome.

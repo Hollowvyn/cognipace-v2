@@ -1,9 +1,6 @@
-import { browser } from 'wxt/browser'
+import { browser, type Browser } from 'wxt/browser'
 
-export type AlarmInfo = {
-  delayInMinutes?: number
-  periodInMinutes?: number
-}
+export type AlarmInfo = Browser.alarms.AlarmCreateInfo
 
 export type AlarmAdapter = {
   clear: (name: string) => Promise<boolean>
