@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved for implementation planning.
+Approved and implemented.
 
 ## Context
 
@@ -63,12 +63,12 @@ https://github.com/settings/personal-access-tokens/new
 
 Set these query parameters:
 
-| Parameter     | Value                                                    |
-| ------------- | -------------------------------------------------------- |
-| `name`        | `cognipace_gh_sync_YYYY-MM-DD`                           |
-| `description` | `Sync CogniPace data through a private GitHub Gist`       |
-| `expires_in`  | `none`                                                   |
-| `gists`       | `write`                                                  |
+| Parameter     | Value                                               |
+| ------------- | --------------------------------------------------- |
+| `name`        | `cognipace_gh_sync_YYYY-MM-DD`                      |
+| `description` | `Sync CogniPace data through a private GitHub Gist` |
+| `expires_in`  | `none`                                              |
+| `gists`       | `write`                                             |
 
 The date uses the user's local calendar date at render time. It must be built
 from local year, month, and day values rather than by slicing a UTC ISO string,

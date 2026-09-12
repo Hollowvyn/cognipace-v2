@@ -133,11 +133,14 @@ stored BYOK secret presence and must not expose secret values.
 
 ### GitHub Gist Sync
 
-1. Create a GitHub fine-grained or classic token with Gist access for a test
-   account.
-2. Open Settings > Data Management.
-3. In GitHub Sync, open Connect GitHub Sync.
-4. Enter the token, confirm it is masked, use Test token, then Save token.
+1. Open Settings > Data Management.
+2. In GitHub Sync, open Connect GitHub Sync.
+3. Use Create a token for CogniPace and confirm GitHub opens in a new tab with the
+   token name cognipace_gh_sync_YYYY-MM-DD for the current local date, no
+   expiration, and Gists write access prefilled without repository access.
+4. Generate and copy the token in a test account, return to the still-open
+   CogniPace dialog, enter the token, confirm it is masked, use Test token, then
+   Save token.
 5. Create a private Gist or connect an existing Gist ID from the same dialog.
 6. Close the dialog and confirm Settings shows Connected and Auto-sync on.
 7. Use Push local from Settings.
