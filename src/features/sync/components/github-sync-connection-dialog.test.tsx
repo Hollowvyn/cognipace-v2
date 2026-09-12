@@ -24,16 +24,9 @@ const createActions = (
   ...overrides,
 })
 
-const originalTimeZone = process.env.TZ
-
 afterEach(() => {
   vi.useRealTimers()
-
-  if (originalTimeZone === undefined) {
-    delete process.env.TZ
-  } else {
-    process.env.TZ = originalTimeZone
-  }
+  vi.unstubAllEnvs()
 })
 
 describe('GitHubSyncConnectionDialog', () => {
@@ -89,7 +82,7 @@ describe('GitHubSyncConnectionDialog', () => {
   })
 
   it('links new token entry to the minimal prefilled GitHub token form', () => {
-    process.env.TZ = 'America/Los_Angeles'
+    vi.stubEnv('TZ', 'America/Los_Angeles')
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-03T00:30:00.000Z'))
 

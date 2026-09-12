@@ -1,6 +1,5 @@
 import {
   CheckCircle2,
-  ExternalLink,
   GitBranch,
   KeyRound,
   Loader2,
@@ -29,22 +28,17 @@ type ConnectionFeedback = {
 }
 
 const maskedStoredToken = '................'
-const githubTokenCreationEndpoint =
-  'https://github.com/settings/personal-access-tokens/new'
 
 function createGitHubTokenCreationUrl(now: Date): string {
   const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  const url = new URL(githubTokenCreationEndpoint)
+  const query = new URLSearchParams({
+    name: `cognipace_gh_sync_${localDate}`,
+    description: 'Sync CogniPace data through a private GitHub Gist',
+    expires_in: 'none',
+    gists: 'write',
+  })
 
-  url.searchParams.set('name', `cognipace_gh_sync_${localDate}`)
-  url.searchParams.set(
-    'description',
-    'Sync CogniPace data through a private GitHub Gist',
-  )
-  url.searchParams.set('expires_in', 'none')
-  url.searchParams.set('gists', 'write')
-
-  return url.toString()
+  return `https://github.com/settings/personal-access-tokens/new?${query}`
 }
 
 export function GitHubSyncConnectionDialog({
@@ -235,7 +229,6 @@ export function GitHubSyncConnectionDialog({
                 rel="noopener noreferrer"
               >
                 Create a token for CogniPace
-                <ExternalLink aria-hidden="true" className="size-3" />
               </a>
             ) : null}
           </div>
