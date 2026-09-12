@@ -136,8 +136,9 @@ stored BYOK secret presence and must not expose secret values.
 1. Open Settings > Data Management.
 2. In GitHub Sync, open Connect GitHub Sync.
 3. Use Create a token for CogniPace and confirm GitHub opens in a new tab with the
-   token name cognipace_gh_sync_YYYY-MM-DD for the current local date, no
-   expiration, and Gists write access prefilled without repository access.
+   token name `cognipace_gh_sync_YYYY-MM-DD` for the current local date, no
+   expiration, and Gists write access prefilled with no private repositories
+   selected and no repository permissions requested.
 4. Generate and copy the token in a test account, return to the still-open
    CogniPace dialog, enter the token, confirm it is masked, use Test token, then
    Save token.
