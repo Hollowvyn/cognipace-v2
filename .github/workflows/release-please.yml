@@ -46,8 +46,18 @@ jobs:
         if: ${{ steps.release.outputs.release_created == 'true' }}
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
           cache: npm
+
+      - name: Install pinned npm
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        run: npm install --global npm@11.19.0
+
+      - name: Show toolchain versions
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        run: |
+          node --version
+          npm --version
 
       - name: Install dependencies
         if: ${{ steps.release.outputs.release_created == 'true' }}
