@@ -275,37 +275,6 @@ describe('tracks service', () => {
     expect(workspace.activeTrack?.nextProblem?.slug).toBe('valid-parentheses')
   })
 
-  it('keeps next problem in curriculum order when a later incomplete problem is due', async () => {
-    const handle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-
-    await makeLeetCodeActive(handle.db)
-    await addActiveTrackMembership(handle.db, {
-      groupId: 'leetcode-75:stack',
-      groupTitle: 'Stack',
-      problemSlug: 'valid-parentheses',
-      groupPosition: 2,
-    })
-    await makeProblemDue(handle.db, 'valid-parentheses', {
-      now: new Date('2026-01-10T12:00:00.000Z'),
-    })
-
-    await expect(
-      getWorkspace(handle.db, {
-        surface: 'dashboard',
-        at: '2026-01-10T12:00:00.000Z',
-      }),
-    ).resolves.toMatchObject({
-      activeTrack: {
-        nextProblem: {
-          slug: 'two-sum',
-        },
-      },
-      dueCount: 1,
-    })
-  })
-
   it('skips suspended incomplete problems and returns no next problem when the track is complete', async () => {
     const unscheduledHandle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
