@@ -180,7 +180,9 @@ describe('TracksScreen', () => {
     expect(incompleteBadge).toBeVisible()
     expect(incompleteBadge).toHaveAttribute('data-cp-track-completed', 'false')
     expect(incompleteBadge).toHaveAttribute('data-cp-tone', 'danger')
-    expect(within(getTrackProblemRow('Two Sum')).getByText('Due')).toBeVisible()
+    expect(
+      within(getTrackProblemRow('Two Sum')).getByText('Due today'),
+    ).toBeVisible()
     const completedBadge = within(
       getTrackProblemRow('Binary Search'),
     ).getByText('Yes')
@@ -190,6 +192,24 @@ describe('TracksScreen', () => {
     expect(completedBadge).toHaveAttribute('data-cp-tone', 'success')
     expect(
       within(getTrackProblemRow('Binary Search')).getByText('Scheduled'),
+    ).toBeVisible()
+  })
+
+  it('uses the shared New label for unstarted Track problem review badges', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...twoGroupWorkspace,
+      activeTrackRows: twoGroupWorkspace.activeTrackRows.map((row) =>
+        row.problem.title === 'Binary Search'
+          ? { ...row, status: 'not-started' as const }
+          : row,
+      ),
+    })
+
+    renderTracksScreen()
+
+    await screen.findByRole('row', { name: /Binary Search/i })
+    expect(
+      within(getTrackProblemRow('Binary Search')).getByText('New'),
     ).toBeVisible()
   })
 

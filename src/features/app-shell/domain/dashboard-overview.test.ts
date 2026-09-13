@@ -21,7 +21,7 @@ describe('createDashboardOverviewView', () => {
     })
     expect(view.metrics).toEqual([
       {
-        label: 'Due',
+        label: 'Reviews Due',
         value: '1',
         caption: 'Problems ready for review.',
       },

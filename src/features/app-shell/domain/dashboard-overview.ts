@@ -90,7 +90,7 @@ function createMetricViews(
 
   return [
     {
-      label: 'Due',
+      label: 'Reviews Due',
       value: String(data.queue.dueCount),
       caption: 'Problems ready for review.',
     },

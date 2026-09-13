@@ -163,9 +163,9 @@ const difficultyOptions = [
 ] as const
 
 const statusOptions = [
-  ['not-started', 'Not started'],
+  ['not-started', 'New'],
   ['overdue', 'Overdue'],
-  ['due', 'Due'],
+  ['due', 'Due today'],
   ['scheduled', 'Scheduled'],
   ['suspended', 'Suspended'],
 ] as const

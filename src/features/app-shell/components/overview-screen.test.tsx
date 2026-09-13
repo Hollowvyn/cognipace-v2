@@ -39,6 +39,9 @@ describe('OverviewScreen', () => {
 
     const completedTodayMetric = screen.getByLabelText('Completed Today metric')
 
+    expect(screen.getByLabelText('Reviews Due metric')).toBeVisible()
+    expect(screen.queryByLabelText('Due metric')).not.toBeInTheDocument()
+
     expect(
       within(completedTodayMetric).getByText('Completed Today'),
     ).toBeVisible()
