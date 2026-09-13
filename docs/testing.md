@@ -229,14 +229,19 @@ reloading the extension. Track problem rows use the same review-status labels.
    | Save `again` after completing the problem            | Its completion remains unchanged.            |
    | Update one review `good` → `hard` → `again` → `good` | Completion stays, clears, then returns.      |
 
-8. Reset track progress only when intentionally testing reset behavior; confirm
+8. With an earlier incomplete problem and a due incomplete problem in a later
+   group, confirm Due Reviews includes the later problem while `Next` remains the
+   earlier ordered problem.
+9. Reset track progress only when intentionally testing reset behavior; confirm
    the completed count returns to zero.
 
 Expected: active track state, group state, problem order, and track progress are
 local and update the dashboard without changing global practice history unless a
-review is saved. In Study Plan mode, `hard`, `good`, and `easy` complete track
-problems; `again` neither completes an incomplete problem nor clears an earlier
-completion. Free Practice does not write active-track progress.
+review is saved. `Next` follows incomplete, non-suspended memberships in explicit
+group and problem order without being reordered by due state. In Study Plan mode,
+`hard`, `good`, and `easy` complete track problems; `again` neither completes an
+incomplete problem nor clears an earlier completion. Free Practice does not write
+active-track progress.
 
 ### Dashboard Analytics
 

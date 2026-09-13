@@ -332,9 +332,7 @@ function selectActiveTrackNextRow(
     (row) => row.membership.completion.status !== 'completed',
   )
   const nextRow =
-    incompleteRows.find((row) => isDueTrackStatus(row.status)) ??
-    incompleteRows.find((row) => row.status !== 'suspended') ??
-    null
+    incompleteRows.find((row) => row.status !== 'suspended') ?? null
 
   return {
     nextRow,

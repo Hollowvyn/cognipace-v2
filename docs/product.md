@@ -184,6 +184,11 @@ Tracks owns curriculum progression. Track completion is separate from global
 practice history, and active track/session state is local database state. Tracks
 can contain groups and ordered problem memberships.
 
+The active track's `Next` target is the first incomplete, non-suspended
+membership in explicit group and problem order. FSRS due state does not reorder
+track progression; due reviews remain a separate review target. Selecting an
+active group changes the workspace view without retargeting `Next`.
+
 While Study Plan mode is active and the problem belongs to the active track,
 `hard`, `good`, and `easy` reviews complete that track problem. `again` does not
 complete a currently incomplete track problem. Free Practice does not write
