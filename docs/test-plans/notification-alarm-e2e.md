@@ -7,10 +7,10 @@ are merged.
 
 ## Status
 
-| Step | Result |
-|---|---|
-| **Option C — direct notification delivery** | ✅ Executed. Service worker console call confirmed Chrome permissions are granted and notifications appear correctly. |
-| **Full alarm-flow (Steps 5–10)** | ⏸ Deferred. Steps 5–10 require a Chrome build with at least one FSRS-scheduled problem due on or before the current local date. Deferred until a test environment with real due data is available. |
+| Step                                        | Result                                                                                                                                                                                             |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Option C — direct notification delivery** | ✅ Executed. Service worker console call confirmed Chrome permissions are granted and notifications appear correctly.                                                                              |
+| **Full alarm-flow (Steps 5–10)**            | ⏸ Deferred. Steps 5–10 require a Chrome build with at least one FSRS-scheduled problem due on or before the current local date. Deferred until a test environment with real due data is available. |
 
 ## Prerequisites
 
@@ -42,7 +42,7 @@ The output should be at `.output/chrome-mv3`.
 3. In the Console, run:
 
    ```js
-   chrome.notifications.getPermissionLevel(level => console.log(level))
+   chrome.notifications.getPermissionLevel((level) => console.log(level))
    ```
 
    Expected: `granted`.
@@ -69,8 +69,8 @@ end-to-end alarm flow. Option C isolates notification delivery only.
 2. Open the dashboard → **Settings** → **Data Management** → **Export backup**.
    A JSON file downloads.
 3. Open the JSON file, find the card entry for that problem, and set its `dueAt`
-   field (a Unix timestamp in milliseconds) to a prior local date (e.g.,
-   yesterday at midnight: `Date.now() - 86_400_000`).
+   field (a Unix timestamp in milliseconds) to a clearly prior date, such as
+   `946684800000` (`2000-01-01T00:00:00.000Z`).
 4. Import and restore the edited backup via **Import full backup** →
    **Restore full backup**.
 5. Open the queue in the popup or dashboard and confirm the problem now appears
@@ -86,7 +86,7 @@ chrome.notifications.create('due-review-reminder', {
   type: 'basic',
   iconUrl: '/icons.svg',
   title: 'Reviews due',
-  message: 'You have 3 reviews due.'
+  message: 'You have 3 reviews due.',
 })
 ```
 
@@ -109,7 +109,7 @@ to Option A or B for the full alarm flow.
 In the service worker DevTools Console:
 
 ```js
-chrome.alarms.getAll(alarms => console.log(alarms))
+chrome.alarms.getAll((alarms) => console.log(alarms))
 ```
 
 Expected: an alarm named `due:daily-check` appears in the list with a
@@ -146,7 +146,9 @@ local storage should match today's ISO date (`YYYY-MM-DD`).
 Verify with:
 
 ```js
-chrome.storage.local.get('cognipace:notification:lastNotifiedDate', d => console.log(d))
+chrome.storage.local.get('cognipace:notification:lastNotifiedDate', (d) =>
+  console.log(d),
+)
 ```
 
 ## 9. Confirm No Notification Appears When No Due Work Exists
@@ -171,7 +173,7 @@ Expected: no notification appears, because `dueCount` is 0.
 4. In the service worker Console:
 
    ```js
-   chrome.alarms.getAll(alarms => console.log(alarms))
+   chrome.alarms.getAll((alarms) => console.log(alarms))
    ```
 
 Expected: `due:daily-check` is **not** in the list.
@@ -205,9 +207,9 @@ npm run check
 
 Key automated coverage:
 
-| Area | File |
-|------|------|
-| Time normalization, dedup, notify, reschedule | `due-notification.test.ts` |
-| Alarm create/clear/dispatch/repair/dispose | `alarm-scheduler.test.ts` |
-| Startup wiring (registerJobs + handleStartup) | `register-handlers.test.ts` |
+| Area                                                         | File                              |
+| ------------------------------------------------------------ | --------------------------------- |
+| Time normalization, dedup, notify, reschedule                | `due-notification.test.ts`        |
+| Alarm create/clear/dispatch/repair/dispose                   | `alarm-scheduler.test.ts`         |
+| Startup wiring (registerJobs + handleStartup)                | `register-handlers.test.ts`       |
 | Architecture boundary (no FSRS imports in notification code) | `architecture-boundaries.test.ts` |
