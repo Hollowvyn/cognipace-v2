@@ -115,7 +115,6 @@ export class ProblemsRepository {
     const generatedAt = options.now ?? new Date()
     const rows = await this.readLibraryRows({
       now: generatedAt,
-      targetRetention: options.targetRetention,
     })
     const summary = summarizeLibraryRows(rows)
 
@@ -139,7 +138,6 @@ export class ProblemsRepository {
 
     return this.readLibraryRows({
       now: options.now ?? new Date(),
-      targetRetention: options.targetRetention,
       problemSlugs: requestedSlugs,
     })
   }
@@ -316,7 +314,6 @@ export class ProblemsRepository {
 
   private async readLibraryRows(options: {
     now: Date
-    targetRetention?: number | undefined
     problemSlugs?: readonly string[] | undefined
   }) {
     const baseRows = await this.db
@@ -362,9 +359,6 @@ export class ProblemsRepository {
         card,
         attempts: [],
         now: options.now,
-        ...(options.targetRetention !== undefined
-          ? { targetRetention: options.targetRetention }
-          : {}),
       })
 
       return {
@@ -555,6 +549,10 @@ function deriveProblemLibraryStatus(
     return 'suspended'
   }
 
+  if (state.isOverdue) {
+    return 'overdue'
+  }
+
   if (state.isDue) {
     return 'due'
   }
@@ -605,7 +603,9 @@ function summarizeLibraryRows(rows: readonly ProblemLibraryRow[]) {
   return {
     totalCount: rows.length,
     filteredCount: rows.length,
-    dueCount: rows.filter((row) => row.status === 'due').length,
+    dueCount: rows.filter(
+      (row) => row.status === 'overdue' || row.status === 'due',
+    ).length,
     suspendedCount: rows.filter((row) => row.status === 'suspended').length,
   }
 }
@@ -869,7 +869,6 @@ type TaxonomyKind = 'topic' | 'company'
 
 export interface ProblemLibraryReadOptions {
   now?: Date | undefined
-  targetRetention?: number | undefined
 }
 
 export interface ProblemTopicParentLabel {

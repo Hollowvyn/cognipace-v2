@@ -137,12 +137,30 @@ The background service worker owns trusted extension runtime work:
 
 Practice state is local and FSRS-backed. The persisted database owns practice
 facts, and UI surfaces read them through feature services and runtime messages.
+On each saved review, CogniPace passes the rating, review time, and configured
+target retention to `ts-fsrs`, then persists the returned card and review log.
+The persisted FSRS `card.due` value, stored locally as `dueAt`, is the authority
+for the next review date. Current retrievability is a separate FSRS estimate for
+display and queue ranking; it does not replace or cancel the persisted due date.
+
+Target-retention changes are prospective. They are used by `ts-fsrs` on the
+next saved review and do not reschedule existing cards or rewrite their due
+dates. Reviewed cards are classified against the browser's local calendar:
+cards due before today are overdue, cards due today are due today regardless of
+the time of day, and later cards remain scheduled. Suspended and unstarted
+problems are not due.
 
 ### Queue
 
-The queue composes review recommendations from local practice state, settings,
-and problem data. Popup guidance should keep queue recommendation and track
-progression visibly separate.
+The Today Queue composes recommendations from local practice state and problem
+data using a fixed waterfall, capped at the configured daily goal: overdue FSRS
+cards first, then cards due today, then future-scheduled reviewed cards with the
+lowest current retrievability for optional reinforcement, and finally eligible
+new Library problems. Overdue and due-today cards are ordered by their FSRS due
+date; reinforcement uses retrievability with deterministic ties. Popup guidance
+should keep queue recommendation and track progression visibly separate.
+User-facing labels reserve Overdue for prior local dates and Due today for the
+current local date. Aggregate counts that include both use Reviews due.
 
 ### Problems And Library
 
@@ -183,6 +201,11 @@ track completion.
 Settings owns persisted preferences, defaults, validation, and the dashboard
 settings form. Changes should flow through the settings feature API and
 invalidate affected query families.
+
+Review settings expose the FSRS target-retention input. Review Order is not a
+user-facing setting: queue ordering follows the fixed waterfall, while the
+legacy stored `review.order` value is retained only for settings schema-v1
+compatibility. Changing target retention never rewrites existing schedules.
 
 AI assessment settings can store provider preference and model configuration.
 Provider API keys are stored in trusted local extension secret storage, never in
@@ -239,7 +262,10 @@ performance: the current review history does not identify retries or hints.
 Predicted recall and current retrievability are FSRS estimates, not guaranteed
 outcomes. The memory profile is based on tracked local FSRS cards and includes
 due today, overdue, learning, review, average retrievability, and low-sample
-messaging when local data is sparse.
+messaging when local data is sparse. Live Analytics due state and the current
+day of Upcoming Review Load use the same selected-timezone calendar boundary as
+the practice read model: an earlier time today remains due today, while a prior
+local date is overdue.
 
 ### Sync
 

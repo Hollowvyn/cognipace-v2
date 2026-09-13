@@ -13,6 +13,7 @@ import type {
   DashboardOverviewPrimaryView,
   DashboardOverviewView,
 } from '../../domain/dashboard-overview'
+import { getQueueItemStatusPresentation } from '../../domain/queue-item-status-presentation'
 
 export function OverviewPrimaryPanel({
   libraryAction,
@@ -70,7 +71,6 @@ export function OverviewPrimaryPanel({
             {primary.categoryLabel}
           </Badge>
           <ProblemDifficultyBadge difficulty={primary.problem.difficulty} />
-          {primary.isOverdue ? <Badge tone="danger">Overdue</Badge> : null}
         </div>
       </div>
       <div>
@@ -359,31 +359,16 @@ function PanelKicker({ children }: { children: ReactNode }) {
 function formatQueueItemState(
   item: DashboardOverviewView['queuePreview'][number],
 ) {
-  if (item.state.isOverdue) {
-    return item.state.dueAt
-      ? `Overdue · ${formatDateLabel(item.state.dueAt)}`
-      : 'Overdue'
-  }
+  const { label } = getQueueItemStatusPresentation(item.reason)
 
-  if (item.state.isDue) {
-    return item.state.dueAt
-      ? `Due · ${formatDateLabel(item.state.dueAt)}`
-      : 'Due'
-  }
-
-  if (item.category === 'new') {
-    return 'New'
-  }
-
-  return 'Extra Practice'
+  return item.category === 'due' && item.state.dueAt
+    ? `${label} · ${formatDateLabel(item.state.dueAt)}`
+    : label
 }
 
-// ⚡ Bolt: Cache DateTimeFormat at module level to prevent excessive
-// ~4.9s/10k instantiations cost during queue item rendering
-const dateFormatter = new Intl.DateTimeFormat('en-US', {
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
   day: 'numeric',
   month: 'short',
-  timeZone: 'UTC',
   year: 'numeric',
 })
 

@@ -336,8 +336,13 @@ function selectActiveTrackNextRow(
 
   return {
     nextRow,
-    dueCount: incompleteRows.filter((row) => row.status === 'due').length,
+    dueCount: incompleteRows.filter((row) => isDueTrackStatus(row.status))
+      .length,
   }
+}
+
+function isDueTrackStatus(status: TrackProblemRowSerializationInput['status']) {
+  return status === 'overdue' || status === 'due'
 }
 
 function deserializeProblem(problem: SerializedProblem): Problem {

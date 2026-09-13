@@ -135,8 +135,9 @@ describe('TracksScreen', () => {
     expect(
       screen.queryByLabelText('Track target summary'),
     ).not.toBeInTheDocument()
-    const dueMetric = screen.getByLabelText('Due reviews metric')
-    expect(within(dueMetric).getByText('Due Reviews')).toBeVisible()
+    const dueMetric = screen.getByLabelText('Reviews due metric')
+    expect(within(dueMetric).getByText('Reviews Due')).toBeVisible()
+    expect(within(dueMetric).queryByText('Due Reviews')).not.toBeInTheDocument()
     expect(dueMetric).toHaveTextContent('2')
     expect(screen.getByText('Next')).toBeVisible()
     expect(screen.getAllByRole('link', { name: 'Two Sum' })[0]).toHaveAttribute(
@@ -180,7 +181,9 @@ describe('TracksScreen', () => {
     expect(incompleteBadge).toBeVisible()
     expect(incompleteBadge).toHaveAttribute('data-cp-track-completed', 'false')
     expect(incompleteBadge).toHaveAttribute('data-cp-tone', 'danger')
-    expect(within(getTrackProblemRow('Two Sum')).getByText('Due')).toBeVisible()
+    expect(
+      within(getTrackProblemRow('Two Sum')).getByText('Due today'),
+    ).toBeVisible()
     const completedBadge = within(
       getTrackProblemRow('Binary Search'),
     ).getByText('Yes')
@@ -190,6 +193,24 @@ describe('TracksScreen', () => {
     expect(completedBadge).toHaveAttribute('data-cp-tone', 'success')
     expect(
       within(getTrackProblemRow('Binary Search')).getByText('Scheduled'),
+    ).toBeVisible()
+  })
+
+  it('uses the shared New label for unstarted Track problem review badges', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...twoGroupWorkspace,
+      activeTrackRows: twoGroupWorkspace.activeTrackRows.map((row) =>
+        row.problem.title === 'Binary Search'
+          ? { ...row, status: 'not-started' as const }
+          : row,
+      ),
+    })
+
+    renderTracksScreen()
+
+    await screen.findByRole('row', { name: /Binary Search/i })
+    expect(
+      within(getTrackProblemRow('Binary Search')).getByText('New'),
     ).toBeVisible()
   })
 
@@ -259,7 +280,7 @@ describe('TracksScreen', () => {
     expect(screen.getAllByText('Target Jun 15 · 14 days left')).toHaveLength(1)
   })
 
-  it('labels due count as due reviews instead of track target date', async () => {
+  it('labels the aggregate as reviews due instead of the track target date', async () => {
     const activeTrack = twoGroupWorkspace.activeTrack
 
     if (!activeTrack) {
@@ -280,9 +301,10 @@ describe('TracksScreen', () => {
     })
     renderTracksScreen()
 
-    const dueMetric = await screen.findByLabelText('Due reviews metric')
+    const dueMetric = await screen.findByLabelText('Reviews due metric')
 
-    expect(within(dueMetric).getByText('Due Reviews')).toBeVisible()
+    expect(within(dueMetric).getByText('Reviews Due')).toBeVisible()
+    expect(within(dueMetric).queryByText('Due Reviews')).not.toBeInTheDocument()
     expect(dueMetric).toHaveTextContent('0')
     expect(
       within(dueMetric).queryByText('Jun 15, 2026'),

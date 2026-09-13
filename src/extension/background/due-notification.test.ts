@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createDueNotification, dueCheckAlarmName, normalizeNotificationTime } from './due-notification'
+import {
+  createDueNotification,
+  dueCheckAlarmName,
+  normalizeNotificationTime,
+} from './due-notification'
 import type { DueNotificationDeps } from './due-notification'
 
 // All tests use TZ=UTC so setHours() is deterministic.
@@ -49,7 +53,9 @@ function makeReminders(opts: { enabled?: boolean; time?: string } = {}) {
   }
 }
 
-function createDeps(overrides: Partial<DueNotificationDeps> = {}): DueNotificationDeps & {
+function createDeps(
+  overrides: Partial<DueNotificationDeps> = {},
+): DueNotificationDeps & {
   scheduler: ReturnType<typeof createFakeScheduler>
 } {
   const scheduler = createFakeScheduler()
@@ -57,13 +63,17 @@ function createDeps(overrides: Partial<DueNotificationDeps> = {}): DueNotificati
     now: () => new Date('2026-05-30T10:00:00.000Z'), // 10:00 UTC
     readSettings: vi.fn(() => Promise.resolve(makeReminders())),
     readQueueSummary: vi.fn(() => Promise.resolve({ dueToday: 0 })),
-    readState: vi.fn(() => Promise.resolve({ lastNotifiedDate: null as string | null })),
+    readState: vi.fn(() =>
+      Promise.resolve({ lastNotifiedDate: null as string | null }),
+    ),
     writeState: vi.fn(() => Promise.resolve()),
     notify: vi.fn(() => Promise.resolve()),
     checkAlarmScheduled: vi.fn(() => Promise.resolve(false)),
     scheduler,
     ...overrides,
-  } as DueNotificationDeps & { scheduler: ReturnType<typeof createFakeScheduler> }
+  } as DueNotificationDeps & {
+    scheduler: ReturnType<typeof createFakeScheduler>
+  }
 }
 
 // --- runDailyCheck ---
@@ -71,7 +81,9 @@ function createDeps(overrides: Partial<DueNotificationDeps> = {}): DueNotificati
 describe('runDailyCheck', () => {
   it('bails and does not notify or reschedule when notifications are disabled', async () => {
     const deps = createDeps({
-      readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: false }))),
+      readSettings: vi.fn(() =>
+        Promise.resolve(makeReminders({ enabled: false })),
+      ),
     })
     const { registerJobs, runDailyCheck } = createDueNotification(deps)
     registerJobs()
@@ -84,8 +96,12 @@ describe('runDailyCheck', () => {
 
   it('skips notification when already notified today but still reschedules', async () => {
     const deps = createDeps({
-      readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '11:00' }))),
-      readState: vi.fn(() => Promise.resolve({ lastNotifiedDate: '2026-05-30' })),
+      readSettings: vi.fn(() =>
+        Promise.resolve(makeReminders({ enabled: true, time: '11:00' })),
+      ),
+      readState: vi.fn(() =>
+        Promise.resolve({ lastNotifiedDate: '2026-05-30' }),
+      ),
       readQueueSummary: vi.fn(() => Promise.resolve({ dueToday: 5 })),
     })
     const { registerJobs, runDailyCheck } = createDueNotification(deps)
@@ -102,7 +118,9 @@ describe('runDailyCheck', () => {
 
   it('skips notification when dueToday is 0 but still reschedules', async () => {
     const deps = createDeps({
-      readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '11:00' }))),
+      readSettings: vi.fn(() =>
+        Promise.resolve(makeReminders({ enabled: true, time: '11:00' })),
+      ),
       readState: vi.fn(() => Promise.resolve({ lastNotifiedDate: null })),
       readQueueSummary: vi.fn(() => Promise.resolve({ dueToday: 0 })),
     })
@@ -121,7 +139,9 @@ describe('runDailyCheck', () => {
   it('notifies, writes today date, and reschedules when dueToday > 0 and not deduped', async () => {
     // now=10:00 UTC, next alarm time=11:00 → 60 min delay
     const deps = createDeps({
-      readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '11:00' }))),
+      readSettings: vi.fn(() =>
+        Promise.resolve(makeReminders({ enabled: true, time: '11:00' })),
+      ),
       readState: vi.fn(() => Promise.resolve({ lastNotifiedDate: null })),
       readQueueSummary: vi.fn(() => Promise.resolve({ dueToday: 3 })),
     })
@@ -132,7 +152,7 @@ describe('runDailyCheck', () => {
 
     expect(deps.notify).toHaveBeenCalledWith(
       'Reviews due',
-      'You have 3 reviews due today.',
+      'You have 3 reviews due.',
     )
     expect(deps.writeState).toHaveBeenCalledWith('2026-05-30')
     expect(deps.scheduler.schedule).toHaveBeenCalledWith(dueCheckAlarmName, {
@@ -142,7 +162,9 @@ describe('runDailyCheck', () => {
 
   it('uses singular "review" when dueToday is 1', async () => {
     const deps = createDeps({
-      readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '11:00' }))),
+      readSettings: vi.fn(() =>
+        Promise.resolve(makeReminders({ enabled: true, time: '11:00' })),
+      ),
       readState: vi.fn(() => Promise.resolve({ lastNotifiedDate: null })),
       readQueueSummary: vi.fn(() => Promise.resolve({ dueToday: 1 })),
     })
@@ -153,14 +175,18 @@ describe('runDailyCheck', () => {
 
     expect(deps.notify).toHaveBeenCalledWith(
       'Reviews due',
-      'You have 1 review due today.',
+      'You have 1 review due.',
     )
   })
 
   it('notifies when lastNotifiedDate is a past date (stale dedup key)', async () => {
     const deps = createDeps({
-      readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '11:00' }))),
-      readState: vi.fn(() => Promise.resolve({ lastNotifiedDate: '2026-05-29' })), // yesterday
+      readSettings: vi.fn(() =>
+        Promise.resolve(makeReminders({ enabled: true, time: '11:00' })),
+      ),
+      readState: vi.fn(() =>
+        Promise.resolve({ lastNotifiedDate: '2026-05-29' }),
+      ), // yesterday
       readQueueSummary: vi.fn(() => Promise.resolve({ dueToday: 4 })),
     })
     const { registerJobs, runDailyCheck } = createDueNotification(deps)
@@ -170,7 +196,7 @@ describe('runDailyCheck', () => {
 
     expect(deps.notify).toHaveBeenCalledWith(
       'Reviews due',
-      'You have 4 reviews due today.',
+      'You have 4 reviews due.',
     )
     expect(deps.writeState).toHaveBeenCalledWith('2026-05-30')
   })
@@ -179,7 +205,9 @@ describe('runDailyCheck', () => {
 describe('handleStartup', () => {
   it('does nothing when notifications are disabled', async () => {
     const deps = createDeps({
-      readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: false }))),
+      readSettings: vi.fn(() =>
+        Promise.resolve(makeReminders({ enabled: false })),
+      ),
     })
     const { registerJobs, handleStartup } = createDueNotification(deps)
     registerJobs()
@@ -192,7 +220,9 @@ describe('handleStartup', () => {
 
   it('does nothing when alarm is already scheduled', async () => {
     const deps = createDeps({
-      readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '11:00' }))),
+      readSettings: vi.fn(() =>
+        Promise.resolve(makeReminders({ enabled: true, time: '11:00' })),
+      ),
       checkAlarmScheduled: vi.fn(() => Promise.resolve(true)),
     })
     const { registerJobs, handleStartup } = createDueNotification(deps)
@@ -207,7 +237,9 @@ describe('handleStartup', () => {
     // now=10:00 UTC, time=11:00 → upcoming → schedule for 60 min
     const deps = createDeps({
       now: () => new Date('2026-05-30T10:00:00.000Z'),
-      readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '11:00' }))),
+      readSettings: vi.fn(() =>
+        Promise.resolve(makeReminders({ enabled: true, time: '11:00' })),
+      ),
       checkAlarmScheduled: vi.fn(() => Promise.resolve(false)),
     })
     const { registerJobs, handleStartup } = createDueNotification(deps)
@@ -225,9 +257,13 @@ describe('handleStartup', () => {
     // now=10:00 UTC, time=09:00 → already passed → fire now + reschedule for tomorrow
     const deps = createDeps({
       now: () => new Date('2026-05-30T10:00:00.000Z'),
-      readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '09:00' }))),
+      readSettings: vi.fn(() =>
+        Promise.resolve(makeReminders({ enabled: true, time: '09:00' })),
+      ),
       checkAlarmScheduled: vi.fn(() => Promise.resolve(false)),
-      readState: vi.fn(() => Promise.resolve({ lastNotifiedDate: null as string | null })),
+      readState: vi.fn(() =>
+        Promise.resolve({ lastNotifiedDate: null as string | null }),
+      ),
       readQueueSummary: vi.fn(() => Promise.resolve({ dueToday: 2 })),
     })
     const { registerJobs, handleStartup } = createDueNotification(deps)
@@ -237,7 +273,7 @@ describe('handleStartup', () => {
 
     expect(deps.notify).toHaveBeenCalledWith(
       'Reviews due',
-      'You have 2 reviews due today.',
+      'You have 2 reviews due.',
     )
     // runDailyCheck reschedules for 09:00 tomorrow = 23h from 10:00 now
     expect(deps.scheduler.schedule).toHaveBeenCalledWith(dueCheckAlarmName, {
@@ -265,7 +301,9 @@ describe('onSettingsChanged', () => {
     // now=10:00 UTC, new time=11:00 → upcoming → schedule for 60 min
     const deps = createDeps({
       now: () => new Date('2026-05-30T10:00:00.000Z'),
-      readSettings: vi.fn(() => Promise.resolve(makeReminders({ enabled: true, time: '11:00' }))),
+      readSettings: vi.fn(() =>
+        Promise.resolve(makeReminders({ enabled: true, time: '11:00' })),
+      ),
       checkAlarmScheduled: vi.fn(() => Promise.resolve(false)),
     })
     const { registerJobs, onSettingsChanged } = createDueNotification(deps)

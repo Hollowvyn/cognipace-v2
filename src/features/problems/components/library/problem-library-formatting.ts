@@ -5,9 +5,11 @@ import type { ProblemLibraryStatus } from '../../api/problems-contracts'
 export function formatProblemLibraryStatus(status: ProblemLibraryStatus) {
   switch (status) {
     case 'not-started':
-      return 'Not started'
+      return 'New'
+    case 'overdue':
+      return 'Overdue'
     case 'due':
-      return 'Due'
+      return 'Due today'
     case 'scheduled':
       return 'Scheduled'
     case 'suspended':
@@ -19,6 +21,8 @@ export function getProblemLibraryStatusTone(
   status: ProblemLibraryStatus,
 ): Tone {
   switch (status) {
+    case 'overdue':
+      return 'danger'
     case 'due':
       return 'warning'
     case 'scheduled':

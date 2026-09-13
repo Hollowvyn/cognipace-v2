@@ -10,7 +10,7 @@ export type QueueItemCategory = 'due' | 'new' | 'reinforcement'
 
 export type RecommendationReason =
   | 'overdue'
-  | 'due-now'
+  | 'due-today'
   | 'reinforcement'
   | 'new-problem'
 
@@ -53,27 +53,23 @@ export function buildTodayQueue(
     candidates,
     settings,
   )
-  const dueItems = orderQueueItems(partitions.due, settings.review.order)
-  const newItems = orderQueueItems(partitions.new, settings.review.order)
-  const reinforcementItems = orderQueueItems(
-    partitions.reinforcement,
-    settings.review.order,
-  )
-
-  const dueForQueue = dueItems.slice(0, dailyGoal)
-  const slotsAfterDue = Math.max(0, dailyGoal - dueForQueue.length)
-  const reinforcementForQueue = reinforcementItems.slice(0, slotsAfterDue)
-  const newForQueue =
-    dueForQueue.length + reinforcementForQueue.length === 0
-      ? newItems.slice(0, dailyGoal)
-      : []
-
-  const items = [...dueForQueue, ...reinforcementForQueue, ...newForQueue]
+  const overdueItems = sortByDueDate(partitions.overdue)
+  const dueTodayItems = sortByDueDate(partitions.dueToday)
+  const reinforcementItems = sortByRetrievability(partitions.reinforcement)
+  const newItems = [...partitions.new].sort(compareNewProblemIdentity)
+  const allItems = [
+    ...overdueItems,
+    ...dueTodayItems,
+    ...reinforcementItems,
+    ...newItems,
+  ]
+  const items = allItems.slice(0, dailyGoal)
+  const dueCount = overdueItems.length + dueTodayItems.length
 
   return {
     generatedAt,
-    dueCount: dueItems.length,
-    dueToday: dueItems.length,
+    dueCount,
+    dueToday: dueCount,
     newCount: newItems.length,
     newAvailable: newItems.length,
     queueLoad: items.length,
@@ -89,8 +85,12 @@ function partitionQueueCandidates(
   candidates: QueueCandidate[],
   settings: UserSettings,
 ) {
-  const partitions: Record<QueueItemCategory, QueueItem[]> = {
-    due: [],
+  const partitions: Record<
+    'overdue' | 'dueToday' | 'new' | 'reinforcement',
+    QueueItem[]
+  > = {
+    overdue: [],
+    dueToday: [],
     new: [],
     reinforcement: [],
   }
@@ -102,8 +102,13 @@ function partitionQueueCandidates(
       continue
     }
 
+    if (candidate.state.isOverdue) {
+      partitions.overdue.push(mapQueueItem(candidate, 'due'))
+      continue
+    }
+
     if (candidate.state.isDue) {
-      partitions.due.push(mapQueueItem(candidate, 'due'))
+      partitions.dueToday.push(mapQueueItem(candidate, 'due'))
       continue
     }
 
@@ -135,7 +140,7 @@ function deriveRecommendationReason(
   category: QueueItemCategory,
   isOverdue: boolean,
 ): RecommendationReason {
-  if (category === 'due') return isOverdue ? 'overdue' : 'due-now'
+  if (category === 'due') return isOverdue ? 'overdue' : 'due-today'
   if (category === 'reinforcement') return 'reinforcement'
   return 'new-problem'
 }
@@ -155,22 +160,7 @@ function mapQueueItem(
   }
 }
 
-function orderQueueItems(
-  items: QueueItem[],
-  strategy: UserSettings['review']['order'],
-): QueueItem[] {
-  if (strategy === 'weakestFirst') {
-    return sortByWeakest(items)
-  }
-
-  if (strategy === 'mixByDifficulty') {
-    return interleaveByDifficulty(items)
-  }
-
-  return sortByDueThenPosition(items)
-}
-
-function sortByDueThenPosition(items: QueueItem[]) {
+function sortByDueDate(items: QueueItem[]) {
   return [...items].sort((left, right) => {
     const dueComparison = compareDates(left.state.dueAt, right.state.dueAt)
 
@@ -178,59 +168,42 @@ function sortByDueThenPosition(items: QueueItem[]) {
       return dueComparison
     }
 
-    return left.problemSlug.localeCompare(right.problemSlug)
+    return compareProblemIdentity(left, right)
   })
 }
 
-function sortByWeakest(items: QueueItem[]) {
+function sortByRetrievability(items: QueueItem[]) {
   return [...items].sort((left, right) => {
-    if (right.state.lapses !== left.state.lapses) {
-      return right.state.lapses - left.state.lapses
+    const retrievabilityComparison =
+      (left.state.retrievability ?? Number.MAX_SAFE_INTEGER) -
+      (right.state.retrievability ?? Number.MAX_SAFE_INTEGER)
+
+    if (retrievabilityComparison !== 0) {
+      return retrievabilityComparison
     }
 
-    if ((right.state.difficulty ?? 0) !== (left.state.difficulty ?? 0)) {
-      return (right.state.difficulty ?? 0) - (left.state.difficulty ?? 0)
-    }
+    const dueComparison = compareDates(left.state.dueAt, right.state.dueAt)
 
-    return sortByDueThenPosition([left, right])[0] === left ? -1 : 1
+    return dueComparison !== 0
+      ? dueComparison
+      : compareProblemIdentity(left, right)
   })
 }
 
-function interleaveByDifficulty(items: QueueItem[]) {
-  const buckets: Record<ProblemDifficulty, QueueItem[]> = {
-    easy: [],
-    medium: [],
-    hard: [],
-    unknown: [],
-  }
+function compareProblemIdentity(left: QueueItem, right: QueueItem) {
+  const slugComparison = left.problemSlug.localeCompare(right.problemSlug)
 
-  for (const item of sortByDueThenPosition(items)) {
-    buckets[item.difficulty].push(item)
-  }
+  return slugComparison !== 0
+    ? slugComparison
+    : left.title.localeCompare(right.title)
+}
 
-  const difficultyOrder: ProblemDifficulty[] = [
-    'easy',
-    'medium',
-    'hard',
-    'unknown',
-  ]
-  const orderedItems: QueueItem[] = []
-  let addedItem = true
+function compareNewProblemIdentity(left: QueueItem, right: QueueItem) {
+  const titleComparison = left.title.localeCompare(right.title)
 
-  while (addedItem) {
-    addedItem = false
-
-    for (const difficulty of difficultyOrder) {
-      const item = buckets[difficulty].shift()
-
-      if (item) {
-        orderedItems.push(item)
-        addedItem = true
-      }
-    }
-  }
-
-  return orderedItems
+  return titleComparison !== 0
+    ? titleComparison
+    : left.problemSlug.localeCompare(right.problemSlug)
 }
 
 function compareDates(left: Date | null, right: Date | null) {

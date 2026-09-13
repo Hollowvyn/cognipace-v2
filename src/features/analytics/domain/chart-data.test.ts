@@ -1008,4 +1008,26 @@ describe('analytics chart-data builders', () => {
       today: true,
     })
   })
+
+  it('counts an earlier due time today as due today in the selected timezone', () => {
+    const now = new Date('2026-08-22T16:00:00.000Z')
+    const points = buildUpcomingLoadPoints(
+      [new Date('2026-08-22T14:00:00.000Z')],
+      now,
+      'America/New_York',
+    )
+
+    expect(points[0]).toMatchObject({ dueCount: 1, overdueCount: 0 })
+  })
+
+  it('counts a prior local date as overdue across a sub-24-hour boundary', () => {
+    const now = new Date('2026-08-22T16:00:00.000Z')
+    const points = buildUpcomingLoadPoints(
+      [new Date('2026-08-22T03:30:00.000Z')],
+      now,
+      'America/New_York',
+    )
+
+    expect(points[0]).toMatchObject({ dueCount: 0, overdueCount: 1 })
+  })
 })

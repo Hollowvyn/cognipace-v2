@@ -67,6 +67,12 @@ describe('SettingsScreen', () => {
     expect(
       screen.getByRole('heading', { name: 'Review & Timing' }),
     ).toBeVisible()
+    expect(screen.queryByText('Review order')).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Due first' })).toBeNull()
+    expect(screen.queryByRole('radio', { name: 'Weakest first' })).toBeNull()
+    expect(
+      screen.queryByRole('radio', { name: 'Mix by difficulty' }),
+    ).toBeNull()
     expect(
       screen.getByRole('button', { name: 'Study mode details' }),
     ).toBeVisible()
@@ -348,7 +354,9 @@ describe('SettingsScreen', () => {
     vi.mocked(sendMessage).mockResolvedValue(defaultUserSettings)
     const { wrapper } = createQueryTestHarness()
     render(<SettingsScreen />, { wrapper })
-    expect(await screen.findByRole('heading', { name: 'Reminders' })).toBeVisible()
+    expect(
+      await screen.findByRole('heading', { name: 'Reminders' }),
+    ).toBeVisible()
     expect(
       screen.getByRole('switch', { name: 'Daily reminder' }),
     ).toBeInTheDocument()

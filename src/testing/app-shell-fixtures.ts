@@ -21,7 +21,7 @@ export function createDashboardAppShellData(
       detail: '1 due, 0 new, 0 reinforcement available.',
     },
     metrics: [
-      { label: 'Due Today', value: '1' },
+      { label: 'Reviews Due', value: '1' },
       { label: 'Streak', value: '0 days' },
     ],
     practiceProgress,
@@ -108,6 +108,7 @@ export function createAppShellQueueItem(
 
   return {
     category: 'due',
+    reason: 'overdue',
     problem,
     state: createSerializedNormalizedPracticeState({
       problemSlug: problem.problemSlug,

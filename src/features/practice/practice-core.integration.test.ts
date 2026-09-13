@@ -8,8 +8,10 @@ import {
   saveReviewResultWithTrackProgress,
 } from '@/features/practice/server/practice-service'
 import { getTodayQueue } from '@/features/queue/server/queue-service'
+import { createSettingsRepository } from '@/features/settings/data/settings-repository'
 import { defaultUserSettings } from '@/features/settings/domain'
 import { createTracksRepository } from '@/features/tracks/data/tracks-repository'
+import { createInitialFsrsCard, scheduleReview } from '@/lib/fsrs'
 import { createTestDb } from '@/platform/db/test-db'
 import {
   fsrsCards,
@@ -20,6 +22,65 @@ import {
 } from '@/platform/db/schema'
 
 describe('practice core', () => {
+  it('keeps existing FSRS cards unchanged when target retention changes', async () => {
+    const handle = await createTestDb()
+    const practiceRepository = createPracticeRepository(handle.db)
+    const settingsRepository = createSettingsRepository(handle.db)
+    const firstReviewedAt = new Date('2026-01-01T10:00:00.000Z')
+    const secondReviewedAt = new Date('2026-01-02T10:00:00.000Z')
+    const firstCard = scheduleReview(
+      createInitialFsrsCard(firstReviewedAt),
+      'good',
+      firstReviewedAt,
+      { targetRetention: 0.9 },
+    ).card
+
+    await practiceRepository.saveReviewResult({
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: firstReviewedAt,
+      targetRetention: 0.9,
+      reviewAttemptId: 'retention-review-1',
+    })
+
+    const persistedBeforeSettingsChange = await handle.db
+      .select()
+      .from(fsrsCards)
+      .where(eq(fsrsCards.problemSlug, 'two-sum'))
+    expect(persistedBeforeSettingsChange[0]?.dueAt).toBe(
+      firstCard.dueAt.getTime(),
+    )
+
+    const updatedSettings = await settingsRepository.updateSettings(
+      { review: { targetRetention: 0.85 } },
+      new Date('2026-01-01T10:01:00.000Z'),
+    )
+    const persistedAfterSettingsChange = await handle.db
+      .select()
+      .from(fsrsCards)
+      .where(eq(fsrsCards.problemSlug, 'two-sum'))
+
+    expect(updatedSettings.review.targetRetention).toBe(0.85)
+    expect(persistedAfterSettingsChange).toEqual(persistedBeforeSettingsChange)
+
+    const secondReview = await practiceRepository.saveReviewResult({
+      problemSlug: 'two-sum',
+      rating: 'good',
+      reviewedAt: secondReviewedAt,
+      targetRetention: updatedSettings.review.targetRetention,
+      reviewAttemptId: 'retention-review-2',
+    })
+    const expectedSecondCard = scheduleReview(
+      firstCard,
+      'good',
+      secondReviewedAt,
+      { targetRetention: 0.85 },
+    ).card
+
+    expect(secondReview.card).toEqual(expectedSecondCard)
+    expect(secondReview.dueAt).toEqual(expectedSecondCard.dueAt)
+  })
+
   it('saves a review with a practice log snapshot and latest aggregate log', async () => {
     const handle = await createTestDb()
     const repository = createPracticeRepository(handle.db)

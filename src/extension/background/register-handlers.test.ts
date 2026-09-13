@@ -2263,7 +2263,8 @@ function readLatestSyncFactoryOptions(): SyncFactoryOptions {
 
 function readLatestSyncFactoryCall(): [unknown, unknown, unknown] {
   const call = backgroundMocks.createBackgroundSyncService.mock.calls.at(-1) as
-    [unknown, unknown, unknown] | undefined
+    | [unknown, unknown, unknown]
+    | undefined
 
   if (!call) {
     throw new Error('Expected sync service factory to be called.')
@@ -2418,7 +2419,7 @@ function createPopupShellData(): PopupAppShellData {
       detail: '0 due, 1 new, 0 reinforcement available.',
     },
     metrics: [
-      { label: 'Due Today', value: '0' },
+      { label: 'Reviews Due', value: '0' },
       { label: 'Streak', value: '0 days' },
     ],
     practiceProgress: {
@@ -2526,7 +2527,7 @@ const todayQueue = todayQueueSchema.parse({
   queueLoad: 3,
   reinforcementCount: 0,
   excludedCount: 0,
-  recommendationReason: 'due-now',
+  recommendationReason: 'due-today',
   items: [],
   topRecommendation: null,
 })

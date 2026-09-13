@@ -19,6 +19,7 @@ import { createProxyCallback } from '@/platform/db/proxy'
 import * as schema from '@/platform/db/schema'
 import {
   companies,
+  fsrsCards,
   problemCompanies,
   problemPractice,
   problemTopics,
@@ -474,52 +475,78 @@ describe('ProblemsRepository library data', () => {
     expect(rows[0]?.state.dueAt).toEqual(rows[0]?.nextReviewAt)
   })
 
-  it('uses settings target retention for service rows when target retention is omitted or undefined', async () => {
+  it('uses the persisted FSRS due date for service rows after a target-retention change', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
 
-    await updateSettings(handle.db, { review: { targetRetention: 0.97 } })
     await saveSolvedReview(handle.db)
 
     const rowAtReviewTime = await getProblemLibraryRowsBySlug(
       handle.db,
       ['two-sum'],
-      { now: solvedAt, targetRetention: undefined },
+      { now: solvedAt },
     )
-    const rowWithOmittedRetention = await getProblemLibraryRowsBySlug(
+
+    await updateSettings(handle.db, { review: { targetRetention: 0.97 } })
+
+    const rowAfterRetentionChange = await getProblemLibraryRowsBySlug(
       handle.db,
       ['two-sum'],
       { now: serviceRetentionCheckAt },
     )
-    const rowWithUndefinedRetention = await getProblemLibraryRowsBySlug(
-      handle.db,
-      ['two-sum'],
-      {
-        now: serviceRetentionCheckAt,
-        targetRetention: undefined,
-      },
-    )
 
     expect(rowAtReviewTime[0]?.status).toBe('scheduled')
-    expect(rowWithOmittedRetention[0]).toMatchObject({
+    expect(rowAfterRetentionChange[0]).toMatchObject({
       status: 'due',
       state: {
         isDue: true,
       },
     })
-    expect(rowWithUndefinedRetention[0]).toMatchObject({
-      status: 'due',
-      state: {
-        isDue: true,
-      },
+    expect(rowAfterRetentionChange[0]?.state.dueAt).toEqual(
+      rowAtReviewTime[0]?.state.dueAt,
+    )
+    expect(rowAfterRetentionChange[0]?.state.retrievability).toBeGreaterThan(
+      0.9,
+    )
+    expect(rowAfterRetentionChange[0]?.state.retrievability).toBeLessThan(0.97)
+  })
+
+  it('separates overdue and due-today Library statuses from the persisted due date', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-09-13T00:00:00.000Z'),
+    })
+
+    await saveSolvedReview(handle.db, 'two-sum')
+    await saveSolvedReview(handle.db, 'valid-parentheses')
+
+    await handle.db
+      .update(fsrsCards)
+      .set({ dueAt: new Date('2026-09-02T12:00:00.000Z').getTime() })
+      .where(eq(fsrsCards.problemSlug, 'two-sum'))
+    await handle.db
+      .update(fsrsCards)
+      .set({ dueAt: new Date('2026-09-13T12:00:00.000Z').getTime() })
+      .where(eq(fsrsCards.problemSlug, 'valid-parentheses'))
+
+    const library = await getProblemLibrary(handle.db, {
+      surface: 'dashboard',
+      at: '2026-09-13T18:00:00.000Z',
+    })
+
+    expect(
+      library.rows.find((row) => row.problem.slug === 'two-sum'),
+    ).toMatchObject({
+      status: 'overdue',
+      state: { isDue: true, isOverdue: true },
     })
     expect(
-      rowWithUndefinedRetention[0]?.state.retrievability,
-    ).toBeGreaterThan(0.9)
-    expect(rowWithUndefinedRetention[0]?.state.retrievability).toBeLessThan(
-      0.97,
-    )
+      library.rows.find((row) => row.problem.slug === 'valid-parentheses'),
+    ).toMatchObject({
+      status: 'due',
+      state: { isDue: true, isOverdue: false },
+    })
+    expect(library.summary.dueCount).toBe(2)
   })
 
   it('deduplicates duplicate input slugs before querying', async () => {

@@ -40,6 +40,10 @@ describe('createDevSmokeService', () => {
       id: 'genai.live',
       latencyMs: 42,
     })
+    expect(report.checks.find((check) => check.id === 'queue')).toMatchObject({
+      detail:
+        'Queue loaded: 1 review due, 2 new available, load 3, recommendation due-today.',
+    })
   })
 
   it('skips live GenAI when not requested without calling the live dependency', async () => {
@@ -51,6 +55,23 @@ describe('createDevSmokeService', () => {
     expect(report.checks.at(-1)).toMatchObject({
       id: 'genai.live',
       status: 'skip',
+    })
+  })
+
+  it('uses plural review grammar for multiple due reviews', async () => {
+    const deps = createDeps()
+    vi.mocked(deps.readQueueSummary).mockResolvedValue({
+      dueToday: 2,
+      newAvailable: 0,
+      queueLoad: 2,
+      recommendationReason: 'due-today',
+    })
+
+    const report = await createDevSmokeService(deps).run({})
+
+    expect(report.checks.find((check) => check.id === 'queue')).toMatchObject({
+      detail:
+        'Queue loaded: 2 reviews due, 0 new available, load 2, recommendation due-today.',
     })
   })
 
@@ -214,7 +235,7 @@ function createDeps(): DevSmokeDeps {
         dueToday: 1,
         newAvailable: 2,
         queueLoad: 3,
-        recommendationReason: 'due-now',
+        recommendationReason: 'due-today',
       }),
     ),
     readGenAiConfig: vi.fn(() =>

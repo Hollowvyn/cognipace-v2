@@ -15,13 +15,13 @@ describe('createDashboardOverviewView', () => {
       kind: 'problem',
       kicker: 'Review Now',
       title: 'Add Binary',
-      categoryLabel: 'Due',
+      categoryLabel: 'Overdue',
       isOverdue: true,
       actionLabel: 'Open Problem',
     })
     expect(view.metrics).toEqual([
       {
-        label: 'Due',
+        label: 'Reviews Due',
         value: '1',
         caption: 'Problems ready for review.',
       },

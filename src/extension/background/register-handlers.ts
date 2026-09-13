@@ -704,9 +704,7 @@ export function registerBackgroundHandlers() {
       sender,
     )
     return getAppDb().then(async ({ db }) => {
-      const settings = await getSettings(db)
       const details = await getPracticeDetails(db, request.problemSlug, {
-        targetRetention: settings.review.targetRetention,
         ...(request.at ? { now: new Date(request.at) } : {}),
       })
 
@@ -746,9 +744,7 @@ export function registerBackgroundHandlers() {
           },
           settings,
         )
-        const details = await getPracticeDetails(db, request.problemSlug, {
-          targetRetention: settings.review.targetRetention,
-        })
+        const details = await getPracticeDetails(db, request.problemSlug)
 
         return serializePracticeDetails(details)
       },
@@ -783,9 +779,7 @@ export function registerBackgroundHandlers() {
           },
           settings,
         )
-        const details = await getPracticeDetails(db, request.problemSlug, {
-          targetRetention: settings.review.targetRetention,
-        })
+        const details = await getPracticeDetails(db, request.problemSlug)
 
         return serializePracticeDetails(details)
       },
@@ -857,12 +851,9 @@ export function registerBackgroundHandlers() {
     )
     return runDbMutation(
       async (db) => {
-        const settings = await getSettings(db)
-
         const details = await updateCurrentPracticeLog(db, {
           problemSlug: request.problemSlug,
           log: request.log,
-          targetRetention: settings.review.targetRetention,
         })
 
         return serializePracticeDetails(details)

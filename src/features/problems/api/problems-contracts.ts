@@ -59,6 +59,7 @@ export type SerializedProblemTrackMembership = z.infer<
 
 export const problemLibraryStatusSchema = z.enum([
   'not-started',
+  'overdue',
   'due',
   'scheduled',
   'suspended',

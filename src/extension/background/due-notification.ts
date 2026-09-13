@@ -72,13 +72,16 @@ export function createDueNotification(deps: DueNotificationDeps) {
     if (state.lastNotifiedDate !== today && dueToday > 0) {
       await deps.notify(
         'Reviews due',
-        `You have ${dueToday} review${dueToday === 1 ? '' : 's'} due today.`,
+        `You have ${dueToday} review${dueToday === 1 ? '' : 's'} due.`,
       )
       await deps.writeState(today)
     }
 
     await deps.scheduler.schedule(dueCheckAlarmName, {
-      delayInMinutes: normalizeNotificationTime(settings.reminders.daily.time, now),
+      delayInMinutes: normalizeNotificationTime(
+        settings.reminders.daily.time,
+        now,
+      ),
     })
   }
 
@@ -110,7 +113,10 @@ export function createDueNotification(deps: DueNotificationDeps) {
     const prevDaily = prev.reminders.daily
     const nextDaily = next.reminders.daily
 
-    if (prevDaily.enabled === nextDaily.enabled && prevDaily.time === nextDaily.time) {
+    if (
+      prevDaily.enabled === nextDaily.enabled &&
+      prevDaily.time === nextDaily.time
+    ) {
       return
     }
 

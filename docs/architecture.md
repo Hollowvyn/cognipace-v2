@@ -122,6 +122,34 @@ Not every feature needs every folder. Add only the folder needed for the change.
 When behavior crosses features, keep writes behind the owning feature's server
 service or repository and return serialized data through the runtime boundary.
 
+## FSRS Scheduling And Queue Semantics
+
+The `src/lib/fsrs` module is the only production boundary that imports
+`ts-fsrs`. It translates the app's ratings, cards, and review logs into the
+library's types, delegates scheduling and retrievability calculations, and
+maps the returned card back to the persisted snapshot. Features must not
+recalculate stability, difficulty, intervals, or due dates.
+
+The persisted `ts-fsrs` `card.due` value is stored as `FsrsCardSnapshot.dueAt`
+and is the sole authority for a reviewed card's schedule. Read models derive
+overdue and due-today state from that date using the browser's local calendar;
+retrievability remains an independent estimate used for presentation and
+future-card reinforcement ranking. Target retention is a scheduling input on
+review writes only. Updating it does not rewrite existing cards or reschedule
+their persisted due dates.
+
+The queue feature owns a deterministic, daily-goal-capped waterfall:
+
+1. overdue FSRS cards, oldest `dueAt` first;
+2. FSRS cards due on the local calendar date, earliest `dueAt` first;
+3. future-scheduled reviewed cards, lowest current retrievability first, as
+   optional reinforcement; and
+4. eligible new Library problems.
+
+Queue code does not import `ts-fsrs` or own an alternate due threshold. The
+Review Order setting is no longer user-facing and is ignored by queue logic;
+its persisted value remains only as a temporary schema-v1 compatibility field.
+
 ## Runtime Messaging
 
 Runtime messaging is the extension boundary between UI surfaces and trusted

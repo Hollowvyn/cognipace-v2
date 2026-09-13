@@ -100,8 +100,11 @@ describe('ProblemLibraryScreen', () => {
     expect(getProblemRow('01 Matrix')).toBeVisible()
     expect(queryProblemRow('Binary Search')).not.toBeInTheDocument()
 
-    await selectLibraryFacetOption(user, 'Status', 'Due')
-    expect(screen.getByText('No problems match these filters.')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
+    await selectLibraryFacetOption(user, 'Status', 'Due today')
+    expect(getProblemRow('Two Sum')).toBeVisible()
+    expect(queryProblemRow('Binary Search')).not.toBeInTheDocument()
+    expect(queryProblemRow('01 Matrix')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
     await selectLibraryFacetOption(user, 'Topics', 'Array')
@@ -224,7 +227,10 @@ describe('ProblemLibraryScreen', () => {
     ).toBeVisible()
     expect(screen.getByText('Total')).toBeVisible()
     expect(screen.getByText('Filtered')).toBeVisible()
-    expect(screen.getAllByText('Due').length).toBeGreaterThan(0)
+    expect(screen.getByText('Reviews Due')).toBeVisible()
+    expect(
+      within(getProblemRow('Two Sum')).getByText('Due today'),
+    ).toBeVisible()
     expect(screen.getAllByText('Suspended').length).toBeGreaterThan(0)
 
     await user.click(getProblemRow('Two Sum'))
@@ -255,6 +261,27 @@ describe('ProblemLibraryScreen', () => {
     expect(
       screen.queryByRole('button', { name: 'Collapse Two Sum' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('uses New for unstarted rows while retaining Due today for due rows', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      ...libraryResponse,
+      rows: libraryResponse.rows.map((row) =>
+        row.problem.title === 'Binary Search'
+          ? { ...row, status: 'not-started' as const }
+          : row,
+      ),
+    })
+
+    renderProblemLibrary()
+
+    expect(await findProblemRow('Two Sum')).toBeVisible()
+    expect(
+      within(getProblemRow('Two Sum')).getByText('Due today'),
+    ).toBeVisible()
+    expect(
+      within(getProblemRow('Binary Search')).getByText('New'),
+    ).toBeVisible()
   })
 
   it('sorts rows and uses contextual empty date labels', async () => {

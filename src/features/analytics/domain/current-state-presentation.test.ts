@@ -125,6 +125,47 @@ describe('current-state Analytics presentation', () => {
       { kind: 'low-durability', label: 'Low durability 3d' },
     ])
   })
+
+  it('does not call an earlier same-local-day due time overdue', () => {
+    const views = buildCurrentStateAnalyticsViews(
+      [
+        input('same-day', {
+          dueAt: new Date('2026-08-22T14:00:00.000Z'),
+          retrievability: 0.95,
+          targetDurationDays: 10,
+        }),
+      ],
+      {
+        asOf: new Date('2026-08-22T16:00:00.000Z'),
+        targetRetention: 0.9,
+        timeZone: 'America/New_York',
+      },
+    )
+
+    expect(views.memorySignals.totalQualifying).toBe(0)
+    expect(views.memorySignals.rows).toEqual([])
+  })
+
+  it('calls a prior local day overdue across a sub-24-hour boundary', () => {
+    const views = buildCurrentStateAnalyticsViews(
+      [
+        input('prior-day', {
+          dueAt: new Date('2026-08-22T03:30:00.000Z'),
+          retrievability: 0.95,
+          targetDurationDays: 10,
+        }),
+      ],
+      {
+        asOf: new Date('2026-08-22T16:00:00.000Z'),
+        targetRetention: 0.9,
+        timeZone: 'America/New_York',
+      },
+    )
+
+    expect(views.memorySignals.rows[0]?.reasons).toEqual([
+      { kind: 'overdue', label: '1d overdue' },
+    ])
+  })
 })
 
 function input(

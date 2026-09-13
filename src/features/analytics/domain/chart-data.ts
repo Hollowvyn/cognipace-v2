@@ -524,11 +524,10 @@ export function buildUpcomingLoadPoints(
     }
   })
   for (const dueAt of dueDates) {
-    if (dueAt < now) points[0]!.overdueCount += 1
+    const dueKey = toAnalyticsDateKey(dueAt, timeZone)
+    if (dueKey < todayKey) points[0]!.overdueCount += 1
     else {
-      const point = points.find(
-        (candidate) => candidate.date === toAnalyticsDateKey(dueAt, timeZone),
-      )
+      const point = points.find((candidate) => candidate.date === dueKey)
       if (point) point.dueCount += 1
     }
   }

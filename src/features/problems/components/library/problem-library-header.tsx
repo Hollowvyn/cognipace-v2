@@ -23,7 +23,7 @@ export function ProblemLibraryHeader({
         <dl className="flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-[length:var(--cp-copy-font-size)]">
           <ProblemLibraryCount label="Total" value={summary.totalCount} />
           <ProblemLibraryCount label="Filtered" value={summary.filteredCount} />
-          <ProblemLibraryCount label="Due" value={summary.dueCount} />
+          <ProblemLibraryCount label="Reviews Due" value={summary.dueCount} />
           <ProblemLibraryCount
             label="Suspended"
             value={summary.suspendedCount}

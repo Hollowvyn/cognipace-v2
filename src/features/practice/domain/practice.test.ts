@@ -41,13 +41,14 @@ describe('practice domain', () => {
     })
   })
 
-  it('prefers card state for active summaries and keeps due logic retrievability-based', () => {
-    const reviewedCard = reviewedFsrsCard()
+  it('uses the persisted due date for overdue state independently of retrievability', () => {
+    const reviewedCard = reviewedFsrsCard({
+      dueAt: new Date(2026, 8, 2, 12),
+    })
     const summary = derivePracticeSummary({
       practice: practiceState({ status: 'learning' }),
       card: reviewedCard,
-      now: new Date('2026-06-01T10:00:00.000Z'),
-      targetRetention: 0.9,
+      now: new Date(2026, 8, 13, 2, 11, 31),
     })
 
     expect(summary).toMatchObject({
@@ -59,6 +60,25 @@ describe('practice domain', () => {
       isStarted: true,
       isDue: true,
       isOverdue: true,
+      overdueDays: 11,
+    })
+    expect(summary.retrievability).not.toBeNull()
+  })
+
+  it('does not mark a future-dated card due even when retrievability is low', () => {
+    const reviewedCard = reviewedFsrsCard({
+      dueAt: new Date(2026, 8, 14, 12),
+    })
+    const summary = derivePracticeSummary({
+      practice: practiceState(),
+      card: reviewedCard,
+      now: new Date(2026, 8, 13, 2, 11, 31),
+    })
+
+    expect(summary).toMatchObject({
+      isDue: false,
+      isOverdue: false,
+      overdueDays: 0,
     })
     expect(summary.retrievability).toBeLessThan(0.9)
   })

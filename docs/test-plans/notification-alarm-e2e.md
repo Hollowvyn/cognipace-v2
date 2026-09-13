@@ -7,10 +7,10 @@ are merged.
 
 ## Status
 
-| Step | Result |
-|---|---|
-| **Option C — direct notification delivery** | ✅ Executed. Service worker console call confirmed Chrome permissions are granted and notifications appear correctly. |
-| **Full alarm-flow (Steps 5–10)** | ⏸ Deferred. Steps 5–10 require a Chrome build with at least one FSRS-scheduled problem whose due date has passed. Deferred until a test environment with real due data is available. |
+| Step                                        | Result                                                                                                                                                                                             |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Option C — direct notification delivery** | ✅ Executed. Service worker console call confirmed Chrome permissions are granted and notifications appear correctly.                                                                              |
+| **Full alarm-flow (Steps 5–10)**            | ⏸ Deferred. Steps 5–10 require a Chrome build with at least one FSRS-scheduled problem due on or before the current local date. Deferred until a test environment with real due data is available. |
 
 ## Prerequisites
 
@@ -42,7 +42,7 @@ The output should be at `.output/chrome-mv3`.
 3. In the Console, run:
 
    ```js
-   chrome.notifications.getPermissionLevel(level => console.log(level))
+   chrome.notifications.getPermissionLevel((level) => console.log(level))
    ```
 
    Expected: `granted`.
@@ -55,9 +55,11 @@ end-to-end alarm flow. Option C isolates notification delivery only.
 **Option A — use existing due data (quickest):**
 
 1. Open the CogniPace popup or dashboard.
-2. Confirm at least one problem shows in the queue with a **due** status.
-   Problems that have never been reviewed do not count — `dueCount` only
-   includes FSRS-scheduled reviews whose due date has passed.
+2. Confirm at least one problem shows in the queue with an **Overdue** or
+   **Due today** status. Problems that have never been reviewed do not count —
+   `dueCount` only includes FSRS-scheduled reviews due on or before the current
+   local date. A **Due today** review qualifies for the entire local day,
+   regardless of its due time.
 3. Skip to Step 5 and set the reminder time 1–2 minutes from now.
 
 **Option B — answer a question then backdate its due date:**
@@ -67,12 +69,12 @@ end-to-end alarm flow. Option C isolates notification delivery only.
 2. Open the dashboard → **Settings** → **Data Management** → **Export backup**.
    A JSON file downloads.
 3. Open the JSON file, find the card entry for that problem, and set its `dueAt`
-   field (a Unix timestamp in milliseconds) to any timestamp in the past
-   (e.g., yesterday at midnight: `Date.now() - 86_400_000`).
+   field to an ISO datetime string on an unambiguously prior date, such as
+   `"2000-01-01T00:00:00.000Z"`.
 4. Import and restore the edited backup via **Import full backup** →
    **Restore full backup**.
 5. Open the queue in the popup or dashboard and confirm the problem now appears
-   as due.
+   as **Overdue**.
 
 **Option C — verify notification delivery directly via the service worker (skips alarm and queue):**
 
@@ -84,7 +86,7 @@ chrome.notifications.create('due-review-reminder', {
   type: 'basic',
   iconUrl: '/icons.svg',
   title: 'Reviews due',
-  message: 'You have 3 reviews due today.'
+  message: 'You have 3 reviews due.',
 })
 ```
 
@@ -107,7 +109,7 @@ to Option A or B for the full alarm flow.
 In the service worker DevTools Console:
 
 ```js
-chrome.alarms.getAll(alarms => console.log(alarms))
+chrome.alarms.getAll((alarms) => console.log(alarms))
 ```
 
 Expected: an alarm named `due:daily-check` appears in the list with a
@@ -118,7 +120,7 @@ Expected: an alarm named `due:daily-check` appears in the list with a
 Wait until the alarm fires (the time you configured). Expected behavior:
 
 - A Chrome notification appears with the title **"Reviews due"** and a body
-  such as **"You have N review(s) due today."**
+  such as **"You have 1 review due."** or **"You have N reviews due."**
 - The notification uses the CogniPace icon.
 
 If no notification appears within 30 seconds of the scheduled time:
@@ -144,7 +146,9 @@ local storage should match today's ISO date (`YYYY-MM-DD`).
 Verify with:
 
 ```js
-chrome.storage.local.get('cognipace:notification:lastNotifiedDate', d => console.log(d))
+chrome.storage.local.get('cognipace:notification:lastNotifiedDate', (d) =>
+  console.log(d),
+)
 ```
 
 ## 9. Confirm No Notification Appears When No Due Work Exists
@@ -169,7 +173,7 @@ Expected: no notification appears, because `dueCount` is 0.
 4. In the service worker Console:
 
    ```js
-   chrome.alarms.getAll(alarms => console.log(alarms))
+   chrome.alarms.getAll((alarms) => console.log(alarms))
    ```
 
 Expected: `due:daily-check` is **not** in the list.
@@ -203,9 +207,9 @@ npm run check
 
 Key automated coverage:
 
-| Area | File |
-|------|------|
-| Time normalization, dedup, notify, reschedule | `due-notification.test.ts` |
-| Alarm create/clear/dispatch/repair/dispose | `alarm-scheduler.test.ts` |
-| Startup wiring (registerJobs + handleStartup) | `register-handlers.test.ts` |
+| Area                                                         | File                              |
+| ------------------------------------------------------------ | --------------------------------- |
+| Time normalization, dedup, notify, reschedule                | `due-notification.test.ts`        |
+| Alarm create/clear/dispatch/repair/dispose                   | `alarm-scheduler.test.ts`         |
+| Startup wiring (registerJobs + handleStartup)                | `register-handlers.test.ts`       |
 | Architecture boundary (no FSRS imports in notification code) | `architecture-boundaries.test.ts` |

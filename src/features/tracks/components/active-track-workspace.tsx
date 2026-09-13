@@ -135,9 +135,9 @@ function ActiveTrackHeader({
       </div>
       <div className="grid gap-3 border-y border-border py-3 sm:grid-cols-2 sm:gap-0 sm:divide-x sm:divide-border">
         <MetricBlock
-          ariaLabel="Due reviews metric"
+          ariaLabel="Reviews due metric"
           icon={<CalendarClock aria-hidden="true" />}
-          label="Due Reviews"
+          label="Reviews Due"
           value={<span className="tabular-nums">{dueCount}</span>}
         />
         <MetricBlock
