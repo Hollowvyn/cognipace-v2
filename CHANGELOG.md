@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.3.0](https://github.com/Hollowvyn/cognipace-v2/compare/v1.2.0...v1.3.0) (2026-09-13)
+
+
+### Features
+
+* **analytics:** ship locked nine-view dashboard ([#119](https://github.com/Hollowvyn/cognipace-v2/issues/119)) ([7558bd9](https://github.com/Hollowvyn/cognipace-v2/commit/7558bd93bb89096df3b5336137ab680f0351a27d))
+* **overlay:** add compact YouTube Help search ([#150](https://github.com/Hollowvyn/cognipace-v2/issues/150)) ([8166113](https://github.com/Hollowvyn/cognipace-v2/commit/81661132e8837e4d34fc381d933dc9217f7e533d))
+* **sync:** add GitHub token creation helper ([#151](https://github.com/Hollowvyn/cognipace-v2/issues/151)) ([d955609](https://github.com/Hollowvyn/cognipace-v2/commit/d9556090a5f7742da59d6ed148beb17fe2551cd7))
+* **tracks:** count hard recall as completion ([#126](https://github.com/Hollowvyn/cognipace-v2/issues/126)) ([847d35a](https://github.com/Hollowvyn/cognipace-v2/commit/847d35a4fbadcd92727c5f009bb9938bc98405ac))
+
+
+### Bug Fixes
+
+* **analytics:** validate dashboard responses ([#148](https://github.com/Hollowvyn/cognipace-v2/issues/148)) ([44eb46e](https://github.com/Hollowvyn/cognipace-v2/commit/44eb46e3e2fcb0dfe502d075ae59712bb8a6fcff))
+* **build:** bump drizzle-kit to 0.31 for CLI + orm 0.45 compat ([#145](https://github.com/Hollowvyn/cognipace-v2/issues/145)) ([20c3f31](https://github.com/Hollowvyn/cognipace-v2/commit/20c3f31f1aaa357b758cbf72cc160b5c05e45ac5))
+* **build:** restore deterministic validation baseline ([#152](https://github.com/Hollowvyn/cognipace-v2/issues/152)) ([1b6db50](https://github.com/Hollowvyn/cognipace-v2/commit/1b6db500ea8b71994f9aa2828c635ad62e9e4909))
+* **overlay:** contain expanded footer width ([#149](https://github.com/Hollowvyn/cognipace-v2/issues/149)) ([37c90ea](https://github.com/Hollowvyn/cognipace-v2/commit/37c90ea2a7556c2fc4a357d97d11a053c7366611))
+* **tracks:** preserve curriculum order for next problem ([#157](https://github.com/Hollowvyn/cognipace-v2/issues/157)) ([4705bcc](https://github.com/Hollowvyn/cognipace-v2/commit/4705bccf38f2e08e28318f6bcf907ccb887aab22))
+* **tracks:** reveal active group tab ([#153](https://github.com/Hollowvyn/cognipace-v2/issues/153)) ([ec4f81f](https://github.com/Hollowvyn/cognipace-v2/commit/ec4f81faacde63cae3eb7dce57cefae03fc4a856))
+
 ## [1.2.0](https://github.com/Hollowvyn/cognipace-v2/compare/v1.1.0...v1.2.0) (2026-08-21)
 
 
