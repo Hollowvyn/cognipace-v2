@@ -208,8 +208,6 @@ export function deriveNormalizedPracticeState(input: {
   card: FsrsCardSnapshot | null
   attempts: PracticeReviewAttemptSnapshot[]
   now?: Date
-  /** @deprecated Accepted for read-call compatibility; FSRS due dates are authoritative. */
-  targetRetention?: number
 }): NormalizedPracticeState {
   const summary = derivePracticeSummary({
     practice: input.practice,
@@ -264,8 +262,6 @@ export function derivePracticeSummary(input: {
   practice: PracticeStateSnapshot | null
   card: FsrsCardSnapshot | null
   now?: Date | undefined
-  /** @deprecated Accepted for read-call compatibility; FSRS due dates are authoritative. */
-  targetRetention?: number | undefined
 }): PracticeSummary {
   const now = input.now ?? new Date()
   const suspended =

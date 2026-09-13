@@ -362,9 +362,6 @@ export class ProblemsRepository {
         card,
         attempts: [],
         now: options.now,
-        ...(options.targetRetention !== undefined
-          ? { targetRetention: options.targetRetention }
-          : {}),
       })
 
       return {

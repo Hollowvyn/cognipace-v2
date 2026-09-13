@@ -130,7 +130,6 @@ export class PracticeRepository {
       practice,
       card: scheduled.card,
       now: reviewedAt,
-      targetRetention: input.targetRetention,
     })
 
     return {
@@ -242,7 +241,6 @@ export class PracticeRepository {
       practice,
       card: replayedCard,
       now: changedAt,
-      targetRetention: input.targetRetention,
     })
 
     return {
@@ -385,9 +383,6 @@ export class PracticeRepository {
       card,
       attempts: attemptSnapshots,
       ...(options.now !== undefined && { now: options.now }),
-      ...(options.targetRetention !== undefined && {
-        targetRetention: options.targetRetention,
-      }),
     })
 
     return {
