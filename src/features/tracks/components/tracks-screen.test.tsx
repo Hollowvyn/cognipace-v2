@@ -385,24 +385,16 @@ describe('TracksScreen', () => {
   })
 
   it('reveals a restored active group later in the overflowing tab row', async () => {
-    const scrollIntoView = vi.fn()
+    const { mock: scrollIntoView, restore: restoreScrollIntoView } =
+      mockElementScrollIntoView(() => {
+        expect(
+          screen.getByRole('tablist', { name: 'Track groups' }),
+        ).toHaveClass('px-9')
+      })
     const restoreScrollMetrics = mockTrackGroupTabScrollMetrics({
       clientWidth: 320,
       scrollLeft: 0,
       scrollWidth: 960,
-    })
-    const originalScrollIntoView = Object.getOwnPropertyDescriptor(
-      HTMLElement.prototype,
-      'scrollIntoView',
-    )
-    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-      configurable: true,
-      value: scrollIntoView,
-    })
-    scrollIntoView.mockImplementation(() => {
-      expect(screen.getByRole('tablist', { name: 'Track groups' })).toHaveClass(
-        'px-9',
-      )
     })
 
     try {
@@ -423,22 +415,15 @@ describe('TracksScreen', () => {
       expect(scrollIntoView.mock.instances[0]).toBe(activeTab)
       expect(activeTab).toHaveClass('scroll-mx-14')
     } finally {
-      restoreHTMLElementProperty('scrollIntoView', originalScrollIntoView)
+      restoreScrollIntoView()
       restoreScrollMetrics.restore()
     }
   })
 
   it('reveals the newly selected group after the workspace is invalidated', async () => {
     const user = userEvent.setup()
-    const scrollIntoView = vi.fn()
-    const originalScrollIntoView = Object.getOwnPropertyDescriptor(
-      HTMLElement.prototype,
-      'scrollIntoView',
-    )
-    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-      configurable: true,
-      value: scrollIntoView,
-    })
+    const { mock: scrollIntoView, restore: restoreScrollIntoView } =
+      mockElementScrollIntoView()
 
     try {
       const initialWorkspace = createFourGroupWorkspace(
@@ -447,17 +432,15 @@ describe('TracksScreen', () => {
       const updatedWorkspace = createFourGroupWorkspace(
         'leetcode-75:dynamic-programming',
       )
+      let currentWorkspace = initialWorkspace
+
       vi.mocked(sendMessage).mockImplementation((method) => {
         if (method === 'tracks.getWorkspace') {
-          return Promise.resolve(
-            vi
-              .mocked(sendMessage)
-              .mock.calls.filter(
-                ([calledMethod]) => calledMethod === 'tracks.getWorkspace',
-              ).length === 1
-              ? initialWorkspace
-              : updatedWorkspace,
-          )
+          return Promise.resolve(currentWorkspace)
+        }
+
+        if (method === 'tracks.setActiveGroup') {
+          currentWorkspace = updatedWorkspace
         }
 
         return Promise.resolve(null)
@@ -493,7 +476,7 @@ describe('TracksScreen', () => {
         }),
       )
     } finally {
-      restoreHTMLElementProperty('scrollIntoView', originalScrollIntoView)
+      restoreScrollIntoView()
     }
   })
 
@@ -1163,6 +1146,24 @@ function renderOtherTracksAccordion(
   const { wrapper } = createQueryTestHarness()
 
   return render(createOtherTracksAccordionElement(tracks), { wrapper })
+}
+
+function mockElementScrollIntoView(implementation?: () => void) {
+  const descriptor = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    'scrollIntoView',
+  )
+  const mock = vi.fn(implementation)
+
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: mock,
+  })
+
+  return {
+    mock,
+    restore: () => restoreHTMLElementProperty('scrollIntoView', descriptor),
+  }
 }
 
 function createOtherTracksAccordionElement(
