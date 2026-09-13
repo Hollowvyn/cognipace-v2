@@ -3,6 +3,8 @@ import type {
   DashboardAppShellData,
 } from '../api/app-shell-contracts'
 
+import { getQueueItemStatusPresentation } from './queue-item-status-presentation'
+
 export interface DashboardOverviewMetricView {
   label: string
   value: string
@@ -66,6 +68,9 @@ function createPrimaryView(
   const queueItem = data.queue.items.find(
     (item) => item.problem.problemSlug === problem.problemSlug,
   )
+  const queueItemStatus = queueItem
+    ? getQueueItemStatusPresentation(queueItem.reason)
+    : null
 
   return {
     kind: 'problem',
@@ -73,10 +78,7 @@ function createPrimaryView(
     title: problem.title,
     detail: data.recommendation.detail,
     actionLabel: 'Open Problem',
-    categoryLabel: readCategoryLabel(
-      data.recommendation.category,
-      queueItem?.state.isOverdue ?? false,
-    ),
+    categoryLabel: queueItemStatus?.label ?? 'Review',
     dueAt: data.recommendation.dueAt,
     isOverdue: queueItem?.state.isOverdue ?? false,
     problem,
@@ -111,20 +113,4 @@ function createMetricViews(
       caption: 'Goal-qualified days.',
     },
   ]
-}
-
-function readCategoryLabel(
-  category: DashboardAppShellData['recommendation']['category'],
-  isOverdue = false,
-) {
-  switch (category) {
-    case 'due':
-      return isOverdue ? 'Overdue' : 'Due today'
-    case 'new':
-      return 'New'
-    case 'reinforcement':
-      return 'Extra Practice'
-    case null:
-      return 'Review'
-  }
 }

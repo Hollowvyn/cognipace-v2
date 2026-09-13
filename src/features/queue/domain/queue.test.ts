@@ -109,55 +109,20 @@ describe('buildTodayQueue', () => {
       'new-a',
       'new-b',
     ])
+    expect(queue.items.map((item) => item.reason)).toEqual([
+      'overdue',
+      'overdue',
+      'due-today',
+      'due-today',
+      'reinforcement',
+      'reinforcement',
+      'new-problem',
+      'new-problem',
+    ])
     expect(queue.dueCount).toBe(4)
     expect(queue.dueToday).toBe(4)
     expect(queue.reinforcementCount).toBe(2)
     expect(queue.newCount).toBe(2)
-  })
-
-  it('fills the review lanes before new problems', () => {
-    const queue = buildTodayQueue(
-      [
-        candidate({
-          slug: 'reinforcement',
-          card: reviewCard({
-            dueAt: new Date('2026-01-10T00:00:00.000Z'),
-            lastReviewAt: new Date('2026-01-01T08:00:00.000Z'),
-            stability: 30,
-          }),
-          practice: practice({ lastRating: 'good' }),
-        }),
-        candidate({
-          slug: 'unstarted',
-        }),
-        candidate({
-          slug: 'due',
-          card: reviewCard({
-            dueAt: new Date('2025-12-25T00:00:00.000Z'),
-            lastReviewAt: new Date('2025-12-01T00:00:00.000Z'),
-            stability: 1,
-          }),
-          practice: practice({ lastRating: 'again' }),
-        }),
-      ],
-      {
-        ...defaultUserSettings,
-        practice: {
-          ...defaultUserSettings.practice,
-          dailyGoal: 3,
-        },
-      },
-      generatedAt,
-    )
-
-    expect(queue.dueCount).toBe(1)
-    expect(queue.newCount).toBe(1)
-    expect(queue.reinforcementCount).toBe(1)
-    expect(queue.items.map((item) => item.category)).toEqual([
-      'due',
-      'reinforcement',
-      'new',
-    ])
   })
 
   it('caps by daily goal after due items first', () => {
@@ -202,6 +167,10 @@ describe('buildTodayQueue', () => {
           slug: 'premium',
           isPremium: true,
         }),
+        candidate({
+          slug: 'mastered',
+          practice: practice({ status: 'mastered' }),
+        }),
       ],
       {
         ...defaultUserSettings,
@@ -214,23 +183,8 @@ describe('buildTodayQueue', () => {
     )
 
     expect(queue.items).toEqual([])
-    expect(queue.excludedCount).toBe(2)
-  })
-
-  it('excludes mastered candidates from daily queue items', () => {
-    const queue = buildTodayQueue(
-      [
-        candidate({
-          slug: 'mastered',
-          practice: practice({ status: 'mastered' }),
-        }),
-      ],
-      defaultUserSettings,
-      generatedAt,
-    )
-
-    expect(queue.items).toEqual([])
-    expect(queue.excludedCount).toBe(1)
+    expect(queue.excludedCount).toBe(3)
+    expect(queue.topRecommendation).toBeNull()
   })
 
   it('orders future review reinforcement by lowest current retrievability', () => {
@@ -373,34 +327,6 @@ describe('buildTodayQueue', () => {
     expect(orderings[2]).toEqual(orderings[0])
   })
 
-  it('counts excluded candidates without adding them to items', () => {
-    const queue = buildTodayQueue(
-      [
-        candidate({
-          slug: 'suspended',
-          practice: practice({ isSuspended: true }),
-        }),
-        candidate({
-          slug: 'mastered',
-          practice: practice({ status: 'mastered' }),
-        }),
-        candidate({ slug: 'premium', isPremium: true }),
-      ],
-      {
-        ...defaultUserSettings,
-        practice: {
-          ...defaultUserSettings.practice,
-          problemFilters: { skipPremium: true },
-        },
-      },
-      generatedAt,
-    )
-
-    expect(queue.excludedCount).toBe(3)
-    expect(queue.items).toEqual([])
-    expect(queue.topRecommendation).toBeNull()
-  })
-
   it('uses stable title then slug ordering within the new lane', () => {
     const queue = buildTodayQueue(
       [
@@ -428,74 +354,6 @@ describe('buildTodayQueue', () => {
     expect(queue.topRecommendation?.reason).toBe('new-problem')
   })
 
-  it('fills remaining daily slots with new items after due items', () => {
-    const queue = buildTodayQueue(
-      [
-        candidate({ slug: 'unstarted' }),
-        candidate({
-          slug: 'due',
-          card: reviewCard({
-            dueAt: new Date('2025-12-25T00:00:00.000Z'),
-            lastReviewAt: new Date('2025-12-01T00:00:00.000Z'),
-            stability: 1,
-          }),
-          practice: practice({ lastRating: 'again' }),
-        }),
-      ],
-      defaultUserSettings,
-      generatedAt,
-    )
-
-    expect(queue.newCount).toBe(1)
-    expect(queue.items.map((i) => i.category)).toEqual(['due', 'new'])
-    expect(queue.items[0]?.reason).toBe('overdue')
-    expect(queue.topRecommendation?.reason).toBe('overdue')
-  })
-
-  it('fills remaining daily slots with new items after reinforcement items', () => {
-    const queue = buildTodayQueue(
-      [
-        candidate({ slug: 'unstarted' }),
-        candidate({
-          slug: 'started',
-          card: reviewCard({
-            dueAt: new Date('2026-01-10T00:00:00.000Z'),
-            lastReviewAt: new Date('2026-01-01T08:00:00.000Z'),
-            stability: 30,
-          }),
-          practice: practice({ lastRating: 'good' }),
-        }),
-      ],
-      defaultUserSettings,
-      generatedAt,
-    )
-
-    expect(queue.newCount).toBe(1)
-    expect(queue.items.map((i) => i.category)).toEqual(['reinforcement', 'new'])
-    expect(queue.items[0]?.reason).toBe('reinforcement')
-  })
-
-  it('sets reason to due-today for a due item that is not overdue', () => {
-    const queue = buildTodayQueue(
-      [
-        candidate({
-          slug: 'due-today',
-          card: reviewCard({
-            dueAt: generatedAt,
-            lastReviewAt: new Date('2025-12-01T00:00:00.000Z'),
-            stability: 1,
-          }),
-          practice: practice({ lastRating: 'good' }),
-        }),
-      ],
-      defaultUserSettings,
-      generatedAt,
-    )
-
-    expect(queue.items[0]?.reason).toBe('due-today')
-    expect(queue.topRecommendation?.reason).toBe('due-today')
-  })
-
   it('exposes shared summary aliases for due, new, load, and recommendation reason', () => {
     const queue = buildTodayQueue(
       [
@@ -518,6 +376,7 @@ describe('buildTodayQueue', () => {
     expect(queue.newAvailable).toBe(queue.newCount)
     expect(queue.queueLoad).toBe(queue.items.length)
     expect(queue.recommendationReason).toBe(queue.topRecommendation?.reason)
+    expect(queue.topRecommendation?.reason).toBe('due-today')
   })
 
   it('returns null topRecommendation for an empty queue', () => {

@@ -1,9 +1,3 @@
-export interface PracticeScheduleTiming {
-  isDue: boolean
-  isOverdue: boolean
-  overdueDays: number
-}
-
 /**
  * Derives presentation timing from the persisted FSRS due date.
  *
@@ -15,7 +9,7 @@ export function derivePracticeScheduleTiming(input: {
   isStarted: boolean
   isSuspended: boolean
   now: Date
-}): PracticeScheduleTiming {
+}) {
   if (
     input.isSuspended ||
     !input.isStarted ||

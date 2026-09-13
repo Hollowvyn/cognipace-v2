@@ -32,7 +32,3 @@ export {
   type PracticeProgressSummary,
   type PracticeProgressSummaryInput,
 } from './practice-progress'
-export {
-  derivePracticeScheduleTiming,
-  type PracticeScheduleTiming,
-} from './practice-schedule'

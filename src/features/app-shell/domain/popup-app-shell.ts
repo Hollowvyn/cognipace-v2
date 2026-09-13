@@ -8,6 +8,8 @@ import {
   type TrackTargetStatusTone,
 } from '@/features/tracks/domain'
 
+import { getQueueItemStatusPresentation } from './queue-item-status-presentation'
+
 export type PopupRecommendationReason = {
   label: string
   tone: 'danger' | 'warning' | 'info' | 'success'
@@ -120,7 +122,7 @@ function createPopupRecommendationView(
     title: problem ? problem.title : 'Queue Clear',
     emptyCopy: problem ? null : readEmptyRecommendationCopy(),
     problem,
-    reason: queueItem ? readRecommendationReason(queueItem.reason) : null,
+    reason: queueItem ? getQueueItemStatusPresentation(queueItem.reason) : null,
     difficulty: problem?.difficulty ?? null,
   }
 }
@@ -164,19 +166,6 @@ function createPopupStudyModeView(data: PopupAppShellData): PopupStudyModeView {
 
 function readEmptyRecommendationCopy() {
   return 'No review pressure right now. Your review queue is clear.'
-}
-
-function readRecommendationReason(reason: AppShellQueueItem['reason']) {
-  switch (reason) {
-    case 'overdue':
-      return { label: 'Overdue', tone: 'danger' as const }
-    case 'due-today':
-      return { label: 'Due today', tone: 'warning' as const }
-    case 'new-problem':
-      return { label: 'New', tone: 'info' as const }
-    case 'reinforcement':
-      return { label: 'Extra Practice', tone: 'success' as const }
-  }
 }
 
 function readActiveTrackTitle(data: PopupAppShellData) {

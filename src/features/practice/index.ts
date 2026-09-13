@@ -47,7 +47,6 @@ export {
 export {
   buildPracticeProgressSummary,
   deriveNormalizedPracticeState,
-  derivePracticeScheduleTiming,
   normalizeReviewLogFields,
   practiceStatuses,
   reviewModes,
@@ -61,7 +60,6 @@ export {
   type PracticeProgressSummary,
   type PracticeProgressSummaryInput,
   type PracticeReviewAttemptSnapshot,
-  type PracticeScheduleTiming,
   type PracticeReadOptions,
   type PracticeStateSnapshot,
   type PracticeStatus,

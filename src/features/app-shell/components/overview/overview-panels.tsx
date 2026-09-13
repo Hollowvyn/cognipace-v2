@@ -13,6 +13,7 @@ import type {
   DashboardOverviewPrimaryView,
   DashboardOverviewView,
 } from '../../domain/dashboard-overview'
+import { getQueueItemStatusPresentation } from '../../domain/queue-item-status-presentation'
 
 export function OverviewPrimaryPanel({
   libraryAction,
@@ -358,23 +359,11 @@ function PanelKicker({ children }: { children: ReactNode }) {
 function formatQueueItemState(
   item: DashboardOverviewView['queuePreview'][number],
 ) {
-  if (item.state.isOverdue) {
-    return item.state.dueAt
-      ? `Overdue · ${formatDateLabel(item.state.dueAt)}`
-      : 'Overdue'
-  }
+  const { label } = getQueueItemStatusPresentation(item.reason)
 
-  if (item.state.isDue) {
-    return item.state.dueAt
-      ? `Due today · ${formatDateLabel(item.state.dueAt)}`
-      : 'Due today'
-  }
-
-  if (item.category === 'new') {
-    return 'New'
-  }
-
-  return 'Extra Practice'
+  return item.category === 'due' && item.state.dueAt
+    ? `${label} · ${formatDateLabel(item.state.dueAt)}`
+    : label
 }
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {

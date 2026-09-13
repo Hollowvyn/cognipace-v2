@@ -56,7 +56,7 @@ export function buildTodayQueue(
   const overdueItems = sortByDueDate(partitions.overdue)
   const dueTodayItems = sortByDueDate(partitions.dueToday)
   const reinforcementItems = sortByRetrievability(partitions.reinforcement)
-  const newItems = sortByProblemIdentity(partitions.new)
+  const newItems = [...partitions.new].sort(compareNewProblemIdentity)
   const allItems = [
     ...overdueItems,
     ...dueTodayItems,
@@ -174,10 +174,9 @@ function sortByDueDate(items: QueueItem[]) {
 
 function sortByRetrievability(items: QueueItem[]) {
   return [...items].sort((left, right) => {
-    const retrievabilityComparison = compareNullableNumbers(
-      left.state.retrievability,
-      right.state.retrievability,
-    )
+    const retrievabilityComparison =
+      (left.state.retrievability ?? Number.MAX_SAFE_INTEGER) -
+      (right.state.retrievability ?? Number.MAX_SAFE_INTEGER)
 
     if (retrievabilityComparison !== 0) {
       return retrievabilityComparison
@@ -189,10 +188,6 @@ function sortByRetrievability(items: QueueItem[]) {
       ? dueComparison
       : compareProblemIdentity(left, right)
   })
-}
-
-function sortByProblemIdentity(items: QueueItem[]) {
-  return [...items].sort(compareNewProblemIdentity)
 }
 
 function compareProblemIdentity(left: QueueItem, right: QueueItem) {
@@ -209,13 +204,6 @@ function compareNewProblemIdentity(left: QueueItem, right: QueueItem) {
   return titleComparison !== 0
     ? titleComparison
     : left.problemSlug.localeCompare(right.problemSlug)
-}
-
-function compareNullableNumbers(left: number | null, right: number | null) {
-  if (left === null && right === null) return 0
-  if (left === null) return 1
-  if (right === null) return -1
-  return left - right
 }
 
 function compareDates(left: Date | null, right: Date | null) {
