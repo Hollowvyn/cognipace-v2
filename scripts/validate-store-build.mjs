@@ -18,7 +18,7 @@ async function readJson(filePath) {
 
 function iconPath(value) {
   return typeof value === 'string' && value.trim()
-    ? value.replace(/^[/\\]+/, '')
+    ? value.replace(/^[/\\]+/, '').replaceAll('\\', '/')
     : null
 }
 
@@ -84,20 +84,22 @@ export async function validateStoreBuild({ rootDir = process.cwd() } = {}) {
       if (iconMap && typeof iconMap === 'object') {
         for (const value of Object.values(iconMap)) {
           if (isAbsoluteIconPath(value)) {
-            const normalized = value.replace(/^[/\\]+/, '')
+            const normalized = iconPath(value)
             if (!invalidIconPaths.has(normalized)) {
               errors.push(`icon path must be relative to build root: ${value}`)
               invalidIconPaths.add(normalized)
             }
             continue
           }
+          const originalPath =
+            typeof value === 'string' ? value.replace(/^[/\\]+/, '') : null
           const normalized = iconPath(value)
           if (!normalized) continue
           const resolved = path.resolve(buildRoot, normalized)
           const relative = path.relative(buildRoot, resolved)
           if (relative.startsWith('..') || path.isAbsolute(relative)) {
             if (!invalidIconPaths.has(normalized)) {
-              errors.push(`icon path escapes build root: ${normalized}`)
+              errors.push(`icon path escapes build root: ${originalPath}`)
               invalidIconPaths.add(normalized)
             }
             continue

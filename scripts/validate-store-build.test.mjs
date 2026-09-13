@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, rm, unlink, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, it } from 'vitest'
@@ -199,6 +199,53 @@ describe('validateStoreBuild', () => {
     })
   })
 
+  it('rejects nested traversal using Windows separators', async () => {
+    const rootDir = await createFixture({
+      manifest: {
+        manifest_version: 3,
+        name: 'CogniPace',
+        description: 'Local-first LeetCode review and study pacing.',
+        version: '1.3.0',
+        icons: { ...completeIcons, 16: String.raw`icons\..\..\package.json` },
+        action: { default_icon: { ...completeIcons } },
+      },
+      files: Object.values(completeIcons),
+    })
+
+    await assert.rejects(validateStoreBuild({ rootDir }), (error) => {
+      assert.ok(
+        error.message.includes(
+          String.raw`icon path escapes build root: icons\..\..\package.json`,
+        ),
+      )
+      assert.doesNotMatch(error.message, /icon file is missing/)
+      return true
+    })
+  })
+
+  it('rejects empty-string icon entries', async () => {
+    const rootDir = await createFixture({
+      manifest: {
+        manifest_version: 3,
+        name: 'CogniPace',
+        description: 'Local-first LeetCode review and study pacing.',
+        version: '1.3.0',
+        icons: { ...completeIcons, 16: '' },
+        action: { default_icon: { ...completeIcons, 16: '' } },
+      },
+      files: Object.values(completeIcons),
+    })
+
+    await assert.rejects(validateStoreBuild({ rootDir }), (error) => {
+      assert.match(error.message, /manifest\.icons is missing required size 16/)
+      assert.match(
+        error.message,
+        /manifest\.action\.default_icon is missing required size 16/,
+      )
+      return true
+    })
+  })
+
   it('rejects absolute filesystem icon paths while allowing WXT root resources', async () => {
     const rootDir = await createFixture({
       manifest: {
@@ -249,6 +296,26 @@ describe('validateStoreBuild', () => {
     await assert.rejects(validateStoreBuild({ rootDir }), (error) => {
       assert.match(error.message, /manifest\.json/)
       assert.match(error.message, /could not be read/)
+      return true
+    })
+  })
+
+  it('reports an unreadable package manifest', async () => {
+    const rootDir = await createFixture({
+      manifest: {
+        manifest_version: 3,
+        name: 'CogniPace',
+        description: 'Local-first LeetCode review and study pacing.',
+        version: '1.3.0',
+        icons: completeIcons,
+        action: { default_icon: { ...completeIcons } },
+      },
+      files: Object.values(completeIcons),
+    })
+    await unlink(path.join(rootDir, 'package.json'))
+
+    await assert.rejects(validateStoreBuild({ rootDir }), (error) => {
+      assert.match(error.message, /package\.json could not be read/)
       return true
     })
   })
