@@ -146,7 +146,7 @@ describe('tracks service', () => {
           percent: 0,
         },
         nextProblem: {
-          slug: 'valid-parentheses',
+          slug: 'two-sum',
         },
       },
       dueCount: 1,
@@ -275,35 +275,7 @@ describe('tracks service', () => {
     expect(workspace.activeTrack?.nextProblem?.slug).toBe('valid-parentheses')
   })
 
-  it('chooses next problem from incomplete active rows by due, non-suspended, then null', async () => {
-    const dueHandle = await createTestDb({
-      now: new Date('2026-01-01T00:00:00.000Z'),
-    })
-
-    await makeLeetCodeActive(dueHandle.db)
-    await addActiveTrackMembership(dueHandle.db, {
-      groupId: 'leetcode-75:stack',
-      groupTitle: 'Stack',
-      problemSlug: 'valid-parentheses',
-      groupPosition: 2,
-    })
-    await makeProblemDue(dueHandle.db, 'valid-parentheses', {
-      now: new Date('2026-01-10T12:00:00.000Z'),
-    })
-
-    await expect(
-      getWorkspace(dueHandle.db, {
-        surface: 'dashboard',
-        at: '2026-01-10T12:00:00.000Z',
-      }),
-    ).resolves.toMatchObject({
-      activeTrack: {
-        nextProblem: {
-          slug: 'valid-parentheses',
-        },
-      },
-    })
-
+  it('skips suspended incomplete problems and returns no next problem when the track is complete', async () => {
     const unscheduledHandle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
@@ -352,7 +324,7 @@ describe('tracks service', () => {
     })
   })
 
-  it('uses the workspace next-problem algorithm for direct active-track reads', async () => {
+  it('uses the ordered workspace next-problem algorithm for direct active-track reads', async () => {
     const handle = await createTestDb({
       now: new Date('2026-01-01T00:00:00.000Z'),
     })
@@ -373,7 +345,7 @@ describe('tracks service', () => {
       new Date('2026-01-10T12:00:00.000Z'),
     )
 
-    expect(activeTrack?.nextProblem?.slug).toBe('valid-parentheses')
+    expect(activeTrack?.nextProblem?.slug).toBe('two-sum')
   })
 
   it('returns create defaults and searchable Library problem rows for a new track', async () => {

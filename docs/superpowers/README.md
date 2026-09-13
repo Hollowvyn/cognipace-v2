@@ -12,6 +12,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
+- [`specs/2026-09-13-ordered-track-next-design.md`](./specs/2026-09-13-ordered-track-next-design.md): approved design for keeping the active track's Next target in explicit group/problem order while leaving FSRS due-review urgency in the separate review loop.
 - [`specs/2026-09-13-active-track-group-auto-reveal-design.md`](./specs/2026-09-13-active-track-group-auto-reveal-design.md): approved design for automatically revealing the restored or newly selected active group tab with nearest-edge alignment while preserving manual group-strip scrolling.
 - [`specs/2026-09-12-dependency-ci-modernization-design.md`](./specs/2026-09-12-dependency-ci-modernization-design.md): approved staged design for restoring a deterministic Node/npm and CI baseline, updating npm and GitHub Actions dependencies in risk-sized batches, isolating major migrations, and adding low-noise Dependabot automation.
 - [`specs/2026-09-12-github-sync-token-helper-design.md`](./specs/2026-09-12-github-sync-token-helper-design.md): approved design for a compact GitHub Sync token helper that opens a fine-grained token form with a local-date name, no expiration, and only Gists write access prefilled.
