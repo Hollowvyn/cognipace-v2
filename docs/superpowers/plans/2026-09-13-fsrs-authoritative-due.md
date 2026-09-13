@@ -1080,9 +1080,53 @@ npm run build
 Expected: PASS. Run Prettier on every changed file and run a full-range Git
 whitespace check before pushing the PR branch.
 
+### Task 10: Close Remaining Track And Notification Copy Gaps
+
+**Files:**
+
+- Modify: `src/features/tracks/components/active-track-workspace.tsx`
+- Test: `src/features/tracks/components/tracks-screen.test.tsx`
+- Modify: `docs/test-plans/notification-alarm-e2e.md`
+
+- [ ] **Step 1: Write failing Track aggregate-label tests**
+
+Require the active Track workspace aggregate to expose `Reviews Due` and the
+accessible name `Reviews due metric`. Assert that the legacy `Due Reviews`
+copy is absent.
+
+- [ ] **Step 2: Run the focused Track test and verify it fails**
+
+```sh
+npm test -- src/features/tracks/components/tracks-screen.test.tsx --run
+```
+
+Expected: FAIL on the legacy Track aggregate label.
+
+- [ ] **Step 3: Align the Track metric and notification smoke semantics**
+
+Change only the Track aggregate copy and accessible name; keep its existing
+overdue-plus-due-today count unchanged. Update the notification smoke guide so
+scheduled reviews qualify when they are due on or before the current local
+date, `Due today` qualifies for the entire local day, and a backdated card is
+expected to display `Overdue`.
+
+- [ ] **Step 4: Run focused validation and commit**
+
+```sh
+npm test -- src/features/tracks/components/tracks-screen.test.tsx --run
+npx prettier --check src/features/tracks/components/active-track-workspace.tsx src/features/tracks/components/tracks-screen.test.tsx docs/test-plans/notification-alarm-e2e.md
+```
+
+Expected: PASS.
+
+```sh
+git add src/features/tracks/components/active-track-workspace.tsx src/features/tracks/components/tracks-screen.test.tsx docs/test-plans/notification-alarm-e2e.md
+git commit -m "fix(tracks): align reviews due metric"
+```
+
 ## Self-Review Results
 
-- Spec coverage: every approved decision maps to Tasks 1-9.
+- Spec coverage: every approved decision maps to Tasks 1-10.
 - Scope: no FSRS version upgrade, schema migration, bulk reschedule, or history
   replay refactor is included.
 - Type consistency: `isDue` remains the normalized due-on-or-before-today flag;
