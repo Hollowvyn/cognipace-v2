@@ -20,7 +20,102 @@ const baseProblem = {
 }
 
 describe('buildTodayQueue', () => {
-  it('fills due and reinforcement categories while ignoring unstarted problems', () => {
+  it('uses the FSRS due waterfall before future reinforcement and new work', () => {
+    const now = new Date('2026-09-13T12:00:00.000Z')
+    const queue = buildTodayQueue(
+      [
+        candidate({
+          slug: 'overdue-latest',
+          card: reviewCard({
+            dueAt: new Date('2026-09-10T12:00:00.000Z'),
+            lastReviewAt: new Date('2026-08-01T12:00:00.000Z'),
+          }),
+          practice: practice({ lastRating: 'good' }),
+          now,
+        }),
+        candidate({
+          slug: 'new-b',
+          now,
+        }),
+        candidate({
+          slug: 'future-high-retrievability',
+          card: reviewCard({
+            dueAt: new Date('2026-09-20T12:00:00.000Z'),
+            lastReviewAt: new Date('2026-09-12T12:00:00.000Z'),
+            stability: 30,
+          }),
+          practice: practice({ lastRating: 'good' }),
+          now,
+        }),
+        candidate({
+          slug: 'due-today-late',
+          card: reviewCard({
+            dueAt: new Date('2026-09-13T11:00:00.000Z'),
+            lastReviewAt: new Date('2026-09-01T12:00:00.000Z'),
+          }),
+          practice: practice({ lastRating: 'good' }),
+          now,
+        }),
+        candidate({
+          slug: 'overdue-oldest',
+          card: reviewCard({
+            dueAt: new Date('2026-09-02T12:00:00.000Z'),
+            lastReviewAt: new Date('2026-08-01T12:00:00.000Z'),
+          }),
+          practice: practice({ lastRating: 'good' }),
+          now,
+        }),
+        candidate({
+          slug: 'future-low-retrievability',
+          card: reviewCard({
+            dueAt: new Date('2026-09-20T12:00:00.000Z'),
+            lastReviewAt: new Date('2026-08-01T12:00:00.000Z'),
+            stability: 10,
+          }),
+          practice: practice({ lastRating: 'good' }),
+          now,
+        }),
+        candidate({
+          slug: 'due-today-early',
+          card: reviewCard({
+            dueAt: new Date('2026-09-13T08:00:00.000Z'),
+            lastReviewAt: new Date('2026-09-01T12:00:00.000Z'),
+          }),
+          practice: practice({ lastRating: 'good' }),
+          now,
+        }),
+        candidate({
+          slug: 'new-a',
+          now,
+        }),
+      ],
+      {
+        ...defaultUserSettings,
+        practice: {
+          ...defaultUserSettings.practice,
+          dailyGoal: 8,
+        },
+      },
+      now,
+    )
+
+    expect(queue.items.map((item) => item.problemSlug)).toEqual([
+      'overdue-oldest',
+      'overdue-latest',
+      'due-today-early',
+      'due-today-late',
+      'future-low-retrievability',
+      'future-high-retrievability',
+      'new-a',
+      'new-b',
+    ])
+    expect(queue.dueCount).toBe(4)
+    expect(queue.dueToday).toBe(4)
+    expect(queue.reinforcementCount).toBe(2)
+    expect(queue.newCount).toBe(2)
+  })
+
+  it('fills the review lanes before new problems', () => {
     const queue = buildTodayQueue(
       [
         candidate({
@@ -61,6 +156,7 @@ describe('buildTodayQueue', () => {
     expect(queue.items.map((item) => item.category)).toEqual([
       'due',
       'reinforcement',
+      'new',
     ])
   })
 
@@ -137,28 +233,24 @@ describe('buildTodayQueue', () => {
     expect(queue.excludedCount).toBe(1)
   })
 
-  it('honors weakest-first ordering for review items', () => {
+  it('orders future review reinforcement by lowest current retrievability', () => {
     const queue = buildTodayQueue(
       [
         candidate({
-          slug: 'low-lapse',
+          slug: 'high-retrievability',
           card: reviewCard({
-            lapses: 1,
-            difficulty: 8,
-            dueAt: new Date('2025-12-24T00:00:00.000Z'),
-            lastReviewAt: new Date('2025-12-01T00:00:00.000Z'),
-            stability: 1,
+            dueAt: new Date('2026-01-10T00:00:00.000Z'),
+            lastReviewAt: new Date('2025-12-31T00:00:00.000Z'),
+            stability: 30,
           }),
-          practice: practice({ lastRating: 'again' }),
+          practice: practice({ lastRating: 'good' }),
         }),
         candidate({
-          slug: 'high-lapse',
+          slug: 'low-retrievability',
           card: reviewCard({
-            lapses: 3,
-            difficulty: 4,
-            dueAt: new Date('2025-12-25T00:00:00.000Z'),
+            dueAt: new Date('2026-01-10T00:00:00.000Z'),
             lastReviewAt: new Date('2025-12-01T00:00:00.000Z'),
-            stability: 1,
+            stability: 10,
           }),
           practice: practice({ lastRating: 'again' }),
         }),
@@ -167,23 +259,131 @@ describe('buildTodayQueue', () => {
         ...defaultUserSettings,
         review: {
           ...defaultUserSettings.review,
-          order: 'weakestFirst',
         },
       },
       generatedAt,
     )
 
     expect(queue.items.map((item) => item.problemSlug)).toEqual([
-      'high-lapse',
-      'low-lapse',
+      'low-retrievability',
+      'high-retrievability',
     ])
+  })
+
+  it('puts unavailable retrievability after finite reinforcement values', () => {
+    const queue = buildTodayQueue(
+      [
+        candidate({
+          slug: 'finite-retrievability',
+          card: reviewCard({
+            dueAt: new Date('2026-01-10T00:00:00.000Z'),
+            lastReviewAt: new Date('2025-12-01T00:00:00.000Z'),
+            stability: 10,
+          }),
+          practice: practice({ lastRating: 'good' }),
+        }),
+        candidate({
+          slug: 'unavailable-retrievability',
+          card: reviewCard({
+            dueAt: new Date('2026-01-10T00:00:00.000Z'),
+            lastReviewAt: null,
+          }),
+          practice: practice({ lastRating: 'good' }),
+        }),
+      ],
+      defaultUserSettings,
+      generatedAt,
+    )
+
+    expect(queue.items.map((item) => item.problemSlug)).toEqual([
+      'finite-retrievability',
+      'unavailable-retrievability',
+    ])
+  })
+
+  it('breaks reinforcement ties by due date before problem identity', () => {
+    const queue = buildTodayQueue(
+      [
+        candidate({
+          slug: 'later-due',
+          card: reviewCard({
+            dueAt: new Date('2026-01-11T00:00:00.000Z'),
+            lastReviewAt: new Date('2025-12-01T00:00:00.000Z'),
+            stability: 10,
+          }),
+          practice: practice({ lastRating: 'good' }),
+        }),
+        candidate({
+          slug: 'earlier-due',
+          card: reviewCard({
+            dueAt: new Date('2026-01-10T00:00:00.000Z'),
+            lastReviewAt: new Date('2025-12-01T00:00:00.000Z'),
+            stability: 10,
+          }),
+          practice: practice({ lastRating: 'good' }),
+        }),
+      ],
+      defaultUserSettings,
+      generatedAt,
+    )
+
+    expect(queue.items.map((item) => item.problemSlug)).toEqual([
+      'earlier-due',
+      'later-due',
+    ])
+  })
+
+  it('ignores the persisted review order setting', () => {
+    const candidates = [
+      candidate({
+        slug: 'due-late',
+        card: reviewCard({
+          dueAt: new Date('2026-01-01T14:00:00.000Z'),
+          lastReviewAt: new Date('2025-12-01T00:00:00.000Z'),
+        }),
+        practice: practice({ lastRating: 'good' }),
+      }),
+      candidate({
+        slug: 'due-early',
+        card: reviewCard({
+          dueAt: new Date('2026-01-01T08:00:00.000Z'),
+          lastReviewAt: new Date('2025-12-01T00:00:00.000Z'),
+        }),
+        practice: practice({ lastRating: 'good' }),
+      }),
+      candidate({ slug: 'new-b' }),
+      candidate({ slug: 'new-a' }),
+    ]
+
+    const orderings = (
+      ['dueFirst', 'weakestFirst', 'mixByDifficulty'] as const
+    ).map((order) =>
+      buildTodayQueue(
+        candidates,
+        {
+          ...defaultUserSettings,
+          review: { ...defaultUserSettings.review, order },
+        },
+        generatedAt,
+      ).items.map((item) => item.problemSlug),
+    )
+
+    expect(orderings[0]).toEqual(['due-early', 'due-late', 'new-a', 'new-b'])
+    expect(orderings[1]).toEqual(orderings[0])
+    expect(orderings[2]).toEqual(orderings[0])
   })
 
   it('counts excluded candidates without adding them to items', () => {
     const queue = buildTodayQueue(
       [
-        candidate({ slug: 'suspended', practice: practice({ isSuspended: true }) }),
-        candidate({ slug: 'mastered', practice: practice({ status: 'mastered' }) }),
+        candidate({
+          slug: 'suspended',
+          practice: practice({ isSuspended: true }),
+        }),
+        candidate({
+          slug: 'mastered',
+          practice: practice({ status: 'mastered' }),
+        }),
         candidate({ slug: 'premium', isPremium: true }),
       ],
       {
@@ -201,12 +401,9 @@ describe('buildTodayQueue', () => {
     expect(queue.topRecommendation).toBeNull()
   })
 
-  it('uses new items as fallback only when due and reinforcement are empty', () => {
+  it('uses stable slug ordering within the new lane', () => {
     const queue = buildTodayQueue(
-      [
-        candidate({ slug: 'unstarted-a' }),
-        candidate({ slug: 'unstarted-b' }),
-      ],
+      [candidate({ slug: 'unstarted-a' }), candidate({ slug: 'unstarted-b' })],
       {
         ...defaultUserSettings,
         practice: {
@@ -224,7 +421,7 @@ describe('buildTodayQueue', () => {
     expect(queue.topRecommendation?.reason).toBe('new-problem')
   })
 
-  it('does not include new items in items[] when due items are present', () => {
+  it('fills remaining daily slots with new items after due items', () => {
     const queue = buildTodayQueue(
       [
         candidate({ slug: 'unstarted' }),
@@ -243,12 +440,12 @@ describe('buildTodayQueue', () => {
     )
 
     expect(queue.newCount).toBe(1)
-    expect(queue.items.map((i) => i.category)).toEqual(['due'])
+    expect(queue.items.map((i) => i.category)).toEqual(['due', 'new'])
     expect(queue.items[0]?.reason).toBe('overdue')
     expect(queue.topRecommendation?.reason).toBe('overdue')
   })
 
-  it('does not include new items in items[] when reinforcement items are present', () => {
+  it('fills remaining daily slots with new items after reinforcement items', () => {
     const queue = buildTodayQueue(
       [
         candidate({ slug: 'unstarted' }),
@@ -267,15 +464,15 @@ describe('buildTodayQueue', () => {
     )
 
     expect(queue.newCount).toBe(1)
-    expect(queue.items.map((i) => i.category)).toEqual(['reinforcement'])
+    expect(queue.items.map((i) => i.category)).toEqual(['reinforcement', 'new'])
     expect(queue.items[0]?.reason).toBe('reinforcement')
   })
 
-  it('sets reason to due-now for a due item that is not overdue', () => {
+  it('sets reason to due-today for a due item that is not overdue', () => {
     const queue = buildTodayQueue(
       [
         candidate({
-          slug: 'due-now',
+          slug: 'due-today',
           card: reviewCard({
             dueAt: generatedAt,
             lastReviewAt: new Date('2025-12-01T00:00:00.000Z'),
@@ -288,15 +485,15 @@ describe('buildTodayQueue', () => {
       generatedAt,
     )
 
-    expect(queue.items[0]?.reason).toBe('due-now')
-    expect(queue.topRecommendation?.reason).toBe('due-now')
+    expect(queue.items[0]?.reason).toBe('due-today')
+    expect(queue.topRecommendation?.reason).toBe('due-today')
   })
 
   it('exposes shared summary aliases for due, new, load, and recommendation reason', () => {
     const queue = buildTodayQueue(
       [
         candidate({
-          slug: 'due-now',
+          slug: 'due-today',
           card: reviewCard({
             dueAt: generatedAt,
             lastReviewAt: new Date('2025-12-01T00:00:00.000Z'),
@@ -339,6 +536,7 @@ function candidate(input: {
   isPremium?: boolean
   practice?: PracticeStateSnapshot | null
   card?: FsrsCardSnapshot | null
+  now?: Date
 }): QueueCandidate {
   const problemSlug = input.slug
   const cardId = `${problemSlug}:default`
@@ -356,7 +554,7 @@ function candidate(input: {
       practice: input.practice ?? null,
       card: input.card ?? null,
       attempts: [],
-      now: generatedAt,
+      now: input.now ?? generatedAt,
     }),
   }
 }

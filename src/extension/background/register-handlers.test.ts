@@ -2526,7 +2526,7 @@ const todayQueue = todayQueueSchema.parse({
   queueLoad: 3,
   reinforcementCount: 0,
   excludedCount: 0,
-  recommendationReason: 'due-now',
+  recommendationReason: 'due-today',
   items: [],
   topRecommendation: null,
 })

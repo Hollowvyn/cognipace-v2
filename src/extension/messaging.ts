@@ -225,7 +225,7 @@ export const queueItemSchema = z.object({
   difficulty: problemDifficultySchema,
   isPremium: z.boolean(),
   state: normalizedPracticeStateSchema,
-  reason: z.enum(['overdue', 'due-now', 'reinforcement', 'new-problem']),
+  reason: z.enum(['overdue', 'due-today', 'reinforcement', 'new-problem']),
 })
 
 export const todayQueueSchema = z.object({
@@ -238,7 +238,7 @@ export const todayQueueSchema = z.object({
   reinforcementCount: z.number().int().min(0),
   excludedCount: z.number().int().min(0),
   recommendationReason: z
-    .enum(['overdue', 'due-now', 'reinforcement', 'new-problem'])
+    .enum(['overdue', 'due-today', 'reinforcement', 'new-problem'])
     .nullable(),
   items: z.array(queueItemSchema),
   topRecommendation: queueItemSchema.nullable(),

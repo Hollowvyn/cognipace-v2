@@ -214,7 +214,7 @@ function createDeps(): DevSmokeDeps {
         dueToday: 1,
         newAvailable: 2,
         queueLoad: 3,
-        recommendationReason: 'due-now',
+        recommendationReason: 'due-today',
       }),
     ),
     readGenAiConfig: vi.fn(() =>
