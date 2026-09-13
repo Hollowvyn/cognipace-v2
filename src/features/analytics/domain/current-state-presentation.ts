@@ -237,9 +237,11 @@ function buildMemorySignalCandidate(
   const belowRecall =
     Number.isFinite(input.retrievability) &&
     input.retrievability < options.targetRetention
-  const overdue =
-    getAnalyticsDateKey(input.dueAt, options.timeZone) <
-    getAnalyticsDateKey(options.asOf, options.timeZone)
+  const overdue = isOverdueOnCalendarDate(
+    input.dueAt,
+    options.asOf,
+    options.timeZone,
+  )
   const lowDurability =
     input.targetDurationDays !== null &&
     Number.isFinite(input.targetDurationDays) &&
@@ -291,8 +293,7 @@ function hasMemorySignal(
   return (
     (Number.isFinite(input.retrievability) &&
       input.retrievability < options.targetRetention) ||
-    getAnalyticsDateKey(input.dueAt, options.timeZone) <
-      getAnalyticsDateKey(options.asOf, options.timeZone) ||
+    isOverdueOnCalendarDate(input.dueAt, options.asOf, options.timeZone) ||
     (input.targetDurationDays !== null &&
       Number.isFinite(input.targetDurationDays) &&
       input.targetDurationDays < 7)
@@ -354,6 +355,16 @@ function crossedLocalDays(start: Date, end: Date, timeZone: string): number {
         Date.parse(`${startKey}T00:00:00.000Z`)) /
         86_400_000,
     ),
+  )
+}
+
+function isOverdueOnCalendarDate(
+  dueAt: Date,
+  asOf: Date,
+  timeZone: string,
+): boolean {
+  return (
+    getAnalyticsDateKey(dueAt, timeZone) < getAnalyticsDateKey(asOf, timeZone)
   )
 }
 
