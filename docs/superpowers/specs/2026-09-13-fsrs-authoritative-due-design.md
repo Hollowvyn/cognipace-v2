@@ -164,6 +164,9 @@ and provides truthful target-retention copy.
 ## Contract Changes
 
 - `RecommendationReason` replaces `due-now` with `due-today`.
+- Serialized app-shell queue items expose their queue-owned recommendation
+  reason so popup presentation does not re-derive timing from category or
+  retrievability.
 - `ProblemLibraryStatus` adds `overdue`.
 - Existing normalized practice fields remain, but their definitions become:
   `isDue` means due on or before the current local calendar date;

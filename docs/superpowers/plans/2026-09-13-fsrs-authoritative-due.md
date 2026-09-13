@@ -50,6 +50,9 @@
   Due today and use browser-local date formatting.
 - Modify `src/features/app-shell/domain/popup-app-shell.ts`: resolve one popup
   recommendation badge from the queue-owned recommendation reason.
+- Modify `src/features/app-shell/api/app-shell-contracts.ts` and
+  `src/features/app-shell/server/app-shell-service.ts`: serialize and validate
+  the existing queue-owned recommendation reason for app-shell consumers.
 - Modify `src/features/app-shell/domain/app-shell-metrics.ts`: label the
   overdue-plus-due-today aggregate as Reviews Due.
 - Modify `src/app/popup/components/recommendation-card.tsx`: render only the
@@ -786,12 +789,16 @@ git commit -m "docs(fsrs): define authoritative due semantics"
 **Files:**
 
 - Modify: `src/features/app-shell/domain/popup-app-shell.ts`
+- Modify: `src/features/app-shell/api/app-shell-contracts.ts`
+- Modify: `src/features/app-shell/server/app-shell-service.ts`
 - Modify: `src/features/app-shell/domain/app-shell-metrics.ts`
 - Modify: `src/app/popup/components/recommendation-card.tsx`
 - Modify: `src/app/popup/popup-shell.test.tsx`
 - Modify: `src/features/app-shell/hooks/use-popup-app-shell-controller.ts`
 - Test: `src/features/app-shell/hooks/use-popup-app-shell-controller.test.tsx`
 - Test: `src/features/app-shell/server/app-shell-service.test.ts`
+- Test: `src/features/app-shell/components/overview-screen.test.tsx`
+- Modify: `src/testing/app-shell-fixtures.ts`
 - Modify: `src/extension/background/due-notification.ts`
 - Test: `src/extension/background/due-notification.test.ts`
 - Modify: `src/extension/background/dev-smoke-service.ts`
@@ -872,7 +879,7 @@ Change expected notification messages to:
 ```
 
 Change the queue development-smoke expectation from `${count} due today` to
-`${count} reviews due`.
+`${count} review${count === 1 ? '' : 's'} due`.
 
 - [ ] **Step 7: Run background tests and verify the expected failures**
 
@@ -892,7 +899,7 @@ rendered strings:
 ```
 
 ```typescript
-`Queue loaded: ${queue.dueToday} reviews due, ...`
+`Queue loaded: ${queue.dueToday} review${queue.dueToday === 1 ? '' : 's'} due, ...`
 ```
 
 - [ ] **Step 9: Run focused tests and verify they pass**
