@@ -1,7 +1,9 @@
 # FSRS-Authoritative Due And Queue Semantics
 
-**Date:** 2026-09-13  
-**Status:** Approved in product discussion  
+**Date:** 2026-09-13
+
+**Status:** Approved in product discussion
+
 **Scope:** Practice read state, Today Queue, Library status, Overview labels, and
 the Review settings surface
 
