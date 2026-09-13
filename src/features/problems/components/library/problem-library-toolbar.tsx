@@ -11,6 +11,7 @@ import {
   hasProblemLibraryFilters,
   type ProblemLibraryFilters,
 } from './problem-library-filtering'
+import { formatProblemLibraryStatus } from './problem-library-formatting'
 
 export function ProblemLibraryToolbar({
   filters,
@@ -162,13 +163,9 @@ const difficultyOptions = [
   ['unknown', 'Unknown'],
 ] as const
 
-const statusOptions = [
-  ['not-started', 'New'],
-  ['overdue', 'Overdue'],
-  ['due', 'Due today'],
-  ['scheduled', 'Scheduled'],
-  ['suspended', 'Suspended'],
-] as const
+const statusOptions = (
+  ['not-started', 'overdue', 'due', 'scheduled', 'suspended'] as const
+).map((status) => [status, formatProblemLibraryStatus(status)] as const)
 
 function ProblemLibraryFacetFilter<TValue extends string>({
   allLabel,

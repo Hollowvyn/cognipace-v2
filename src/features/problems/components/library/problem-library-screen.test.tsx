@@ -100,8 +100,11 @@ describe('ProblemLibraryScreen', () => {
     expect(getProblemRow('01 Matrix')).toBeVisible()
     expect(queryProblemRow('Binary Search')).not.toBeInTheDocument()
 
+    await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
     await selectLibraryFacetOption(user, 'Status', 'Due today')
-    expect(screen.getByText('No problems match these filters.')).toBeVisible()
+    expect(getProblemRow('Two Sum')).toBeVisible()
+    expect(queryProblemRow('Binary Search')).not.toBeInTheDocument()
+    expect(queryProblemRow('01 Matrix')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
     await selectLibraryFacetOption(user, 'Topics', 'Array')
