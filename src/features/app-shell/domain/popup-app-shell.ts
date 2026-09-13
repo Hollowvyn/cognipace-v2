@@ -107,9 +107,13 @@ function createPopupRecommendationView(
 ): PopupRecommendationView {
   const problem = data.recommendation.problem
   const queueItem = problem
-    ? data.queue.items.find(
+    ? (data.queue.items.find(
         (item) => item.problem.problemSlug === problem.problemSlug,
-      )
+      ) ??
+      data.popup.queuePreview.find(
+        (item) => item.problem.problemSlug === problem.problemSlug,
+      ) ??
+      null)
     : null
 
   return {

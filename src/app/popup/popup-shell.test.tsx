@@ -243,6 +243,30 @@ describe('PopupShell', () => {
     expect(within(recommendation).queryByText('Overdue')).toBeNull()
   })
 
+  it('uses the popup preview reason when the aggregate queue omits the recommendation', () => {
+    const previewOnlyData = {
+      ...shellData,
+      queue: { ...shellData.queue, items: [] },
+      popup: {
+        queuePreview: [
+          {
+            ...shellData.queue.items[0]!,
+            reason: 'overdue' as const,
+          },
+        ],
+      },
+    }
+
+    render(
+      <PopupShell controller={createController({ data: previewOnlyData })} />,
+    )
+
+    const recommendation = screen.getByRole('region', {
+      name: 'Valid Parentheses',
+    })
+    expect(within(recommendation).getAllByText('Overdue')).toHaveLength(1)
+  })
+
   it('renders the freestyle card without active-track affordances in freestyle mode', () => {
     render(
       <PopupShell
