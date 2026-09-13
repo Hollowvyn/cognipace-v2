@@ -70,7 +70,6 @@ export function OverviewPrimaryPanel({
             {primary.categoryLabel}
           </Badge>
           <ProblemDifficultyBadge difficulty={primary.problem.difficulty} />
-          {primary.isOverdue ? <Badge tone="danger">Overdue</Badge> : null}
         </div>
       </div>
       <div>

@@ -73,7 +73,10 @@ function createPrimaryView(
     title: problem.title,
     detail: data.recommendation.detail,
     actionLabel: 'Open Problem',
-    categoryLabel: readCategoryLabel(data.recommendation.category),
+    categoryLabel: readCategoryLabel(
+      data.recommendation.category,
+      queueItem?.state.isOverdue ?? false,
+    ),
     dueAt: data.recommendation.dueAt,
     isOverdue: queueItem?.state.isOverdue ?? false,
     problem,
@@ -112,10 +115,11 @@ function createMetricViews(
 
 function readCategoryLabel(
   category: DashboardAppShellData['recommendation']['category'],
+  isOverdue = false,
 ) {
   switch (category) {
     case 'due':
-      return 'Due today'
+      return isOverdue ? 'Overdue' : 'Due today'
     case 'new':
       return 'New'
     case 'reinforcement':

@@ -30,8 +30,8 @@ describe('OverviewScreen', () => {
     ).toBeVisible()
     const primaryPanel = screen.getByRole('region', { name: 'Review Now' })
 
-    expect(within(primaryPanel).getByText('Due today')).toBeVisible()
     expect(within(primaryPanel).getByText('Overdue')).toBeVisible()
+    expect(within(primaryPanel).queryByText('Due today')).toBeNull()
     expect(within(primaryPanel).getByText('Easy')).toBeVisible()
     expect(
       within(primaryPanel).getByRole('link', { name: 'Open Problem' }),
