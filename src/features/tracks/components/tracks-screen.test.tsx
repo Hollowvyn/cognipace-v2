@@ -400,9 +400,9 @@ describe('TracksScreen', () => {
       value: scrollIntoView,
     })
     scrollIntoView.mockImplementation(() => {
-      expect(
-        screen.getByRole('tablist', { name: 'Track groups' }),
-      ).toHaveClass('px-9')
+      expect(screen.getByRole('tablist', { name: 'Track groups' })).toHaveClass(
+        'px-9',
+      )
     })
 
     try {
