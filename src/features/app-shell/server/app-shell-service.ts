@@ -172,10 +172,7 @@ async function getOverlayPayload(
   }
 
   const [practice, queue, activeTrack] = await Promise.all([
-    getPracticeDetails(db, context.problem.slug, {
-      now,
-      targetRetention: settings.review.targetRetention,
-    }),
+    getPracticeDetails(db, context.problem.slug, { now }),
     getTodayQueue(db, now),
     getActiveTrack(db, now),
   ])

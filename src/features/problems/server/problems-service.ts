@@ -1,4 +1,3 @@
-import { getSettings } from '@/features/settings/server/settings-service'
 import {
   parseLeetCodeProblemInput,
   parseLeetCodeProblemLocation,
@@ -69,9 +68,7 @@ export async function getProblemLibrary(
   db: Db,
   request: ProblemsGetLibraryRequest,
 ) {
-  const settings = await getSettings(db)
   const library = await createProblemsRepository(db).getLibrary({
-    targetRetention: settings.review.targetRetention,
     ...(request.at ? { now: new Date(request.at) } : {}),
   })
 
@@ -83,13 +80,10 @@ export async function getProblemLibraryRowsBySlug(
   problemSlugs: readonly string[],
   options: ProblemLibraryReadOptions = {},
 ) {
-  const settings = await getSettings(db)
   const rows = await createProblemsRepository(db).getLibraryRowsBySlug(
     problemSlugs,
     {
       now: options.now,
-      targetRetention:
-        options.targetRetention ?? settings.review.targetRetention,
     },
   )
 

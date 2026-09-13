@@ -83,7 +83,6 @@ export interface ResetPracticeScheduleInput {
 export interface UpdatePracticeLogInput {
   problemSlug: ProblemSlug
   log: PracticeLogFields
-  targetRetention?: number | undefined
 }
 
 export interface ReviewResult {
@@ -101,7 +100,6 @@ export interface ReviewResult {
 export interface PracticeReadOptions {
   cardKind?: FsrsCardKind | undefined
   now?: Date | undefined
-  targetRetention?: number | undefined
 }
 
 export interface PracticeStateSnapshot {

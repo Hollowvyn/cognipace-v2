@@ -357,10 +357,7 @@ export class PracticeRepository {
       })
     })
 
-    return this.getPracticeDetails(input.problemSlug, {
-      now,
-      targetRetention: input.targetRetention,
-    })
+    return this.getPracticeDetails(input.problemSlug, { now })
   }
 
   async getPracticeDetails(
