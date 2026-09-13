@@ -9,7 +9,6 @@ import {
   createUserSettingsPatch,
   defaultUserSettings,
   hasUserSettingsChanges,
-  type ReviewOrder,
   type StudyMode,
   type ThemeMode,
   type UserSettings,
@@ -48,7 +47,6 @@ export interface SettingsDraftActions {
   setRemindersEnabled: (value: boolean) => void
   setRemindersTime: (value: string) => void
   setRequireSolveTime: (value: boolean) => void
-  setReviewOrder: (value: ReviewOrder) => void
   setSkipPremium: (value: boolean) => void
   setStudyMode: (value: StudyMode) => void
   setStrictTiming: (value: boolean) => void
@@ -93,7 +91,6 @@ type SettingsDraftAction =
   | { type: 'set-reminders-enabled'; value: boolean }
   | { type: 'set-reminders-time'; value: string }
   | { type: 'set-require-solve-time'; value: boolean }
-  | { type: 'set-review-order'; value: ReviewOrder }
   | { type: 'set-skip-premium'; value: boolean }
   | { type: 'set-status'; status: SettingsDraftStatus }
   | { type: 'set-study-mode'; value: StudyMode }
@@ -128,9 +125,10 @@ export function useSettingsDraft(): SettingsDraftController {
   const fieldErrors = createFieldErrors(state.numberInputs)
   const hasTimeError = Boolean(
     state.draft?.reminders.daily.enabled &&
-    state.draft?.reminders.daily.time === ''
+    state.draft?.reminders.daily.time === '',
   )
-  const hasValidationErrors = Object.values(fieldErrors).some(Boolean) || hasTimeError
+  const hasValidationErrors =
+    Object.values(fieldErrors).some(Boolean) || hasTimeError
   const hasChanges = hasLocalChanges(state)
   const hasSettingsChanges = hasPersistableSettingsChanges(state)
   const isMutatingSettings = updateSettings.isPending
@@ -278,9 +276,6 @@ export function useSettingsDraft(): SettingsDraftController {
         dispatch({ type: 'set-reminders-enabled', value }),
       setRemindersTime: (value) =>
         dispatch({ type: 'set-reminders-time', value }),
-      setReviewOrder: (value) => {
-        dispatch({ type: 'set-review-order', value })
-      },
       setSkipPremium: (value) => {
         dispatch({ type: 'set-skip-premium', value })
       },
@@ -388,14 +383,6 @@ function settingsDraftReducer(
           ...draft.assessment,
           requireSolveTime: action.value,
           strictTiming: action.value ? draft.assessment.strictTiming : false,
-        },
-      }))
-    case 'set-review-order':
-      return updateDraft(state, (draft) => ({
-        ...draft,
-        review: {
-          ...draft.review,
-          order: action.value,
         },
       }))
     case 'set-skip-premium':

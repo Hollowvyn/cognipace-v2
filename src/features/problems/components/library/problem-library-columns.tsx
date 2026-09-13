@@ -226,9 +226,10 @@ const difficultySortOrder = {
 
 const statusSortOrder = {
   'not-started': 0,
-  due: 1,
-  scheduled: 2,
-  suspended: 3,
+  overdue: 1,
+  due: 2,
+  scheduled: 3,
+  suspended: 4,
 } as const
 
 const problemDifficultySorting: SortingFn<ProblemLibraryRow> = (rowA, rowB) =>

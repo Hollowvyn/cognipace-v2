@@ -15,7 +15,7 @@ describe('createDashboardOverviewView', () => {
       kind: 'problem',
       kicker: 'Review Now',
       title: 'Add Binary',
-      categoryLabel: 'Due',
+      categoryLabel: 'Due today',
       isOverdue: true,
       actionLabel: 'Open Problem',
     })

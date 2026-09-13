@@ -6,6 +6,8 @@ export function formatProblemLibraryStatus(status: ProblemLibraryStatus) {
   switch (status) {
     case 'not-started':
       return 'Not started'
+    case 'overdue':
+      return 'Overdue'
     case 'due':
       return 'Due'
     case 'scheduled':
@@ -19,6 +21,8 @@ export function getProblemLibraryStatusTone(
   status: ProblemLibraryStatus,
 ): Tone {
   switch (status) {
+    case 'overdue':
+      return 'danger'
     case 'due':
       return 'warning'
     case 'scheduled':

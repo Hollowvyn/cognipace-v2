@@ -367,8 +367,8 @@ function formatQueueItemState(
 
   if (item.state.isDue) {
     return item.state.dueAt
-      ? `Due · ${formatDateLabel(item.state.dueAt)}`
-      : 'Due'
+      ? `Due today · ${formatDateLabel(item.state.dueAt)}`
+      : 'Due today'
   }
 
   if (item.category === 'new') {
@@ -378,12 +378,9 @@ function formatQueueItemState(
   return 'Extra Practice'
 }
 
-// ⚡ Bolt: Cache DateTimeFormat at module level to prevent excessive
-// ~4.9s/10k instantiations cost during queue item rendering
-const dateFormatter = new Intl.DateTimeFormat('en-US', {
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
   day: 'numeric',
   month: 'short',
-  timeZone: 'UTC',
   year: 'numeric',
 })
 

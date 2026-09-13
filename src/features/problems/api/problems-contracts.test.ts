@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   problemLibraryOptionsSchema,
+  problemLibraryStatusSchema,
   problemTopicSchema,
   problemsBulkUpdateProblemsRequestSchema,
   problemsCreateProblemRequestSchema,
@@ -9,6 +10,10 @@ import {
 } from './problems-contracts'
 
 describe('problems contracts', () => {
+  it('accepts overdue as a Library status', () => {
+    expect(problemLibraryStatusSchema.parse('overdue')).toBe('overdue')
+  })
+
   it('accepts Library create payloads without track writes', () => {
     expect(
       problemsCreateProblemRequestSchema.parse({

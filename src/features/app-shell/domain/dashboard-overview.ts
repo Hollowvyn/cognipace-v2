@@ -115,7 +115,7 @@ function readCategoryLabel(
 ) {
   switch (category) {
     case 'due':
-      return 'Due'
+      return 'Due today'
     case 'new':
       return 'New'
     case 'reinforcement':

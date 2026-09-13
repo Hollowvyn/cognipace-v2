@@ -549,6 +549,10 @@ function deriveProblemLibraryStatus(
     return 'suspended'
   }
 
+  if (state.isOverdue) {
+    return 'overdue'
+  }
+
   if (state.isDue) {
     return 'due'
   }
@@ -599,7 +603,9 @@ function summarizeLibraryRows(rows: readonly ProblemLibraryRow[]) {
   return {
     totalCount: rows.length,
     filteredCount: rows.length,
-    dueCount: rows.filter((row) => row.status === 'due').length,
+    dueCount: rows.filter(
+      (row) => row.status === 'overdue' || row.status === 'due',
+    ).length,
     suspendedCount: rows.filter((row) => row.status === 'suspended').length,
   }
 }

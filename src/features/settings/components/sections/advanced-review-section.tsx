@@ -1,4 +1,4 @@
-import type { ReviewOrder, UserSettings } from '../../domain'
+import type { UserSettings } from '../../domain'
 import type {
   SettingsDraftActions,
   SettingsFieldErrors,
@@ -7,28 +7,15 @@ import type {
 import {
   NumberControl,
   RetentionSlider,
-  SegmentedControl,
   SwitchControl,
 } from '../settings-controls'
 import { readSettingsRowLabelId, SettingsRow } from '../settings-row'
 import { SettingsSection } from '../settings-section'
 
-const reviewOrderOptions: ReadonlyArray<{
-  label: string
-  value: ReviewOrder
-}> = [
-  { label: 'Due first', value: 'dueFirst' },
-  { label: 'Weakest first', value: 'weakestFirst' },
-  { label: 'Mix by difficulty', value: 'mixByDifficulty' },
-]
-
 interface AdvancedReviewSectionProps {
   actions: Pick<
     SettingsDraftActions,
-    | 'setNumberInput'
-    | 'setReviewOrder'
-    | 'setStrictTiming'
-    | 'setTargetRetention'
+    'setNumberInput' | 'setStrictTiming' | 'setTargetRetention'
   >
   draft: UserSettings
   fieldErrors: SettingsFieldErrors
@@ -43,9 +30,7 @@ export function AdvancedReviewSection({
 }: AdvancedReviewSectionProps) {
   const isStrictTimingDisabled = !draft.assessment.requireSolveTime
   const targetRetentionHint =
-    'Cards become due when recall drops below this threshold.'
-  const reviewOrderHint =
-    'Due first prioritizes scheduled reviews; weakest first prioritizes lower retention.'
+    'FSRS applies this target when scheduling your next review. Existing due dates stay unchanged.'
   const strictTimingHint =
     'Requires solve time; over-time accepted solutions are saved as Again.'
   const timingTargetsHint =
@@ -64,21 +49,6 @@ export function AdvancedReviewSection({
           id="target-retention"
           onChange={actions.setTargetRetention}
           value={draft.review.targetRetention}
-        />
-      </SettingsRow>
-      <SettingsRow
-        controlClassName="w-full md:max-w-[34rem]"
-        hint={reviewOrderHint}
-        id="review-order-row"
-        label="Review order"
-      >
-        <SegmentedControl
-          ariaLabelledBy={readSettingsRowLabelId('review-order-row')}
-          label="Review order"
-          name="review-order"
-          onChange={actions.setReviewOrder}
-          options={reviewOrderOptions}
-          value={draft.review.order}
         />
       </SettingsRow>
       <SettingsRow

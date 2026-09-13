@@ -19,6 +19,7 @@ import { createProxyCallback } from '@/platform/db/proxy'
 import * as schema from '@/platform/db/schema'
 import {
   companies,
+  fsrsCards,
   problemCompanies,
   problemPractice,
   problemTopics,
@@ -509,6 +510,43 @@ describe('ProblemsRepository library data', () => {
       0.9,
     )
     expect(rowAfterRetentionChange[0]?.state.retrievability).toBeLessThan(0.97)
+  })
+
+  it('separates overdue and due-today Library statuses from the persisted due date', async () => {
+    const handle = await createTestDb({
+      now: new Date('2026-09-13T00:00:00.000Z'),
+    })
+
+    await saveSolvedReview(handle.db, 'two-sum')
+    await saveSolvedReview(handle.db, 'valid-parentheses')
+
+    await handle.db
+      .update(fsrsCards)
+      .set({ dueAt: new Date('2026-09-02T12:00:00.000Z').getTime() })
+      .where(eq(fsrsCards.problemSlug, 'two-sum'))
+    await handle.db
+      .update(fsrsCards)
+      .set({ dueAt: new Date('2026-09-13T12:00:00.000Z').getTime() })
+      .where(eq(fsrsCards.problemSlug, 'valid-parentheses'))
+
+    const library = await getProblemLibrary(handle.db, {
+      surface: 'dashboard',
+      at: '2026-09-13T18:00:00.000Z',
+    })
+
+    expect(
+      library.rows.find((row) => row.problem.slug === 'two-sum'),
+    ).toMatchObject({
+      status: 'overdue',
+      state: { isDue: true, isOverdue: true },
+    })
+    expect(
+      library.rows.find((row) => row.problem.slug === 'valid-parentheses'),
+    ).toMatchObject({
+      status: 'due',
+      state: { isDue: true, isOverdue: false },
+    })
+    expect(library.summary.dueCount).toBe(2)
   })
 
   it('deduplicates duplicate input slugs before querying', async () => {

@@ -30,7 +30,7 @@ describe('OverviewScreen', () => {
     ).toBeVisible()
     const primaryPanel = screen.getByRole('region', { name: 'Review Now' })
 
-    expect(within(primaryPanel).getByText('Due')).toBeVisible()
+    expect(within(primaryPanel).getByText('Due today')).toBeVisible()
     expect(within(primaryPanel).getByText('Overdue')).toBeVisible()
     expect(within(primaryPanel).getByText('Easy')).toBeVisible()
     expect(
@@ -139,6 +139,116 @@ describe('OverviewScreen', () => {
     expect(
       within(todayQueue).getByRole('link', { name: 'Open Jump Game IV' }),
     ).toHaveAttribute('href', 'https://leetcode.com/problems/jump-game-iv/')
+  })
+
+  it('labels queue preview items by their FSRS timing state', async () => {
+    const overdue = createAppShellQueueItem({
+      problem: {
+        problemSlug: 'overdue-problem',
+        title: 'Overdue Problem',
+        difficulty: 'easy',
+        isPremium: false,
+      },
+      state: {
+        ...createAppShellQueueItem().state,
+        problemSlug: 'overdue-problem',
+        cardId: 'overdue-problem:default',
+        dueAt: '2026-05-18T00:00:00.000Z',
+        isDue: true,
+        isOverdue: true,
+      },
+    })
+    const dueToday = createAppShellQueueItem({
+      problem: {
+        problemSlug: 'due-today-problem',
+        title: 'Due Today Problem',
+        difficulty: 'medium',
+        isPremium: false,
+      },
+      state: {
+        ...createAppShellQueueItem().state,
+        problemSlug: 'due-today-problem',
+        cardId: 'due-today-problem:default',
+        dueAt: '2026-05-25T20:00:00.000Z',
+        isDue: true,
+        isOverdue: false,
+      },
+    })
+    const reinforcement = createAppShellQueueItem({
+      category: 'reinforcement',
+      problem: {
+        problemSlug: 'reinforcement-problem',
+        title: 'Reinforcement Problem',
+        difficulty: 'hard',
+        isPremium: false,
+      },
+      state: {
+        ...createAppShellQueueItem().state,
+        problemSlug: 'reinforcement-problem',
+        cardId: 'reinforcement-problem:default',
+        dueAt: '2026-06-01T00:00:00.000Z',
+        isDue: false,
+        isOverdue: false,
+      },
+    })
+    const newProblem = createAppShellQueueItem({
+      category: 'new',
+      problem: {
+        problemSlug: 'new-problem',
+        title: 'New Problem',
+        difficulty: 'easy',
+        isPremium: false,
+      },
+      state: {
+        ...createAppShellQueueItem().state,
+        problemSlug: 'new-problem',
+        cardId: 'new-problem:default',
+        phase: 'new',
+        status: 'new',
+        isStarted: false,
+        isDue: false,
+        isOverdue: false,
+        dueAt: null,
+      },
+    })
+
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      createDashboardAppShellData({
+        recommendation: {
+          title: overdue.problem.title,
+          detail: 'Review overdue problem.',
+          category: 'due',
+          problem: overdue.problem,
+          dueAt: overdue.state.dueAt,
+        },
+        queue: {
+          dueCount: 2,
+          newCount: 1,
+          reinforcementCount: 1,
+          items: [overdue, dueToday, reinforcement, newProblem],
+        },
+        overview: {
+          practiceProgress: createDashboardAppShellData().practiceProgress,
+          queuePreview: [overdue, dueToday, reinforcement, newProblem],
+        },
+        dashboard: {
+          queuePreview: [overdue, dueToday, reinforcement, newProblem],
+        },
+      }),
+    )
+
+    renderOverviewScreen()
+
+    const todayQueue = await screen.findByRole('region', {
+      name: 'Today Queue',
+    })
+
+    expect(within(todayQueue).getByText('Overdue · May 18, 2026')).toBeVisible()
+    expect(
+      within(todayQueue).getByText('Due today · May 25, 2026'),
+    ).toBeVisible()
+    expect(within(todayQueue).getByText('Extra Practice')).toBeVisible()
+    expect(within(todayQueue).getByText('New')).toBeVisible()
   })
 
   it('renders disabled free-practice track guidance without a path CTA', async () => {
