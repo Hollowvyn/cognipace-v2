@@ -87,15 +87,15 @@ describe('validateStoreBuild', () => {
         description: 'Wrong description',
         version: '2.0.0',
         icons: {
-          16: '/icons/missing.png',
-          32: '/icons/missing.png',
-          48: '/icons/missing.png',
+          16: 'icons/missing.png',
+          32: 'icons/missing.png',
+          48: 'icons/missing.png',
         },
         action: {
           default_icon: {
-            16: '/icons/missing.png',
-            32: '/icons/missing.png',
-            128: '/icons/missing.png',
+            16: 'icons/missing.png',
+            32: 'icons/missing.png',
+            128: 'icons/missing.png',
           },
         },
       },
@@ -169,6 +169,28 @@ describe('validateStoreBuild', () => {
         /icon path escapes build root: \.\.\/\.\.\/package\.json/,
       )
       assert.doesNotMatch(error.message, /icon file is missing/)
+      return true
+    })
+  })
+
+  it('rejects absolute filesystem icon paths while allowing WXT root resources', async () => {
+    const rootDir = await createFixture({
+      manifest: {
+        manifest_version: 3,
+        name: 'CogniPace',
+        description: 'Local-first LeetCode review and study pacing.',
+        version: '1.3.0',
+        icons: { ...completeIcons, 16: '/tmp/accepted.png' },
+        action: { default_icon: { ...completeIcons, 16: '/icon-16.png' } },
+      },
+      files: [...Object.values(completeIcons), 'icon-16.png'],
+    })
+
+    await assert.rejects(validateStoreBuild({ rootDir }), (error) => {
+      assert.match(
+        error.message,
+        /icon path must be relative to build root: \/tmp\/accepted\.png/,
+      )
       return true
     })
   })

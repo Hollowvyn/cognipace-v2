@@ -22,6 +22,14 @@ function iconPath(value) {
     : null
 }
 
+function isAbsoluteIconPath(value) {
+  return (
+    typeof value === 'string' &&
+    (path.posix.isAbsolute(value) || path.win32.isAbsolute(value)) &&
+    !/^\/icon-[^/\\]+$/.test(value)
+  )
+}
+
 export async function validateStoreBuild({ rootDir = process.cwd() } = {}) {
   const buildRoot = path.join(rootDir, '.output', 'chrome-mv3')
   const manifestPath = path.join(buildRoot, 'manifest.json')
@@ -75,6 +83,14 @@ export async function validateStoreBuild({ rootDir = process.cwd() } = {}) {
       }
       if (iconMap && typeof iconMap === 'object') {
         for (const value of Object.values(iconMap)) {
+          if (isAbsoluteIconPath(value)) {
+            const normalized = value.replace(/^[/\\]+/, '')
+            if (!invalidIconPaths.has(normalized)) {
+              errors.push(`icon path must be relative to build root: ${value}`)
+              invalidIconPaths.add(normalized)
+            }
+            continue
+          }
           const normalized = iconPath(value)
           if (!normalized) continue
           const resolved = path.resolve(buildRoot, normalized)
