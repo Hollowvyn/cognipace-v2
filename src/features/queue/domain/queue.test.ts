@@ -401,9 +401,12 @@ describe('buildTodayQueue', () => {
     expect(queue.topRecommendation).toBeNull()
   })
 
-  it('uses stable slug ordering within the new lane', () => {
+  it('uses stable title then slug ordering within the new lane', () => {
     const queue = buildTodayQueue(
-      [candidate({ slug: 'unstarted-a' }), candidate({ slug: 'unstarted-b' })],
+      [
+        candidate({ slug: 'unstarted-a', title: 'Beta Problem' }),
+        candidate({ slug: 'unstarted-b', title: 'Alpha Problem' }),
+      ],
       {
         ...defaultUserSettings,
         practice: {
@@ -417,7 +420,11 @@ describe('buildTodayQueue', () => {
     expect(queue.newCount).toBe(2)
     expect(queue.items.map((item) => item.category)).toEqual(['new', 'new'])
     expect(queue.items[0]?.reason).toBe('new-problem')
-    expect(queue.topRecommendation?.problemSlug).toBe('unstarted-a')
+    expect(queue.items.map((item) => item.problemSlug)).toEqual([
+      'unstarted-b',
+      'unstarted-a',
+    ])
+    expect(queue.topRecommendation?.problemSlug).toBe('unstarted-b')
     expect(queue.topRecommendation?.reason).toBe('new-problem')
   })
 
@@ -533,6 +540,7 @@ describe('QueueCandidate track independence', () => {
 
 function candidate(input: {
   slug: string
+  title?: string
   isPremium?: boolean
   practice?: PracticeStateSnapshot | null
   card?: FsrsCardSnapshot | null
@@ -545,7 +553,7 @@ function candidate(input: {
     problem: {
       ...baseProblem,
       slug: problemSlug,
-      title: titleFromSlug(problemSlug),
+      title: input.title ?? titleFromSlug(problemSlug),
       isPremium: input.isPremium ?? false,
     },
     state: deriveNormalizedPracticeState({

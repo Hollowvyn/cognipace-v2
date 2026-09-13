@@ -192,7 +192,7 @@ function sortByRetrievability(items: QueueItem[]) {
 }
 
 function sortByProblemIdentity(items: QueueItem[]) {
-  return [...items].sort(compareProblemIdentity)
+  return [...items].sort(compareNewProblemIdentity)
 }
 
 function compareProblemIdentity(left: QueueItem, right: QueueItem) {
@@ -201,6 +201,14 @@ function compareProblemIdentity(left: QueueItem, right: QueueItem) {
   return slugComparison !== 0
     ? slugComparison
     : left.title.localeCompare(right.title)
+}
+
+function compareNewProblemIdentity(left: QueueItem, right: QueueItem) {
+  const titleComparison = left.title.localeCompare(right.title)
+
+  return titleComparison !== 0
+    ? titleComparison
+    : left.problemSlug.localeCompare(right.problemSlug)
 }
 
 function compareNullableNumbers(left: number | null, right: number | null) {
