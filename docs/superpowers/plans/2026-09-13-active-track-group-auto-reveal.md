@@ -22,7 +22,7 @@ position across unrelated workspace refreshes.
 - Modify: `src/features/tracks/components/tracks-screen.test.tsx:341-502`
 - Modify: `src/features/tracks/components/active-track-workspace.tsx:1-416`
 
-- [ ] **Step 1: Write the failing restored-group test**
+- [x] **Step 1: Write the failing restored-group test**
 
 Add a focused test beside the existing group-tab tests. It must select a later
 group in the workspace response, install a local `scrollIntoView` mock, and
@@ -118,7 +118,7 @@ function mockElementScrollIntoView() {
 }
 ```
 
-- [ ] **Step 2: Run the restored-group test and verify RED**
+- [x] **Step 2: Run the restored-group test and verify RED**
 
 Run:
 
@@ -129,7 +129,7 @@ npm test -- src/features/tracks/components/tracks-screen.test.tsx -t "reveals a 
 Expected: FAIL because the active tab does not call `scrollIntoView` and does not
 have `scroll-mx-14`.
 
-- [ ] **Step 3: Write the failing active-group-change test**
+- [x] **Step 3: Write the failing active-group-change test**
 
 Add a second focused test beside the restored-group case. It must clear the
 initial reveal call, change the active group through the real tab interaction,
@@ -194,7 +194,7 @@ it('reveals the newly selected active group', async () => {
 })
 ```
 
-- [ ] **Step 4: Run both reveal tests and verify RED**
+- [x] **Step 4: Run both reveal tests and verify RED**
 
 Run:
 
@@ -205,7 +205,7 @@ npm test -- src/features/tracks/components/tracks-screen.test.tsx -t "reveals"
 Expected: both new tests FAIL because the component does not yet retain or
 reveal the active tab.
 
-- [ ] **Step 5: Implement the minimal active-tab reveal**
+- [x] **Step 5: Implement the minimal active-tab reveal**
 
 In `active-track-workspace.tsx`, import `useLayoutEffect`, then retain the active
 tab and derive a stable group-order key beside `tabListRef`:
@@ -267,7 +267,7 @@ The optional method call keeps JSDOM-compatible tests that do not install the
 DOM method focused on their existing assertions; supported Chrome dashboard
 runtimes provide `scrollIntoView`.
 
-- [ ] **Step 6: Run the focused component suite and verify GREEN**
+- [x] **Step 6: Run the focused component suite and verify GREEN**
 
 Run:
 
@@ -278,21 +278,24 @@ npm test -- src/features/tracks/components/tracks-screen.test.tsx
 Expected: PASS, including both new reveal cases and the existing group scroll,
 selection, empty-state, and track-action cases.
 
-- [ ] **Step 7: Commit the behavior and tests**
+- [x] **Step 7: Commit the behavior and tests**
 
 ```sh
 git add src/features/tracks/components/active-track-workspace.tsx src/features/tracks/components/tracks-screen.test.tsx
 git commit -m "fix(tracks): reveal the active group tab"
 ```
 
-### Task 2: Document the dashboard behavior and smoke flow
+### Task 2: Document the dashboard behavior and smoke flow (Skipped by user)
+
+> **Skipped:** The user requested a PR without Task 2. No `docs/product.md` or
+> `docs/testing.md` edits are included in this branch.
 
 **Files:**
 
 - Modify: `docs/product.md:163-174`
 - Modify: `docs/testing.md:203-226`
 
-- [ ] **Step 1: Update the current product behavior**
+- [ ] **Step 1: SKIPPED — Update the current product behavior**
 
 Add this paragraph after the opening Tracks paragraph in `docs/product.md`:
 
@@ -302,7 +305,7 @@ automatically reveals that group's tab with nearest-edge alignment. The tab is
 not pinned; the existing horizontal scrolling controls remain available.
 ```
 
-- [ ] **Step 2: Update the Tracks manual smoke flow**
+- [ ] **Step 2: SKIPPED — Update the Tracks manual smoke flow**
 
 Replace Tracks smoke steps 5 and 6 in `docs/testing.md` with:
 
@@ -317,7 +320,7 @@ Replace Tracks smoke steps 5 and 6 in `docs/testing.md` with:
 
 Renumber the remaining review and reset steps to 9 and 10.
 
-- [ ] **Step 3: Format and check the touched Markdown**
+- [ ] **Step 3: SKIPPED — Format and check the touched Markdown**
 
 Run:
 
@@ -327,7 +330,7 @@ npx prettier --check docs/product.md docs/testing.md
 
 Expected: PASS.
 
-- [ ] **Step 4: Commit current behavior documentation**
+- [ ] **Step 4: SKIPPED — Commit current behavior documentation**
 
 ```sh
 git add docs/product.md docs/testing.md
@@ -340,7 +343,7 @@ git commit -m "docs(tracks): document active group reveal"
 
 - Modify: `docs/superpowers/plans/2026-09-13-active-track-group-auto-reveal.md`
 
-- [ ] **Step 1: Run required automated validation**
+- [x] **Step 1: Run required automated validation**
 
 Run these commands exactly:
 
@@ -354,6 +357,10 @@ git diff --check origin/main...HEAD
 
 Expected: every command exits successfully. Record any failure rather than
 hiding or reclassifying it.
+
+Recorded results: `npm run lint`, `npm run check`, `npm run build`, the changed-
+file Prettier check, and `git diff --check origin/main...HEAD` all passed. The
+build emitted the existing non-blocking large-chunk warning.
 
 - [ ] **Step 2: Prepare required human smoke and visual proof**
 
@@ -373,7 +380,7 @@ dashboard:
 - [ ] Attach a screenshot or screen recording showing the restored selected tab.
 ```
 
-- [ ] **Step 3: Mark completed plan checkboxes and commit the plan record**
+- [x] **Step 3: Mark completed plan checkboxes and commit the plan record**
 
 Use checkbox state to reflect only work and validation actually completed. Keep
 human-run smoke and visual-proof items unchecked until evidence exists, then run:
