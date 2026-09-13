@@ -4,8 +4,9 @@
 
 **Status:** Approved in product discussion
 
-**Scope:** Practice read state, Today Queue, Library status, Overview labels, and
-the Review settings surface
+**Scope:** Practice read state, Today Queue, Library and Track problem status,
+Overview and popup labels, notifications, Analytics due state, and the Review
+settings surface
 
 ## Problem
 
@@ -98,6 +99,16 @@ An overdue popup recommendation renders one `Overdue` badge, never a generic
 `Due` badge beside a second `Overdue` badge. Reminder and development-smoke copy
 must not describe the combined actionable count as due today.
 
+Library and Track problem rows render the same status vocabulary: `Overdue`,
+`Due today`, `Scheduled`, `New`, or `Suspended`. Their combined actionable count
+and the Overview metric use `Reviews Due`.
+
+Analytics uses the same local-calendar boundary whenever it classifies a live
+card or the current-day schedule. A due time earlier on the current local date
+is due today, not overdue; a due time on the prior local date is overdue even
+when fewer than 24 hours have elapsed. Historical observation snapshots retain
+their existing reconstruction semantics.
+
 Reinforcement remains an application fallback, not a second scheduler. It only
 ranks future-scheduled cards after all FSRS-due work. The library-computed
 retrievability is used directly as the ranking metric. A missing or invalid
@@ -155,7 +166,15 @@ imports `ts-fsrs` or calculates a due interval.
 ### `features/problems`
 
 Own Library presentation status. Add a distinct `overdue` status and count both
-`overdue` and `due` rows in the existing Due summary count.
+`overdue` and `due` rows in the Reviews Due summary count. The same status
+formatter is reused by Track problem rows.
+
+### `features/analytics`
+
+Own analytics presentation and chart bucketing while consuming the same local
+calendar rule. Current memory signals and the current day of Upcoming Review
+Load compare date keys in the selected analytics timezone instead of raw
+instants.
 
 ### `features/app-shell` and Settings
 
@@ -221,6 +240,10 @@ Automated coverage must prove:
 - popup recommendations display exactly one timing/category badge;
 - combined popup metrics, notifications, and dev-smoke output say Reviews due
   or due reviews instead of Due today;
+- Library, Track problem rows, and Overview use Due today, New, and Reviews Due
+  consistently;
+- Analytics never marks an earlier time on the current local date overdue and
+  still marks a prior local date overdue across a sub-24-hour boundary;
 - notification and dev-smoke consumers continue receiving the unchanged
   actionable due count.
 
@@ -236,5 +259,7 @@ case, with screenshots or a recording before review or merge.
 - Automatically rescheduling existing cards when settings change.
 - Replacing application history replay with `scheduler.reschedule`.
 - Changing database, backup, restore, or sync formats.
+- Changing analytics recall thresholds, durability thresholds, or historical
+  reconstruction.
 - Removing the legacy persisted `review.order` field before a settings schema
   migration is designed.

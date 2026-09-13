@@ -203,9 +203,13 @@ UI text.
 3. Inspect problem rows.
 4. Create or edit a problem.
 5. Open problem details or practice actions when available.
+6. Confirm a prior-local-date review shows `Overdue`, a current-local-date
+   review shows `Due today`, a future review shows `Scheduled`, and an
+   unstarted problem shows `New`.
+7. Confirm the combined overdue-plus-due-today count is labeled `Reviews Due`.
 
 Expected: Library reflects persisted problem metadata and remains usable after
-reloading the extension.
+reloading the extension. Track problem rows use the same review-status labels.
 
 ### Tracks
 

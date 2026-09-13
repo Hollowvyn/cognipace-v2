@@ -257,7 +257,10 @@ performance: the current review history does not identify retries or hints.
 Predicted recall and current retrievability are FSRS estimates, not guaranteed
 outcomes. The memory profile is based on tracked local FSRS cards and includes
 due today, overdue, learning, review, average retrievability, and low-sample
-messaging when local data is sparse.
+messaging when local data is sparse. Live Analytics due state and the current
+day of Upcoming Review Load use the same selected-timezone calendar boundary as
+the practice read model: an earlier time today remains due today, while a prior
+local date is overdue.
 
 ### Sync
 

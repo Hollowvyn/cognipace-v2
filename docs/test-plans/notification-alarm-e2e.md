@@ -84,7 +84,7 @@ chrome.notifications.create('due-review-reminder', {
   type: 'basic',
   iconUrl: '/icons.svg',
   title: 'Reviews due',
-  message: 'You have 3 reviews due today.'
+  message: 'You have 3 reviews due.'
 })
 ```
 
@@ -118,7 +118,7 @@ Expected: an alarm named `due:daily-check` appears in the list with a
 Wait until the alarm fires (the time you configured). Expected behavior:
 
 - A Chrome notification appears with the title **"Reviews due"** and a body
-  such as **"You have N review(s) due today."**
+  such as **"You have 1 review due."** or **"You have N reviews due."**
 - The notification uses the CogniPace icon.
 
 If no notification appears within 30 seconds of the scheduled time:

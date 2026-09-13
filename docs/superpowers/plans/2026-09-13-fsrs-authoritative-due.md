@@ -60,6 +60,11 @@
 - Modify `src/extension/background/due-notification.ts` and
   `src/extension/background/dev-smoke-service.ts`: describe the unchanged
   combined count as due reviews rather than due today.
+- Modify `src/features/analytics/domain/current-state-presentation.ts` and
+  `src/features/analytics/domain/chart-data.ts`: classify live/current-day
+  analytics due state with selected-timezone calendar keys.
+- Modify Library, Track, and Overview presentation tests/components so exact
+  statuses say Due today or New and combined counts say Reviews Due.
 - Modify `src/features/settings/components/sections/advanced-review-section.tsx`:
   remove Review Order and correct target-retention guidance.
 - Modify `src/features/settings/hooks/use-settings-draft.ts`: remove the unused
@@ -921,9 +926,163 @@ git commit -m "fix(ui): normalize review due labels"
 Expected: all validation commands pass. Manual popup and reminder smoke proof
 remains pending until the human engineer performs it.
 
+### Task 8: Align Live Analytics With Local-Calendar Due State
+
+**Files:**
+
+- Modify: `src/features/analytics/domain/current-state-presentation.ts`
+- Test: `src/features/analytics/domain/current-state-presentation.test.ts`
+- Modify: `src/features/analytics/domain/chart-data.ts`
+- Test: `src/features/analytics/domain/chart-data.test.ts`
+
+- [ ] **Step 1: Write failing current-state Analytics tests**
+
+Add a case in which `dueAt` is earlier than `asOf` on the same calendar date in
+the selected timezone, with recall and durability otherwise healthy. Assert it
+does not produce an overdue memory signal. Add a second case in which `dueAt`
+is on the prior local date but less than 24 hours before `asOf`; assert it
+produces `{ kind: 'overdue', label: '1d overdue' }`.
+
+- [ ] **Step 2: Write failing Upcoming Review Load tests**
+
+For `buildUpcomingLoadPoints`, assert an earlier time on today's selected
+timezone date increments today's `dueCount`, not `overdueCount`. Assert a prior
+local date increments `overdueCount` even across a sub-24-hour boundary.
+
+- [ ] **Step 3: Run the Analytics domain tests and verify they fail**
+
+```sh
+npm test -- src/features/analytics/domain/current-state-presentation.test.ts src/features/analytics/domain/chart-data.test.ts --run
+```
+
+Expected: the earlier-today cases fail because raw instant comparison marks
+them overdue.
+
+- [ ] **Step 4: Compare selected-timezone date keys**
+
+In current-state presentation, centralize live overdue classification:
+
+```typescript
+function isOverdueOnCalendarDate(
+  dueAt: Date,
+  asOf: Date,
+  timeZone: string,
+): boolean {
+  return (
+    getAnalyticsDateKey(dueAt, timeZone) <
+    getAnalyticsDateKey(asOf, timeZone)
+  )
+}
+```
+
+Use it in both `buildMemorySignalCandidate` and `hasMemorySignal`. An overdue
+reason always has at least one crossed local day, so format it as
+`${overdueDays}d overdue`.
+
+In `buildUpcomingLoadPoints`, compute the due key once and compare it with
+`todayKey`:
+
+```typescript
+const dueDateKey = toAnalyticsDateKey(dueAt, timeZone)
+if (dueDateKey < todayKey) {
+  points[0]!.overdueCount += 1
+} else {
+  const point = points.find((candidate) => candidate.date === dueDateKey)
+  if (point) point.dueCount += 1
+}
+```
+
+- [ ] **Step 5: Run the Analytics domain tests and commit**
+
+Run the Step 3 command.
+
+Expected: PASS.
+
+```sh
+git add src/features/analytics/domain/current-state-presentation.ts src/features/analytics/domain/current-state-presentation.test.ts src/features/analytics/domain/chart-data.ts src/features/analytics/domain/chart-data.test.ts
+git commit -m "fix(analytics): use local due dates"
+```
+
+### Task 9: Normalize Library, Track, Overview, And Smoke Labels
+
+**Files:**
+
+- Modify: `src/features/problems/components/library/problem-library-formatting.ts`
+- Test: `src/features/problems/components/library/problem-library-formatting.test.ts`
+- Modify: `src/features/problems/components/library/problem-library-toolbar.tsx`
+- Modify: `src/features/problems/components/library/problem-library-header.tsx`
+- Test: `src/features/problems/components/library/problem-library-screen.test.tsx`
+- Test: `src/features/tracks/components/tracks-screen.test.tsx`
+- Modify: `src/features/app-shell/domain/dashboard-overview.ts`
+- Test: `src/features/app-shell/domain/dashboard-overview.test.ts`
+- Test: `src/features/app-shell/components/overview-screen.test.tsx`
+- Modify: `docs/test-plans/notification-alarm-e2e.md`
+
+- [ ] **Step 1: Write failing presentation tests**
+
+Require the status formatter and both Library/Track row surfaces to render:
+
+```typescript
+expect(formatProblemLibraryStatus('not-started')).toBe('New')
+expect(formatProblemLibraryStatus('overdue')).toBe('Overdue')
+expect(formatProblemLibraryStatus('due')).toBe('Due today')
+expect(formatProblemLibraryStatus('scheduled')).toBe('Scheduled')
+expect(formatProblemLibraryStatus('suspended')).toBe('Suspended')
+```
+
+Require the Library header and Overview metric to label their combined
+overdue-plus-due-today count `Reviews Due`. Update the Library status-filter
+interaction to select `Due today`.
+
+- [ ] **Step 2: Run focused surface tests and verify they fail**
+
+```sh
+npm test -- src/features/problems/components/library/problem-library-formatting.test.ts src/features/problems/components/library/problem-library-screen.test.tsx src/features/tracks/components/tracks-screen.test.tsx src/features/app-shell/domain/dashboard-overview.test.ts src/features/app-shell/components/overview-screen.test.tsx --run
+```
+
+Expected: FAIL on the legacy Due, Not started, and aggregate Due labels.
+
+- [ ] **Step 3: Implement the exact labels**
+
+Map the existing status values without changing contracts:
+
+```typescript
+case 'not-started':
+  return 'New'
+case 'overdue':
+  return 'Overdue'
+case 'due':
+  return 'Due today'
+```
+
+Use the same text in Library filter options. Change the Library header and
+Overview metric labels to `Reviews Due`. Do not change counts, statuses,
+sorting, filtering values, or Track target-deadline presentation.
+
+- [ ] **Step 4: Run focused surface tests and commit**
+
+Run the Step 2 command.
+
+Expected: PASS.
+
+```sh
+git add src/features/problems/components/library/problem-library-formatting.ts src/features/problems/components/library/problem-library-formatting.test.ts src/features/problems/components/library/problem-library-toolbar.tsx src/features/problems/components/library/problem-library-header.tsx src/features/problems/components/library/problem-library-screen.test.tsx src/features/tracks/components/tracks-screen.test.tsx src/features/app-shell/domain/dashboard-overview.ts src/features/app-shell/domain/dashboard-overview.test.ts src/features/app-shell/components/overview-screen.test.tsx docs/test-plans/notification-alarm-e2e.md
+git commit -m "fix(ui): align review status labels"
+```
+
+- [ ] **Step 5: Run final repository validation**
+
+```sh
+npm run check
+npm run build
+```
+
+Expected: PASS. Run Prettier on every changed file and run a full-range Git
+whitespace check before pushing the PR branch.
+
 ## Self-Review Results
 
-- Spec coverage: every approved decision maps to Tasks 1-7.
+- Spec coverage: every approved decision maps to Tasks 1-9.
 - Scope: no FSRS version upgrade, schema migration, bulk reschedule, or history
   replay refactor is included.
 - Type consistency: `isDue` remains the normalized due-on-or-before-today flag;
