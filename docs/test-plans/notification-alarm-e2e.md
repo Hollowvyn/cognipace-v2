@@ -69,8 +69,8 @@ end-to-end alarm flow. Option C isolates notification delivery only.
 2. Open the dashboard → **Settings** → **Data Management** → **Export backup**.
    A JSON file downloads.
 3. Open the JSON file, find the card entry for that problem, and set its `dueAt`
-   field (a Unix timestamp in milliseconds) to a clearly prior date, such as
-   `946684800000` (`2000-01-01T00:00:00.000Z`).
+   field to an ISO datetime string on an unambiguously prior date, such as
+   `"2000-01-01T00:00:00.000Z"`.
 4. Import and restore the edited backup via **Import full backup** →
    **Restore full backup**.
 5. Open the queue in the popup or dashboard and confirm the problem now appears
