@@ -132,7 +132,7 @@ describe('runDailyCheck', () => {
 
     expect(deps.notify).toHaveBeenCalledWith(
       'Reviews due',
-      'You have 3 review(s) due.',
+      'You have 3 reviews due.',
     )
     expect(deps.writeState).toHaveBeenCalledWith('2026-05-30')
     expect(deps.scheduler.schedule).toHaveBeenCalledWith(dueCheckAlarmName, {
@@ -153,7 +153,7 @@ describe('runDailyCheck', () => {
 
     expect(deps.notify).toHaveBeenCalledWith(
       'Reviews due',
-      'You have 1 review(s) due.',
+      'You have 1 review due.',
     )
   })
 
@@ -170,7 +170,7 @@ describe('runDailyCheck', () => {
 
     expect(deps.notify).toHaveBeenCalledWith(
       'Reviews due',
-      'You have 4 review(s) due.',
+      'You have 4 reviews due.',
     )
     expect(deps.writeState).toHaveBeenCalledWith('2026-05-30')
   })
@@ -237,7 +237,7 @@ describe('handleStartup', () => {
 
     expect(deps.notify).toHaveBeenCalledWith(
       'Reviews due',
-      'You have 2 review(s) due.',
+      'You have 2 reviews due.',
     )
     // runDailyCheck reschedules for 09:00 tomorrow = 23h from 10:00 now
     expect(deps.scheduler.schedule).toHaveBeenCalledWith(dueCheckAlarmName, {

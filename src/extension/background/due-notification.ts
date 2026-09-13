@@ -72,7 +72,7 @@ export function createDueNotification(deps: DueNotificationDeps) {
     if (state.lastNotifiedDate !== today && dueToday > 0) {
       await deps.notify(
         'Reviews due',
-        `You have ${dueToday} review(s) due.`,
+        `You have ${dueToday} review${dueToday === 1 ? '' : 's'} due.`,
       )
       await deps.writeState(today)
     }

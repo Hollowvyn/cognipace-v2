@@ -170,6 +170,7 @@ describe('PopupShell', () => {
       name: 'Valid Parentheses',
     })
     expect(within(recommendation).queryByText('Due')).toBeNull()
+    expect(within(recommendation).queryByText('Due today')).toBeNull()
     expect(within(recommendation).getByText('Easy')).toBeInTheDocument()
     expect(within(recommendation).getAllByText('Overdue')).toHaveLength(1)
 
