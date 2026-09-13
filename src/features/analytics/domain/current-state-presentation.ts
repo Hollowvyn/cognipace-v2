@@ -237,7 +237,9 @@ function buildMemorySignalCandidate(
   const belowRecall =
     Number.isFinite(input.retrievability) &&
     input.retrievability < options.targetRetention
-  const overdue = input.dueAt < options.asOf
+  const overdue =
+    getAnalyticsDateKey(input.dueAt, options.timeZone) <
+    getAnalyticsDateKey(options.asOf, options.timeZone)
   const lowDurability =
     input.targetDurationDays !== null &&
     Number.isFinite(input.targetDurationDays) &&
@@ -257,7 +259,7 @@ function buildMemorySignalCandidate(
   if (overdue) {
     reasons.push({
       kind: 'overdue',
-      label: overdueDays === 0 ? 'Overdue today' : `${overdueDays}d overdue`,
+      label: `${overdueDays}d overdue`,
     })
   }
   if (lowDurability) {
@@ -289,7 +291,8 @@ function hasMemorySignal(
   return (
     (Number.isFinite(input.retrievability) &&
       input.retrievability < options.targetRetention) ||
-    input.dueAt < options.asOf ||
+    getAnalyticsDateKey(input.dueAt, options.timeZone) <
+      getAnalyticsDateKey(options.asOf, options.timeZone) ||
     (input.targetDurationDays !== null &&
       Number.isFinite(input.targetDurationDays) &&
       input.targetDurationDays < 7)
