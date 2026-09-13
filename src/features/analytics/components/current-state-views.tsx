@@ -925,11 +925,18 @@ function formatDuration(value: number) {
 function formatGap(value: number) {
   return `${value >= 0 ? '+' : '−'}${Math.round(Math.abs(value) * 100)} pp`
 }
+const dateFormatters = new Map<string, Intl.DateTimeFormat>()
+
 function formatDate(value: string, timeZone: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    timeZone,
-    year: '2-digit',
-  }).format(new Date(value))
+  let formatter = dateFormatters.get(timeZone)
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-US', {
+      day: '2-digit',
+      month: '2-digit',
+      timeZone,
+      year: '2-digit',
+    })
+    dateFormatters.set(timeZone, formatter)
+  }
+  return formatter.format(new Date(value))
 }

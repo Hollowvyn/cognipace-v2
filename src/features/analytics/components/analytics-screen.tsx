@@ -166,34 +166,50 @@ function AnalyticsScopeMetadata({
   )
 }
 
+const scopeDateTimeFormatters = new Map<string, Intl.DateTimeFormat>()
+
 function formatScopeDateTime(value: string, timeZone: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    timeZone,
-    year: '2-digit',
-  }).format(new Date(value))
+  let formatter = scopeDateTimeFormatters.get(timeZone)
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-US', {
+      day: '2-digit',
+      month: '2-digit',
+      timeZone,
+      year: '2-digit',
+    })
+    scopeDateTimeFormatters.set(timeZone, formatter)
+  }
+  return formatter.format(new Date(value))
 }
 
+const scopeDateKeyFormatter = new Intl.DateTimeFormat('en-US', {
+  day: '2-digit',
+  month: '2-digit',
+  timeZone: 'UTC',
+  year: '2-digit',
+})
+
 function formatScopeDateKey(value: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    timeZone: 'UTC',
-    year: '2-digit',
-  }).format(new Date(`${value}T00:00:00.000Z`))
+  return scopeDateKeyFormatter.format(new Date(`${value}T00:00:00.000Z`))
 }
+
+const scopeAsOfFormatters = new Map<string, Intl.DateTimeFormat>()
 
 function formatScopeAsOf(value: string, timeZone: string) {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) return 'Unknown date'
 
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone,
-  }).format(date)
+  let formatter = scopeAsOfFormatters.get(timeZone)
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone,
+    })
+    scopeAsOfFormatters.set(timeZone, formatter)
+  }
+  return formatter.format(date)
 }
 
 function AnalyticsHistoricalStory({
