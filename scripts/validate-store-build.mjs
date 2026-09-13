@@ -49,6 +49,25 @@ export async function validateStoreBuild({ rootDir = process.cwd() } = {}) {
     errors.push(error.message)
   }
 
+  if (
+    manifest !== undefined &&
+    (manifest === null ||
+      typeof manifest !== 'object' ||
+      Array.isArray(manifest))
+  ) {
+    errors.push('production manifest must be a JSON object')
+    manifest = undefined
+  }
+  if (
+    packageJson !== undefined &&
+    (packageJson === null ||
+      typeof packageJson !== 'object' ||
+      Array.isArray(packageJson))
+  ) {
+    errors.push('package.json must be a JSON object')
+    packageJson = undefined
+  }
+
   if (manifest && packageJson) {
     if (manifest.manifest_version !== 3)
       errors.push('manifest_version must be 3')
@@ -97,7 +116,11 @@ export async function validateStoreBuild({ rootDir = process.cwd() } = {}) {
           if (!normalized) continue
           const resolved = path.resolve(buildRoot, normalized)
           const relative = path.relative(buildRoot, resolved)
-          if (relative.startsWith('..') || path.isAbsolute(relative)) {
+          if (
+            relative === '..' ||
+            relative.startsWith(`..${path.sep}`) ||
+            path.isAbsolute(relative)
+          ) {
             if (!invalidIconPaths.has(normalized)) {
               errors.push(`icon path escapes build root: ${originalPath}`)
               invalidIconPaths.add(normalized)

@@ -290,6 +290,37 @@ describe('validateStoreBuild', () => {
     })
   })
 
+  it('rejects null JSON values for the manifest and package metadata', async () => {
+    const rootDir = await createFixture({ manifest: null })
+    await writeFile(path.join(rootDir, 'package.json'), 'null')
+
+    await assert.rejects(validateStoreBuild({ rootDir }), (error) => {
+      assert.match(error.message, /production manifest must be a JSON object/)
+      assert.match(error.message, /package\.json must be a JSON object/)
+      assert.doesNotMatch(error.message, /TypeError/)
+      return true
+    })
+  })
+
+  it('accepts an in-root icon filename beginning with two dots', async () => {
+    const icons = { ...completeIcons, 16: '..16.png' }
+    const rootDir = await createFixture({
+      manifest: {
+        manifest_version: 3,
+        name: 'CogniPace',
+        description: 'Local-first LeetCode review and study pacing.',
+        version: '1.3.0',
+        icons,
+        action: { default_icon: { ...icons } },
+      },
+      files: Object.values(icons),
+    })
+
+    const result = await validateStoreBuild({ rootDir })
+
+    assert.ok(result.iconFiles.includes('..16.png'))
+  })
+
   it('reports a missing production manifest', async () => {
     const rootDir = await createFixture({ manifest: undefined })
 
