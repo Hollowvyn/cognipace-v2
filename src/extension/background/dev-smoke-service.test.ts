@@ -40,6 +40,10 @@ describe('createDevSmokeService', () => {
       id: 'genai.live',
       latencyMs: 42,
     })
+    expect(report.checks.find((check) => check.id === 'queue')).toMatchObject({
+      detail:
+        'Queue loaded: 1 reviews due, 2 new available, load 3, recommendation due-today.',
+    })
   })
 
   it('skips live GenAI when not requested without calling the live dependency', async () => {

@@ -10,7 +10,7 @@ import {
 
 export type PopupRecommendationReason = {
   label: string
-  tone: 'warning' | 'info' | 'success'
+  tone: 'danger' | 'warning' | 'info' | 'success'
 }
 
 export type PopupRecommendationView = {
@@ -19,7 +19,6 @@ export type PopupRecommendationView = {
   problem: AppShellProblemSummary | null
   reason: PopupRecommendationReason | null
   difficulty: AppShellProblemSummary['difficulty'] | null
-  isOverdue: boolean
 }
 
 type PopupStudyPlanView = {
@@ -117,9 +116,8 @@ function createPopupRecommendationView(
     title: problem ? problem.title : 'Queue Clear',
     emptyCopy: problem ? null : readEmptyRecommendationCopy(),
     problem,
-    reason: readRecommendationReason(data.recommendation.category),
+    reason: queueItem ? readRecommendationReason(queueItem.reason) : null,
     difficulty: problem?.difficulty ?? null,
-    isOverdue: queueItem?.state.isOverdue ?? false,
   }
 }
 
@@ -165,17 +163,17 @@ function readEmptyRecommendationCopy() {
 }
 
 function readRecommendationReason(
-  category: PopupAppShellData['recommendation']['category'],
+  reason: AppShellQueueItem['reason'],
 ) {
-  switch (category) {
-    case 'due':
-      return { label: 'Due', tone: 'warning' as const }
-    case 'new':
+  switch (reason) {
+    case 'overdue':
+      return { label: 'Overdue', tone: 'danger' as const }
+    case 'due-today':
+      return { label: 'Due today', tone: 'warning' as const }
+    case 'new-problem':
       return { label: 'New', tone: 'info' as const }
     case 'reinforcement':
       return { label: 'Extra Practice', tone: 'success' as const }
-    case null:
-      return null
   }
 }
 

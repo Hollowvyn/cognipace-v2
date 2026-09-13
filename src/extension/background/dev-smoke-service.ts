@@ -130,7 +130,7 @@ async function runQueueCheck(deps: DevSmokeDeps): Promise<SmokeCheck> {
       id: 'queue',
       label: 'Today queue',
       status: 'pass',
-      detail: `Queue loaded: ${queue.dueToday} due today, ${queue.newAvailable} new available, load ${queue.queueLoad}, recommendation ${queue.recommendationReason ?? 'none'}.`,
+      detail: `Queue loaded: ${queue.dueToday} reviews due, ${queue.newAvailable} new available, load ${queue.queueLoad}, recommendation ${queue.recommendationReason ?? 'none'}.`,
     })
   } catch (error) {
     return createFailureCheck('queue', 'Today queue', error)

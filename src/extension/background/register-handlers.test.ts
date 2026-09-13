@@ -2418,7 +2418,7 @@ function createPopupShellData(): PopupAppShellData {
       detail: '0 due, 1 new, 0 reinforcement available.',
     },
     metrics: [
-      { label: 'Due Today', value: '0' },
+      { label: 'Reviews Due', value: '0' },
       { label: 'Streak', value: '0 days' },
     ],
     practiceProgress: {

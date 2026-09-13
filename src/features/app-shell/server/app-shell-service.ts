@@ -315,6 +315,7 @@ function readActiveTrackDetail(activeTrack: ActiveTrack) {
 function serializeQueueItem(item: QueueItem): AppShellQueueItem {
   return {
     category: item.category,
+    reason: item.reason,
     problem: {
       problemSlug: item.problemSlug,
       title: item.title,

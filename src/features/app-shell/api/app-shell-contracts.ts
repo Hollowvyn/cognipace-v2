@@ -35,6 +35,7 @@ const appShellProblemSummarySchema = z.object({
 
 const appShellQueueItemSchema = z.object({
   category: z.enum(['due', 'new', 'reinforcement']),
+  reason: z.enum(['overdue', 'due-today', 'reinforcement', 'new-problem']),
   problem: appShellProblemSummarySchema,
   state: normalizedPracticeStateSchema,
 })

@@ -7,7 +7,7 @@ export interface AppShellMetricsInput {
 
 export function createAppShellMetrics(input: AppShellMetricsInput) {
   return [
-    { label: 'Due Today', value: String(input.dueCount) },
+    { label: 'Reviews Due', value: String(input.dueCount) },
     {
       label: 'Streak',
       value: formatPracticeStreakValue(input.practiceProgress.currentStreak),

@@ -35,7 +35,7 @@ const shellData = {
     detail: '1 due, 1 new, 0 reinforcement available.',
   },
   metrics: [
-    { label: 'Due Today', value: '1' },
+    { label: 'Reviews Due', value: '1' },
     { label: 'Streak', value: '0 days' },
   ],
   practiceProgress: {
@@ -74,6 +74,7 @@ const shellData = {
     items: [
       {
         category: 'due',
+        reason: 'overdue',
         problem: validParentheses,
         state: {
           problemSlug: 'valid-parentheses',
@@ -162,15 +163,15 @@ describe('PopupShell', () => {
       screen.getByRole('heading', { name: 'CogniPace' }),
     ).toBeInTheDocument()
     const metrics = screen.getByRole('region', { name: 'Practice Metrics' })
-    expect(within(metrics).getByText('Due Today')).toBeInTheDocument()
+    expect(within(metrics).getByText('Reviews Due')).toBeInTheDocument()
     expect(within(metrics).getByText('0 days')).toBeInTheDocument()
 
     const recommendation = screen.getByRole('region', {
       name: 'Valid Parentheses',
     })
-    expect(within(recommendation).getByText('Due')).toBeInTheDocument()
+    expect(within(recommendation).queryByText('Due')).toBeNull()
     expect(within(recommendation).getByText('Easy')).toBeInTheDocument()
-    expect(within(recommendation).getByText('Overdue')).toBeInTheDocument()
+    expect(within(recommendation).getAllByText('Overdue')).toHaveLength(1)
 
     const activeTrack = screen.getByRole('region', { name: 'LeetCode 75' })
     expect(within(activeTrack).getByText('59 days left')).toBeInTheDocument()
@@ -213,6 +214,32 @@ describe('PopupShell', () => {
     )
     expect(controller.actions.shuffleRecommendation).toHaveBeenCalledTimes(1)
     expect(controller.actions.toggleStudyMode).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders exactly one Due today badge for a due-today recommendation', () => {
+    const dueTodayData = {
+      ...shellData,
+      recommendation: {
+        ...shellData.recommendation,
+        dueAt: '2026-01-01T00:00:00.000Z',
+      },
+      queue: {
+        ...shellData.queue,
+        items: shellData.queue.items.map((item) => ({
+          ...item,
+          reason: 'due-today' as const,
+          state: { ...item.state, isOverdue: false },
+        })),
+      },
+    }
+
+    render(<PopupShell controller={createController({ data: dueTodayData })} />)
+
+    const recommendation = screen.getByRole('region', {
+      name: 'Valid Parentheses',
+    })
+    expect(within(recommendation).getAllByText('Due today')).toHaveLength(1)
+    expect(within(recommendation).queryByText('Overdue')).toBeNull()
   })
 
   it('renders the freestyle card without active-track affordances in freestyle mode', () => {

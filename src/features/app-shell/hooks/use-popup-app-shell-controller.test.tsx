@@ -50,7 +50,7 @@ const popupData = {
     detail: '0 due, 2 new, 0 reinforcement available.',
   },
   metrics: [
-    { label: 'Due Today', value: '0' },
+    { label: 'Reviews Due', value: '0' },
     { label: 'Streak', value: '0 days' },
   ],
   practiceProgress: {
@@ -99,11 +99,13 @@ const popupData = {
     queuePreview: [
       {
         category: 'new',
+        reason: 'new-problem',
         problem: twoSum,
         state: createSerializedNormalizedPracticeState(),
       },
       {
         category: 'new',
+        reason: 'new-problem',
         problem: validParentheses,
         state: createSerializedNormalizedPracticeState(),
       },

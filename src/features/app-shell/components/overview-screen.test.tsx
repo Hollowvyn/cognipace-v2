@@ -159,6 +159,7 @@ describe('OverviewScreen', () => {
       },
     })
     const dueToday = createAppShellQueueItem({
+      reason: 'due-today',
       problem: {
         problemSlug: 'due-today-problem',
         title: 'Due Today Problem',
@@ -176,6 +177,7 @@ describe('OverviewScreen', () => {
     })
     const reinforcement = createAppShellQueueItem({
       category: 'reinforcement',
+      reason: 'reinforcement',
       problem: {
         problemSlug: 'reinforcement-problem',
         title: 'Reinforcement Problem',
@@ -193,6 +195,7 @@ describe('OverviewScreen', () => {
     })
     const newProblem = createAppShellQueueItem({
       category: 'new',
+      reason: 'new-problem',
       problem: {
         problemSlug: 'new-problem',
         title: 'New Problem',

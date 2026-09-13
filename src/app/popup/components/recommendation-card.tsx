@@ -75,11 +75,6 @@ export function RecommendationCard({
               difficulty={view.difficulty}
             />
           ) : null}
-          {view.isOverdue ? (
-            <Badge className="shrink-0" tone="danger">
-              Overdue
-            </Badge>
-          ) : null}
         </div>
       ) : (
         <p className="mt-2 text-[length:var(--cp-copy-font-size)] leading-relaxed text-muted-foreground">

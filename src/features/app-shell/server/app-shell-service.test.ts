@@ -33,7 +33,7 @@ describe('app-shell service', () => {
         label: 'Practice ready',
       },
       metrics: [
-        { label: 'Due Today', value: '0' },
+        { label: 'Reviews Due', value: '0' },
         { label: 'Streak', value: '0 days' },
       ],
       queue: {
@@ -114,7 +114,7 @@ describe('app-shell service', () => {
       todayDateKey: '2026-01-01',
     })
     expect(payload.metrics).toEqual([
-      { label: 'Due Today', value: String(payload.queue.dueCount) },
+      { label: 'Reviews Due', value: String(payload.queue.dueCount) },
       { label: 'Streak', value: '1 day' },
     ])
   })

@@ -57,7 +57,7 @@ const fallbackData = {
     detail: 'Waiting for background service worker response.',
   },
   metrics: [
-    { label: 'Due Today', value: '--' },
+    { label: 'Reviews Due', value: '--' },
     { label: 'Streak', value: '--' },
   ],
   practiceProgress: {

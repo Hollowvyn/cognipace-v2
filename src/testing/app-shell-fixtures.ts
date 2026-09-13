@@ -108,6 +108,7 @@ export function createAppShellQueueItem(
 
   return {
     category: 'due',
+    reason: 'overdue',
     problem,
     state: createSerializedNormalizedPracticeState({
       problemSlug: problem.problemSlug,
