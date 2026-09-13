@@ -12,6 +12,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
+- [`specs/2026-09-13-private-chrome-web-store-release-design.md`](./specs/2026-09-13-private-chrome-web-store-release-design.md): approved design for a private trusted-tester Chrome Web Store item, Recall Stack listing assets, accurate privacy and permission disclosures, Store build validation, manual first publication, and natural update proof.
 - [`specs/2026-09-13-editorconfig-baseline-design.md`](./specs/2026-09-13-editorconfig-baseline-design.md): approved design for adding an editor-neutral file-property baseline while keeping Prettier, ESLint, and TypeScript responsibilities separate.
 - [`specs/2026-09-13-ordered-track-next-design.md`](./specs/2026-09-13-ordered-track-next-design.md): approved design for keeping the active track's Next target in explicit group/problem order while leaving FSRS due-review urgency in the separate review loop.
 - [`specs/2026-09-13-active-track-group-auto-reveal-design.md`](./specs/2026-09-13-active-track-group-auto-reveal-design.md): approved design for automatically revealing the restored or newly selected active group tab with nearest-edge alignment while preserving manual group-strip scrolling.
@@ -42,6 +43,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 ## Plans
 
 - [`plans/2026-09-13-ci-hardening-rollout-2-actions-dependency-review.md`](./plans/2026-09-13-ci-hardening-rollout-2-actions-dependency-review.md): phase-sized implementation plan for immutably pinning every external GitHub Action, adding pull-request dependency vulnerability review, and extending the stable aggregate before branch protection activation.
+- [`plans/2026-09-13-private-chrome-web-store-readiness.md`](./plans/2026-09-13-private-chrome-web-store-readiness.md): test-first implementation plan for Recall Stack extension icons, Store package validation, private listing/privacy material, real product screenshots, manual first publication, and natural update proof, with WXT-native submission automation deferred until the manual path succeeds.
 - [`plans/2026-09-13-editorconfig-baseline.md`](./plans/2026-09-13-editorconfig-baseline.md): implementation plan for adding a root, editor-neutral file-property baseline alongside the maintained Prettier baseline in PR #159.
 - [`plans/2026-09-13-active-track-group-auto-reveal.md`](./plans/2026-09-13-active-track-group-auto-reveal.md): test-first implementation plan for revealing the restored or newly selected active track group tab with nearest-edge alignment while preserving manual group-strip scrolling.
 - [`plans/2026-09-12-formatting-baseline.md`](./plans/2026-09-12-formatting-baseline.md): phase-sized implementation plan for defining the maintained Prettier surface, applying one exact mechanical normalization pass, and proving the result is stable before CI formatting becomes required.
