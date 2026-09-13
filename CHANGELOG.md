@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/Hollowvyn/cognipace-v2/compare/v1.3.0...v1.3.1) (2026-09-13)
+
+
+### Bug Fixes
+
+* **practice:** make FSRS due dates authoritative ([#156](https://github.com/Hollowvyn/cognipace-v2/issues/156)) ([7b0f4d4](https://github.com/Hollowvyn/cognipace-v2/commit/7b0f4d414a71cb442194ac02b884f570f11f8365))
+
 ## [1.3.0](https://github.com/Hollowvyn/cognipace-v2/compare/v1.2.0...v1.3.0) (2026-09-13)
 
 
