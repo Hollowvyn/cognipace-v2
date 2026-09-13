@@ -291,7 +291,9 @@ function ActiveTrackGroups({
     hasOverflow: false,
   })
   const activeTabRef = useRef<HTMLButtonElement | null>(null)
+  const pendingRevealKeyRef = useRef<string | null>(null)
   const groupOrderKey = groups.map((group) => group.id).join('\u0000')
+  const layoutKey = [trackId, activeGroupId ?? '', groupOrderKey].join('\u0000')
 
   const updateScrollState = useCallback(() => {
     const tabList = tabListRef.current
@@ -310,13 +312,30 @@ function ActiveTrackGroups({
   }, [])
 
   useLayoutEffect(() => {
+    pendingRevealKeyRef.current = layoutKey
+    updateScrollState()
+  }, [layoutKey, updateScrollState])
+
+  useLayoutEffect(() => {
+    if (pendingRevealKeyRef.current !== layoutKey) {
+      return
+    }
+    const tabList = tabListRef.current
+    const hasOverflow = tabList
+      ? tabList.scrollWidth - tabList.clientWidth > 1
+      : false
+    if (hasOverflow && !tabList?.classList.contains('px-9')) {
+      return
+    }
+    pendingRevealKeyRef.current = null
+
     activeTabRef.current?.scrollIntoView?.({
       behavior: 'auto',
       block: 'nearest',
       inline: 'nearest',
     })
     updateScrollState()
-  }, [activeGroupId, groupOrderKey, trackId, updateScrollState])
+  }, [layoutKey, scrollState.hasOverflow, updateScrollState])
 
   useEffect(() => {
     updateScrollState()

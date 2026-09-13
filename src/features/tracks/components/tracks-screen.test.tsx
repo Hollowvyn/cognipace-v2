@@ -386,6 +386,11 @@ describe('TracksScreen', () => {
 
   it('reveals a restored active group later in the overflowing tab row', async () => {
     const scrollIntoView = vi.fn()
+    const restoreScrollMetrics = mockTrackGroupTabScrollMetrics({
+      clientWidth: 320,
+      scrollLeft: 0,
+      scrollWidth: 960,
+    })
     const originalScrollIntoView = Object.getOwnPropertyDescriptor(
       HTMLElement.prototype,
       'scrollIntoView',
@@ -393,6 +398,11 @@ describe('TracksScreen', () => {
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
       configurable: true,
       value: scrollIntoView,
+    })
+    scrollIntoView.mockImplementation(() => {
+      expect(
+        screen.getByRole('tablist', { name: 'Track groups' }),
+      ).toHaveClass('px-9')
     })
 
     try {
@@ -414,6 +424,7 @@ describe('TracksScreen', () => {
       expect(activeTab).toHaveClass('scroll-mx-14')
     } finally {
       restoreHTMLElementProperty('scrollIntoView', originalScrollIntoView)
+      restoreScrollMetrics.restore()
     }
   })
 
