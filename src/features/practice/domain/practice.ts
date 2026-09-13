@@ -1,11 +1,12 @@
 import {
-  defaultFsrsSchedulingOptions,
   getRetrievability,
   type FsrsCardKind,
   type FsrsCardSnapshot,
   type ReviewRating,
 } from '@/lib/fsrs'
 import type { ProblemSlug } from '@/features/problems/domain'
+
+import { derivePracticeScheduleTiming } from './practice-schedule'
 
 export const practiceStatuses = [
   'new',
@@ -207,13 +208,13 @@ export function deriveNormalizedPracticeState(input: {
   card: FsrsCardSnapshot | null
   attempts: PracticeReviewAttemptSnapshot[]
   now?: Date
+  /** @deprecated Accepted for read-call compatibility; FSRS due dates are authoritative. */
   targetRetention?: number
 }): NormalizedPracticeState {
   const summary = derivePracticeSummary({
     practice: input.practice,
     card: input.card,
     now: input.now,
-    targetRetention: input.targetRetention,
   })
 
   return {
@@ -263,11 +264,10 @@ export function derivePracticeSummary(input: {
   practice: PracticeStateSnapshot | null
   card: FsrsCardSnapshot | null
   now?: Date | undefined
+  /** @deprecated Accepted for read-call compatibility; FSRS due dates are authoritative. */
   targetRetention?: number | undefined
 }): PracticeSummary {
   const now = input.now ?? new Date()
-  const targetRetention =
-    input.targetRetention ?? defaultFsrsSchedulingOptions.targetRetention
   const suspended =
     input.practice?.isSuspended === true ||
     input.practice?.status === 'suspended'
@@ -280,20 +280,14 @@ export function derivePracticeSummary(input: {
     (input.practice?.attemptCount ?? 0) > 0
   const retrievability =
     input.card && input.card.lastReviewAt
-      ? getRetrievability(input.card, now, { targetRetention })
+      ? getRetrievability(input.card, now)
       : null
-  const isDue =
-    !suspended &&
-    isStarted &&
-    retrievability !== null &&
-    retrievability < targetRetention
-  const overdueDays =
-    isDue && input.card
-      ? Math.max(
-          0,
-          Math.floor((now.getTime() - input.card.dueAt.getTime()) / dayMs),
-        )
-      : 0
+  const timing = derivePracticeScheduleTiming({
+    dueAt: input.card?.dueAt ?? null,
+    isStarted,
+    isSuspended: suspended,
+    now,
+  })
 
   return {
     phase: suspended
@@ -308,9 +302,9 @@ export function derivePracticeSummary(input: {
     scheduledDays: input.card?.scheduledDays ?? null,
     suspended,
     isStarted,
-    isDue,
-    isOverdue: overdueDays > 0,
-    overdueDays,
+    isDue: timing.isDue,
+    isOverdue: timing.isOverdue,
+    overdueDays: timing.overdueDays,
     retrievability,
   }
 }
@@ -351,5 +345,3 @@ function phaseFromPracticeAndCard(
 function normalizeOptionalLogValue(value: string | null | undefined) {
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
-
-const dayMs = 24 * 60 * 60 * 1000
