@@ -89,7 +89,9 @@ vi.mock('@/features/problems', () => ({
 
 vi.mock('@/features/leetcode-review-assistant', async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import('@/features/leetcode-review-assistant')>()
+    await importOriginal<
+      typeof import('@/features/leetcode-review-assistant')
+    >()
 
   return {
     ...actual,
@@ -832,9 +834,9 @@ describe('useLeetCodeOverlaySession', () => {
     await runOverlayAction(result.current.actions.updateReview)
 
     expect(overrideLastReviewResultViaRuntime).toHaveBeenCalled()
-    const payload = vi.mocked(overrideLastReviewResultViaRuntime).mock.calls.at(
-      -1,
-    )?.[0]
+    const payload = vi
+      .mocked(overrideLastReviewResultViaRuntime)
+      .mock.calls.at(-1)?.[0]
     if (!payload) {
       throw new Error('Expected an override review request.')
     }
@@ -1265,17 +1267,19 @@ function buildReadyAssessmentResponse(fingerprint: string) {
 }
 
 function setSendMessageRecommendationReady(): void {
-  vi.mocked(sendMessage).mockImplementation((name: string, request?: unknown) => {
-    if (name === 'genai.recommendLeetCodeAssessment') {
-      const fingerprint =
-        (request as RecommendLeetCodeAssessmentRequest | undefined)
-          ?.submissionFingerprint ?? 'unknown'
-      return Promise.resolve(buildReadyAssessmentResponse(fingerprint))
-    }
-    return Promise.reject(
-      new Error(`Unexpected sendMessage call in test: ${name}`),
-    )
-  })
+  vi.mocked(sendMessage).mockImplementation(
+    (name: string, request?: unknown) => {
+      if (name === 'genai.recommendLeetCodeAssessment') {
+        const fingerprint =
+          (request as RecommendLeetCodeAssessmentRequest | undefined)
+            ?.submissionFingerprint ?? 'unknown'
+        return Promise.resolve(buildReadyAssessmentResponse(fingerprint))
+      }
+      return Promise.reject(
+        new Error(`Unexpected sendMessage call in test: ${name}`),
+      )
+    },
+  )
 }
 
 function expectNoAiLeak(payload: unknown): void {

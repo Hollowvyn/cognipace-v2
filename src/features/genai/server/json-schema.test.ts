@@ -20,7 +20,9 @@ describe('zodToProviderJsonSchema', () => {
       type: string
       additionalProperties?: boolean
       required?: string[]
-      properties: { complexity: { additionalProperties?: boolean; required?: string[] } }
+      properties: {
+        complexity: { additionalProperties?: boolean; required?: string[] }
+      }
     }
 
     expect(schema.type).toBe('object')
@@ -88,7 +90,8 @@ describe('zodToProviderJsonSchema', () => {
     // Zod 4 may emit nullable as { type: ['string','null'] } or { anyOf: [...] }.
     // Both forms are valid for OpenAI strict mode; we just assert one of them is present.
     const noteProp = result.properties.note
-    const isWellFormed = noteProp.type !== undefined || Array.isArray(noteProp.anyOf)
+    const isWellFormed =
+      noteProp.type !== undefined || Array.isArray(noteProp.anyOf)
     expect(isWellFormed).toBe(true)
   })
 

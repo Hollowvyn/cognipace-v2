@@ -65,7 +65,11 @@ describe('practice API hooks', () => {
   it('sends suspend and reset mutations through the runtime boundary without client-side invalidation', async () => {
     await expectNoClientInvalidation({
       method: 'practice.setSuspended',
-      request: { surface: 'dashboard', problemSlug: 'two-sum', suspended: true },
+      request: {
+        surface: 'dashboard',
+        problemSlug: 'two-sum',
+        suspended: true,
+      },
       useHook: useSetPracticeSuspended,
     })
     await expectNoClientInvalidation({

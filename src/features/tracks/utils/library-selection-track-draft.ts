@@ -35,7 +35,10 @@ export function createLibrarySelectionTrackDraft(
     createdAt: now.toISOString(),
   }
 
-  getStorage(options.storage).setItem(getDraftStorageKey(draft.id), JSON.stringify(draft))
+  getStorage(options.storage).setItem(
+    getDraftStorageKey(draft.id),
+    JSON.stringify(draft),
+  )
 
   return draft
 }
@@ -97,7 +100,9 @@ export function clearLibrarySelectionTrackDraft(
 function createDraftId() {
   const randomSuffix = Math.random().toString(36).slice(2, 10)
 
-  return globalThis.crypto?.randomUUID?.() ?? `draft-${Date.now()}-${randomSuffix}`
+  return (
+    globalThis.crypto?.randomUUID?.() ?? `draft-${Date.now()}-${randomSuffix}`
+  )
 }
 
 function dedupeProblemSlugs(problemSlugs: readonly string[]) {
@@ -128,6 +133,8 @@ function isLibrarySelectionTrackDraft(
     typeof value.createdAt === 'string' &&
     Array.isArray(value.problemSlugs) &&
     value.problemSlugs.length > 0 &&
-    value.problemSlugs.every((slug) => typeof slug === 'string' && slug.length > 0)
+    value.problemSlugs.every(
+      (slug) => typeof slug === 'string' && slug.length > 0,
+    )
   )
 }

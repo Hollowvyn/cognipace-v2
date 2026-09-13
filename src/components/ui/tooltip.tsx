@@ -47,10 +47,7 @@ export function TooltipContent({
 }: ComponentProps<typeof TooltipPrimitive.Content>) {
   return (
     <TooltipPrimitive.Content
-      className={cn(
-        tooltipContentClassName,
-        className,
-      )}
+      className={cn(tooltipContentClassName, className)}
       data-cp-tooltip-motion=""
       sideOffset={sideOffset}
       {...props}

@@ -70,7 +70,11 @@ export function OverlaySubmissionSummary({
         label="Next due"
         value={formatOverlayDateTime(nextReviewAt)}
         tone={
-          practice?.isOverdue ? 'danger' : practice?.isDue ? 'warning' : 'neutral'
+          practice?.isOverdue
+            ? 'danger'
+            : practice?.isDue
+              ? 'warning'
+              : 'neutral'
         }
       />
     </section>

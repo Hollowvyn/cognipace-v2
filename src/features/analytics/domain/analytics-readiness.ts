@@ -119,9 +119,7 @@ function validateEvidenceInput(
     throw new RangeError('Analytics evidence requires at least one bucket.')
   }
   if (
-    evidenceCounts.some(
-      (count) => !Number.isSafeInteger(count) || count < 0,
-    )
+    evidenceCounts.some((count) => !Number.isSafeInteger(count) || count < 0)
   ) {
     throw new RangeError(
       'Analytics evidence counts must be non-negative integers.',

@@ -23,7 +23,9 @@ export function upsertProblemFromPageViaRuntime(
   return sendMessage('problems.upsertFromPage', request)
 }
 
-export function getProblemLibraryViaRuntime(request: ProblemsGetLibraryRequest) {
+export function getProblemLibraryViaRuntime(
+  request: ProblemsGetLibraryRequest,
+) {
   return sendMessage('problems.getLibrary', request)
 }
 

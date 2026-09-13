@@ -26,8 +26,7 @@ export function evaluateLeetCodeAssessment(
   input: LeetCodeAssessmentInput,
 ): LeetCodeAssessmentDecision {
   const derived = deriveAssessmentSignals(input)
-  const previousBestSeconds =
-    input.practiceContext?.previousBestSeconds ?? null
+  const previousBestSeconds = input.practiceContext?.previousBestSeconds ?? null
   const locked = applyHardLocks(input, derived)
 
   if (locked) {

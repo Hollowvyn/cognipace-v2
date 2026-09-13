@@ -15,7 +15,10 @@ import {
   type RecommendLeetCodeAssessmentRequest,
   type RecommendLeetCodeAssessmentResponse,
 } from '@/features/leetcode-review-assistant'
-import type { LeetCodeProblemMetadata, LeetCodeSubmissionResult } from '@/lib/leetcode'
+import type {
+  LeetCodeProblemMetadata,
+  LeetCodeSubmissionResult,
+} from '@/lib/leetcode'
 
 import {
   deriveOverlayAssessmentSessionContext,
@@ -271,7 +274,9 @@ export function useLeetCodeAssessmentRecommendation(
       })
     }
 
-    function maybePreselectRating(rating: AssessmentRecommendation['recommendedRating']): void {
+    function maybePreselectRating(
+      rating: AssessmentRecommendation['recommendedRating'],
+    ): void {
       const overlay = overlayStateRef.current
       if (overlay.ratingLockReason) return
       if (overlay.userTouchedRating) return
@@ -311,7 +316,8 @@ function buildSubmissionPayload(
       { status: 'accepted' }
     > = { status: 'accepted' }
     if (codeSnapshot.code !== null) accepted.code = codeSnapshot.code
-    if (codeSnapshot.language !== null) accepted.language = codeSnapshot.language
+    if (codeSnapshot.language !== null)
+      accepted.language = codeSnapshot.language
     if (result.runtime !== null) accepted.runtime = result.runtime
     if (result.memory !== null) accepted.memory = result.memory
     if (result.passedTestCount !== null)
@@ -365,7 +371,9 @@ function buildDeterministicDecision({
   sessionContext,
 }: {
   submissionResult: LeetCodeSubmissionResult
-  problemDifficulty: NonNullable<LeetCodeOverlayContext['problem']>['difficulty']
+  problemDifficulty: NonNullable<
+    LeetCodeOverlayContext['problem']
+  >['difficulty']
   timingSettings: LeetCodeOverlayContext['timing']
   elapsedSeconds: number
   sessionContext: ReturnType<typeof deriveOverlayAssessmentSessionContext>
@@ -391,4 +399,3 @@ function buildDeterministicDecision({
         },
   )
 }
-

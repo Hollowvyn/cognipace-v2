@@ -44,8 +44,7 @@ export function deriveAssessmentSignals(
   )
   const elapsedSeconds = normalizeElapsedSeconds(input.elapsedSeconds)
   const isUntimed = input.timerUsed === false || elapsedSeconds === null
-  const isOverTarget =
-    elapsedSeconds !== null && elapsedSeconds > targetSeconds
+  const isOverTarget = elapsedSeconds !== null && elapsedSeconds > targetSeconds
   const ratioOfTarget =
     elapsedSeconds !== null && targetSeconds > 0
       ? elapsedSeconds / targetSeconds

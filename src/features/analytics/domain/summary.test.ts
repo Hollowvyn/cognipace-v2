@@ -6,10 +6,7 @@ import type {
 } from './summary'
 import type { AnalyticsReadiness } from './analytics-readiness'
 import { buildAnalyticsTimeFrame } from './analytics-time'
-import {
-  buildObservedRatingQuality,
-  buildAnalyticsSummary,
-} from './summary'
+import { buildObservedRatingQuality, buildAnalyticsSummary } from './summary'
 
 const now = new Date(2026, 0, 15, 12, 0, 0)
 const recentDate = new Date(2026, 0, 14, 12, 0, 0)

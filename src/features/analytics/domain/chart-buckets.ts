@@ -45,10 +45,7 @@ export function classifyLineContinuity(
     if (previousValueIndex !== null) {
       const gap = index - previousValueIndex - 1
       continuity.push({
-        kind:
-          gap === 0
-            ? 'solid'
-            : 'bridge',
+        kind: gap === 0 ? 'solid' : 'bridge',
         fromIndex: previousValueIndex,
         toIndex: index,
       })

@@ -15,9 +15,7 @@ export {
   type RecommendAssessmentOutput,
 } from './domain'
 
-export {
-  recommendLeetCodeAssessmentViaRuntime,
-} from './api'
+export { recommendLeetCodeAssessmentViaRuntime } from './api'
 export {
   recommendLeetCodeAssessmentRequestSchema,
   recommendLeetCodeAssessmentResponseSchema,

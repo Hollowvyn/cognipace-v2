@@ -106,8 +106,9 @@ describe('applyEasyGate', () => {
   it('does not fire when base rating is hard (would only upgrade good)', () => {
     const overTarget = build({ elapsedSeconds: 36 * 60 })
     expect(overTarget.base.rating).toBe('hard')
-    expect(applyEasyGate(overTarget.input, overTarget.derived, overTarget.base))
-      .toBe(overTarget.base)
+    expect(
+      applyEasyGate(overTarget.input, overTarget.derived, overTarget.base),
+    ).toBe(overTarget.base)
   })
 
   it('exposes EASY_GATE_RATIO as 0.5', () => {

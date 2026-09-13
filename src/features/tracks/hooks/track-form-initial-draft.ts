@@ -46,12 +46,10 @@ export function createGroupsFromInitialDraftRows(
 
   const fallbackTitle = groupBy === 'topic' ? 'No topic' : 'No company'
 
-  return createGroupsFromRows(
-    problemRows,
-    (row) =>
-      groupBy === 'topic'
-        ? (row.topics[0]?.label ?? fallbackTitle)
-        : (row.companies[0]?.label ?? fallbackTitle),
+  return createGroupsFromRows(problemRows, (row) =>
+    groupBy === 'topic'
+      ? (row.topics[0]?.label ?? fallbackTitle)
+      : (row.companies[0]?.label ?? fallbackTitle),
   )
 }
 

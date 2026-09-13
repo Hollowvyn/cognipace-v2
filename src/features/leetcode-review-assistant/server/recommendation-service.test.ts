@@ -136,7 +136,11 @@ describe('recommendAssessment — AI error → fallback', () => {
       status: 'error',
       code: 'network',
       message: 'down',
-      providerMetadata: { provider: 'openai', model: 'gpt-test', durationMs: 100 },
+      providerMetadata: {
+        provider: 'openai',
+        model: 'gpt-test',
+        durationMs: 100,
+      },
     })
 
     const result = await recommendAssessment(

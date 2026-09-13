@@ -98,10 +98,9 @@ describe('LineSegments', () => {
   it('bridges a long evidence gap with the same dashed treatment', () => {
     renderSegments([0.8, null, null, null, 0.84])
 
-    expect(screen.getByTestId('observedCorrectness-bridge-0-4')).toHaveAttribute(
-      'stroke-dasharray',
-      '5 5',
-    )
+    expect(
+      screen.getByTestId('observedCorrectness-bridge-0-4'),
+    ).toHaveAttribute('stroke-dasharray', '5 5')
   })
 
   it('does not create a marker, tooltip datum, or segment for missing-only data', () => {

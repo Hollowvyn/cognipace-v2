@@ -46,6 +46,9 @@ describe('queue runtime API', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    expect(sendMessage).toHaveBeenCalledWith('queue.getTodayQueue', { surface: 'popup', at })
+    expect(sendMessage).toHaveBeenCalledWith('queue.getTodayQueue', {
+      surface: 'popup',
+      at,
+    })
   })
 })

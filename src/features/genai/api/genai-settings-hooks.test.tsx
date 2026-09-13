@@ -40,7 +40,9 @@ describe('useGenAiSecretPresenceQuery', () => {
       gemini: false,
     })
 
-    const { result } = renderHook(() => useGenAiSecretPresenceQuery(), { wrapper })
+    const { result } = renderHook(() => useGenAiSecretPresenceQuery(), {
+      wrapper,
+    })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.data).toEqual({

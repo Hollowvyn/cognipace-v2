@@ -5,7 +5,10 @@ import { readSettingsRowLabelId, SettingsRow } from '../settings-row'
 import { SettingsSection } from '../settings-section'
 
 interface RemindersSectionProps {
-  actions: Pick<SettingsDraftActions, 'setRemindersEnabled' | 'setRemindersTime'>
+  actions: Pick<
+    SettingsDraftActions,
+    'setRemindersEnabled' | 'setRemindersTime'
+  >
   draft: UserSettings
 }
 
@@ -41,7 +44,9 @@ export function RemindersSection({ actions, draft }: RemindersSectionProps) {
             className="h-[var(--cp-control-height)] rounded-[var(--cp-control-radius)] border border-border bg-background px-3 text-[length:var(--cp-control-font-size)] text-foreground shadow-sm transition-[background-color,border-color,box-shadow,opacity] disabled:cursor-not-allowed disabled:opacity-60"
             disabled={!enabled}
             id="reminders-time"
-            onChange={(event) => actions.setRemindersTime(event.currentTarget.value)}
+            onChange={(event) =>
+              actions.setRemindersTime(event.currentTarget.value)
+            }
             type="time"
             value={time}
           />

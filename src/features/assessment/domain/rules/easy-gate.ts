@@ -18,7 +18,10 @@ export function applyEasyGate(
   if (derived.isRecallReview !== true) {
     return base
   }
-  if (derived.ratioOfTarget === null || derived.ratioOfTarget > EASY_GATE_RATIO) {
+  if (
+    derived.ratioOfTarget === null ||
+    derived.ratioOfTarget > EASY_GATE_RATIO
+  ) {
     return base
   }
   if (derived.beatsPreviousBest !== true) {
@@ -28,6 +31,8 @@ export function applyEasyGate(
   return {
     rating: 'easy',
     reasonCode:
-      input.intent === 'quick-submit' ? 'quick-easy-fast' : 'leetcode-easy-fast',
+      input.intent === 'quick-submit'
+        ? 'quick-easy-fast'
+        : 'leetcode-easy-fast',
   }
 }
