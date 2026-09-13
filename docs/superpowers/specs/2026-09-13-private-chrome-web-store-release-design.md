@@ -62,12 +62,17 @@ listing, privacy declarations, and review behavior are still being proven.
 
 ### One private item with immediate API publishing
 
-The Chrome Web Store API can upload and submit higher versions from CI, but the
-first item setup and first use of a new visibility remain manual. Adding a
-Google Cloud project, publisher-linked service account, short-lived
-authentication, and release failure recovery before the first accepted package
-would combine two independent risks. API publishing is deferred until the
-manual path succeeds.
+WXT's built-in `wxt submit` command can upload and submit higher versions from
+CI through its publishing adapter, but the first item setup and first use of a
+new visibility remain manual. Adding a Google Cloud project, publisher-linked
+service account, authentication, and release failure recovery before the first
+accepted package would combine two independent risks. Submission automation is
+deferred until the manual path succeeds.
+
+The later automation design should start with WXT's Chrome Web Store API v2
+support, `wxt submit --dry-run`, and CI-provided service-account secrets. It
+must not introduce a custom Store API client unless an evidenced WXT limitation
+requires one.
 
 ### Separate private testing and production items
 
@@ -291,8 +296,8 @@ Update `docs/release.md`, `docs/testing.md`, `CONTRIBUTING.md`, and the planning
 artifact index so they describe the private Store handoff, required artifact
 validation, human-only dashboard steps, and later automatic-update proof.
 
-The Store API automation phase will receive its own design after the private
-manual path is accepted and the first update behavior is understood.
+The WXT submission-automation phase will receive its own design after the
+private manual path is accepted and the first update behavior is understood.
 
 ## Done When
 
