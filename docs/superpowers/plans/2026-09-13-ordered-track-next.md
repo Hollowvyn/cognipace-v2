@@ -77,8 +77,7 @@ Change `selectActiveTrackNextRow` so due status no longer participates in
 `nextRow` selection:
 
 ```ts
-const nextRow =
-  incompleteRows.find((row) => row.status !== 'suspended') ?? null
+const nextRow = incompleteRows.find((row) => row.status !== 'suspended') ?? null
 ```
 
 Keep the existing incomplete-row filter and due-count calculation unchanged.
