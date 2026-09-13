@@ -79,6 +79,32 @@ describe('validateStoreBuild', () => {
     })
   })
 
+  it('accepts complete slash-prefixed WXT root icon resources', async () => {
+    const rootIcons = Object.fromEntries(
+      REQUIRED_ICON_SIZES.map((size) => [size, `/icon-${size}.png`]),
+    )
+    const rootDir = await createFixture({
+      manifest: {
+        manifest_version: 3,
+        name: 'CogniPace',
+        description: 'Local-first LeetCode review and study pacing.',
+        version: '1.3.0',
+        icons: rootIcons,
+        action: { default_icon: { ...rootIcons } },
+      },
+      files: Object.values(rootIcons).map((file) => file.slice(1)),
+    })
+
+    const result = await validateStoreBuild({ rootDir })
+
+    assert.deepEqual(
+      result.iconFiles,
+      Object.values(rootIcons)
+        .map((file) => file.slice(1))
+        .sort(),
+    )
+  })
+
   it('aggregates identity, version, icon-size, and missing-file failures', async () => {
     const rootDir = await createFixture({
       manifest: {
@@ -190,6 +216,28 @@ describe('validateStoreBuild', () => {
       assert.match(
         error.message,
         /icon path must be relative to build root: \/tmp\/accepted\.png/,
+      )
+      return true
+    })
+  })
+
+  it('rejects Windows drive-absolute icon paths', async () => {
+    const rootDir = await createFixture({
+      manifest: {
+        manifest_version: 3,
+        name: 'CogniPace',
+        description: 'Local-first LeetCode review and study pacing.',
+        version: '1.3.0',
+        icons: { ...completeIcons, 16: String.raw`C:\tmp\accepted.png` },
+        action: { default_icon: { ...completeIcons } },
+      },
+      files: Object.values(completeIcons),
+    })
+
+    await assert.rejects(validateStoreBuild({ rootDir }), (error) => {
+      assert.match(
+        error.message,
+        /icon path must be relative to build root: C:\\tmp\\accepted\.png/,
       )
       return true
     })
