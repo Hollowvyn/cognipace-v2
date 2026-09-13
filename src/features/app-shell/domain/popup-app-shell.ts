@@ -166,9 +166,7 @@ function readEmptyRecommendationCopy() {
   return 'No review pressure right now. Your review queue is clear.'
 }
 
-function readRecommendationReason(
-  reason: AppShellQueueItem['reason'],
-) {
+function readRecommendationReason(reason: AppShellQueueItem['reason']) {
   switch (reason) {
     case 'overdue':
       return { label: 'Overdue', tone: 'danger' as const }

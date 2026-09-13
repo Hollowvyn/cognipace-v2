@@ -78,7 +78,10 @@ export function createDueNotification(deps: DueNotificationDeps) {
     }
 
     await deps.scheduler.schedule(dueCheckAlarmName, {
-      delayInMinutes: normalizeNotificationTime(settings.reminders.daily.time, now),
+      delayInMinutes: normalizeNotificationTime(
+        settings.reminders.daily.time,
+        now,
+      ),
     })
   }
 
@@ -110,7 +113,10 @@ export function createDueNotification(deps: DueNotificationDeps) {
     const prevDaily = prev.reminders.daily
     const nextDaily = next.reminders.daily
 
-    if (prevDaily.enabled === nextDaily.enabled && prevDaily.time === nextDaily.time) {
+    if (
+      prevDaily.enabled === nextDaily.enabled &&
+      prevDaily.time === nextDaily.time
+    ) {
       return
     }
 

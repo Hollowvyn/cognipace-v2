@@ -880,7 +880,7 @@ Expected: PASS.
 Change expected notification messages to:
 
 ```typescript
-`You have ${count} review${count === 1 ? '' : 's'} due.`
+const message = `You have ${count} review${count === 1 ? '' : 's'} due.`
 ```
 
 Change the queue development-smoke expectation from `${count} due today` to
@@ -900,11 +900,11 @@ Keep the internal compatibility field and count unchanged. Change only the
 rendered strings:
 
 ```typescript
-`You have ${dueToday} review${dueToday === 1 ? '' : 's'} due.`
+const message = `You have ${dueToday} review${dueToday === 1 ? '' : 's'} due.`
 ```
 
 ```typescript
-`Queue loaded: ${queue.dueToday} review${queue.dueToday === 1 ? '' : 's'} due, ...`
+const description = `Queue loaded: ${queue.dueToday} review${queue.dueToday === 1 ? '' : 's'} due, ...`
 ```
 
 - [ ] **Step 9: Run focused tests and verify they pass**
@@ -969,8 +969,7 @@ function isOverdueOnCalendarDate(
   timeZone: string,
 ): boolean {
   return (
-    getAnalyticsDateKey(dueAt, timeZone) <
-    getAnalyticsDateKey(asOf, timeZone)
+    getAnalyticsDateKey(dueAt, timeZone) < getAnalyticsDateKey(asOf, timeZone)
   )
 }
 ```

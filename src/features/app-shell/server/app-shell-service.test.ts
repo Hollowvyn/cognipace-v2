@@ -516,7 +516,9 @@ describe('AI assessment exposure', () => {
     await updateSettings(handle.db, {
       aiAssessment: { enabled: true, provider: 'openai', model: 'gpt-test' },
     })
-    await setAiProviderSecret(handle.db, 'openai', { apiKey: 'sk-must-not-leak' })
+    await setAiProviderSecret(handle.db, 'openai', {
+      apiKey: 'sk-must-not-leak',
+    })
     const payload = await getOverlayPayload(handle)
     expect(payload.overlay.aiAssessmentAvailable).toBe(true)
   })
@@ -526,7 +528,9 @@ describe('AI assessment exposure', () => {
     await updateSettings(handle.db, {
       aiAssessment: { enabled: true, provider: 'openai', model: 'gpt-test' },
     })
-    await setAiProviderSecret(handle.db, 'openai', { apiKey: 'sk-must-not-leak' })
+    await setAiProviderSecret(handle.db, 'openai', {
+      apiKey: 'sk-must-not-leak',
+    })
     const payload = await getOverlayPayload(handle)
     const serialized = JSON.stringify(payload)
     expect(serialized).not.toContain('apiKey')
@@ -538,7 +542,9 @@ describe('AI assessment exposure', () => {
     await updateSettings(handle.db, {
       aiAssessment: { enabled: true, provider: 'anthropic', model: 'claude-x' },
     })
-    await setAiProviderSecret(handle.db, 'anthropic', { apiKey: 'sk-ant-must-not-leak' })
+    await setAiProviderSecret(handle.db, 'anthropic', {
+      apiKey: 'sk-ant-must-not-leak',
+    })
     const payload = await getPopupPayload(handle)
     expect(payload.settings.aiAssessment).toEqual({
       enabled: true,
@@ -555,7 +561,9 @@ describe('AI assessment exposure', () => {
     await updateSettings(handle.db, {
       aiAssessment: { enabled: true, provider: 'gemini', model: 'gemini-x' },
     })
-    await setAiProviderSecret(handle.db, 'gemini', { apiKey: 'g-must-not-leak' })
+    await setAiProviderSecret(handle.db, 'gemini', {
+      apiKey: 'g-must-not-leak',
+    })
     const payload = await getDashboardPayload(handle)
     expect(payload.settings.aiAssessment).toEqual({
       enabled: true,
