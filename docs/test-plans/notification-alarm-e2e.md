@@ -10,7 +10,7 @@ are merged.
 | Step | Result |
 |---|---|
 | **Option C — direct notification delivery** | ✅ Executed. Service worker console call confirmed Chrome permissions are granted and notifications appear correctly. |
-| **Full alarm-flow (Steps 5–10)** | ⏸ Deferred. Steps 5–10 require a Chrome build with at least one FSRS-scheduled problem whose due date has passed. Deferred until a test environment with real due data is available. |
+| **Full alarm-flow (Steps 5–10)** | ⏸ Deferred. Steps 5–10 require a Chrome build with at least one FSRS-scheduled problem due on or before the current local date. Deferred until a test environment with real due data is available. |
 
 ## Prerequisites
 
@@ -55,9 +55,11 @@ end-to-end alarm flow. Option C isolates notification delivery only.
 **Option A — use existing due data (quickest):**
 
 1. Open the CogniPace popup or dashboard.
-2. Confirm at least one problem shows in the queue with a **due** status.
-   Problems that have never been reviewed do not count — `dueCount` only
-   includes FSRS-scheduled reviews whose due date has passed.
+2. Confirm at least one problem shows in the queue with an **Overdue** or
+   **Due today** status. Problems that have never been reviewed do not count —
+   `dueCount` only includes FSRS-scheduled reviews due on or before the current
+   local date. A **Due today** review qualifies for the entire local day,
+   regardless of its due time.
 3. Skip to Step 5 and set the reminder time 1–2 minutes from now.
 
 **Option B — answer a question then backdate its due date:**
@@ -67,12 +69,12 @@ end-to-end alarm flow. Option C isolates notification delivery only.
 2. Open the dashboard → **Settings** → **Data Management** → **Export backup**.
    A JSON file downloads.
 3. Open the JSON file, find the card entry for that problem, and set its `dueAt`
-   field (a Unix timestamp in milliseconds) to any timestamp in the past
-   (e.g., yesterday at midnight: `Date.now() - 86_400_000`).
+   field (a Unix timestamp in milliseconds) to a prior local date (e.g.,
+   yesterday at midnight: `Date.now() - 86_400_000`).
 4. Import and restore the edited backup via **Import full backup** →
    **Restore full backup**.
 5. Open the queue in the popup or dashboard and confirm the problem now appears
-   as due.
+   as **Overdue**.
 
 **Option C — verify notification delivery directly via the service worker (skips alarm and queue):**
 
