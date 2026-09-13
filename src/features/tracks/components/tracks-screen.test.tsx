@@ -384,6 +384,108 @@ describe('TracksScreen', () => {
     expect(tabs[1]).toHaveTextContent('0/1')
   })
 
+  it('reveals a restored active group later in the overflowing tab row', async () => {
+    const scrollIntoView = vi.fn()
+    const originalScrollIntoView = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'scrollIntoView',
+    )
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    })
+
+    try {
+      vi.mocked(sendMessage).mockResolvedValueOnce(
+        createFourGroupWorkspace('leetcode-75:binary-search'),
+      )
+      renderTracksScreen()
+
+      const activeTab = await screen.findByRole('tab', {
+        name: /Binary Search/,
+      })
+
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        behavior: 'auto',
+        block: 'nearest',
+        inline: 'nearest',
+      })
+      expect(scrollIntoView.mock.instances[0]).toBe(activeTab)
+      expect(activeTab).toHaveClass('scroll-mx-14')
+    } finally {
+      restoreHTMLElementProperty('scrollIntoView', originalScrollIntoView)
+    }
+  })
+
+  it('reveals the newly selected group after the workspace is invalidated', async () => {
+    const user = userEvent.setup()
+    const scrollIntoView = vi.fn()
+    const originalScrollIntoView = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'scrollIntoView',
+    )
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    })
+
+    try {
+      const initialWorkspace = createFourGroupWorkspace(
+        'leetcode-75:arrays-hashing',
+      )
+      const updatedWorkspace = createFourGroupWorkspace(
+        'leetcode-75:dynamic-programming',
+      )
+      vi.mocked(sendMessage).mockImplementation((method) => {
+        if (method === 'tracks.getWorkspace') {
+          return Promise.resolve(
+            vi
+              .mocked(sendMessage)
+              .mock.calls.filter(
+                ([calledMethod]) => calledMethod === 'tracks.getWorkspace',
+              ).length === 1
+              ? initialWorkspace
+              : updatedWorkspace,
+          )
+        }
+
+        return Promise.resolve(null)
+      })
+      renderTracksScreen()
+
+      await screen.findByRole('tab', {
+        name: 'Arrays and Hashing, 1 of 2 completed',
+      })
+      scrollIntoView.mockClear()
+
+      await user.click(
+        screen.getByRole('tab', {
+          name: 'Dynamic Programming, 0 of 1 completed',
+        }),
+      )
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('tab', {
+            name: 'Dynamic Programming, 0 of 1 completed',
+          }),
+        ).toHaveAttribute('aria-selected', 'true')
+      })
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        behavior: 'auto',
+        block: 'nearest',
+        inline: 'nearest',
+      })
+      expect(scrollIntoView.mock.instances[0]).toBe(
+        screen.getByRole('tab', {
+          name: 'Dynamic Programming, 0 of 1 completed',
+        }),
+      )
+    } finally {
+      restoreHTMLElementProperty('scrollIntoView', originalScrollIntoView)
+    }
+  })
+
   it('shows group scroll indicators as the tab row scrolls', async () => {
     const restoreScrollMetrics = mockTrackGroupTabScrollMetrics({
       clientWidth: 320,
@@ -1149,7 +1251,7 @@ function readNumericHTMLElementProperty(
 }
 
 function restoreHTMLElementProperty(
-  propertyName: 'clientWidth' | 'scrollLeft' | 'scrollWidth',
+  propertyName: 'clientWidth' | 'scrollLeft' | 'scrollWidth' | 'scrollIntoView',
   descriptor: PropertyDescriptor | undefined,
 ) {
   if (descriptor) {
@@ -1321,3 +1423,43 @@ const twoGroupWorkspace = createTrackWorkspaceResponse({
     },
   ],
 })
+
+function createFourGroupWorkspace(activeGroupId: string) {
+  const activeTrack = twoGroupWorkspace.activeTrack
+
+  if (!activeTrack) {
+    throw new Error('Expected active track fixture.')
+  }
+
+  const groups = [
+    createSerializedTrackGroup({
+      id: 'leetcode-75:arrays-hashing',
+      title: 'Arrays and Hashing',
+      position: 1,
+    }),
+    createSerializedTrackGroup({
+      id: 'leetcode-75:dynamic-programming',
+      title: 'Dynamic Programming',
+      position: 2,
+    }),
+    createSerializedTrackGroup({
+      id: 'leetcode-75:graphs',
+      title: 'Graphs',
+      position: 3,
+    }),
+    createSerializedTrackGroup({
+      id: 'leetcode-75:binary-search',
+      title: 'Binary Search',
+      position: 4,
+    }),
+  ]
+
+  return {
+    ...twoGroupWorkspace,
+    activeTrack: {
+      ...activeTrack,
+      activeGroup: groups.find((group) => group.id === activeGroupId) ?? null,
+    },
+    activeTrackGroups: groups,
+  }
+}

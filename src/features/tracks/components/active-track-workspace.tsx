@@ -4,7 +4,14 @@ import {
   ChevronRight,
   ListChecks,
 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 
 import { IconButton } from '@/components/ui/icon-button'
 import { InlineStatus } from '@/components/ui/inline-status'
@@ -283,6 +290,8 @@ function ActiveTrackGroups({
     canScrollRight: false,
     hasOverflow: false,
   })
+  const activeTabRef = useRef<HTMLButtonElement | null>(null)
+  const groupOrderKey = groups.map((group) => group.id).join('\u0000')
 
   const updateScrollState = useCallback(() => {
     const tabList = tabListRef.current
@@ -299,6 +308,15 @@ function ActiveTrackGroups({
       hasOverflow: maxScrollLeft > 1,
     })
   }, [])
+
+  useLayoutEffect(() => {
+    activeTabRef.current?.scrollIntoView?.({
+      behavior: 'auto',
+      block: 'nearest',
+      inline: 'nearest',
+    })
+    updateScrollState()
+  }, [activeGroupId, groupOrderKey, trackId, updateScrollState])
 
   useEffect(() => {
     updateScrollState()
@@ -381,7 +399,7 @@ function ActiveTrackGroups({
                 aria-label={`${group.title}, ${progress.completedCount} of ${progress.totalCount} completed`}
                 aria-selected={isActive}
                 className={cn(
-                  'inline-flex min-h-12 min-w-0 max-w-[min(18rem,72vw)] shrink-0 items-center gap-2 border-b-2 px-0 py-3 text-[length:var(--cp-badge-font-size)] font-bold uppercase leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                  'inline-flex min-h-12 min-w-0 max-w-[min(18rem,72vw)] shrink-0 items-center gap-2 border-b-2 px-0 py-3 text-[length:var(--cp-badge-font-size)] font-bold uppercase leading-none scroll-mx-14 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                   isActive
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
@@ -392,6 +410,7 @@ function ActiveTrackGroups({
                   void selectGroup(group.id)
                 }}
                 role="tab"
+                ref={isActive ? activeTabRef : undefined}
                 type="button"
               >
                 <span className="min-w-0 max-w-full truncate">
