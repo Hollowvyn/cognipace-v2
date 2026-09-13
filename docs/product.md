@@ -159,6 +159,8 @@ lowest current retrievability for optional reinforcement, and finally eligible
 new Library problems. Overdue and due-today cards are ordered by their FSRS due
 date; reinforcement uses retrievability with deterministic ties. Popup guidance
 should keep queue recommendation and track progression visibly separate.
+User-facing labels reserve Overdue for prior local dates and Due today for the
+current local date. Aggregate counts that include both use Reviews due.
 
 ### Problems And Library
 

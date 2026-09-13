@@ -48,6 +48,15 @@
   target retention into reads and preserve queue-owned ordering.
 - Modify `src/features/app-shell/components/overview/overview-panels.tsx`: render
   Due today and use browser-local date formatting.
+- Modify `src/features/app-shell/domain/popup-app-shell.ts`: resolve one popup
+  recommendation badge from the queue-owned recommendation reason.
+- Modify `src/features/app-shell/domain/app-shell-metrics.ts`: label the
+  overdue-plus-due-today aggregate as Reviews Due.
+- Modify `src/app/popup/components/recommendation-card.tsx`: render only the
+  resolved recommendation badge.
+- Modify `src/extension/background/due-notification.ts` and
+  `src/extension/background/dev-smoke-service.ts`: describe the unchanged
+  combined count as due reviews rather than due today.
 - Modify `src/features/settings/components/sections/advanced-review-section.tsx`:
   remove Review Order and correct target-retention guidance.
 - Modify `src/features/settings/hooks/use-settings-draft.ts`: remove the unused
@@ -772,9 +781,142 @@ git add docs/product.md docs/architecture.md docs/testing.md docs/superpowers/sp
 git commit -m "docs(fsrs): define authoritative due semantics"
 ```
 
+### Task 7: Normalize Due Labels Across Popup And Notifications
+
+**Files:**
+
+- Modify: `src/features/app-shell/domain/popup-app-shell.ts`
+- Modify: `src/features/app-shell/domain/app-shell-metrics.ts`
+- Modify: `src/app/popup/components/recommendation-card.tsx`
+- Modify: `src/app/popup/popup-shell.test.tsx`
+- Modify: `src/features/app-shell/hooks/use-popup-app-shell-controller.ts`
+- Test: `src/features/app-shell/hooks/use-popup-app-shell-controller.test.tsx`
+- Test: `src/features/app-shell/server/app-shell-service.test.ts`
+- Modify: `src/extension/background/due-notification.ts`
+- Test: `src/extension/background/due-notification.test.ts`
+- Modify: `src/extension/background/dev-smoke-service.ts`
+- Test: `src/extension/background/dev-smoke-service.test.ts`
+- Test: `src/extension/background/register-handlers.test.ts`
+- Modify: `docs/product.md`
+- Modify: `docs/testing.md`
+- Modify: `docs/superpowers/specs/2026-09-13-fsrs-authoritative-due-design.md`
+
+- [ ] **Step 1: Write failing popup label tests**
+
+Update the overdue popup expectation so the recommendation contains exactly one
+`Overdue` badge and contains neither `Due` nor `Due today`. Add a due-today
+fixture whose queue item has `reason: 'due-today'` and assert it displays one
+`Due today` badge. Change popup metric expectations to:
+
+```typescript
+expect(view.metrics).toContainEqual({ label: 'Reviews Due', value: '1' })
+```
+
+- [ ] **Step 2: Run popup tests and verify the expected failures**
+
+```sh
+npm test -- src/app/popup/popup-shell.test.tsx src/features/app-shell/hooks/use-popup-app-shell-controller.test.tsx src/features/app-shell/server/app-shell-service.test.ts --run
+```
+
+Expected: FAIL because the current popup renders `Due` plus `Overdue` and the
+aggregate metric is still labeled `Due Today`.
+
+- [ ] **Step 3: Resolve one popup recommendation badge**
+
+Derive the recommendation presentation from the matching queue item's
+`reason`:
+
+```typescript
+type PopupRecommendationReason = {
+  label: string
+  tone: 'danger' | 'warning' | 'info' | 'success'
+}
+
+function readRecommendationReason(reason: AppShellQueueItem['reason'] | null) {
+  switch (reason) {
+    case 'overdue':
+      return { label: 'Overdue', tone: 'danger' as const }
+    case 'due-today':
+      return { label: 'Due today', tone: 'warning' as const }
+    case 'new-problem':
+      return { label: 'New', tone: 'info' as const }
+    case 'reinforcement':
+      return { label: 'Extra Practice', tone: 'success' as const }
+    case null:
+      return null
+  }
+}
+```
+
+Remove `isOverdue` from `PopupRecommendationView` and remove the second
+conditional Overdue badge from `RecommendationCard`. Use a safe category
+fallback only when a matching queue item is unavailable.
+
+- [ ] **Step 4: Rename the combined popup metric**
+
+Change both loaded and loading-state labels from `Due Today` to `Reviews Due`.
+Do not change `dueCount`, `dueToday`, or runtime schemas in this amendment.
+
+- [ ] **Step 5: Run popup tests and verify they pass**
+
+Run the Step 2 command.
+
+Expected: PASS.
+
+- [ ] **Step 6: Write failing reminder and development-smoke copy tests**
+
+Change expected notification messages to:
+
+```typescript
+`You have ${count} review${count === 1 ? '' : 's'} due.`
+```
+
+Change the queue development-smoke expectation from `${count} due today` to
+`${count} reviews due`.
+
+- [ ] **Step 7: Run background tests and verify the expected failures**
+
+```sh
+npm test -- src/extension/background/due-notification.test.ts src/extension/background/dev-smoke-service.test.ts src/extension/background/register-handlers.test.ts --run
+```
+
+Expected: FAIL because notification and queue smoke copy still says due today.
+
+- [ ] **Step 8: Implement the reminder and development-smoke copy**
+
+Keep the internal compatibility field and count unchanged. Change only the
+rendered strings:
+
+```typescript
+`You have ${dueToday} review${dueToday === 1 ? '' : 's'} due.`
+```
+
+```typescript
+`Queue loaded: ${queue.dueToday} reviews due, ...`
+```
+
+- [ ] **Step 9: Run focused tests and verify they pass**
+
+Run the Step 2 and Step 7 commands.
+
+Expected: PASS.
+
+- [ ] **Step 10: Run repository validation and commit**
+
+```sh
+npm run check
+npm run build
+npx prettier --check docs/product.md docs/testing.md docs/superpowers/specs/2026-09-13-fsrs-authoritative-due-design.md docs/superpowers/plans/2026-09-13-fsrs-authoritative-due.md src/features/app-shell/domain/popup-app-shell.ts src/features/app-shell/domain/app-shell-metrics.ts src/app/popup/components/recommendation-card.tsx src/app/popup/popup-shell.test.tsx src/features/app-shell/hooks/use-popup-app-shell-controller.ts src/features/app-shell/hooks/use-popup-app-shell-controller.test.tsx src/features/app-shell/server/app-shell-service.test.ts src/extension/background/due-notification.ts src/extension/background/due-notification.test.ts src/extension/background/dev-smoke-service.ts src/extension/background/dev-smoke-service.test.ts src/extension/background/register-handlers.test.ts
+git add docs/product.md docs/testing.md docs/superpowers/specs/2026-09-13-fsrs-authoritative-due-design.md docs/superpowers/plans/2026-09-13-fsrs-authoritative-due.md src/features/app-shell/domain/popup-app-shell.ts src/features/app-shell/domain/app-shell-metrics.ts src/app/popup/components/recommendation-card.tsx src/app/popup/popup-shell.test.tsx src/features/app-shell/hooks/use-popup-app-shell-controller.ts src/features/app-shell/hooks/use-popup-app-shell-controller.test.tsx src/features/app-shell/server/app-shell-service.test.ts src/extension/background/due-notification.ts src/extension/background/due-notification.test.ts src/extension/background/dev-smoke-service.ts src/extension/background/dev-smoke-service.test.ts src/extension/background/register-handlers.test.ts
+git commit -m "fix(ui): normalize review due labels"
+```
+
+Expected: all validation commands pass. Manual popup and reminder smoke proof
+remains pending until the human engineer performs it.
+
 ## Self-Review Results
 
-- Spec coverage: every approved decision maps to Tasks 1-6.
+- Spec coverage: every approved decision maps to Tasks 1-7.
 - Scope: no FSRS version upgrade, schema migration, bulk reschedule, or history
   replay refactor is included.
 - Type consistency: `isDue` remains the normalized due-on-or-before-today flag;
@@ -784,3 +926,5 @@ git commit -m "docs(fsrs): define authoritative due semantics"
   receive it; no existing card is rewritten.
 - Validation: focused tests, lint, full check, build, docs formatting, manual
   smoke, and visual proof are all explicitly covered.
+- Label consistency: Overdue, Due today, and Reviews Due have mutually
+  exclusive meanings; internal compatibility field names remain unchanged.

@@ -64,9 +64,16 @@ Use one of these entry points:
 3. Use the shuffle action when available.
 4. Open Settings from the popup.
 5. Open Tracks from the track card when available.
+6. With an overdue recommendation, confirm the card shows one `Overdue` badge
+   and does not also show `Due` or `Due today`.
+7. With a due-today recommendation, confirm the card shows one `Due today`
+   badge.
+8. When the metric includes overdue and due-today cards, confirm its label is
+   `Reviews Due`.
 
 Expected: the popup stays compact, does not jump around during feedback, and
-keeps recommendation guidance separate from track guidance.
+keeps recommendation guidance separate from track guidance. Review timing
+labels are mutually exclusive, and combined counts are not labeled Due Today.
 
 ### Dashboard Settings
 

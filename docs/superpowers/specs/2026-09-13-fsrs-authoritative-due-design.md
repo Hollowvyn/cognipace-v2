@@ -79,6 +79,23 @@ goal:
    FSRS retrievability first.
 4. Eligible new Library problems in deterministic title/slug order.
 
+### User-facing due labels are exact
+
+Every surface uses the same vocabulary for FSRS review timing:
+
+- **Overdue** is shown only for a card whose `dueAt` is before the current
+  local calendar date.
+- **Due today** is shown only for a card whose `dueAt` is on the current local
+  calendar date.
+- **Reviews due** labels aggregate counts that combine overdue and due-today
+  cards.
+- **Extra Practice** labels future-scheduled reinforcement candidates.
+- **New** labels eligible problems without started practice state.
+
+An overdue popup recommendation renders one `Overdue` badge, never a generic
+`Due` badge beside a second `Overdue` badge. Reminder and development-smoke copy
+must not describe the combined actionable count as due today.
+
 Reinforcement remains an application fallback, not a second scheduler. It only
 ranks future-scheduled cards after all FSRS-due work. The library-computed
 retrievability is used directly as the ranking metric. A missing or invalid
@@ -153,7 +170,9 @@ and provides truthful target-retention copy.
   `isOverdue` means due before the current local calendar date.
 - Existing `dueCount` includes overdue plus due-today cards.
 - Existing `dueToday` remains a compatibility alias for the total actionable
-  scheduled-review count used by reminders. Renaming it is outside this phase.
+  scheduled-review count used by reminders. Renaming it is outside this phase,
+  but user-facing copy describes the aggregate as reviews due rather than due
+  today.
 
 All runtime changes remain Zod-validated. There is no persisted row-shape or
 database schema change.
@@ -194,8 +213,11 @@ Automated coverage must prove:
 - runtime schemas accept `due-today` and `overdue`;
 - Settings no longer displays Review Order and explains prospective retention;
 - Overview displays Overdue, Due today, Extra Practice, and New consistently;
-- notification and dev-smoke consumers continue receiving the actionable due
-  count.
+- popup recommendations display exactly one timing/category badge;
+- combined popup metrics, notifications, and dev-smoke output say Reviews due
+  or due reviews instead of Due today;
+- notification and dev-smoke consumers continue receiving the unchanged
+  actionable due count.
 
 Required repository validation is focused tests followed by `npm run lint`,
 `npm run check`, and `npm run build`. Human smoke proof must cover Library,
