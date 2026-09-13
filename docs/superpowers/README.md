@@ -38,6 +38,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Plans
 
+- [`plans/2026-09-13-active-track-group-auto-reveal.md`](./plans/2026-09-13-active-track-group-auto-reveal.md): test-first implementation plan for revealing the restored or newly selected active track group tab with nearest-edge alignment while preserving manual group-strip scrolling.
 - [`plans/2026-09-12-dependency-ci-phase-1-toolchain-baseline.md`](./plans/2026-09-12-dependency-ci-phase-1-toolchain-baseline.md): test-first implementation plan for pinning Node/npm, repairing the lockfile, aligning the Chrome alarm type, and making current CI and release builds use the same toolchain.
 - [`plans/2026-09-12-github-sync-token-helper.md`](./plans/2026-09-12-github-sync-token-helper.md): test-first implementation plan for a compact GitHub Sync token helper with a local-date name, no expiration, and only Gists write access prefilled.
 - [`plans/2026-09-01-track-simple-recall.md`](./plans/2026-09-01-track-simple-recall.md): test-first implementation plan for counting `hard`, `good`, and `easy` as active-track recall completion across contracts, persistence, migration, backup compatibility, and review-correction flows.
