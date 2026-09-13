@@ -72,7 +72,7 @@ describe('app-shell service', () => {
     })
     expect(payload.recommendation).toMatchObject({
       category: 'new',
-      problem: { problemSlug: '3sum' },
+      problem: { problemSlug: 'ones-and-zeroes' },
     })
     expect(payload.settings.appearance).toEqual({
       themeMode: 'system',
@@ -197,7 +197,7 @@ describe('app-shell service', () => {
 
     expect(payload.recommendation).toMatchObject({
       category: 'new',
-      problem: { problemSlug: '3sum' },
+      problem: { problemSlug: 'ones-and-zeroes' },
     })
     expect(payload.activeTrack).toMatchObject({
       state: 'disabled-free-practice',
@@ -220,10 +220,10 @@ describe('app-shell service', () => {
     expect(
       payload.dashboard.queuePreview.map((item) => item.problem.problemSlug),
     ).toEqual([
-      '3sum',
-      'accounts-merge',
+      'ones-and-zeroes',
       'balanced-binary-tree',
-      'binary-tree-maximum-path-sum',
+      'validate-binary-search-tree',
+      'binary-tree-vertical-order-traversal',
     ])
   })
 
@@ -372,7 +372,7 @@ describe('app-shell service', () => {
 
     expect(payload.overlay.nextStep).toMatchObject({
       kind: 'recommendation',
-      problem: { problemSlug: '3sum' },
+      problem: { problemSlug: 'ones-and-zeroes' },
     })
   })
 
