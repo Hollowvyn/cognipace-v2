@@ -11,6 +11,13 @@ interface GeneratedManifestBranding {
     | undefined
 }
 
+const productionIcons = {
+  16: '/icon-16.png',
+  32: '/icon-32.png',
+  48: '/icon-48.png',
+  128: '/icon-128.png',
+}
+
 const developmentIcons = {
   16: '/extension-icons/cognipace-dev-16.png',
   32: '/extension-icons/cognipace-dev-32.png',
@@ -27,16 +34,15 @@ export default defineConfig({
   manifest: ({ mode }) => {
     const isDevelopment = mode === 'development'
     const name = isDevelopment ? 'CogniPace Dev' : 'CogniPace'
+    const icons = isDevelopment ? developmentIcons : productionIcons
 
     return {
       name,
       description: 'Local-first LeetCode review and study pacing.',
-      ...(isDevelopment && {
-        icons: developmentIcons,
-        action: {
-          default_icon: developmentIcons,
-        },
-      }),
+      icons,
+      action: {
+        default_icon: icons,
+      },
       permissions: ['storage', 'alarms', 'notifications'],
       host_permissions: [
         'https://leetcode.com/*',
