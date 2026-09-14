@@ -35,10 +35,13 @@ export default defineConfig({
     const isDevelopment = mode === 'development'
     const name = isDevelopment ? 'CogniPace Dev' : 'CogniPace'
     const icons = isDevelopment ? developmentIcons : productionIcons
+    const description = isDevelopment
+      ? 'Local-first LeetCode review and study pacing. (Dev Version)'
+      : 'Local-first LeetCode review and study pacing.'
 
     return {
       name,
-      description: 'Local-first LeetCode review and study pacing.',
+      description,
       icons,
       action: {
         default_icon: icons,

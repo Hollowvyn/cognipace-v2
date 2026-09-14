@@ -49,8 +49,10 @@ This writes the production-style extension to `dist/chrome-mv3`.
 6. After rebuilding, click the reload button for CogniPace in
    `chrome://extensions`.
 
-The development build appears as `CogniPace Dev` with an amber icon so it is
-easy to distinguish from the production extension.
+The development build appears as `CogniPace Dev` with an amber-card sibling of
+the production Recall Stack icon, so it is easy to distinguish from the
+production extension. Its manifest description ends with `(Dev Version)`;
+production keeps the Store description unchanged.
 
 The extension requests the Chrome `notifications` permission for local
 due-review reminders. It does not add notification-related host permissions.
