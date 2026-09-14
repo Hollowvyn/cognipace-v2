@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -37,3 +41,86 @@ jobs:
 
       - name: Run checks
         run: npm run check
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install pinned npm
+        run: npm install --global npm@11.19.0
+
+      - name: Show toolchain versions
+        run: |
+          node --version
+          npm --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build extension
+        run: npm run build
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install pinned npm
+        run: npm install --global npm@11.19.0
+
+      - name: Show toolchain versions
+        run: |
+          node --version
+          npm --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format
+
+  required-checks:
+    name: Required Checks
+    if: ${{ always() }}
+    needs:
+      - check
+      - build
+      - format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Report and verify required jobs
+        env:
+          CHECK_RESULT: ${{ needs.check.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          FORMAT_RESULT: ${{ needs.format.result }}
+        run: |
+          echo "Check: $CHECK_RESULT"
+          echo "Build: $BUILD_RESULT"
+          echo "Format: $FORMAT_RESULT"
+
+          if [[ "$CHECK_RESULT" != "success" ]] ||
+            [[ "$BUILD_RESULT" != "success" ]] ||
+            [[ "$FORMAT_RESULT" != "success" ]]; then
+            echo "One or more required jobs did not succeed." >&2
+            exit 1
+          fi
