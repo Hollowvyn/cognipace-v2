@@ -219,9 +219,10 @@ Expected aggregate PR scope: the approved formatting-baseline files, the
 EditorConfig design and plan records, the planning index entries, and
 `.editorconfig`; no other files.
 
-The implementation-commit list from `git diff --name-only HEAD^...HEAD` must be
-exactly `.editorconfig`. Audit `git diff --name-only origin/main...HEAD` against
-the approved formatting-baseline plus EditorConfig scope; the aggregate diff
+The implementation-commit audit from
+`git diff-tree --no-commit-id --name-only -r 782f64b` must return exactly
+`.editorconfig`. Separately, audit `git diff --name-only origin/main...HEAD`
+against the approved formatting-baseline plus EditorConfig scope; the aggregate diff
 intentionally includes the original Prettier baseline. Confirm only the
 follow-up commit has no source, dependency, lockfile, Prettier, ESLint,
 workflow, permission, or generated-artifact changes.
