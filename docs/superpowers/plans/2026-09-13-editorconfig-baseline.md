@@ -219,9 +219,14 @@ Expected aggregate PR scope: the approved formatting-baseline files, the
 EditorConfig design and plan records, the planning index entries, and
 `.editorconfig`; no other files.
 
-Expected worktree state: clean. Confirm there are no `.idea`, `.vscode`, source,
-dependency, lockfile, Prettier, ESLint, workflow, permission, or generated
-artifact changes.
+The implementation-commit list from `git diff --name-only HEAD^...HEAD` must be
+exactly `.editorconfig`. Audit `git diff --name-only origin/main...HEAD` against
+the approved formatting-baseline plus EditorConfig scope; the aggregate diff
+intentionally includes the original Prettier baseline. Confirm only the
+follow-up commit has no source, dependency, lockfile, Prettier, ESLint,
+workflow, permission, or generated-artifact changes.
+
+Expected worktree state: clean.
 
 - [ ] **Step 5: Record skipped validation and residual risk**
 
@@ -242,7 +247,7 @@ enforcement boundary.
 
 **Files:**
 
-- Read: `.github/pull_request_template.md`
+- Read: `.github/PULL_REQUEST_TEMPLATE.md`
 - Read: `docs/agent-governance.md`
 
 - [ ] **Step 1: Prepare the conventional title**

@@ -133,8 +133,9 @@ git diff --check origin/main...HEAD
 Also verify that:
 
 - `.editorconfig` exactly matches the approved seven-property contract;
-- the diff contains no `.idea`, `.vscode`, source, dependency, lockfile,
-  Prettier, ESLint, or workflow changes;
+- the EditorConfig implementation commit changes only `.editorconfig`;
+- the aggregate PR contains the already-approved Prettier baseline plus
+  EditorConfig docs/config and no unapproved files;
 - a second `npm run format` remains clean; and
 - the worktree remains clean after validation.
 
