@@ -25,13 +25,13 @@ are merged.
 npm run build
 ```
 
-The output should be at `.output/chrome-mv3`.
+The output should be at `dist/chrome-mv3`.
 
 ## 2. Load the Unpacked Extension
 
 1. Open `chrome://extensions`.
 2. Click **Load unpacked**.
-3. Select `.output/chrome-mv3`.
+3. Select `dist/chrome-mv3`.
 4. Confirm CogniPace appears in the list without errors.
 
 ## 3. Confirm Notification Permission is Granted

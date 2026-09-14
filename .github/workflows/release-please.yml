@@ -80,9 +80,9 @@ jobs:
         id: extension_asset
         shell: bash
         run: |
-          zip_path="$(find .output -maxdepth 1 -type f -name '*.zip' | sort | tail -n 1)"
+          zip_path="$(find dist -maxdepth 1 -type f -name '*.zip' | sort | tail -n 1)"
           if [[ -z "$zip_path" ]]; then
-            echo "No WXT zip artifact found in .output" >&2
+            echo "No WXT zip artifact found in dist" >&2
             exit 1
           fi
 
