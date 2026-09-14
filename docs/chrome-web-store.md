@@ -145,7 +145,7 @@ manage Gist visibility and deletion through GitHub.
 ## Private Distribution
 
 1. In the Chrome Web Store developer dashboard, create the item and upload the
-   official CogniPace ZIP from the GitHub Release.
+   exact `cognipace-{version}-chrome-mv3.zip` asset from the GitHub Release.
 2. Complete Listing and Privacy fields using this document and `PRIVACY.md`.
 3. Set Distribution visibility to **Private**.
 4. Add the approved trusted-tester Google accounts or Google Group.
@@ -173,8 +173,8 @@ separate local storage.
 1. Merge normal release-triggering work and review the Release Please pull
    request.
 2. Merge the Release Please pull request.
-3. Confirm the GitHub Release contains
-   `cognipace-{version}-chrome-mv3.zip`.
+3. Confirm the GitHub Release contains the exact
+   `cognipace-{version}-chrome-mv3.zip` asset.
 4. Upload that exact asset as the Store item's new package.
 5. Submit the new version for review and publish it after approval.
 6. Do not rebuild or substitute a local ZIP.
