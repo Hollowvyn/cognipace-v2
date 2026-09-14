@@ -12,6 +12,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
+- [`specs/2026-09-13-editorconfig-baseline-design.md`](./specs/2026-09-13-editorconfig-baseline-design.md): approved design for adding an editor-neutral file-property baseline while keeping Prettier, ESLint, and TypeScript responsibilities separate.
 - [`specs/2026-09-13-ordered-track-next-design.md`](./specs/2026-09-13-ordered-track-next-design.md): approved design for keeping the active track's Next target in explicit group/problem order while leaving FSRS due-review urgency in the separate review loop.
 - [`specs/2026-09-13-active-track-group-auto-reveal-design.md`](./specs/2026-09-13-active-track-group-auto-reveal-design.md): approved design for automatically revealing the restored or newly selected active group tab with nearest-edge alignment while preserving manual group-strip scrolling.
 - [`specs/2026-09-12-formatting-baseline-design.md`](./specs/2026-09-12-formatting-baseline-design.md): approved design for defining the maintained Prettier surface, excluding generated and historical artifacts, and applying one behavior-neutral normalization pass before CI formatting becomes required.
