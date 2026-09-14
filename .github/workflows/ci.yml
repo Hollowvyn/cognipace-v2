@@ -98,6 +98,23 @@ jobs:
       - name: Check formatting
         run: npm run format
 
+  dependency-review:
+    name: Dependency Review
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+          fail-on-scopes: runtime, development, unknown
+          license-check: false
+          comment-summary-in-pr: never
+
   required-checks:
     name: Required Checks
     if: ${{ always() }}
@@ -105,6 +122,7 @@ jobs:
       - check
       - build
       - format
+      - dependency-review
     runs-on: ubuntu-latest
 
     steps:
@@ -113,14 +131,32 @@ jobs:
           CHECK_RESULT: ${{ needs.check.result }}
           BUILD_RESULT: ${{ needs.build.result }}
           FORMAT_RESULT: ${{ needs.format.result }}
+          EVENT_NAME: ${{ github.event_name }}
+          DEPENDENCY_REVIEW_RESULT: ${{ needs.dependency-review.result }}
         run: |
           echo "Check: $CHECK_RESULT"
           echo "Build: $BUILD_RESULT"
           echo "Format: $FORMAT_RESULT"
+          echo "Event: $EVENT_NAME"
+          echo "Dependency Review: $DEPENDENCY_REVIEW_RESULT"
+
+          case "$EVENT_NAME" in
+            pull_request)
+              expected_dependency_review_result="success"
+              ;;
+            push)
+              expected_dependency_review_result="skipped"
+              ;;
+            *)
+              echo "Unexpected event: $EVENT_NAME" >&2
+              exit 1
+              ;;
+          esac
 
           if [[ "$CHECK_RESULT" != "success" ]] ||
             [[ "$BUILD_RESULT" != "success" ]] ||
-            [[ "$FORMAT_RESULT" != "success" ]]; then
-            echo "One or more required jobs did not succeed." >&2
+            [[ "$FORMAT_RESULT" != "success" ]] ||
+            [[ "$DEPENDENCY_REVIEW_RESULT" != "$expected_dependency_review_result" ]]; then
+            echo "One or more required jobs did not produce the expected result." >&2
             exit 1
           fi
