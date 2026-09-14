@@ -69,12 +69,7 @@ describe('validateStoreBuild', () => {
 
     assert.deepEqual(result, {
       iconFiles: Object.values(completeIcons).sort(),
-      manifestPath: path.join(
-        rootDir,
-        'dist',
-        'chrome-mv3',
-        'manifest.json',
-      ),
+      manifestPath: path.join(rootDir, 'dist', 'chrome-mv3', 'manifest.json'),
       version: '1.3.0',
     })
   })
