@@ -41,6 +41,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Plans
 
+- [`plans/2026-09-13-editorconfig-baseline.md`](./plans/2026-09-13-editorconfig-baseline.md): implementation plan for adding a root, editor-neutral file-property baseline after the maintained Prettier baseline merges.
 - [`plans/2026-09-13-active-track-group-auto-reveal.md`](./plans/2026-09-13-active-track-group-auto-reveal.md): test-first implementation plan for revealing the restored or newly selected active track group tab with nearest-edge alignment while preserving manual group-strip scrolling.
 - [`plans/2026-09-12-formatting-baseline.md`](./plans/2026-09-12-formatting-baseline.md): phase-sized implementation plan for defining the maintained Prettier surface, applying one exact mechanical normalization pass, and proving the result is stable before CI formatting becomes required.
 - [`plans/2026-09-12-dependency-ci-phase-1-toolchain-baseline.md`](./plans/2026-09-12-dependency-ci-phase-1-toolchain-baseline.md): test-first implementation plan for pinning Node/npm, repairing the lockfile, aligning the Chrome alarm type, and making current CI and release builds use the same toolchain.
