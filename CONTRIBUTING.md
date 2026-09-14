@@ -87,7 +87,8 @@ ci(release): upload extension zip to GitHub releases
 
 CI publishes stable `Check`, `Build`, `Format`, `Dependency Review`, and
 `Required Checks` results. `Dependency Review` runs only for pull requests and
-rejects newly introduced moderate-or-higher vulnerabilities. `Required Checks`
+fails when a pull request introduces a moderate-or-higher vulnerability.
+`Required Checks`
 is the branch-protection interface; it requires dependency review success on
 pull requests and accepts the job's expected skip on pushes to `main`. The
 individual validation jobs remain visible for diagnosis and are not required
@@ -95,9 +96,7 @@ directly.
 
 After the hardened workflow and dependency review have passed their hosted
 rollouts, `main` branch protection requires `Required Checks`,
-`Validate PR title`, and `Validate PR body`. The later Dependency Review job is
-included through the aggregate rather than required directly because it runs
-only for pull requests.
+`Validate PR title`, and `Validate PR body`.
 
 Release Please maintains the release pull request on `main` with a hybrid
 cadence: `fix` and `deps` commits open or update a patch release pull request
