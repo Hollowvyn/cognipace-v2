@@ -41,6 +41,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Plans
 
+- [`plans/2026-09-13-ci-hardening-rollout-2-actions-dependency-review.md`](./plans/2026-09-13-ci-hardening-rollout-2-actions-dependency-review.md): phase-sized implementation plan for immutably pinning every external GitHub Action, adding pull-request dependency vulnerability review, and extending the stable aggregate before branch protection activation.
 - [`plans/2026-09-13-editorconfig-baseline.md`](./plans/2026-09-13-editorconfig-baseline.md): implementation plan for adding a root, editor-neutral file-property baseline alongside the maintained Prettier baseline in PR #159.
 - [`plans/2026-09-13-active-track-group-auto-reveal.md`](./plans/2026-09-13-active-track-group-auto-reveal.md): test-first implementation plan for revealing the restored or newly selected active track group tab with nearest-edge alignment while preserving manual group-strip scrolling.
 - [`plans/2026-09-12-formatting-baseline.md`](./plans/2026-09-12-formatting-baseline.md): phase-sized implementation plan for defining the maintained Prettier surface, applying one exact mechanical normalization pass, and proving the result is stable before CI formatting becomes required.
