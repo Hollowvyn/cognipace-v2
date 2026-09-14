@@ -61,7 +61,7 @@ The extension does not use alarms for tracking or advertising.
 Shows local due-review reminders when the user enables reminders. It does not
 send marketing notifications.
 
-### https://leetcode.com/_ and https://www.leetcode.com/_
+### `https://leetcode.com/*` and `https://www.leetcode.com/*`
 
 Runs the problem-page overlay and reads the active problem and submission
 context required by the user-facing capture and review workflow. The extension
