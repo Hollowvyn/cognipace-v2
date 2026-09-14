@@ -380,23 +380,14 @@ git commit -m "test(release): validate Chrome Web Store builds"
 - Create: `public/icon-128.png`
 - Modify: `wxt.config.ts`
 
-- [ ] **Step 1: Load the image-generation skill and create a visual reference**
+- [ ] **Step 1: Confirm the approved vector direction**
 
-Use the `imagegen` skill with this prompt:
-
-```text
-Create a square transparent-background app-icon reference for CogniPace.
-The symbol is "Recall Stack": exactly two front-facing rounded review cards,
-one active card in light sage green and one receding card in forest green.
-Add one small amber due-status dot and two bold dark horizontal recall lines.
-Use flat vector-like geometry, no gradients, no shadows, no letters, no words,
-no LeetCode marks, no brain imagery, and no third card. Center the artwork with
-roughly 19% transparent padding so it remains recognizable at 16×16 pixels.
-Palette: #101414, #2D5A43, #A1D1B4, #063824, #FBBC00, #DFE3E2.
-```
-
-Compare the reference at thumbnail size with the approved visual direction. Do
-not commit a raster reference containing extra elements or text.
+Use the approved Recall Stack direction from the design spec: exactly two
+front-facing rounded review cards, light sage active card, forest receding card,
+one amber due dot, two dark recall lines, transparent padding, no text, no
+LeetCode marks, and no third card. This icon is intentionally authored as
+deterministic SVG because it is a simple vector mark that must render identically
+at every required Store size.
 
 - [ ] **Step 2: Create the editable vector mark**
 
