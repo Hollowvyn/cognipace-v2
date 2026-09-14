@@ -37,8 +37,9 @@ npm run dev
 `.nvmrc` pins Node and `package.json` pins npm so local installs use the same
 toolchain as CI and release builds.
 
-`npm run dev` starts WXT for local extension development. Load the generated
-extension from `.output/chrome-mv3` when testing in Chrome.
+`npm run dev` starts WXT for local extension development. Keep the process
+running and load the generated extension from `dist/chrome-mv3-dev` when
+testing in Chrome.
 
 Local extension development also has dashboard dev smoke checks; see
 [Testing](./docs/testing.md) for the hidden route and expected flow.
@@ -51,7 +52,7 @@ npm run build
 ```
 
 Then open `chrome://extensions`, enable Developer mode, choose **Load
-unpacked**, and select `.output/chrome-mv3`.
+unpacked**, and select `dist/chrome-mv3`.
 
 ## Scripts
 

@@ -25,19 +25,29 @@ Start WXT for local development:
 npm run dev
 ```
 
+Keep this process running while testing. WXT writes the development extension
+to `dist/chrome-mv3-dev`.
+
 Build a Chrome MV3 extension:
 
 ```sh
 npm run build
 ```
 
+This writes the production-style extension to `dist/chrome-mv3`.
+
 ## Load The Extension In Chrome
 
 1. Open `chrome://extensions`.
 2. Enable Developer mode.
-3. Choose Load unpacked.
-4. Select `.output/chrome-mv3`.
-5. After rebuilding, click the reload button for CogniPace in
+3. When switching from the legacy `.output` location, export a backup first if
+   existing local development data matters, then disable or remove the old
+   unpacked CogniPace installation.
+4. Choose Load unpacked.
+5. Select the matching directory:
+   - `dist/chrome-mv3-dev` while `npm run dev` is running.
+   - `dist/chrome-mv3` after `npm run build`.
+6. After rebuilding, click the reload button for CogniPace in
    `chrome://extensions`.
 
 The extension requests the Chrome `notifications` permission for local
@@ -360,9 +370,14 @@ Schema and migration changes may reset local extension data during development.
 
 ### Extension Does Not Load
 
-- Run `npm run build`.
-- Confirm `.output/chrome-mv3` exists.
-- Reload the unpacked extension in `chrome://extensions`.
+- For development, keep `npm run dev` running and confirm
+  `dist/chrome-mv3-dev` exists.
+- For a production-style artifact, run `npm run build` and confirm
+  `dist/chrome-mv3` exists.
+- Confirm Chrome loaded the directory matching the active workflow, then click
+  reload in `chrome://extensions`.
+- If two CogniPace copies appear, disable or remove the old installation loaded
+  from `.output`.
 - Inspect the extension service worker console from `chrome://extensions`.
 
 ### Popup Or Dashboard Shows Stale Data
