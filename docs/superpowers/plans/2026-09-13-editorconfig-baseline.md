@@ -4,7 +4,7 @@
 
 **Goal:** Add one editor-neutral file-property baseline while preserving Prettier, ESLint, and TypeScript as the repository's formatting, quality, and type authorities.
 
-**Architecture:** A root `.editorconfig` defines only portable text-file properties. It does not duplicate language formatting, add editor-vendor settings, or change application and CI behavior. Implementation is gated on formatting-baseline PR #159 merging so validation runs against the maintained Prettier surface.
+**Architecture:** A root `.editorconfig` defines only portable text-file properties. It does not duplicate language formatting, add editor-vendor settings, or change application and CI behavior. The configuration lands as its own commit on formatting-baseline PR #159, while the approved CI hardening rollout remains a later phase.
 
 **Tech Stack:** EditorConfig, Prettier 3.8.3, ESLint 10, TypeScript 6, Node 24.20.0, npm 11.19.0
 
@@ -21,17 +21,17 @@
   architecture rules.
 - Keep `package.json` and `package-lock.json`: unchanged scripts and dependency
   graph.
-- Use
-  `docs/superpowers/specs/2026-09-13-editorconfig-baseline-design.md` as the
-  approved scope authority.
+- Use `docs/superpowers/specs/2026-09-13-editorconfig-baseline-design.md` as
+  the approved scope authority.
 
-### Task 1: Rebase Onto The Merged Formatting Baseline
+### Task 1: Confirm The Existing Formatting-Baseline PR Branch
 
 **Files:**
 
 - Verify: `.prettierignore`
 - Verify: `.prettierrc.json`
 - Verify: `package.json`
+- Verify: PR #159 branch `codex/formatting-baseline-design`
 
 - [ ] **Step 1: Confirm the task branch is clean**
 
@@ -41,33 +41,34 @@ Run:
 git status --short --branch
 ```
 
-Expected: branch `codex/editorconfig-baseline` with no tracked or untracked
-changes.
+Expected: branch `codex/formatting-baseline-design` with no tracked or
+untracked changes.
 
-- [ ] **Step 2: Confirm formatting-baseline PR #159 is merged**
+- [ ] **Step 2: Confirm formatting-baseline PR #159 is the target**
 
 Run:
 
 ```sh
-gh pr view 159 --json state,mergedAt,mergeCommit,url
+gh pr view 159 --json state,headRefName,baseRefName,url
 ```
 
-Expected: `state` is `MERGED`, `mergedAt` is non-null, and `mergeCommit.oid` is
-present. If the pull request is still open, stop without rebasing or
-implementing.
+Expected: `state` is `OPEN`, `headRefName` is
+`codex/formatting-baseline-design`, `baseRefName` is `main`, and the URL is
+`https://github.com/Hollowvyn/cognipace-v2/pull/159`.
 
-- [ ] **Step 3: Rebase the planning commits onto current `main`**
+- [ ] **Step 3: Refresh the PR branch against current `main`**
 
 Run:
 
 ```sh
 git fetch origin main
-git rebase origin/main
+git merge-base --is-ancestor origin/main HEAD
 ```
 
-Expected: the design and plan commits replay on top of the merged formatting
-baseline. If `docs/superpowers/README.md` conflicts, preserve every current
-`main` index entry and the EditorConfig spec and plan entries.
+Expected: the current `origin/main` commit is an ancestor of the PR branch. If
+the check fails, rebase the PR branch onto `origin/main`, preserve every current
+README index entry plus the formatting and EditorConfig entries, and rerun this
+check before implementation.
 
 - [ ] **Step 4: Verify the formatting-baseline ownership contract is present**
 
@@ -96,9 +97,9 @@ Run:
 test -f .editorconfig
 ```
 
-Expected: exit status `1` because the repository has no EditorConfig file. If
-the file already exists after rebasing, stop and compare it with the approved
-design before continuing.
+Expected: exit status `1` because the PR branch has no EditorConfig file. If
+the file already exists, stop and compare it with the approved design before
+continuing.
 
 - [ ] **Step 2: Add the minimal configuration**
 
@@ -150,7 +151,7 @@ git commit -m "build(format): add editorconfig baseline"
 
 Expected: one implementation commit containing only `.editorconfig`.
 
-### Task 3: Validate The Repository-Owned Baseline
+### Task 3: Validate The Combined Formatting Baseline
 
 **Files:**
 
@@ -203,18 +204,20 @@ Run:
 
 ```sh
 git diff --check origin/main...HEAD
+git diff --name-only HEAD^...HEAD
 git diff --name-only origin/main...HEAD
 git status --short --branch
 ```
 
-Expected changed-file list:
+Expected implementation-commit changed-file list:
 
 ```text
 .editorconfig
-docs/superpowers/README.md
-docs/superpowers/plans/2026-09-13-editorconfig-baseline.md
-docs/superpowers/specs/2026-09-13-editorconfig-baseline-design.md
 ```
+
+Expected aggregate PR scope: the approved formatting-baseline files, the
+EditorConfig design and plan records, the planning index entries, and
+`.editorconfig`; no other files.
 
 Expected worktree state: clean. Confirm there are no `.idea`, `.vscode`, source,
 dependency, lockfile, Prettier, ESLint, workflow, permission, or generated
@@ -244,13 +247,13 @@ enforcement boundary.
 
 - [ ] **Step 1: Prepare the conventional title**
 
-Use:
+Keep the existing PR #159 title:
 
 ```text
-build(format): add editorconfig baseline
+style: establish the maintained formatting baseline
 ```
 
-Expected release impact: none. `build` is a maintenance title under the current
+Expected release impact: none. `style` is a maintenance title under the current
 Release Please policy.
 
 - [ ] **Step 2: Prepare the PR body from the current template**
@@ -258,19 +261,20 @@ Release Please policy.
 Include:
 
 ```text
-Details: add one root, editor-neutral file-property baseline; keep Prettier, ESLint, TypeScript, dependencies, and workflows unchanged.
-Issue: No issue - cross-editor formatting consistency follow-up.
+Details: add one root, editor-neutral file-property baseline alongside the maintained Prettier surface; keep Prettier, ESLint, TypeScript, dependencies, and workflows unchanged.
+Issue: No issue - cross-editor consistency is part of the approved formatting baseline.
 Testing: list the exact commands and results from Task 3, including skipped validation and reasons.
 Screenshots: no visible product change; the configuration diff is the evidence.
 Release impact: none.
-Rollback: revert the build(format) implementation commit.
+Rollback: revert the EditorConfig implementation commit independently, or revert the full formatting baseline if needed.
 ```
 
 Expected: PR Hygiene accepts every required section without claiming runtime or
 visual testing occurred.
 
-- [ ] **Step 3: Request review without merging**
+- [ ] **Step 3: Update PR #159 and request review without merging**
 
-After publication is authorized, push the branch and open the pull request.
-Confirm hosted checks start, report their results, and leave merge approval to
-the human reviewer.
+Push the updated `codex/formatting-baseline-design` branch and update PR #159
+with the EditorConfig scope, validation results, skipped validation reasons,
+and rollback commit. Confirm hosted checks start, report their results, and
+leave merge approval to the human reviewer.

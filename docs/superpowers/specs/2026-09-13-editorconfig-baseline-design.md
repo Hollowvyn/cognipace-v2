@@ -2,8 +2,8 @@
 
 ## Status
 
-Approved in conversation on September 13, 2026. Written-spec review remains
-required before implementation planning begins.
+Approved in conversation on September 13, 2026. Scope was subsequently updated
+by the user to include this work in formatting-baseline PR #159.
 
 ## Context
 
@@ -18,8 +18,8 @@ JetBrains settings are vendor-specific, while Google's guide explicitly
 reflects constraints that may not apply to external projects. EditorConfig is
 the portable layer understood by JetBrains IDEs and other common editors.
 
-This change follows the formatting-baseline pull request as a separate,
-behavior-neutral repository configuration change.
+This change is included in formatting-baseline PR #159 as a separate,
+behavior-neutral repository configuration commit.
 
 ## Goals
 
@@ -30,8 +30,8 @@ behavior-neutral repository configuration change.
 - Keep ESLint focused on correctness, maintainability, React, TypeScript, and
   architecture rules.
 - Avoid editor-vendor lock-in and avoid duplicating Prettier options.
-- Keep the change independent of product behavior, dependencies, CI workflow
-  implementation, and the formatting-baseline pull request.
+- Keep the change independent of product behavior, dependencies, and CI
+  workflow implementation while landing alongside the formatting baseline.
 
 ## Non-Goals
 
@@ -108,14 +108,15 @@ Markdown structure rather than preserve invisible trailing whitespace.
 - `npm run format` remains the local and CI formatting gate.
 - `npm run lint` remains the code-quality gate.
 - The approved CI hardening rollout will keep `Format` and `Check` as separate
-  jobs; this follow-up does not edit those workflows.
+  jobs; this EditorConfig commit does not edit those workflows.
 
 ## Rollout Boundary
 
-Do not amend formatting-baseline PR #159 with this change. Prepare and review
-this work separately. Before implementation validation and publication, rebase
-the follow-up onto `main` after PR #159 merges so the maintained Prettier
-baseline is present.
+Include this EditorConfig work in formatting-baseline PR #159, but keep it in a
+separate implementation commit so reviewers can identify and revert the
+cross-editor policy independently from the mechanical Prettier normalization.
+The approved CI hardening rollout still begins only after PR #159 merges and a
+clean `main` checkout proves the combined formatting baseline.
 
 ## Validation
 
@@ -150,5 +151,4 @@ artifacts.
 - No vendor-specific editor settings or broad external style guide is adopted.
 - No application, dependency, CI, release, or formatting-baseline behavior
   changes.
-- Required validation passes after the branch is based on the merged formatting
-  baseline.
+- Required validation passes on the combined formatting-baseline PR branch.
