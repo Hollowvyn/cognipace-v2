@@ -658,18 +658,23 @@ function PaginatedTable<T>({
   )
 }
 
+const dateFormatter = new Intl.DateTimeFormat('en-US', {
+  day: '2-digit',
+  month: '2-digit',
+  timeZone: 'UTC',
+  year: '2-digit',
+})
+
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    timeZone: 'UTC',
-    year: '2-digit',
-  }).format(new Date(`${date}T00:00:00.000Z`))
+  return dateFormatter.format(new Date(`${date}T00:00:00.000Z`))
 }
+
+const shortDateFormatter = new Intl.DateTimeFormat('en-US', {
+  day: '2-digit',
+  month: '2-digit',
+  timeZone: 'UTC',
+})
+
 function formatShortDate(date: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    timeZone: 'UTC',
-  }).format(new Date(`${date}T00:00:00.000Z`))
+  return shortDateFormatter.format(new Date(`${date}T00:00:00.000Z`))
 }
