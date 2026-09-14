@@ -495,7 +495,7 @@ npm run store:check
 Expected: both commands pass, ending with:
 
 ```text
-Store build validation passed for CogniPace 1.3.0 with 4 icon files.
+Store build validation passed for CogniPace 1.3.1 with 4 icon files.
 ```
 
 - [ ] **Step 7: Inspect the generated manifest**
@@ -506,7 +506,7 @@ Run:
 node -e "const m=require('./.output/chrome-mv3/manifest.json'); console.log(JSON.stringify({name:m.name,description:m.description,version:m.version,icons:m.icons,action:m.action},null,2))"
 ```
 
-Expected: CogniPace identity, version `1.3.0`, four `icons` entries, four
+Expected: CogniPace identity, current package/main baseline version `1.3.1`, four `icons` entries, four
 `action.default_icon` entries, and the WXT-generated popup action retained.
 
 - [ ] **Step 8: Commit the icon identity**
@@ -522,26 +522,28 @@ git commit -m "feat(brand): add Recall Stack extension icons"
 
 - Modify: `.github/workflows/release-please.yml`
 
-- [ ] **Step 1: Confirm the workflow does not yet invoke the new gate**
+- [ ] **Step 1: Confirm the workflow invokes the Store validation gate**
 
 Run:
 
 ```sh
-rg -n "store:check|Validate Store build" .github/workflows/release-please.yml
+rg -n "store:check|Check Store metadata" .github/workflows/release-please.yml
 ```
 
-Expected: no matches.
+Expected: exactly one `Check Store metadata` step and one `npm run store:check`
+run are present.
 
-- [ ] **Step 2: Insert the Store validation step**
+- [ ] **Step 2: Confirm the Store validation gate placement**
 
-In `.github/workflows/release-please.yml`, insert this immediately after
-`Build extension` and before `Zip extension`:
+Run this read-only inspection:
 
-```yaml
-- name: Validate Store build
-  if: ${{ steps.release.outputs.release_created == 'true' }}
-  run: npm run store:check
+```sh
+rg -n -B 3 -A 3 "Build extension|Check Store metadata|Zip extension|store:check" .github/workflows/release-please.yml
 ```
+
+Expected: the existing `Check Store metadata` step runs immediately after
+`Build extension` and before `Zip extension`. Do not insert a duplicate gate or
+modify the workflow in this plan step.
 
 - [ ] **Step 3: Run the exact local artifact path**
 
@@ -551,13 +553,15 @@ Run:
 npm run build
 npm run store:check
 npm run zip
-unzip -l .output/cognipace-v2-1.3.0-chrome.zip
-unzip -p .output/cognipace-v2-1.3.0-chrome.zip manifest.json
+STORE_VERSION="$(node -p "require('./package.json').version")"
+STORE_ZIP=".output/cognipace-v2-${STORE_VERSION}-chrome.zip"
+unzip -l "$STORE_ZIP"
+unzip -p "$STORE_ZIP" manifest.json
 ```
 
 Expected: the validator passes, WXT creates
-`.output/cognipace-v2-1.3.0-chrome.zip`, the ZIP has `manifest.json` at its
-root, and all four PNG icons appear in the ZIP.
+`.output/cognipace-v2-${STORE_VERSION}-chrome.zip`, the ZIP has
+`manifest.json` at its root, and all four PNG icons appear in the ZIP.
 
 - [ ] **Step 4: Review workflow permissions and secrets**
 
@@ -628,9 +632,10 @@ review workflow. CogniPace does not monitor unrelated websites.
 
 If the user enables GitHub Gist sync, CogniPace stores the user-provided GitHub
 token locally, calls GitHub to validate it, reads the associated GitHub login,
-and transfers a CogniPace backup envelope to or from a private Gist. Gist
-content and retention are also governed by the user's GitHub account and
-GitHub's policies.
+and transfers a CogniPace backup envelope to or from a Gist. New Gists created
+by CogniPace are private; existing connected Gists may be public or private
+under GitHub. Gist content and retention are also governed by the user's
+GitHub account and GitHub's policies.
 
 ### Optional AI assessment data
 
@@ -655,8 +660,7 @@ Core data is processed locally in the browser. Information leaves the browser
 only when needed for a user-selected function:
 
 - LeetCode requests support the problem-page and submission workflow.
-- GitHub requests validate a user-supplied token and perform optional private
-  Gist sync.
+- GitHub requests validate a user-supplied token and perform optional Gist sync.
 - AI-provider requests perform optional assessments using the user's selected
   provider and API key.
 
@@ -679,8 +683,9 @@ AI-provider secrets must be re-entered after moving to another extension
 installation.
 
 Deleting local data does not delete information already sent to an optional
-third-party service. Users must manage or delete private Gists through GitHub
-and manage provider-side assessment data through the selected AI provider.
+third-party service. Users must manage or delete connected Gists through
+GitHub and manage provider-side assessment data through the selected AI
+provider.
 
 ## Security
 
@@ -765,9 +770,10 @@ recall ratings, organize ordered study tracks, and review progress in the
 dashboard.
 
 Core study data stays in the local Chrome profile. Backup export and restore are
-built in. Users may optionally connect private GitHub Gist sync and may
-optionally configure their own OpenAI, Anthropic, or Google Gemini API key for
-AI-assisted assessment.
+built in. Users may optionally connect GitHub Gist sync. New Gists created by
+CogniPace are private; existing connected Gists may be public or private under
+GitHub. Users may also optionally configure their own OpenAI, Anthropic, or
+Google Gemini API key for AI-assisted assessment.
 
 CogniPace has no developer-operated analytics, advertising, hosted account, or
 hosted application backend.
@@ -806,8 +812,8 @@ does not monitor unrelated sites.
 
 ### https://api.github.com/*
 
-Validates a user-provided GitHub token and performs optional private Gist
-backup/sync actions initiated or enabled by the user.
+Validates a user-provided GitHub token and performs optional Gist backup/sync
+actions initiated or enabled by the user.
 
 ### https://api.openai.com/*
 
@@ -1131,9 +1137,9 @@ Insert this section in `docs/release.md` before **Failure Handling**:
 ```markdown
 ## Private Chrome Web Store Handoff
 
-The first private Store submission must use a release newer than `v1.3.0`.
-That release proved the GitHub packaging path but does not contain declared PNG
-extension icons.
+The historical `v1.3.0` release proved the GitHub packaging path but does not
+contain declared PNG extension icons. The first private Store submission must
+use a release newer than `v1.3.1`.
 
 Before opening the Store dashboard:
 
@@ -1310,17 +1316,19 @@ npm run zip
 ```
 
 Expected: all commands pass and WXT creates
-`.output/cognipace-v2-1.3.0-chrome.zip`.
+`.output/cognipace-v2-{version}-chrome.zip`.
 
 - [ ] **Step 4: Inspect the manifest and ZIP**
 
 Run:
 
 ```sh
+STORE_VERSION="$(node -p "require('./package.json').version")"
+STORE_ZIP=".output/cognipace-v2-${STORE_VERSION}-chrome.zip"
 node -e "const m=require('./.output/chrome-mv3/manifest.json'); const p=require('./package.json'); if(m.version!==p.version) throw new Error('version mismatch'); console.log(JSON.stringify({manifest_version:m.manifest_version,name:m.name,description:m.description,version:m.version,permissions:m.permissions,host_permissions:m.host_permissions,icons:m.icons,action:m.action},null,2))"
-unzip -t .output/cognipace-v2-1.3.0-chrome.zip
-unzip -l .output/cognipace-v2-1.3.0-chrome.zip
-shasum -a 256 .output/cognipace-v2-1.3.0-chrome.zip
+unzip -t "$STORE_ZIP"
+unzip -l "$STORE_ZIP"
+shasum -a 256 "$STORE_ZIP"
 ```
 
 Expected:
@@ -1379,7 +1387,8 @@ The PR body must name:
 - remaining risk in GitHub Actions execution and Store review
 - human-run popup, dashboard, overlay, first-install, and edge-path smoke
 - attached screenshot or screen-recording proof
-- release impact: expected patch release newer than `v1.3.0`
+- release impact: expected patch release higher than the current main baseline
+  `v1.3.1`
 - rollback: revert before release, or ship a higher corrective patch after a
   Store version is published
 - no issue, with the reason that this work continues the explicitly requested
@@ -1406,16 +1415,16 @@ fix(release): prepare private Chrome Web Store distribution
 ```
 
 Review and merge the resulting Release Please patch-release PR. The resulting
-version must be greater than `1.3.0`; with no intervening release changes,
-the expected version is `1.3.1`.
+version must be greater than the current main baseline `1.3.1`. Use the actual
+higher release version throughout the remaining steps; do not assume a
+specific next version.
 
 - [ ] **Step 2: Verify the official GitHub Release asset**
 
 From the new GitHub Release:
 
 1. Confirm the release tag and ZIP filename use the same version.
-2. Download `cognipace-1.3.1-chrome-mv3.zip` when `1.3.1` is the
-   released version.
+2. Download `cognipace-{version}-chrome-mv3.zip` for the released version.
 3. Confirm the release workflow passed `npm run store:check`.
 4. Inspect the downloaded ZIP rather than using GitHub's generated source
    archives.

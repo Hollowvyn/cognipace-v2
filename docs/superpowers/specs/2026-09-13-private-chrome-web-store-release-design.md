@@ -8,7 +8,7 @@ Approved for implementation planning.
 
 CogniPace already uses Release Please and GitHub Actions to create a versioned
 WXT Chrome MV3 ZIP. Release `v1.3.0` proved the repaired pipeline by attaching
-`cognipace-1.3.0-chrome-mv3.zip` to the GitHub Release.
+the versioned `cognipace-{version}-chrome-mv3.zip` asset to the GitHub Release.
 
 The current artifact is not ready for Chrome Web Store submission. Its manifest
 does not declare extension icons, and the repository does not yet own the Store
@@ -177,7 +177,9 @@ The policy covers:
 - LeetCode problem-page metadata, problem statements, submission results,
   diagnostics, and solution code when the user-facing workflow reads them
 - optional GitHub token validation, GitHub account identifier handling, and
-  private Gist backup/sync transfers initiated or enabled by the user
+  Gist backup/sync transfers initiated or enabled by the user; new Gists
+  created by CogniPace are private, while existing connected Gists may be
+  public or private under GitHub
 - optional AI-provider API keys and assessment payloads sent to the user's
   configured OpenAI, Anthropic, or Google Gemini provider
 - local secret storage and the exclusion of raw secrets from backups, Gist sync
@@ -199,7 +201,7 @@ The Store submission explains the current manifest permissions:
   problem-page overlay and read problem/submission context for user-facing
   practice workflows.
 - `https://api.github.com/*`: validate a user-provided token and perform
-  optional private Gist sync.
+  optional Gist sync.
 - OpenAI, Anthropic, and Google Gemini API hosts: perform optional user-enabled
   BYOK assessment requests from trusted background code.
 
