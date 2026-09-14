@@ -97,3 +97,30 @@ jobs:
 
       - name: Check formatting
         run: npm run format
+
+  required-checks:
+    name: Required Checks
+    if: ${{ always() }}
+    needs:
+      - check
+      - build
+      - format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Report and verify required jobs
+        env:
+          CHECK_RESULT: ${{ needs.check.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          FORMAT_RESULT: ${{ needs.format.result }}
+        run: |
+          echo "Check: $CHECK_RESULT"
+          echo "Build: $BUILD_RESULT"
+          echo "Format: $FORMAT_RESULT"
+
+          if [[ "$CHECK_RESULT" != "success" ]] ||
+            [[ "$BUILD_RESULT" != "success" ]] ||
+            [[ "$FORMAT_RESULT" != "success" ]]; then
+            echo "One or more required jobs did not succeed." >&2
+            exit 1
+          fi
