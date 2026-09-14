@@ -2,8 +2,8 @@
 
 ## Status
 
-Approved in conversation on September 12, 2026. Written-spec review remains
-required before implementation planning begins.
+Approved in conversation on September 12, 2026. Implemented and independently
+reviewed in formatting-baseline PR #159.
 
 ## Context
 
