@@ -85,9 +85,13 @@ fix(docs): clarify Chrome Web Store release handoff
 ci(release): upload extension zip to GitHub releases
 ```
 
-CI publishes stable `Check`, `Build`, `Format`, and `Required Checks` results.
-`Required Checks` is the branch-protection interface; the individual validation
-jobs remain visible for diagnosis and are not required directly.
+CI publishes stable `Check`, `Build`, `Format`, `Dependency Review`, and
+`Required Checks` results. `Dependency Review` runs only for pull requests and
+rejects newly introduced moderate-or-higher vulnerabilities. `Required Checks`
+is the branch-protection interface; it requires dependency review success on
+pull requests and accepts the job's expected skip on pushes to `main`. The
+individual validation jobs remain visible for diagnosis and are not required
+directly.
 
 After the hardened workflow and dependency review have passed their hosted
 rollouts, `main` branch protection requires `Required Checks`,
