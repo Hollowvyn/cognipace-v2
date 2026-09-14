@@ -85,6 +85,16 @@ fix(docs): clarify Chrome Web Store release handoff
 ci(release): upload extension zip to GitHub releases
 ```
 
+CI publishes stable `Check`, `Build`, `Format`, and `Required Checks` results.
+`Required Checks` is the branch-protection interface; the individual validation
+jobs remain visible for diagnosis and are not required directly.
+
+After the hardened workflow and dependency review have passed their hosted
+rollouts, `main` branch protection requires `Required Checks`,
+`Validate PR title`, and `Validate PR body`. The later Dependency Review job is
+included through the aggregate rather than required directly because it runs
+only for pull requests.
+
 Release Please maintains the release pull request on `main` with a hybrid
 cadence: `fix` and `deps` commits open or update a patch release pull request
 immediately, while other release-triggering work is batched into the Friday
