@@ -55,7 +55,8 @@ export function deriveOverlayAssessmentSessionContext(
       ? {
           id: latestAttempt.id,
           rating: latestAttempt.rating,
-          isCorrect: latestAttempt.isCorrect ?? latestAttempt.rating !== 'again',
+          isCorrect:
+            latestAttempt.isCorrect ?? latestAttempt.rating !== 'again',
           elapsedSeconds: latestAttempt.elapsedSeconds,
           occurredAt: Date.parse(latestAttempt.reviewedAt),
         }

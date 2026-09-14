@@ -22,13 +22,18 @@ function renderSection(
     setRemindersEnabled: vi.fn(),
     setRemindersTime: vi.fn(),
   }
-  return { actions, ...render(<RemindersSection actions={actions} draft={draft} />) }
+  return {
+    actions,
+    ...render(<RemindersSection actions={actions} draft={draft} />),
+  }
 }
 
 describe('RemindersSection', () => {
   it('renders the Reminders section heading', () => {
     renderSection()
-    expect(screen.getByRole('heading', { name: 'Reminders' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Reminders' }),
+    ).toBeInTheDocument()
   })
 
   it('disables the time input when reminders are off', () => {
@@ -68,6 +73,8 @@ describe('RemindersSection', () => {
   it('hides the error when reminders are off even if time is empty', () => {
     renderSection({ enabled: false, time: '' })
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Reminder time')).not.toHaveAttribute('aria-invalid')
+    expect(screen.getByLabelText('Reminder time')).not.toHaveAttribute(
+      'aria-invalid',
+    )
   })
 })

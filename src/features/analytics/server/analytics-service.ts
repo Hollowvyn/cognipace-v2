@@ -88,19 +88,14 @@ export async function getAnalyticsSummary(
   })
   const fourteenDaysLater = new Date(forecastBounds.end)
 
-  const [
-    dayStats,
-    reviewHistory,
-    currentFsrsCards,
-    upcomingCards,
-    settings,
-  ] = await Promise.all([
-    getReviewDayStats(db),
-    getReviewHistory(db),
-    getCurrentFsrsCards(db),
-    getUpcomingCards(db, fourteenDaysLater),
-    getSettings(db),
-  ])
+  const [dayStats, reviewHistory, currentFsrsCards, upcomingCards, settings] =
+    await Promise.all([
+      getReviewDayStats(db),
+      getReviewHistory(db),
+      getCurrentFsrsCards(db),
+      getUpcomingCards(db, fourteenDaysLater),
+      getSettings(db),
+    ])
 
   const fsrsOptions = normalizeFsrsSchedulingOptions({
     targetRetention: settings.review.targetRetention,

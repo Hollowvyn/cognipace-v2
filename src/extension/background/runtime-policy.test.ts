@@ -308,10 +308,7 @@ describe('runtime-policy', () => {
         ),
       ).toBe(true)
       expect(
-        canCallExtensionMethod(
-          'genai.recommendLeetCodeAssessment',
-          'popup',
-        ),
+        canCallExtensionMethod('genai.recommendLeetCodeAssessment', 'popup'),
       ).toBe(false)
       expect(
         canCallExtensionMethod(

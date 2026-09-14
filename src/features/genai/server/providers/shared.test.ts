@@ -94,12 +94,15 @@ describe('provider failure diagnostics', () => {
       responseBody: '{"error":"model not found"}',
     })
 
-    expect(errorSpy).toHaveBeenCalledWith('[CogniPace GenAI provider failure]', {
-      provider: 'gemini',
-      model: 'gemini-3.5-flash',
-      status: 400,
-      responseBody: '{"error":"model not found"}',
-    })
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[CogniPace GenAI provider failure]',
+      {
+        provider: 'gemini',
+        model: 'gemini-3.5-flash',
+        status: 400,
+        responseBody: '{"error":"model not found"}',
+      },
+    )
   })
 })
 

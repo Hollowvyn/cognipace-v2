@@ -211,7 +211,9 @@ describe('assessment policy', () => {
       confidence: 1,
     })
     expect(
-      decision.status === 'accepted' ? decision.warnings.map((w) => w.code) : [],
+      decision.status === 'accepted'
+        ? decision.warnings.map((w) => w.code)
+        : [],
     ).toEqual([])
   })
 
@@ -234,7 +236,9 @@ describe('assessment policy', () => {
       reason: { code: 'leetcode-good' },
     })
     expect(
-      decision.status === 'accepted' ? decision.warnings.map((w) => w.code) : [],
+      decision.status === 'accepted'
+        ? decision.warnings.map((w) => w.code)
+        : [],
     ).toEqual(expect.arrayContaining(['first-solve', 'no-previous-best']))
   })
 

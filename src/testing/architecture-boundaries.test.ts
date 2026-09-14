@@ -139,9 +139,7 @@ describe('architecture boundaries', () => {
     expect(hostPermissions).toEqual(
       expect.arrayContaining(existingNonAiHostPermissions),
     )
-    expect(aiProviderHostPermissions).toEqual(
-      approvedAiProviderHostPermissions,
-    )
+    expect(aiProviderHostPermissions).toEqual(approvedAiProviderHostPermissions)
     expect(hostPermissions).not.toContain('https://*/*')
     expect(hostPermissions).not.toContain('*://*/*')
   })
@@ -155,8 +153,7 @@ describe('architecture boundaries', () => {
   it('keeps notification background code from importing FSRS internals directly', () => {
     const notificationFiles = sourceFiles(['extension']).filter(
       (file) =>
-        file.includes('due-notification') ||
-        file.includes('alarm-scheduler'),
+        file.includes('due-notification') || file.includes('alarm-scheduler'),
     )
     const offenders = notificationFiles.filter((file) => {
       const content = readFileSync(file, 'utf8')

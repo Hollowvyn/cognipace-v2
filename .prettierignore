@@ -1,9 +1,17 @@
 .agents
+.claude/skill-validation
+.claude/skills
+.jules
 .output
 .wxt
+CHANGELOG.md
 dist
 dist-ssr
+docs/superpowers/audits
+docs/superpowers/plans
+docs/superpowers/specs
 node_modules
 package-lock.json
 new_prd.md
 skills-lock.json
+src/platform/db/migrations/meta

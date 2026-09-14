@@ -522,7 +522,9 @@ export function useOverlayReviewActions({
       return decision
     }
 
-    let response: Awaited<ReturnType<typeof recommendLeetCodeAssessmentViaRuntime>>
+    let response: Awaited<
+      ReturnType<typeof recommendLeetCodeAssessmentViaRuntime>
+    >
     try {
       response = await recommendLeetCodeAssessmentViaRuntime({
         surface: 'content-script',
@@ -614,7 +616,10 @@ function toAssessmentSubmission(
     expectedOutput: result.expectedOutput ?? undefined,
     actualOutput: result.codeOutput ?? undefined,
     errorMessage:
-      result.errorMessage ?? result.compileError ?? result.runtimeError ?? undefined,
+      result.errorMessage ??
+      result.compileError ??
+      result.runtimeError ??
+      undefined,
   }
 }
 

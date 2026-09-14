@@ -48,7 +48,9 @@ describe('library selection track draft', () => {
         createdAt: '2026-05-24T12:00:00.000Z',
       }),
     )
-    expect(readLibrarySelectionTrackDraft('wrong-shape', { storage })).toBeNull()
+    expect(
+      readLibrarySelectionTrackDraft('wrong-shape', { storage }),
+    ).toBeNull()
     expect(storage.getItem('cognipace:track-draft:wrong-shape')).toBeNull()
 
     storage.setItem(
@@ -71,8 +73,12 @@ describe('library selection track draft', () => {
         createdAt: 'not-a-date',
       }),
     )
-    expect(readLibrarySelectionTrackDraft('invalid-created-at', { storage })).toBeNull()
-    expect(storage.getItem('cognipace:track-draft:invalid-created-at')).toBeNull()
+    expect(
+      readLibrarySelectionTrackDraft('invalid-created-at', { storage }),
+    ).toBeNull()
+    expect(
+      storage.getItem('cognipace:track-draft:invalid-created-at'),
+    ).toBeNull()
 
     storage.setItem(
       'cognipace:track-draft:impossible-created-at',
@@ -83,8 +89,12 @@ describe('library selection track draft', () => {
         createdAt: '2026-02-31T12:00:00.000Z',
       }),
     )
-    expect(readLibrarySelectionTrackDraft('impossible-created-at', { storage })).toBeNull()
-    expect(storage.getItem('cognipace:track-draft:impossible-created-at')).toBeNull()
+    expect(
+      readLibrarySelectionTrackDraft('impossible-created-at', { storage }),
+    ).toBeNull()
+    expect(
+      storage.getItem('cognipace:track-draft:impossible-created-at'),
+    ).toBeNull()
 
     const expired = createLibrarySelectionTrackDraft(['two-sum'], {
       id: 'expired',
@@ -108,8 +118,12 @@ describe('library selection track draft', () => {
       storage,
     })
 
-    expect(() => clearLibrarySelectionTrackDraft(null, { storage })).not.toThrow()
-    expect(() => clearLibrarySelectionTrackDraft(undefined, { storage })).not.toThrow()
+    expect(() =>
+      clearLibrarySelectionTrackDraft(null, { storage }),
+    ).not.toThrow()
+    expect(() =>
+      clearLibrarySelectionTrackDraft(undefined, { storage }),
+    ).not.toThrow()
     expect(
       readLibrarySelectionTrackDraft('draft-1', {
         now: new Date('2026-05-24T12:10:00.000Z'),

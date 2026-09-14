@@ -46,7 +46,7 @@ describe('collectWarnings', () => {
       codes(
         collectWarnings(input, derived, {
           proposedRating: 'good',
-              lockReason: null,
+          lockReason: null,
           selectedRatingConflicts: false,
         }),
       ),
@@ -76,7 +76,7 @@ describe('collectWarnings', () => {
       codes(
         collectWarnings(input, derived, {
           proposedRating: 'good',
-              lockReason: null,
+          lockReason: null,
           selectedRatingConflicts: false,
         }),
       ),
@@ -91,7 +91,7 @@ describe('collectWarnings', () => {
       codes(
         collectWarnings(input, derived, {
           proposedRating: 'good',
-              lockReason: null,
+          lockReason: null,
           selectedRatingConflicts: false,
         }),
       ),
@@ -106,7 +106,7 @@ describe('collectWarnings', () => {
       codes(
         collectWarnings(input, derived, {
           proposedRating: 'good',
-              lockReason: null,
+          lockReason: null,
           selectedRatingConflicts: false,
         }),
       ),

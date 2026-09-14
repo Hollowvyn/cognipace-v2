@@ -80,7 +80,11 @@ describe('gemini requestJson', () => {
       candidates: [
         { content: { parts: [{ text: 'not json {' }], role: 'model' } },
       ],
-      usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, totalTokenCount: 2 },
+      usageMetadata: {
+        promptTokenCount: 1,
+        candidatesTokenCount: 1,
+        totalTokenCount: 2,
+      },
     }
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify(body), { status: 200 }),
@@ -113,7 +117,11 @@ describe('gemini requestJson', () => {
   it('returns invalid-output when candidates[] is empty', async () => {
     const body = {
       candidates: [],
-      usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 0, totalTokenCount: 1 },
+      usageMetadata: {
+        promptTokenCount: 1,
+        candidatesTokenCount: 0,
+        totalTokenCount: 1,
+      },
     }
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify(body), { status: 200 }),
@@ -188,7 +196,9 @@ describe('gemini requestJson', () => {
     )
 
     const pending = requestJson(buildRequest({ signal: controller.signal }))
-    const expectAbort = expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    const expectAbort = expect(pending).rejects.toMatchObject({
+      name: 'AbortError',
+    })
     controller.abort()
     await expectAbort
   })
@@ -210,9 +220,7 @@ describe('gemini requestJson', () => {
     expect(headers['x-goog-api-key']).toBe(API_KEY)
     const body = JSON.parse(init?.body as string) as Record<string, unknown>
     expect(body.systemInstruction).toEqual({ parts: [{ text: 'sys' }] })
-    expect(body.contents).toEqual([
-      { role: 'user', parts: [{ text: 'user' }] },
-    ])
+    expect(body.contents).toEqual([{ role: 'user', parts: [{ text: 'user' }] }])
     const generationConfig = body.generationConfig as {
       responseMimeType?: unknown
       responseSchema?: unknown

@@ -143,20 +143,19 @@ describe('deriveOverlayAssessmentSessionContext', () => {
     })
   })
 
-  it.each([
-    'manual-overlay',
-    'collapsed-quick',
-    'leetcode-watcher',
-  ] as const)('passes submissionSource %s through', (source) => {
-    expect(
-      deriveOverlayAssessmentSessionContext({
-        context: makeContext(null),
-        overlay: makeOverlay(),
-        submissionSource: source,
-        timerUsed: false,
-      }).submissionSource,
-    ).toBe(source)
-  })
+  it.each(['manual-overlay', 'collapsed-quick', 'leetcode-watcher'] as const)(
+    'passes submissionSource %s through',
+    (source) => {
+      expect(
+        deriveOverlayAssessmentSessionContext({
+          context: makeContext(null),
+          overlay: makeOverlay(),
+          submissionSource: source,
+          timerUsed: false,
+        }).submissionSource,
+      ).toBe(source)
+    },
+  )
 
   it.each([true, false])('passes timerUsed %s through', (used) => {
     expect(

@@ -206,9 +206,7 @@ describe('OverlayAssessmentRecommendation', () => {
 
     await user.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    expect(
-      screen.getByText('Elapsed 600s vs 2100s target'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Elapsed 600s vs 2100s target')).toBeInTheDocument()
     expect(
       screen.getByText('Consider edge case for empty array.'),
     ).toBeInTheDocument()

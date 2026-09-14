@@ -53,5 +53,4 @@ describe('chart buckets', () => {
     ])
     expect(values).toEqual([null, 0.8, 0.84, null])
   })
-
 })

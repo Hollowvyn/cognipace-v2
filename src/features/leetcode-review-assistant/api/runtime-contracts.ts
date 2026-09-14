@@ -83,9 +83,7 @@ const assessmentBlockedReasonSchema = z
 
 // .loose() so future warning codes can carry extra context without breaking
 // the wire parse. The handler reads only `.code` from each warning.
-const assessmentWarningSchema = z
-  .object({ code: z.string() })
-  .loose()
+const assessmentWarningSchema = z.object({ code: z.string() }).loose()
 
 const leetCodeAssessmentDecisionSchema = z.discriminatedUnion('status', [
   z

@@ -68,7 +68,8 @@ function buildUserPayload(input: RecommendAssessmentInput): string {
 
 function renderProblem(input: RecommendAssessmentInput): string {
   const { problem } = input
-  const topics = problem.topics.length > 0 ? problem.topics.join(', ') : '(none)'
+  const topics =
+    problem.topics.length > 0 ? problem.topics.join(', ') : '(none)'
   const lines = [
     '## Problem',
     `- Slug: ${problem.slug}`,
@@ -80,22 +81,31 @@ function renderProblem(input: RecommendAssessmentInput): string {
     lines.push('')
     lines.push('### Statement')
     lines.push(
-      truncateText(problem.statement, STATEMENT_CHAR_LIMIT, TEXT_TRUNCATION_MARKER),
+      truncateText(
+        problem.statement,
+        STATEMENT_CHAR_LIMIT,
+        TEXT_TRUNCATION_MARKER,
+      ),
     )
   }
   return lines.join('\n')
 }
 
-function renderSubmission(submission: AssessmentRecommendationSubmission): string {
+function renderSubmission(
+  submission: AssessmentRecommendationSubmission,
+): string {
   if (submission.status === 'no-submission') {
     return '## Submission\n- Status: no-submission (manual review without LeetCode result)'
   }
 
   const lines: string[] = ['## Submission', `- Status: ${submission.status}`]
-  if (submission.language !== undefined) lines.push(`- Language: ${submission.language}`)
+  if (submission.language !== undefined)
+    lines.push(`- Language: ${submission.language}`)
   if (submission.status === 'accepted') {
-    if (submission.runtime !== undefined) lines.push(`- Runtime: ${submission.runtime}`)
-    if (submission.memory !== undefined) lines.push(`- Memory: ${submission.memory}`)
+    if (submission.runtime !== undefined)
+      lines.push(`- Runtime: ${submission.runtime}`)
+    if (submission.memory !== undefined)
+      lines.push(`- Memory: ${submission.memory}`)
   }
   if (
     submission.passedTestCount !== undefined &&
@@ -112,7 +122,9 @@ function renderSubmission(submission: AssessmentRecommendationSubmission): strin
     const fence =
       submission.language !== undefined ? `\`\`\`${submission.language}` : '```'
     lines.push(fence)
-    lines.push(truncateText(submission.code, CODE_CHAR_LIMIT, CODE_TRUNCATION_MARKER))
+    lines.push(
+      truncateText(submission.code, CODE_CHAR_LIMIT, CODE_TRUNCATION_MARKER),
+    )
     lines.push('```')
   }
 
@@ -134,12 +146,18 @@ function renderSubmission(submission: AssessmentRecommendationSubmission): strin
         `- Expected output: ${truncateText(submission.expectedOutput, DIAGNOSTIC_FIELD_CHAR_LIMIT, TEXT_TRUNCATION_MARKER)}`,
       )
     }
-    if (submission.actualOutput !== undefined && submission.actualOutput !== '') {
+    if (
+      submission.actualOutput !== undefined &&
+      submission.actualOutput !== ''
+    ) {
       diag.push(
         `- Actual output: ${truncateText(submission.actualOutput, DIAGNOSTIC_FIELD_CHAR_LIMIT, TEXT_TRUNCATION_MARKER)}`,
       )
     }
-    if (submission.errorMessage !== undefined && submission.errorMessage !== '') {
+    if (
+      submission.errorMessage !== undefined &&
+      submission.errorMessage !== ''
+    ) {
       diag.push(
         `- Error message: ${truncateText(submission.errorMessage, DIAGNOSTIC_FIELD_CHAR_LIMIT, TEXT_TRUNCATION_MARKER)}`,
       )
@@ -207,7 +225,8 @@ function renderPracticeContext(input: RecommendAssessmentInput): string {
   }
   if (ctx.latestAttempt !== null) {
     const a = ctx.latestAttempt
-    const elapsed = a.elapsedSeconds === null ? 'untimed' : `${a.elapsedSeconds}s`
+    const elapsed =
+      a.elapsedSeconds === null ? 'untimed' : `${a.elapsedSeconds}s`
     lines.push(
       `- Latest attempt: rating=${a.rating}, isCorrect=${a.isCorrect}, elapsed=${elapsed}`,
     )

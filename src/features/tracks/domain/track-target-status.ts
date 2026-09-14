@@ -140,7 +140,9 @@ export function getTrackTargetStatus({
   }
 }
 
-export function getTodayDateInputValue(now: Date | string = new Date()): string {
+export function getTodayDateInputValue(
+  now: Date | string = new Date(),
+): string {
   if (now instanceof Date) {
     return toLocalDateInputValue(now) || toLocalDateInputValue(new Date())
   }

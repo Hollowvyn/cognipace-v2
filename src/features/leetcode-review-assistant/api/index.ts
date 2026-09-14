@@ -1,6 +1,4 @@
-export {
-  recommendLeetCodeAssessmentViaRuntime,
-} from './recommendation-api'
+export { recommendLeetCodeAssessmentViaRuntime } from './recommendation-api'
 export {
   recommendLeetCodeAssessmentRequestSchema,
   recommendLeetCodeAssessmentResponseSchema,

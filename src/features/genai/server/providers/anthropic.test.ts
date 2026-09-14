@@ -206,7 +206,9 @@ describe('anthropic requestJson', () => {
     )
 
     const pending = requestJson(buildRequest({ signal: controller.signal }))
-    const expectAbort = expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    const expectAbort = expect(pending).rejects.toMatchObject({
+      name: 'AbortError',
+    })
     controller.abort()
     await expectAbort
   })
@@ -232,6 +234,8 @@ describe('anthropic requestJson', () => {
     expect(body.output_config).toMatchObject({
       format: { type: 'json_schema' },
     })
-    expect((body.output_config as { format: { schema?: unknown } }).format.schema).toBeDefined()
+    expect(
+      (body.output_config as { format: { schema?: unknown } }).format.schema,
+    ).toBeDefined()
   })
 })

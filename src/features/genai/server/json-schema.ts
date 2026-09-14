@@ -100,12 +100,12 @@ function stripGeminiUnsupported(node: unknown): unknown {
 
 const geminiAllowedFormats = new Set(['date-time', 'date', 'time', 'enum'])
 
-function isObjectLike(value: unknown): value is Record<string, unknown> | unknown[] {
+function isObjectLike(
+  value: unknown,
+): value is Record<string, unknown> | unknown[] {
   return typeof value === 'object' && value !== null
 }
 
-function isPropertiesObject(
-  value: unknown,
-): value is Record<string, unknown> {
+function isPropertiesObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

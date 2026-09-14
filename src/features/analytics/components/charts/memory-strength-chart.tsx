@@ -109,7 +109,8 @@ export function MemoryStrengthChart({ data }: { data: StabilityPoint[] }) {
                 }}
                 labelFormatter={(label, payload) => {
                   const point = payload?.[0]?.payload as
-                    StabilityPoint | undefined
+                    | StabilityPoint
+                    | undefined
                   return point
                     ? formatBucketLabel(point.bucketStart, point.bucketEnd)
                     : toChartLabel(label)

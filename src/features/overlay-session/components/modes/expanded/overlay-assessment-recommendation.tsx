@@ -40,11 +40,12 @@ const CONFIDENCE_LABEL: Record<AssessmentRecommendationConfidence, string> = {
   low: 'Low',
 }
 
-const CONFIDENCE_DOT_CLASS: Record<AssessmentRecommendationConfidence, string> = {
-  high: 'bg-[color:var(--cp-tone-success-fg)]',
-  medium: 'bg-foreground',
-  low: 'bg-muted-foreground',
-}
+const CONFIDENCE_DOT_CLASS: Record<AssessmentRecommendationConfidence, string> =
+  {
+    high: 'bg-[color:var(--cp-tone-success-fg)]',
+    medium: 'bg-foreground',
+    low: 'bg-muted-foreground',
+  }
 
 function ratingAccentStyle(rating: ReviewRating): CSSProperties {
   return {
@@ -112,7 +113,11 @@ export function OverlayAssessmentRecommendation({
         <div className="grid gap-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Badge tone={RATING_TONE_BY_RATING[state.recommendation.recommendedRating]}>
+              <Badge
+                tone={
+                  RATING_TONE_BY_RATING[state.recommendation.recommendedRating]
+                }
+              >
                 {RATING_LABEL_BY_RATING[state.recommendation.recommendedRating]}
               </Badge>
               {showUseButton ? (
@@ -192,7 +197,12 @@ export function OverlayAssessmentRecommendation({
                   <p className="text-foreground">
                     {state.recommendation.complexity.time} ·{' '}
                     {state.recommendation.complexity.space} ·{' '}
-                    {CONFIDENCE_LABEL[state.recommendation.complexity.confidence]} confidence
+                    {
+                      CONFIDENCE_LABEL[
+                        state.recommendation.complexity.confidence
+                      ]
+                    }{' '}
+                    confidence
                   </p>
                 </div>
                 {state.recommendation.improvementPoints.length > 0 ? (
