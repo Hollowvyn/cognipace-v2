@@ -52,7 +52,9 @@ This writes the production-style extension to `dist/chrome-mv3`.
 The development build appears as `CogniPace Dev` with an amber-card sibling of
 the production Recall Stack icon, so it is easy to distinguish from the
 production extension. Its manifest description ends with `(Dev Version)`;
-production keeps the Store description unchanged.
+production keeps the Store description unchanged. The generated
+`dist/chrome-mv3-dev/manifest.json` ends with `(Dev Version)`, while
+`dist/chrome-mv3/manifest.json` does not.
 
 The extension requests the Chrome `notifications` permission for local
 due-review reminders. It does not add notification-related host permissions.
