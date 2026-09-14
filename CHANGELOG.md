@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/Hollowvyn/cognipace-v2/compare/v1.3.1...v1.3.2) (2026-09-14)
+
+
+### Bug Fixes
+
+* **build:** use visible WXT output paths ([#160](https://github.com/Hollowvyn/cognipace-v2/issues/160)) ([f7e0d2c](https://github.com/Hollowvyn/cognipace-v2/commit/f7e0d2c75d76d41f0a3cf7975d54e90250d05b6f))
+
 ## [1.3.1](https://github.com/Hollowvyn/cognipace-v2/compare/v1.3.0...v1.3.1) (2026-09-13)
 
 
