@@ -40,9 +40,8 @@ This writes the production-style extension to `dist/chrome-mv3`.
 
 1. Open `chrome://extensions`.
 2. Enable Developer mode.
-3. When switching from the legacy `.output` location, export a backup first if
-   existing local development data matters, then disable or remove the old
-   unpacked CogniPace installation.
+3. If existing local development data matters, export a backup first, then
+   disable or remove the old unpacked CogniPace installation.
 4. Choose Load unpacked.
 5. Select the matching directory:
    - `dist/chrome-mv3-dev` while `npm run dev` is running.
@@ -360,7 +359,7 @@ refresh across surfaces.
 
 1. Run `npm run check`, `npm run build`,
    `npm run store:check`, and `npm run zip`.
-2. Load `.output/chrome-mv3` unpacked in a clean Chrome profile.
+2. Load `dist/chrome-mv3` unpacked in a clean Chrome profile.
 3. Happy path: verify the popup loads, the dashboard opens, the starter catalog
    is available, and the overlay appears on a supported LeetCode problem page.
 4. Edge path: keep GitHub Gist sync and AI assessment unconfigured and verify
@@ -426,8 +425,7 @@ Schema and migration changes may reset local extension data during development.
   `dist/chrome-mv3` exists.
 - Confirm Chrome loaded the directory matching the active workflow, then click
   reload in `chrome://extensions`.
-- If two CogniPace copies appear, disable or remove the old installation loaded
-  from `.output`.
+- If two CogniPace copies appear, disable or remove the old installation.
 - Inspect the extension service worker console from `chrome://extensions`.
 
 ### Popup Or Dashboard Shows Stale Data

@@ -110,7 +110,7 @@ describe('validateStoreBuild', () => {
 
     await expect(validateStoreBuild({ rootDir })).resolves.toMatchObject({
       iconFiles: ['icon-128.png', 'icon-16.png', 'icon-32.png', 'icon-48.png'],
-      version: '1.3.1',
+      version: '1.3.2',
     })
   })
 
@@ -120,6 +120,7 @@ describe('validateStoreBuild', () => {
         manifest.description = 'Different description'
         manifest.manifest_version = 2
         manifest.name = 'Different name'
+        manifest.version = '1.3.0'
         delete manifest.icons[32]
         delete manifest.action.default_icon[128]
       },
@@ -133,7 +134,7 @@ describe('validateStoreBuild', () => {
         '- manifest_version must be 3',
         '- manifest name must be "CogniPace", received "Different name"',
         '- manifest description must be "Local-first LeetCode review and study pacing.", received "Different description"',
-        '- manifest version "1.3.1" does not match package.json "1.3.2"',
+        '- manifest version "1.3.0" does not match package.json "1.3.2"',
         '- manifest.icons is missing size 32',
         '- manifest.action.default_icon is missing size 128',
         '- declared icon file does not exist: icon-48.png',
@@ -146,7 +147,7 @@ describe('validateStoreBuild', () => {
     fixtureRoots.push(rootDir)
     await writeFile(
       join(rootDir, 'package.json'),
-      JSON.stringify({ version: '1.3.1' }),
+      JSON.stringify({ version: '1.3.2' }),
     )
 
     await expect(validateStoreBuild({ rootDir })).rejects.toThrow(
@@ -158,10 +159,10 @@ describe('validateStoreBuild', () => {
 async function createFixture({
   mutateManifest = () => {},
   omitFiles = [],
-  packageVersion = '1.3.1',
+  packageVersion = '1.3.2',
 } = {}) {
   const rootDir = await mkdtemp(join(tmpdir(), 'cognipace-store-check-'))
-  const outputDir = join(rootDir, '.output', 'chrome-mv3')
+  const outputDir = join(rootDir, 'dist', 'chrome-mv3')
   fixtureRoots.push(rootDir)
 
   await mkdir(outputDir, { recursive: true })
@@ -176,7 +177,7 @@ async function createFixture({
     icons: { ...iconEntries },
     manifest_version: 3,
     name: 'CogniPace',
-    version: '1.3.1',
+    version: '1.3.2',
   }
   mutateManifest(manifest)
 
@@ -221,7 +222,7 @@ const expectedIdentity = {
 const requiredIconSizes = ['16', '32', '48', '128']
 
 export async function validateStoreBuild({ rootDir = process.cwd() } = {}) {
-  const outputDir = resolve(rootDir, '.output', 'chrome-mv3')
+  const outputDir = resolve(rootDir, 'dist', 'chrome-mv3')
   const manifestPath = resolve(outputDir, 'manifest.json')
   const packagePath = resolve(rootDir, 'package.json')
   const manifest = await readJson(manifestPath, 'production manifest')
@@ -495,7 +496,7 @@ npm run store:check
 Expected: both commands pass, ending with:
 
 ```text
-Store build validation passed for CogniPace 1.3.1 with 4 icon files.
+Store build validation passed for CogniPace 1.3.2 with 4 icon files.
 ```
 
 - [ ] **Step 7: Inspect the generated manifest**
@@ -503,10 +504,10 @@ Store build validation passed for CogniPace 1.3.1 with 4 icon files.
 Run:
 
 ```sh
-node -e "const m=require('./.output/chrome-mv3/manifest.json'); console.log(JSON.stringify({name:m.name,description:m.description,version:m.version,icons:m.icons,action:m.action},null,2))"
+node -e "const m=require('./dist/chrome-mv3/manifest.json'); console.log(JSON.stringify({name:m.name,description:m.description,version:m.version,icons:m.icons,action:m.action},null,2))"
 ```
 
-Expected: CogniPace identity, current package/main baseline version `1.3.1`, four `icons` entries, four
+Expected: CogniPace identity, current package/main baseline version `1.3.2`, four `icons` entries, four
 `action.default_icon` entries, and the WXT-generated popup action retained.
 
 - [ ] **Step 8: Commit the icon identity**
@@ -554,13 +555,13 @@ npm run build
 npm run store:check
 npm run zip
 STORE_VERSION="$(node -p "require('./package.json').version")"
-STORE_ZIP=".output/cognipace-v2-${STORE_VERSION}-chrome.zip"
+STORE_ZIP="dist/cognipace-v2-${STORE_VERSION}-chrome.zip"
 unzip -l "$STORE_ZIP"
 unzip -p "$STORE_ZIP" manifest.json
 ```
 
 Expected: the validator passes, WXT creates
-`.output/cognipace-v2-${STORE_VERSION}-chrome.zip`, the ZIP has
+`dist/cognipace-v2-${STORE_VERSION}-chrome.zip`, the ZIP has
 `manifest.json` at its root, and all four PNG icons appear in the ZIP.
 
 - [ ] **Step 4: Review workflow permissions and secrets**
@@ -1039,7 +1040,7 @@ Run:
 npm run build
 STORE_PROFILE_DIR="$(mktemp -d /tmp/cognipace-store-profile.XXXXXX)"
 echo "$STORE_PROFILE_DIR"
-open -na "Google Chrome" --args --user-data-dir="$STORE_PROFILE_DIR" --load-extension="$PWD/.output/chrome-mv3"
+open -na "Google Chrome" --args --user-data-dir="$STORE_PROFILE_DIR" --load-extension="$PWD/dist/chrome-mv3"
 ```
 
 Expected: the command prints an isolated temporary profile directory and opens
@@ -1139,7 +1140,7 @@ Insert this section in `docs/release.md` before **Failure Handling**:
 
 The historical `v1.3.0` release proved the GitHub packaging path but does not
 contain declared PNG extension icons. The first private Store submission must
-use a release newer than `v1.3.1`.
+use a release newer than `v1.3.2`.
 
 Before opening the Store dashboard:
 
@@ -1194,7 +1195,7 @@ Surfaces**:
 
 1. Run `npm run check`, `npm run build`,
    `npm run store:check`, and `npm run zip`.
-2. Load `.output/chrome-mv3` unpacked in a clean Chrome profile.
+2. Load `dist/chrome-mv3` unpacked in a clean Chrome profile.
 3. Happy path: verify the popup loads, the dashboard opens, the starter catalog
    is available, and the overlay appears on a supported LeetCode problem page.
 4. Edge path: keep GitHub Gist sync and AI assessment unconfigured and verify
@@ -1316,7 +1317,7 @@ npm run zip
 ```
 
 Expected: all commands pass and WXT creates
-`.output/cognipace-v2-{version}-chrome.zip`.
+`dist/cognipace-v2-{version}-chrome.zip`.
 
 - [ ] **Step 4: Inspect the manifest and ZIP**
 
@@ -1324,8 +1325,8 @@ Run:
 
 ```sh
 STORE_VERSION="$(node -p "require('./package.json').version")"
-STORE_ZIP=".output/cognipace-v2-${STORE_VERSION}-chrome.zip"
-node -e "const m=require('./.output/chrome-mv3/manifest.json'); const p=require('./package.json'); if(m.version!==p.version) throw new Error('version mismatch'); console.log(JSON.stringify({manifest_version:m.manifest_version,name:m.name,description:m.description,version:m.version,permissions:m.permissions,host_permissions:m.host_permissions,icons:m.icons,action:m.action},null,2))"
+STORE_ZIP="dist/cognipace-v2-${STORE_VERSION}-chrome.zip"
+node -e "const m=require('./dist/chrome-mv3/manifest.json'); const p=require('./package.json'); if(m.version!==p.version) throw new Error('version mismatch'); console.log(JSON.stringify({manifest_version:m.manifest_version,name:m.name,description:m.description,version:m.version,permissions:m.permissions,host_permissions:m.host_permissions,icons:m.icons,action:m.action},null,2))"
 unzip -t "$STORE_ZIP"
 unzip -l "$STORE_ZIP"
 shasum -a 256 "$STORE_ZIP"
@@ -1388,7 +1389,7 @@ The PR body must name:
 - human-run popup, dashboard, overlay, first-install, and edge-path smoke
 - attached screenshot or screen-recording proof
 - release impact: expected patch release higher than the current main baseline
-  `v1.3.1`
+  `v1.3.2`
 - rollback: revert before release, or ship a higher corrective patch after a
   Store version is published
 - no issue, with the reason that this work continues the explicitly requested
@@ -1415,7 +1416,7 @@ fix(release): prepare private Chrome Web Store distribution
 ```
 
 Review and merge the resulting Release Please patch-release PR. The resulting
-version must be greater than the current main baseline `1.3.1`. Use the actual
+version must be greater than the current main baseline `1.3.2`. Use the actual
 higher release version throughout the remaining steps; do not assume a
 specific next version.
 

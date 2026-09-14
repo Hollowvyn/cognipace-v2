@@ -21,7 +21,7 @@ async function createFixture({ manifest, version = '1.3.0', files = [] }) {
     path.join(os.tmpdir(), 'cognipace-store-build-'),
   )
   tempDirectories.push(rootDir)
-  const buildDir = path.join(rootDir, '.output', 'chrome-mv3')
+  const buildDir = path.join(rootDir, 'dist', 'chrome-mv3')
   await mkdir(buildDir, { recursive: true })
   await writeFile(
     path.join(rootDir, 'package.json'),
@@ -71,7 +71,7 @@ describe('validateStoreBuild', () => {
       iconFiles: Object.values(completeIcons).sort(),
       manifestPath: path.join(
         rootDir,
-        '.output',
+        'dist',
         'chrome-mv3',
         'manifest.json',
       ),

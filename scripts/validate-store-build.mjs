@@ -31,7 +31,7 @@ function isAbsoluteIconPath(value) {
 }
 
 export async function validateStoreBuild({ rootDir = process.cwd() } = {}) {
-  const buildRoot = path.join(rootDir, '.output', 'chrome-mv3')
+  const buildRoot = path.join(rootDir, 'dist', 'chrome-mv3')
   const manifestPath = path.join(buildRoot, 'manifest.json')
   const packagePath = path.join(rootDir, 'package.json')
   const errors = []
