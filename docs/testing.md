@@ -167,7 +167,9 @@ stored BYOK secret presence and must not expose secret values.
 4. Generate and copy the token in a test account, return to the still-open
    CogniPace dialog, enter the token, confirm it is masked, use Test token, then
    Save token.
-5. Create a private Gist or connect an existing Gist ID from the same dialog.
+5. Create a new private Gist or connect an existing Gist ID from the same
+   dialog. Existing connected Gists may be public or private under GitHub
+   visibility settings.
 6. Close the dialog and confirm Settings shows Connected and Auto-sync on.
 7. Use Push local from Settings.
 8. Export a backup and confirm the token value is absent from the JSON.
@@ -351,6 +353,51 @@ proof before PR review or merge. Automated checks do not replace that proof.
 
 Expected: due counts, recommendation state, practice details, and track progress
 refresh across surfaces.
+
+## Private Chrome Web Store Release
+
+### Pre-Merge Production Package
+
+1. Run `npm run check`, `npm run build`,
+   `npm run store:check`, and `npm run zip`.
+2. Load `.output/chrome-mv3` unpacked in a clean Chrome profile.
+3. Happy path: verify the popup loads, the dashboard opens, the starter catalog
+   is available, and the overlay appears on a supported LeetCode problem page.
+4. Edge path: keep GitHub Gist sync and AI assessment unconfigured and verify
+   the local core workflow remains usable without either optional integration.
+5. Verify due-reminder and optional integration flows that are relevant to the
+   release using the existing smoke sections in this document.
+6. Attach screenshot or screen-recording proof for the happy path and edge path
+   before PR review or merge.
+
+### First Store Installation
+
+1. Export a backup from the unpacked CogniPace copy if its local data matters.
+2. Disable the unpacked copy before installing the Store copy.
+3. Install the private item while signed into an approved trusted-tester Google
+   account.
+4. Verify the popup, dashboard, and LeetCode overlay happy path.
+5. Edge path: verify the Store copy starts with separate local storage rather
+   than silently reading the unpacked copy's database.
+6. Restore the exported backup when desired and verify representative problems,
+   practice records, review state, and tracks.
+7. Verify GitHub and AI-provider secrets were not restored, then re-enter them
+   only if those optional integrations are being tested.
+
+### Natural Store Update
+
+1. Record the installed Store version from `chrome://extensions`.
+2. Upload and publish a legitimate higher release through the same private
+   Store item.
+3. Leave the Store copy installed and do not load the new release unpacked.
+4. After Chrome performs its normal extension update checks, verify the higher
+   version appears in `chrome://extensions` without reinstalling CogniPace.
+5. Happy path: verify existing local study data remains available after the
+   update.
+6. Edge path: verify credentials remain local and existing schema migrations do
+   not clear or duplicate study data.
+7. Record the before/after versions and attach screenshot or screen-recording
+   proof.
 
 ## Current Incomplete Surfaces
 

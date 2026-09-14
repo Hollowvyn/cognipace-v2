@@ -86,14 +86,45 @@ normal pull request workflows.
    Friday run.
 6. Merge the release pull request when ready to ship.
 7. Release Please creates the semver tag and GitHub Release.
-8. The release workflow runs `npm run check`, `npm run build`, and
-   `npm run zip`.
-9. The release workflow uploads `cognipace-<version>-chrome-mv3.zip` to the
-   GitHub Release.
-10. Upload that exact GitHub Release zip to the Chrome Web Store developer
-    dashboard.
+8. The release workflow runs `npm run check`, `npm run build`,
+   `npm run store:check`, and `npm run zip`.
+9. The release workflow uploads
+   `.output/cognipace-v2-{version}-chrome.zip` to the GitHub Release.
+10. For a Store release, upload that exact GitHub Release ZIP to the existing
+    private Chrome Web Store item and submit the version for review.
 
 The GitHub Release zip is the official artifact for the version.
+
+## Private Chrome Web Store Handoff
+
+The first private Store submission must use a release newer than `v1.3.1`.
+The historical `v1.3.0` release proved the GitHub packaging path but does not
+contain declared PNG extension icons and is not Store-ready.
+
+Before opening the Store dashboard:
+
+1. Confirm `npm run check`, `npm run build`,
+   `npm run store:check`, and `npm run zip` passed for the release.
+2. Confirm the GitHub Release contains the exact
+   `.output/cognipace-v2-{version}-chrome.zip` artifact.
+3. Confirm `PRIVACY.md` is available from the public `main` branch.
+4. Confirm the Store listing, permission explanations, privacy selections, and
+   reviewer instructions match `docs/chrome-web-store.md`.
+5. Confirm the 440×280 promotional tile and three 1280×800 screenshots contain
+   no secrets or personal account data.
+
+For the first publication, create the listing manually, set visibility to
+Private, add the approved trusted-tester accounts or Google Group, upload the
+exact GitHub Release ZIP, and submit it for review.
+
+For each manual update, upload the next exact GitHub Release ZIP to the same
+Store item. Keeping the Store item preserves the extension ID and allows Chrome
+to deliver published higher versions to existing tester installations.
+
+WXT submission automation is intentionally deferred. After the first private
+publication and a later manual update succeed, design the CI path around
+`wxt submit`, Chrome Web Store API v2, a publisher-linked service account,
+and `wxt submit --dry-run`. Do not commit `.env.submit`.
 
 ## First 1.0.0 Release
 
@@ -136,3 +167,13 @@ END_COMMIT_OVERRIDE
   Store for that version.
 - If Chrome Web Store review rejects the package for code or manifest reasons,
   fix the issue in a follow-up pull request and ship a new release.
+- If `npm run store:check` fails, do not run the Store handoff for that
+  release.
+- If the Store rejects listing, privacy, permission, or reviewer information,
+  update the repository source of truth and submit a higher release when code
+  or manifest changes are required.
+- Do not upload `v1.3.0` to the Store because it lacks the approved PNG
+  icon declarations.
+- The Store cannot install a lower version over a published higher version.
+  Recover by releasing a higher patch version with the last known-good
+  behavior.
