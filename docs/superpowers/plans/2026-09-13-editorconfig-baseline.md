@@ -204,7 +204,7 @@ Run:
 
 ```sh
 git diff --check origin/main...HEAD
-git diff --name-only HEAD^...HEAD
+git diff-tree --no-commit-id --name-only -r 782f64b
 git diff --name-only origin/main...HEAD
 git status --short --branch
 ```
