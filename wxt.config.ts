@@ -2,27 +2,61 @@ import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'wxt'
 
+interface GeneratedManifestBranding {
+  name: string
+  action?:
+    | {
+        default_title?: string | undefined
+      }
+    | undefined
+}
+
+const developmentIcons = {
+  16: '/extension-icons/cognipace-dev-16.png',
+  32: '/extension-icons/cognipace-dev-32.png',
+  48: '/extension-icons/cognipace-dev-48.png',
+  128: '/extension-icons/cognipace-dev-128.png',
+}
+
 export default defineConfig({
   srcDir: 'src',
   outDir: 'dist',
   manifestVersion: 3,
   modules: ['@wxt-dev/module-react'],
   imports: false,
-  manifest: {
-    name: 'CogniPace',
-    description: 'Local-first LeetCode review and study pacing.',
-    permissions: ['storage', 'alarms', 'notifications'],
-    host_permissions: [
-      'https://leetcode.com/*',
-      'https://www.leetcode.com/*',
-      'https://api.github.com/*',
-      'https://api.openai.com/*',
-      'https://api.anthropic.com/*',
-      'https://generativelanguage.googleapis.com/*',
-    ],
-    content_security_policy: {
-      extension_pages:
-        "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
+  manifest: ({ mode }) => {
+    const isDevelopment = mode === 'development'
+    const name = isDevelopment ? 'CogniPace Dev' : 'CogniPace'
+
+    return {
+      name,
+      description: 'Local-first LeetCode review and study pacing.',
+      ...(isDevelopment && {
+        icons: developmentIcons,
+        action: {
+          default_icon: developmentIcons,
+        },
+      }),
+      permissions: ['storage', 'alarms', 'notifications'],
+      host_permissions: [
+        'https://leetcode.com/*',
+        'https://www.leetcode.com/*',
+        'https://api.github.com/*',
+        'https://api.openai.com/*',
+        'https://api.anthropic.com/*',
+        'https://generativelanguage.googleapis.com/*',
+      ],
+      content_security_policy: {
+        extension_pages:
+          "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
+      },
+    }
+  },
+  hooks: {
+    'build:manifestGenerated': (_, manifest: GeneratedManifestBranding) => {
+      if (manifest.action) {
+        manifest.action.default_title = manifest.name
+      }
     },
   },
   vite: () => ({
