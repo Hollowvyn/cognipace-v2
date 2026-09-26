@@ -12,8 +12,16 @@ import {
   trackIdSchema,
 } from '@/features/tracks/api/tracks-contracts'
 import { fsrsCardStates, reviewRatings } from '@/lib/fsrs'
+import { reconcileTopicRows } from '@/features/problems/domain/topic-reconciliation'
+import { buildTopicGraph } from '@/features/problems/domain/topic-graph'
+import { buildTopicLookup } from '@/features/problems/domain/topic-taxonomy'
+import {
+  seedTopics,
+  seedTopicAliases,
+  seedTopicRelations,
+} from '@/platform/db/topic-taxonomy-seed'
 
-export const backupSchemaVersion = 3
+export const backupSchemaVersion = 4
 
 export const minimumSupportedBackupSchemaVersion = 1
 
@@ -50,9 +58,17 @@ export const backupTopicAliasRowSchema = z.strictObject({
   updatedAt: isoDatetimeSchema,
 })
 
-export const backupTopicRelationRowSchema = z.strictObject({
+const backupTopicRelationV3RowSchema = z.strictObject({
   parentTopicId: durableIdSchema,
   childTopicId: durableIdSchema,
+  createdAt: isoDatetimeSchema,
+  updatedAt: isoDatetimeSchema,
+})
+
+export const backupTopicRelationRowSchema = z.strictObject({
+  sourceTopicId: durableIdSchema,
+  targetTopicId: durableIdSchema,
+  kind: z.enum(['broader', 'applies-to']),
   createdAt: isoDatetimeSchema,
   updatedAt: isoDatetimeSchema,
 })
@@ -248,6 +264,10 @@ export const backupDataSchema = z.strictObject({
   settings: z.array(backupSettingsKvRowSchema),
 })
 
+const backupDataV3Schema = backupDataSchema.extend({
+  topicRelations: z.array(backupTopicRelationV3RowSchema),
+})
+
 const backupDataV2Schema = z.strictObject({
   problems: z.array(backupProblemRowSchema),
   topics: z.array(backupTopicV2RowSchema),
@@ -284,6 +304,11 @@ const backupFileV1Schema = backupFileSchema.extend({
 const backupFileV2Schema = backupFileSchema.extend({
   schemaVersion: z.literal(2),
   data: backupDataV2Schema,
+})
+
+const backupFileV3Schema = backupFileSchema.extend({
+  schemaVersion: z.literal(3),
+  data: backupDataV3Schema,
 })
 
 export const backupRequestSchema = z.strictObject({
@@ -329,6 +354,7 @@ export const backupSummarySchema = z.strictObject({
 export type BackupFile = z.infer<typeof backupFileSchema>
 type BackupFileV1 = z.infer<typeof backupFileV1Schema>
 type BackupFileV2 = z.infer<typeof backupFileV2Schema>
+type BackupFileV3 = z.infer<typeof backupFileV3Schema>
 export type BackupData = z.infer<typeof backupDataSchema>
 export type BackupRequest = z.infer<typeof backupRequestSchema>
 export type BackupPayloadRequest = z.infer<typeof backupPayloadRequestSchema>
@@ -356,22 +382,29 @@ export function parseBackupFileForCurrentApp(input: unknown): BackupFile {
   }
 
   if (envelope.schemaVersion === 1) {
-    return normalizeBackupV1ToV3(backupFileV1Schema.parse(input))
+    return normalizeBackupV1ToV4(backupFileV1Schema.parse(input))
   }
 
   if (envelope.schemaVersion === 2) {
-    return normalizeBackupV2ToV3(backupFileV2Schema.parse(input))
+    return normalizeBackupV2ToV4(backupFileV2Schema.parse(input))
   }
 
-  return backupFileSchema.parse(input)
+  if (envelope.schemaVersion === 3) {
+    return normalizeBackupV3ToV4(backupFileV3Schema.parse(input))
+  }
+
+  const backup = backupFileSchema.parse(input)
+  buildTopicLookup(backup.data.topics, backup.data.topicAliases)
+  buildTopicGraph(backup.data.topics, backup.data.topicRelations)
+  return backup
 }
 
-function normalizeBackupV1ToV3(backup: BackupFileV1): BackupFile {
+function normalizeBackupV1ToV4(backup: BackupFileV1): BackupFile {
   const groupsById = new Map(
     backup.data.tracks.groups.map((group) => [group.id, group]),
   )
 
-  return normalizeBackupV2ToV3({
+  return normalizeBackupV2ToV4({
     ...backup,
     schemaVersion: 2,
     data: {
@@ -402,10 +435,10 @@ function normalizeBackupV1ToV3(backup: BackupFileV1): BackupFile {
   })
 }
 
-function normalizeBackupV2ToV3(backup: BackupFileV2): BackupFile {
-  return backupFileSchema.parse({
+function normalizeBackupV2ToV4(backup: BackupFileV2): BackupFile {
+  const v3 = backupFileV3Schema.parse({
     ...backup,
-    schemaVersion: backupSchemaVersion,
+    schemaVersion: 3,
     data: {
       ...backup.data,
       topics: backup.data.topics.map((topic) => ({
@@ -416,6 +449,35 @@ function normalizeBackupV2ToV3(backup: BackupFileV2): BackupFile {
       topicAliases: [],
       topicRelations: [],
     },
+  })
+  return normalizeBackupV3ToV4(v3)
+}
+
+function normalizeBackupV3ToV4(backup: BackupFileV3): BackupFile {
+  const catalogue = {
+    topics: seedTopics,
+    aliases: seedTopicAliases,
+    relations: seedTopicRelations,
+  }
+  const taxonomy = reconcileTopicRows(
+    {
+      topics: backup.data.topics,
+      topicAliases: backup.data.topicAliases,
+      problemTopics: backup.data.problemTopics,
+      topicRelations: backup.data.topicRelations.map((edge) => ({
+        sourceTopicId: edge.childTopicId,
+        targetTopicId: edge.parentTopicId,
+        kind: 'broader' as const,
+        createdAt: edge.createdAt,
+        updatedAt: edge.updatedAt,
+      })),
+    },
+    { legacy: true, now: backup.exportedAt, catalogue },
+  )
+  return backupFileSchema.parse({
+    ...backup,
+    schemaVersion: backupSchemaVersion,
+    data: { ...backup.data, ...taxonomy },
   })
 }
 

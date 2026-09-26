@@ -63,21 +63,6 @@ export interface StoredSnapshot {
   bytes: Uint8Array
 }
 
-export async function readSnapshotFromStorage(): Promise<StoredSnapshot | null> {
-  const result = await chrome.storage.local.get([SNAPSHOT_KEY, FINGERPRINT_KEY])
-  const fingerprint = result[FINGERPRINT_KEY]
-  const encodedBytes = result[SNAPSHOT_KEY]
-
-  if (typeof fingerprint !== 'string' || typeof encodedBytes !== 'string') {
-    return null
-  }
-
-  return {
-    fingerprint,
-    bytes: base64ToBytes(encodedBytes),
-  }
-}
-
 export async function writeSnapshotToStorage(snapshot: StoredSnapshot) {
   await chrome.storage.local.set({
     [SNAPSHOT_KEY]: bytesToBase64(snapshot.bytes),

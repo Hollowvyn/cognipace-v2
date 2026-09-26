@@ -61,6 +61,142 @@ due-review reminders. It does not add notification-related host permissions.
 Due reminder smoke should use local queue `dueToday` semantics, not a separate
 notification-specific count.
 
+## Local Database Recovery
+
+When both snapshot keys are absent, startup creates and seeds a fresh database.
+A partial pair, malformed value, or unknown or unsupported fingerprint fails
+startup and retains the original available values for recovery. The only
+legacy fingerprint accepted for an automatic upgrade is the exact migration
+prefix in [`snapshot-upgrade.ts`](../src/platform/db/snapshot-upgrade.ts),
+documented in [Database And Persistence](architecture.md#database-and-persistence).
+Automatic downgrade is unsupported. The Library may still offer Retry for
+transient startup failures, but retrying does not repair corrupt or unsupported
+database data.
+
+To make a local recovery copy:
+
+1. Open `chrome://extensions`, find CogniPace, and select its service worker
+   console from the Inspect views.
+2. In that console, run the following expression. It reads only the three
+   database recovery keys and copies their JSON values to the clipboard:
+
+   ```js
+   copy(
+     JSON.stringify(
+       await chrome.storage.local.get([
+         'cognipace_db_snapshot_v1',
+         'cognipace_db_snapshot_fingerprint_v1',
+         'cognipace_db_recovery_topics_v1',
+       ]),
+     ),
+   )
+   ```
+
+3. Paste the copied JSON into a local file and store it privately. Do not use
+   `chrome.storage.local.get(null)` or export all extension storage: it can
+   include secrets and unrelated private settings. Do not paste the recovery
+   JSON, snapshot bytes, or topic values into an issue or other shared report.
+
+Startup diagnostics should report a safe, actionable error without logging raw
+snapshot bytes, topics, tokens, or settings. When the original snapshot pair is
+restored from a recovery copy, reload the extension and verify that the original
+local database opens before attempting another upgrade.
+
+### Database Upgrade Recovery Smoke
+
+Run this flow in an isolated Chrome profile with disposable test data. Keep any
+recovery export private and restore the original values before ending the test.
+Start from a fresh test profile without an existing recovery record.
+Never include raw snapshot bytes, fingerprints, topics, or recovery JSON in
+screenshots, recordings, issues, or other shared reports; redact proof so it
+shows only the relevant UI state and safe error text.
+
+1. Add or identify a representative problem and topic in the local Library,
+   reload the extension, and verify the data persists.
+2. In the service-worker console, save exactly the snapshot, fingerprint, and
+   recovery keys to a private local file using the export expression above. Do
+   not use `chrome.storage.local.get(null)`.
+3. In the repository terminal, calculate an eight-hex fingerprint that is
+   guaranteed to differ from both the current and allowlisted legacy values:
+
+   ```sh
+   node <<'NODE'
+   const fs = require("node:fs")
+   const path = require("node:path")
+   const directory = "src/platform/db/migrations"
+   const files = fs.readdirSync(directory)
+     .filter((file) => file.endsWith(".sql"))
+     .sort()
+   const sql = files
+     .map((file) => fs.readFileSync(path.join(directory, file), "utf8"))
+     .join("\n")
+   let hash = 5381
+   for (let index = 0; index < sql.length; index += 1) {
+     hash = ((hash << 5) + hash) ^ sql.charCodeAt(index)
+   }
+   const current = (hash >>> 0).toString(16).padStart(8, "0")
+   const fixture = fs.readFileSync(
+     "src/testing/fixtures/topics-legacy-migrations.ts",
+     "utf8",
+   )
+   const legacy = fixture.match(
+     /expectedLegacyMigrationFingerprint = .([a-f0-9]{8})./,
+   )?.[1]
+   if (!legacy) throw new Error("Could not read the allowlisted fingerprint")
+   let candidate = 0
+   const sentinel = () => candidate.toString(16).padStart(8, "0")
+   while ([current, legacy].includes(sentinel())) candidate += 1
+   console.log(sentinel())
+   NODE
+   ```
+
+   Copy the printed eight-character value. In the service-worker console, set
+   only the fingerprint key to that value, then reload the extension:
+
+   ```js
+   await chrome.storage.local.set({
+     cognipace_db_snapshot_fingerprint_v1: 'PASTE_PRINTED_VALUE_HERE',
+   })
+   ```
+
+4. Verify startup fails without reseeding or changing stored data beyond the
+   deliberate fingerprint substitution and recovery record: the snapshot bytes
+   still match the private original copy, the fingerprint is the sentinel, and
+   the recovery record contains the original snapshot bytes and the sentinel
+   fingerprint. Compare these locally without printing the raw values. Export only
+   `cognipace_db_recovery_topics_v1` to a private local file with
+   `copy(JSON.stringify(await chrome.storage.local.get(['cognipace_db_recovery_topics_v1'])))`.
+   Confirm the recovery copy is safely stored before removing the recovery key.
+5. Restore the original snapshot and fingerprint from the private copy with
+   this command, substituting the two saved values from the local file:
+
+   ```js
+   await chrome.storage.local.set({
+     cognipace_db_snapshot_v1: 'PASTE_SAVED_SNAPSHOT_VALUE_HERE',
+     cognipace_db_snapshot_fingerprint_v1: 'PASTE_SAVED_FINGERPRINT_HERE',
+   })
+   ```
+
+   Remove the recovery key only after its export is safely stored:
+
+   ```js
+   await chrome.storage.local.remove(['cognipace_db_recovery_topics_v1'])
+   ```
+
+6. Test an incomplete pair by removing only the fingerprint key with
+   `await chrome.storage.local.remove(['cognipace_db_snapshot_fingerprint_v1'])`,
+   then reload. Verify startup fails without reseeding or deleting the
+   remaining snapshot key. Export the partial recovery record to a private
+   local file with
+   `copy(JSON.stringify(await chrome.storage.local.get(['cognipace_db_recovery_topics_v1'])))`.
+   After confirming the export is safely stored, remove the recovery key with
+   `await chrome.storage.local.remove(['cognipace_db_recovery_topics_v1'])`.
+7. Restore the complete original snapshot and fingerprint pair from the private
+   saved copy, reload, and confirm startup succeeds and the representative
+   problem and topic remain. Capture and attach redacted screenshot or recording
+   proof of the valid-data reload and both failure cases before PR review or
+   merge; manual smoke is required for behavior-changing database work.
+
 ## Smoke Flows
 
 ### Open The Dashboard
@@ -228,6 +364,101 @@ UI text.
 
 Expected: Library reflects persisted problem metadata and remains usable after
 reloading the extension. Track problem rows use the same review-status labels.
+
+#### Library Topic Filters
+
+Use an isolated profile with disposable problems and the curated topic options.
+Verify these acceptance cases in the real Library UI:
+
+- Search `DFS` in the Topics picker and select Depth-First Search. The picker
+  shows one canonical option for the match; the selected value is Depth-First
+  Search, and typing alone does not change the problem rows. An alias is a way
+  to find a canonical topic, not another selectable identity.
+- Select Tree with Include subtopics on (the default). A problem directly
+  tagged Binary Search Tree matches Tree. Turn Include subtopics off and
+  confirm that problem no longer matches. A DFS-tagged problem does not match
+  Tree just because DFS has an `applies-to` relation to Tree.
+- For a problem tagged DFS and Binary Tree, select Tree and DFS and choose Match
+  all with subtopics enabled: it matches. A problem tagged only Binary Tree
+  does not match that same All selection. With Match any, a DFS and Graph Theory
+  problem matches the Tree-or-DFS selection because of its direct DFS tag.
+- Select both Tree and Binary Tree with Match all and subtopics on; a Binary
+  Search Tree assignment satisfies both selected IDs. This is a repeated path
+  to the same problem, so it appears once and contributes once to visible and
+  due counts.
+- In the disposable profile, select a canonical topic that none of its
+  problems use. The normal no-results state appears. Clear the selection to
+  restore all topics. With no selected topics, both Any and All impose no topic
+  constraint; picker search text alone also leaves rows unchanged.
+- Type a picker query, select a topic, switch to Match all, and turn off Include
+  subtopics. Clear Filters resets the query and selected IDs, restores Match
+  any and Include subtopics, clears every other facet and global search, and
+  restores the unfiltered rows. Confirm global Search problems retains its
+  existing problem-text behavior and does not gain alias search semantics.
+- Combine Tree with a difficulty, status, Hide premium, or Hide suspended
+  filter. Confirm the result satisfies both the topic and other facet
+  constraints, and that the filtered and Reviews Due counts reflect the rows
+  actually shown.
+- Expand Library filters, then use Tab to reach the Topics button, open it, and
+  search/select by keyboard. Escape closes the picker and returns focus to its
+  trigger. Tab continues through native controls without trapping focus; an
+  outside pointer closes the picker while focus follows the clicked control.
+- Select multiple rows, apply a topic filter that hides one of them, and verify
+  the bulk-action count and any selected-row or create-track action use only
+  the visible filtered selection. Clear the filter and confirm the still-selected
+  row returns to the selection; filtering does not discard its selection state.
+
+Also check that the picker remains visible and usable at narrow and desktop
+widths, including the no-results state, and that its longest canonical topic
+label fits. This visual check supplements the automated screen and picker tests.
+
+### Topic Taxonomy And Backup Compatibility
+
+Use an isolated Chrome profile with disposable test data. The runtime has 81
+canonical topics; `Heap` resolves as an alias of `Heap (Priority Queue)`.
+The human Library smoke above covers filtering behavior, not database upgrade
+or backup compatibility. Earlier-phase migration evidence comes from the
+automated database tests and the separate manual backup flow below. The
+repository does not provide a prepared browser profile containing a v7
+database snapshot, so the v7 upgrade and rejected-collision paths below are
+automated database tests, not browser smoke steps. Run both with:
+
+```sh
+npm run test -- --run src/platform/db/instance.test.ts -t "preserves populated v7 data|retains the v7 snapshot"
+```
+
+These in-memory tests create their own legacy database. The successful-upgrade
+case checks reviews, FSRS due dates, problem and company metadata, track order
+and progress, settings, alias re-keying and resolution, BFS membership, and
+reconciliation before publication. The collision case checks rejection while
+preserving the stored snapshot and recovery record. Do not report these tests as
+human-visible browser evidence.
+
+For manual checks, use an isolated profile with disposable data and the
+existing Library, capture, and backup flows:
+
+1. Edit a disposable problem and set topics to `Tree` and `DFS`. Save and
+   reopen it; confirm those are the selected direct topics. Edit the topic list
+   again with one omitted and confirm manual save replaces the direct list.
+2. Capture LeetCode topic metadata for that problem and confirm the capture
+   merges new labels while retaining the existing manual topics.
+3. Enter a non-ASCII label such as `动态规划` and a slash-containing label such
+   as `Tree / Graph` in a disposable problem. Save, reload, and edit again;
+   confirm Unicode and slash text survive lookup and persistence.
+4. Export a backup and inspect only the disposable fixture's taxonomy rows.
+   Confirm it declares schema version 4 and typed relations have source,
+   target, and kind fields. Import that file into another disposable profile
+   and verify assignments, aliases, and both relation kinds round-trip.
+
+Capture screenshots or a recording of the visible edit, capture-merge, and
+backup-round-trip flows when collecting manual smoke evidence. Use dummy data;
+redact topic values, settings, fingerprints, and all snapshot or recovery bytes
+from shared proof. Such screenshots do not prove the v7 migration or collision
+recovery behavior; the Vitest command above covers those internal paths. Record
+the populated-database upgrade and recovery evidence from Phase 1 separately,
+and the backup v4 export/import evidence from Phase 2 separately. Do not treat
+the Library filtering recording as proof of either migration or backup
+compatibility.
 
 ### Tracks
 

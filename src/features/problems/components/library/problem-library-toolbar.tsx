@@ -12,6 +12,7 @@ import {
   type ProblemLibraryFilters,
 } from './problem-library-filtering'
 import { formatProblemLibraryStatus } from './problem-library-formatting'
+import { ProblemLibraryTopicFilter } from './problem-library-topic-filter'
 
 export function ProblemLibraryToolbar({
   filters,
@@ -89,14 +90,10 @@ export function ProblemLibraryToolbar({
           </div>
 
           <div className="grid gap-3 md:grid-cols-[minmax(12rem,22rem)_minmax(12rem,22rem)_auto_auto] md:items-center md:justify-start">
-            <ProblemLibraryFacetFilter
-              allLabel="All topics"
-              label="Topics"
-              options={library.options.topics.map(
-                (topic) => [topic.id, topic.label] as const,
-              )}
-              value={filters.topicIds}
-              onChange={(topicIds) => patchFilters({ topicIds })}
+            <ProblemLibraryTopicFilter
+              options={library.options.topics}
+              filters={filters}
+              onChange={patchFilters}
             />
             <ProblemLibraryFacetFilter
               allLabel="All companies"

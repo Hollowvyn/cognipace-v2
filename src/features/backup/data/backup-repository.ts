@@ -20,6 +20,8 @@ import {
 } from '@/platform/db/schema'
 
 import { backupDataSchema, type BackupData } from '../api/backup-contracts'
+import { buildTopicGraph } from '@/features/problems/domain/topic-graph'
+import { buildTopicLookup } from '@/features/problems/domain/topic-taxonomy'
 
 export function createBackupRepository(db: Db) {
   return new BackupRepository(db)
@@ -168,6 +170,7 @@ export async function clearAndRestoreBackupData(
     await clearAllTables(tx)
     await insertBackupData(tx, backupData)
     await seedInitialCatalog(tx, now)
+    await validateTopicRegistry(tx)
   })
 }
 
@@ -177,7 +180,18 @@ export async function resetLocalDataToFreshInstall(db: Db, now = new Date()) {
 
     await clearAllTables(tx)
     await seedInitialCatalog(tx, now)
+    await validateTopicRegistry(tx)
   })
+}
+
+async function validateTopicRegistry(db: Db) {
+  const [topicRows, aliasRows, relationRows] = await Promise.all([
+    db.select().from(topics),
+    db.select().from(topicAliases),
+    db.select().from(topicRelations),
+  ])
+  buildTopicLookup(topicRows, aliasRows)
+  buildTopicGraph(topicRows, relationRows)
 }
 
 async function clearAllTables(db: Db) {

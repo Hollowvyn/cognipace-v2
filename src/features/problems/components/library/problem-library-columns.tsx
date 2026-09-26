@@ -22,6 +22,7 @@ import {
   problemLibraryExcludeTrueFilter,
   problemLibraryColumnIds,
   problemLibraryIncludesAnyFilter,
+  problemLibraryTopicFilter,
 } from './problem-library-filtering'
 import { ProblemStatusBadge } from './problem-status-badge'
 import type { problemLibraryTableFeatures } from './problem-library-table-features'
@@ -128,7 +129,7 @@ export function createProblemLibraryColumns(): ColumnDef<
     {
       id: problemLibraryColumnIds.topicIds,
       accessorFn: (row) => row.topics.map((topic) => topic.id),
-      filterFn: problemLibraryIncludesAnyFilter,
+      filterFn: problemLibraryTopicFilter,
     },
     {
       id: problemLibraryColumnIds.companyIds,

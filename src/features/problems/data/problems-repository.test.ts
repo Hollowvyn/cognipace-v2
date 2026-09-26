@@ -15,6 +15,7 @@ import {
 } from '@/features/problems/server/problems-service'
 import { updateSettings } from '@/features/settings/server/settings-service'
 import type { Db } from '@/platform/db'
+import { replaceProblemTopicLabels } from '@/features/problems/data/topic-resolver'
 import { createProxyCallback } from '@/platform/db/proxy'
 import * as schema from '@/platform/db/schema'
 import {
@@ -77,6 +78,48 @@ describe('ProblemsRepository library data', () => {
         }),
       ]),
     )
+  })
+
+  it('publishes alias options and nested effective membership for unused topics', async () => {
+    const handle = await createTestDb()
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'bst-rollup',
+        title: 'BST Rollup',
+        topicLabels: ['BST'],
+      }),
+    )
+
+    const library = await getProblemLibrary(handle.db, {
+      surface: 'dashboard',
+      at: '2026-01-01T10:01:00.000Z',
+    })
+    const row = library.rows.find(
+      ({ problem }) => problem.slug === 'bst-rollup',
+    )
+
+    expect(row?.topics).toEqual([
+      {
+        id: 'binary-search-tree',
+        label: 'Binary Search Tree',
+        parentTopics: [
+          { id: 'binary-tree', label: 'Binary Tree' },
+          { id: 'tree', label: 'Tree' },
+        ],
+      },
+    ])
+    expect(row?.effectiveTopicIds).toEqual([
+      'binary-search-tree',
+      'binary-tree',
+      'tree',
+    ])
+    expect(library.options.topics).toContainEqual({
+      id: 'depth-first-search',
+      label: 'Depth-First Search',
+      aliases: ['DFS'],
+    })
   })
 
   it('creates user problems and edits seeded or user-created metadata with replacement labels', async () => {
@@ -142,7 +185,6 @@ describe('ProblemsRepository library data', () => {
         topicLabels: ['Heaps', 'Priority Queue', 'Brand New Pattern'],
       }),
     )
-
     const saved = await createProblemsRepository(handle.db).getForEdit(
       'heap-drill',
     )
@@ -151,10 +193,80 @@ describe('ProblemsRepository library data', () => {
       'Brand New Pattern',
       'Heap (Priority Queue)',
     ])
-    expect(saved?.topics.map((topic) => topic.id)).toEqual([
-      'brand-new-pattern',
-      'heap-priority-queue',
+    const unknownTopicId = saved?.topics.find(
+      (topic) => topic.label === 'Brand New Pattern',
+    )?.id
+    expect(unknownTopicId).toMatch(/^topic-[0-9a-f-]{36}$/u)
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'heap-drill-repeat',
+        title: 'Heap Drill Repeat',
+        topicLabels: ['Brand New Pattern'],
+      }),
+    )
+    const repeated = await createProblemsRepository(handle.db).getForEdit(
+      'heap-drill-repeat',
+    )
+    expect(
+      repeated?.topics.find((topic) => topic.label === 'Brand New Pattern')?.id,
+    ).toBe(unknownTopicId)
+  })
+
+  it('resolves slash and Unicode labels without inferred assignments', async () => {
+    const handle = await createTestDb()
+
+    await writeProblemTopicLabels(handle, 'topic-identity-drill', [
+      'Tree / Graph',
+      '动态规划',
+      'DSU',
+      'Union Find',
+      'KMP',
     ])
+    const saved = await readTopicRowsForProblem(handle, 'topic-identity-drill')
+
+    expect(saved).toHaveLength(4)
+    expect(saved).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'dynamic-programming',
+          label: 'Dynamic Programming',
+        }),
+        expect.objectContaining({ id: 'union-find', label: 'Union-Find' }),
+        expect.objectContaining({ id: 'kmp', label: 'KMP' }),
+        expect.objectContaining({ label: 'Tree / Graph' }),
+      ]),
+    )
+    expect(saved.map((topic) => topic.id)).not.toContain('tree')
+    expect(saved.map((topic) => topic.id)).not.toContain('graph-theory')
+    expect(saved.find((topic) => topic.id === 'kmp')?.id).not.toBe(
+      'string-matching',
+    )
+  })
+
+  it('rolls back a problem write when a later topic label is invalid', async () => {
+    const handle = await createTestDb()
+
+    await expect(
+      writeProblemTopicLabels(handle, 'invalid-topic-drill', [
+        'Valid New Topic',
+        '///',
+      ]),
+    ).rejects.toThrow(/Unicode letter or number/u)
+
+    expect(
+      await handle.db
+        .select()
+        .from(schema.problems)
+        .where(eq(schema.problems.slug, 'invalid-topic-drill')),
+    ).toEqual([])
+    expect(
+      await handle.db
+        .select()
+        .from(schema.topics)
+        .where(eq(schema.topics.label, 'Valid New Topic')),
+    ).toEqual([])
   })
 
   it('keeps manual topic replacement semantics after alias resolution', async () => {
@@ -186,7 +298,7 @@ describe('ProblemsRepository library data', () => {
     ])
   })
 
-  it('returns parent rollups for direct problem topics', async () => {
+  it('does not infer parents from applies-to topic relations', async () => {
     const handle = await createTestDb()
 
     await createProblem(
@@ -206,16 +318,12 @@ describe('ProblemsRepository library data', () => {
       {
         id: 'breadth-first-search',
         label: 'Breadth-First Search',
-        parentTopics: [
-          { id: 'binary-tree', label: 'Binary Tree' },
-          { id: 'graph-theory', label: 'Graph Theory' },
-          { id: 'tree', label: 'Tree' },
-        ],
+        parentTopics: [],
       },
     ])
   })
 
-  it('includes parent rollups for direct topics in Library rows', async () => {
+  it('keeps applies-to relations out of Library parent rollups', async () => {
     const handle = await createTestDb()
 
     await createProblem(
@@ -237,11 +345,7 @@ describe('ProblemsRepository library data', () => {
       {
         id: 'breadth-first-search',
         label: 'Breadth-First Search',
-        parentTopics: [
-          { id: 'binary-tree', label: 'Binary Tree' },
-          { id: 'graph-theory', label: 'Graph Theory' },
-          { id: 'tree', label: 'Tree' },
-        ],
+        parentTopics: [],
       },
     ])
     expect(rows[0]?.companies).toEqual([{ id: 'meta', label: 'Meta' }])
@@ -338,14 +442,14 @@ describe('ProblemsRepository library data', () => {
   it('merges captured LeetCode topics without clearing manual topics', async () => {
     const handle = await createTestDb()
 
-    await createProblem(
-      handle.db,
-      newProblemInput({
-        slugOrUrl: 'two-sum',
-        title: 'Two Sum',
-        topicLabels: ['Custom Local Topic'],
-      }),
-    )
+    await upsertProblemFromPage(handle.db, {
+      url: 'https://leetcode.com/problems/two-sum/',
+      slug: 'two-sum',
+      title: 'Two Sum',
+      difficulty: 'Easy',
+      isPremium: false,
+      topicLabels: ['Custom Local Topic'],
+    })
     await upsertProblemFromPage(handle.db, {
       url: 'https://leetcode.com/problems/two-sum/',
       slug: 'two-sum',
@@ -355,19 +459,17 @@ describe('ProblemsRepository library data', () => {
       topicLabels: ['Array', 'Hash Map'],
     })
 
-    const saved = await createProblemsRepository(handle.db).getForEdit(
-      'two-sum',
+    const merged = await readTopicRowsForProblem(handle, 'two-sum')
+    expect(merged).toEqual(
+      expect.arrayContaining([
+        { id: 'array', label: 'Array' },
+        { id: 'hash-map', label: 'Hash Map' },
+        expect.objectContaining({ label: 'Custom Local Topic' }),
+      ]),
     )
-
-    expect(saved?.topics).toEqual([
-      { id: 'array', label: 'Array', parentTopics: [] },
-      {
-        id: 'custom-local-topic',
-        label: 'Custom Local Topic',
-        parentTopics: [],
-      },
-      { id: 'hash-table', label: 'Hash Table', parentTopics: [] },
-    ])
+    expect(
+      merged.find((topic) => topic.label === 'Custom Local Topic')?.id,
+    ).toMatch(/^topic-[0-9a-f-]{36}$/u)
   })
 
   it('leaves existing topic links unchanged when page topic labels are omitted', async () => {
@@ -393,13 +495,13 @@ describe('ProblemsRepository library data', () => {
       'two-sum',
     )
 
-    expect(saved?.topics).toEqual([
+    expect(saved?.topics).toMatchObject([
       {
-        id: 'custom-local-topic',
         label: 'Custom Local Topic',
         parentTopics: [],
       },
     ])
+    expect(saved?.topics[0]?.id).toMatch(/^topic-[0-9a-f-]{36}$/u)
   })
 
   it('returns Library rows only for requested slugs', async () => {
@@ -586,6 +688,41 @@ describe('ProblemsRepository library data', () => {
 
 const solvedAt = new Date('2026-01-01T10:00:00.000Z')
 const serviceRetentionCheckAt = new Date('2026-01-02T10:00:00.000Z')
+
+async function writeProblemTopicLabels(
+  handle: Awaited<ReturnType<typeof createTestDb>>,
+  problemSlug: string,
+  labels: readonly string[],
+) {
+  await handle.db.transaction(async (tx) => {
+    const timestamp = Date.now()
+
+    await tx
+      .insert(schema.problems)
+      .values({
+        slug: problemSlug,
+        title: problemSlug,
+        difficulty: 'unknown',
+        isPremium: false,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      })
+      .onConflictDoNothing()
+
+    await replaceProblemTopicLabels(tx, problemSlug, labels)
+  })
+}
+
+function readTopicRowsForProblem(
+  handle: Awaited<ReturnType<typeof createTestDb>>,
+  problemSlug: string,
+) {
+  return handle.db
+    .select({ id: schema.topics.id, label: schema.topics.label })
+    .from(problemTopics)
+    .innerJoin(schema.topics, eq(schema.topics.id, problemTopics.topicId))
+    .where(eq(problemTopics.problemSlug, problemSlug))
+}
 
 function saveSolvedReview(
   db: Parameters<typeof saveReviewResult>[0],

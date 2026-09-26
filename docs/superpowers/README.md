@@ -12,6 +12,7 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Specs
 
+- [`specs/2026-09-26-topics-foundation-library-filtering-design.md`](./specs/2026-09-26-topics-foundation-library-filtering-design.md): approved design for typed topic relationships, deterministic aliases, preserving upgrades, and Library filtering by descendants with Any/All matching.
 - [`specs/2026-09-13-private-chrome-web-store-release-design.md`](./specs/2026-09-13-private-chrome-web-store-release-design.md): approved design for a private trusted-tester Chrome Web Store item, Recall Stack listing assets, accurate privacy and permission disclosures, Store build validation, manual first publication, and natural update proof.
 - [`specs/2026-09-13-editorconfig-baseline-design.md`](./specs/2026-09-13-editorconfig-baseline-design.md): approved design for adding an editor-neutral file-property baseline while keeping Prettier, ESLint, and TypeScript responsibilities separate.
 - [`specs/2026-09-13-ordered-track-next-design.md`](./specs/2026-09-13-ordered-track-next-design.md): approved design for keeping the active track's Next target in explicit group/problem order while leaving FSRS due-review urgency in the separate review loop.
@@ -42,6 +43,10 @@ This folder contains planning artifacts created through Superpowers workflows. T
 
 ## Plans
 
+- [`plans/2026-09-26-topics-implementation.md`](./plans/2026-09-26-topics-implementation.md): master implementation map for the approved topic foundation and Library filtering design, linking three ordered phase plans.
+- [`plans/2026-09-26-topics-phase-1-preserving-upgrades.md`](./plans/2026-09-26-topics-phase-1-preserving-upgrades.md): implementation plan for retaining existing snapshots, recognizing supported upgrades, and publishing staged data only after preparation and validation succeed.
+- [`plans/2026-09-26-topics-phase-2-foundation.md`](./plans/2026-09-26-topics-phase-2-foundation.md): implementation plan for canonical identities, aliases, typed relationships, reconciliation, backup v4, and Library read models.
+- [`plans/2026-09-26-topics-phase-3-library.md`](./plans/2026-09-26-topics-phase-3-library.md): implementation plan for alias search, descendant inclusion, Any/All topic filtering, selected actions, and Library smoke proof.
 - [`plans/2026-09-13-ci-hardening-rollout-2-actions-dependency-review.md`](./plans/2026-09-13-ci-hardening-rollout-2-actions-dependency-review.md): phase-sized implementation plan for immutably pinning every external GitHub Action, adding pull-request dependency vulnerability review, and extending the stable aggregate before branch protection activation.
 - [`plans/2026-09-13-private-chrome-web-store-readiness.md`](./plans/2026-09-13-private-chrome-web-store-readiness.md): test-first implementation plan for Recall Stack extension icons, Store package validation, private listing/privacy material, real product screenshots, manual first publication, and natural update proof, with WXT-native submission automation deferred until the manual path succeeds.
 - [`plans/2026-09-13-editorconfig-baseline.md`](./plans/2026-09-13-editorconfig-baseline.md): implementation plan for adding a root, editor-neutral file-property baseline alongside the maintained Prettier baseline in PR #159.

@@ -303,7 +303,10 @@ vi.mock('@/features/sync/data/sync-metadata-store', () => ({
 
 vi.mock('@/platform/db', () => ({
   flushDbSnapshot: backgroundMocks.flushDbSnapshot,
-  getAppDb: backgroundMocks.getAppDb,
+}))
+
+vi.mock('./app-db', () => ({
+  getBackgroundDb: backgroundMocks.getAppDb,
 }))
 
 vi.mock(

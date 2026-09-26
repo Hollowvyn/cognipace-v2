@@ -360,23 +360,65 @@ Schema change rules:
   changed shape.
 - Keep database writes behind the owning feature repository or service.
 
-Local-data reset caveat: changing migrations changes the migration fingerprint.
-When a stored snapshot does not match the current migration SQL, the app clears
-the old snapshot and creates a fresh migrated database seeded from
-`src/platform/db/seed.ts`. Testers may lose local extension data after schema
-changes.
+Snapshot compatibility is deliberately bounded. The app opens a snapshot when
+its fingerprint matches the current migration SQL. The only older fingerprint
+eligible for automatic upgrade is the exact migration sequence listed in
+`src/platform/db/snapshot-upgrade.ts`; the app validates that schema and runs
+only the migrations after that supported prefix. When both snapshot keys are
+absent, the app treats the profile as a fresh install and creates and seeds a
+new database. A partial pair, malformed value, or unknown or unsupported
+fingerprint fails startup. Automatic downgrade is unsupported. On failure, the
+original available snapshot values remain available for recovery; the app does
+not clear them and silently seed a fresh database.
+
+Before a supported upgrade replaces the active snapshot, the app retains the
+original snapshot and fingerprint in `cognipace_db_recovery_topics_v1`. An
+existing recovery record is kept until it is exported and must not be overwritten
+by another upgrade. These recovery values are private local data. Never log or
+share their contents in an issue; use the scoped local export procedure in
+`docs/testing.md` if recovery is needed. Startup diagnostics must describe the
+failure without printing snapshot bytes, topic values, tokens, or settings.
 
 ### Problem Topic Graph
 
-The problems feature owns topic writes and read models:
+The problems feature owns topic writes, canonical identity, aliases, typed
+relations, and read models. The curated registry currently has 81 canonical
+topics; `Heap` is a safe alias for `Heap (Priority Queue)`, not a second
+canonical topic.
 
 - `topics` is the durable topic registry. Rows include stable ids, display
   labels, and timestamps.
-- `topic_aliases` resolves variant labels to topic rows by normalized alias key.
-- `topic_relations` stores parent rollups, including multiple parents for a
-  child topic.
+- `topic_aliases` resolves exact normalized labels to topic rows. Lookup applies
+  Unicode NFC normalization, whitespace folding, dash normalization, and
+  case-insensitive matching; it does not use fuzzy matching. New unknown labels
+  receive collision-checked UUID-backed ids, so label spelling is not an id
+  allocator.
+- `topic_relations` is a typed directed graph. A `broader` row points from the
+  narrower child (`source_topic_id`) to its broader parent
+  (`target_topic_id`); `applies-to` records a cross-cutting relationship and
+  never contributes to ancestry.
 - `problem_topics` stores direct problem-topic assignments only. Parent rollups
   are derived for read models instead of being written as assignments.
+  `effectiveTopicIds` contains a direct topic and its transitive `broader`
+  ancestors, while `parentTopics` contains only those ancestors. For example,
+  a DFS-to-Tree `applies-to` relation does not imply ancestry, and a legacy
+  BFS-to-Tree relation is discarded rather than making BFS a Tree child.
+
+The Problems Library read model owns this expansion: each row returns its
+direct `topics` separately from `effectiveTopicIds`, and the Library options
+include canonical topics with their aliases. The Library topic predicate
+consumes those validated fields; it does not traverse the graph in the UI. By
+default the filter matches against effective membership, so a selected broader
+topic matches directly tagged descendants. Direct-only mode checks `topics`
+instead. Any requires at least one selected ID and All requires every selected
+ID in the chosen membership set. No selected IDs means no topic constraint,
+regardless of mode. Alias search discovers canonical options and selecting an
+alias match selects its canonical ID; picker query text alone does not filter
+problem rows. Topic matching combines with other facets and global search keeps
+its existing semantics. Filtering uses each problem row once, and counts,
+selected-row bulk actions, and track creation consume the same filtered rows.
+Graph-derived membership is currently used by the Library read model; this does
+not claim that Analytics includes topic ancestors.
 
 Manual Library create, edit, and bulk metadata writes use replace semantics for
 direct problem topics: the saved topic list replaces the previous direct topic
@@ -384,10 +426,25 @@ assignments after alias resolution. LeetCode capture writes use merge semantics:
 captured page topics are resolved and added to the existing direct topic set
 without clearing local or manual topics.
 
-Backup schema version 3 exports and restores `topics`, `topicAliases`, and
-`topicRelations`. Older supported backups are normalized into the version 3
-shape during parsing by adding topic timestamps and empty alias/relation arrays
-before restore validation.
+Backup schema version 4 exports typed relations as
+`{ sourceTopicId, targetTopicId, kind, createdAt, updatedAt }` alongside
+`topics` and `topicAliases`. Import accepts backup versions 1 through 4 and
+normalizes v1-v3 into the v4 shape before validation; v3's untyped parent/child
+edges become `broader` edges with child as source and parent as target. Unknown
+future versions are rejected. Sync keeps its envelope version
+and its existing dirty-local, overwrite-confirmation, and authorization rules,
+but a client that only understands backup v3 cannot read newly exported v4
+backups.
+
+Automatic database upgrade is a separate, deliberately narrow compatibility
+path: only the exact 0000–0007 migration SQL prefix allowlisted in
+`src/platform/db/snapshot-upgrade.ts` may upgrade automatically to the current
+schema. The Problems reconciliation callback runs on the staged database after
+incremental SQL and before snapshot publication. It preserves direct
+assignments and custom aliases, validates the complete registry, and retains
+the old snapshot and fingerprint in the local recovery record. Unsupported
+fingerprints or a reconciliation collision fail without replacing the stored
+snapshot.
 
 ## Query Invalidation
 
@@ -405,8 +462,8 @@ When adding or changing data dependencies:
 - Add or update tag mapping in `src/platform/query/cache-invalidation.ts`.
 - Broadcast the smallest correct set of tags from the background write path.
 - Include cross-feature query families when a write changes derived views. For
-  example, problem catalog writes can affect Library, practice details, queue,
-  track workspace, and shell data.
+  example, problem catalog writes can affect Library, Analytics, practice
+  details, queue, track workspace, and shell data.
 
 ## UI Architecture Rules
 
@@ -461,8 +518,9 @@ When adding or changing data dependencies:
 7. Update seed data in `src/platform/db/seed.ts` if fresh installs need default
    rows.
 8. Add or update repository and integration tests.
-9. Tell testers whether local extension data may reset because of the migration
-   fingerprint change.
+9. Follow the bounded migration compatibility and recovery behavior above and
+   the local recovery procedure in `docs/testing.md`. Never treat local data
+   reset as an acceptable default for a migration.
 
 ### Add Or Modify Dashboard Route
 

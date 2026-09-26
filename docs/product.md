@@ -169,14 +169,26 @@ companies, catalog rows, and problem-level practice details. Library is the
 dashboard surface for inspecting and editing that problem data.
 
 Library topics remain editable as problem metadata. Saved topic labels are
-standardized through stored aliases, so variant labels such as LeetCode page
-labels or older local labels resolve to the same persisted topic where an alias
-exists. Captured LeetCode page topics merge into the problem without clearing
-unrelated local or manually edited topics.
+standardized through stored aliases using exact normalized lookup, so variant
+labels such as LeetCode page labels or older local labels resolve to the same
+persisted topic where an alias exists. Captured LeetCode page topics merge into
+the problem without clearing unrelated local or manually edited topics; manual
+Library edits replace the direct topic assignments.
 
-Parent topic rollups exist for internal read models and future analytics
-support, but they are not separate problem assignments. The current product does
-not include a topic graph management UI.
+Direct assignments remain distinct from graph-derived membership. A narrower
+topic inherits its `broader` ancestors for read-model rollups, while
+cross-cutting `applies-to` relations do not imply ancestry or membership. The
+Library Topics filter searches canonical names and their aliases, but each
+selectable option remains one canonical topic. Selecting a topic includes its
+descendants by default; users can turn off Include subtopics to match direct
+assignments only. Match any is the default when several topics are selected;
+Match all requires every selected topic. These rules apply alongside the other
+Library filters, and an empty topic selection places no topic constraint.
+
+The product does not include a topic graph management UI. Graph-derived
+membership is a Problems read-model capability used by Library filtering; it
+does not change direct problem assignments or imply that Analytics uses topic
+ancestors.
 
 ### Tracks
 

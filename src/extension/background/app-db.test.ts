@@ -1,0 +1,95 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+type TestDbHandle = { db: { kind: 'test-db' } }
+type TestPublishContext = {
+  kind: 'fresh' | 'upgrade'
+  fromFingerprint: string | null
+}
+type TestAppDbOptions = {
+  beforePublish: (
+    handle: TestDbHandle,
+    context: TestPublishContext,
+  ) => Promise<void>
+}
+type TestReconciliationOptions = {
+  legacy: boolean
+  now: Date
+  catalogue: unknown
+}
+
+const appDbMocks = vi.hoisted(() => ({
+  getAppDb: vi.fn<(options: TestAppDbOptions) => Promise<TestDbHandle>>(),
+  reconcileTopicTaxonomy:
+    vi.fn<
+      (
+        db: TestDbHandle['db'],
+        options: TestReconciliationOptions,
+      ) => Promise<void>
+    >(),
+}))
+
+vi.mock('@/platform/db', () => ({ getAppDb: appDbMocks.getAppDb }))
+vi.mock('@/features/problems/data/topic-reconciliation', () => ({
+  reconcileTopicTaxonomy: appDbMocks.reconcileTopicTaxonomy,
+}))
+
+import { getBackgroundDb } from './app-db'
+import {
+  seedTopicAliases,
+  seedTopicRelations,
+  seedTopics,
+} from '@/platform/db/topic-taxonomy-seed'
+
+describe('background app database bridge', () => {
+  const handle: TestDbHandle = { db: { kind: 'test-db' } }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    appDbMocks.reconcileTopicTaxonomy.mockResolvedValue(undefined)
+    appDbMocks.getAppDb.mockImplementation(async ({ beforePublish }) => {
+      await beforePublish(handle, {
+        kind: 'fresh',
+        fromFingerprint: null,
+      })
+      return handle
+    })
+  })
+
+  it('passes the current curated catalogue and classifies fresh and upgrade opens', async () => {
+    await expect(getBackgroundDb()).resolves.toBe(handle)
+    expect(appDbMocks.getAppDb).toHaveBeenCalledTimes(1)
+    const freshOptions = appDbMocks.getAppDb.mock.calls[0]?.[0]
+    if (!freshOptions) throw new Error('Expected database options.')
+    await freshOptions.beforePublish(handle, {
+      kind: 'upgrade',
+      fromFingerprint: 'legacy00',
+    })
+
+    const calls = appDbMocks.reconcileTopicTaxonomy.mock.calls
+    expect(calls).toHaveLength(2)
+    expect(calls[0]?.[0]).toBe(handle.db)
+    expect(calls[0]?.[1].legacy).toBe(false)
+    expect(calls[0]?.[1].now).toBeInstanceOf(Date)
+    expect(calls[0]?.[1].catalogue).toEqual({
+      topics: seedTopics,
+      aliases: seedTopicAliases,
+      relations: seedTopicRelations,
+    })
+    expect(calls[1]?.[0]).toBe(handle.db)
+    expect(calls[1]?.[1].legacy).toBe(true)
+    expect(calls[1]?.[1].now).toBeInstanceOf(Date)
+    expect(calls[1]?.[1].catalogue).toEqual({
+      topics: seedTopics,
+      aliases: seedTopicAliases,
+      relations: seedTopicRelations,
+    })
+  })
+
+  it('propagates reconciliation failures so the platform cannot publish the handle', async () => {
+    const failure = new Error('taxonomy collision')
+    appDbMocks.reconcileTopicTaxonomy.mockRejectedValue(failure)
+
+    await expect(getBackgroundDb()).rejects.toBe(failure)
+    expect(appDbMocks.reconcileTopicTaxonomy).toHaveBeenCalledTimes(1)
+  })
+})

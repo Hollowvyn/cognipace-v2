@@ -30,6 +30,10 @@ export const problemTopicSummarySchema = z.object({
   label: z.string(),
 })
 
+export const problemTopicOptionSchema = problemTopicSummarySchema.extend({
+  aliases: z.array(z.string()),
+})
+
 export const problemTopicSchema = problemTopicSummarySchema.extend({
   parentTopics: z.array(problemTopicSummarySchema).default(() => []),
 })
@@ -75,6 +79,7 @@ export const problemLibraryRowSchema = z.object({
   lastReviewedAt: z.iso.datetime().nullable(),
   lastSolvedAt: z.iso.datetime().nullable(),
   topics: z.array(problemTopicSchema),
+  effectiveTopicIds: z.array(z.string()),
   companies: z.array(problemCompanySchema),
   trackMemberships: z.array(problemTrackMembershipSchema),
 })
@@ -117,7 +122,7 @@ export const problemLibrarySummarySchema = z
 export type ProblemLibrarySummary = z.infer<typeof problemLibrarySummarySchema>
 
 export const problemLibraryOptionsSchema = z.object({
-  topics: z.array(problemTopicSummarySchema),
+  topics: z.array(problemTopicOptionSchema),
   companies: z.array(problemCompanySchema),
 })
 

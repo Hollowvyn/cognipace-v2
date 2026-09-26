@@ -21,6 +21,7 @@ import {
   tracks,
 } from '@/platform/db/schema'
 import { createTestDb } from '@/platform/db/test-db'
+import { createBackupRepository } from '../data/backup-repository'
 
 import { backupSchemaVersion, type BackupFile } from '../api/backup-contracts'
 import {
@@ -245,7 +246,7 @@ describe('backup service', () => {
           ],
         },
       } satisfies BackupFile),
-    ).toThrow(/duplicate topic label Custom Topic/i)
+    ).toThrow(/topic key collision for "custom topic"/i)
 
     expect(() =>
       validateFullBackup({
@@ -463,7 +464,7 @@ describe('backup service', () => {
     const source = await createTestDb({ now })
     await insertCustomState(source.db)
     await source.db.insert(topicAliases).values({
-      aliasKey: 'custom-alias',
+      aliasKey: 'custom alias',
       label: 'Custom Alias',
       topicId: 'custom-topic',
       createdAt: timestamp,
@@ -476,9 +477,17 @@ describe('backup service', () => {
       updatedAt: timestamp,
     })
     await source.db.insert(topicRelations).values({
-      parentTopicId: 'custom-parent',
-      childTopicId: 'custom-topic',
-      createdAt: timestamp,
+      sourceTopicId: 'custom-topic',
+      targetTopicId: 'custom-parent',
+      kind: 'broader' as const,
+      createdAt: timestamp - 1000,
+      updatedAt: timestamp,
+    })
+    await source.db.insert(topicRelations).values({
+      sourceTopicId: 'custom-topic',
+      targetTopicId: 'custom-parent',
+      kind: 'applies-to',
+      createdAt: timestamp - 2000,
       updatedAt: timestamp,
     })
 
@@ -489,16 +498,31 @@ describe('backup service', () => {
 
     expect(await target.db.select().from(topicAliases)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ aliasKey: 'custom-alias' }),
+        expect.objectContaining({ aliasKey: 'custom alias' }),
       ]),
     )
     expect(await target.db.select().from(topicRelations)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          parentTopicId: 'custom-parent',
-          childTopicId: 'custom-topic',
+          sourceTopicId: 'custom-topic',
+          targetTopicId: 'custom-parent',
+          kind: 'broader' as const,
+          createdAt: timestamp - 1000,
+        }),
+        expect.objectContaining({
+          sourceTopicId: 'custom-topic',
+          targetTopicId: 'custom-parent',
+          kind: 'applies-to',
+          createdAt: timestamp - 2000,
         }),
       ]),
+    )
+    const firstRestore = await createBackupRepository(
+      target.db,
+    ).readBackupData()
+    await restoreFullBackup(target.db, backup)
+    expect(await createBackupRepository(target.db).readBackupData()).toEqual(
+      firstRestore,
     )
   })
 
@@ -509,7 +533,7 @@ describe('backup service', () => {
         topicAliases: [
           ...backup.data.topicAliases,
           {
-            aliasKey: 'missing-alias',
+            aliasKey: 'missing alias',
             label: 'Missing Alias',
             topicId: 'missing-topic',
             createdAt: now.toISOString(),
@@ -517,7 +541,7 @@ describe('backup service', () => {
           },
         ],
       }),
-      message: /topicAlias references missing topic missing-topic/i,
+      message: /targets unknown topic "missing-topic"/i,
     },
     {
       label: 'dangling relation parent',
@@ -525,14 +549,15 @@ describe('backup service', () => {
         topicRelations: [
           ...backup.data.topicRelations,
           {
-            parentTopicId: 'missing-parent',
-            childTopicId: 'custom-topic',
+            sourceTopicId: 'custom-topic',
+            targetTopicId: 'missing-parent',
+            kind: 'broader' as const,
             createdAt: now.toISOString(),
             updatedAt: now.toISOString(),
           },
         ],
       }),
-      message: /topicRelation references missing parent topic missing-parent/i,
+      message: /unknown target topic "missing-parent"/i,
     },
     {
       label: 'dangling relation child',
@@ -540,14 +565,15 @@ describe('backup service', () => {
         topicRelations: [
           ...backup.data.topicRelations,
           {
-            parentTopicId: 'custom-topic',
-            childTopicId: 'missing-child',
+            sourceTopicId: 'missing-child',
+            targetTopicId: 'custom-topic',
+            kind: 'broader' as const,
             createdAt: now.toISOString(),
             updatedAt: now.toISOString(),
           },
         ],
       }),
-      message: /topicRelation references missing child topic missing-child/i,
+      message: /unknown source topic "missing-child"/i,
     },
     {
       label: 'duplicate alias key',
@@ -555,22 +581,22 @@ describe('backup service', () => {
         topicAliases: [
           ...backup.data.topicAliases,
           {
-            aliasKey: 'custom-alias',
+            aliasKey: 'custom alias',
             label: 'Custom Alias',
             topicId: 'custom-topic',
             createdAt: now.toISOString(),
             updatedAt: now.toISOString(),
           },
           {
-            aliasKey: 'custom-alias',
-            label: 'Custom Alias Duplicate',
+            aliasKey: 'custom alias',
+            label: 'Custom Alias',
             topicId: 'custom-topic',
             createdAt: now.toISOString(),
             updatedAt: now.toISOString(),
           },
         ],
       }),
-      message: /duplicate topic alias key custom-alias/i,
+      message: /duplicate topic alias key "custom alias"/i,
     },
     {
       label: 'duplicate relation pair',
@@ -587,20 +613,22 @@ describe('backup service', () => {
         topicRelations: [
           ...backup.data.topicRelations,
           {
-            parentTopicId: 'custom-parent',
-            childTopicId: 'custom-topic',
+            sourceTopicId: 'custom-topic',
+            targetTopicId: 'custom-parent',
+            kind: 'broader' as const,
             createdAt: now.toISOString(),
             updatedAt: now.toISOString(),
           },
           {
-            parentTopicId: 'custom-parent',
-            childTopicId: 'custom-topic',
+            sourceTopicId: 'custom-topic',
+            targetTopicId: 'custom-parent',
+            kind: 'broader' as const,
             createdAt: now.toISOString(),
             updatedAt: now.toISOString(),
           },
         ],
       }),
-      message: /duplicate topic relation custom-parent:custom-topic/i,
+      message: /duplicate broader topic relation/i,
     },
     {
       label: 'self-parent relation',
@@ -608,14 +636,15 @@ describe('backup service', () => {
         topicRelations: [
           ...backup.data.topicRelations,
           {
-            parentTopicId: 'custom-topic',
-            childTopicId: 'custom-topic',
+            sourceTopicId: 'custom-topic',
+            targetTopicId: 'custom-topic',
+            kind: 'broader' as const,
             createdAt: now.toISOString(),
             updatedAt: now.toISOString(),
           },
         ],
       }),
-      message: /cannot be its own parent/i,
+      message: /cannot be a self-link/i,
     },
     {
       label: 'duplicate problem-topic join',
@@ -678,14 +707,16 @@ describe('backup service', () => {
           topicRelations: [
             ...backup.data.topicRelations,
             {
-              parentTopicId: 'custom-parent-a',
-              childTopicId: 'custom-topic',
+              sourceTopicId: 'custom-topic',
+              targetTopicId: 'custom-parent-a',
+              kind: 'broader' as const,
               createdAt: now.toISOString(),
               updatedAt: now.toISOString(),
             },
             {
-              parentTopicId: 'custom-parent-b',
-              childTopicId: 'custom-topic',
+              sourceTopicId: 'custom-topic',
+              targetTopicId: 'custom-parent-b',
+              kind: 'broader' as const,
               createdAt: now.toISOString(),
               updatedAt: now.toISOString(),
             },
@@ -723,21 +754,23 @@ describe('backup service', () => {
           topicRelations: [
             ...backup.data.topicRelations,
             {
-              parentTopicId: 'topic-a',
-              childTopicId: 'topic-b',
+              sourceTopicId: 'topic-b',
+              targetTopicId: 'topic-a',
+              kind: 'broader' as const,
               createdAt: now.toISOString(),
               updatedAt: now.toISOString(),
             },
             {
-              parentTopicId: 'topic-b',
-              childTopicId: 'topic-a',
+              sourceTopicId: 'topic-a',
+              targetTopicId: 'topic-b',
+              kind: 'broader' as const,
               createdAt: now.toISOString(),
               updatedAt: now.toISOString(),
             },
           ],
         },
       } satisfies BackupFile),
-    ).toThrow(/cyclic topic relation/i)
+    ).toThrow(/broader relations contain a cycle/i)
   })
 
   it('resets local data to seeded defaults', async () => {

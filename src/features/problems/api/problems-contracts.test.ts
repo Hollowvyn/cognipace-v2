@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
+import { createProblemLibraryResponse } from '@/testing/problem-fixtures'
+
 import {
   problemLibraryOptionsSchema,
+  problemLibraryRowSchema,
   problemLibraryStatusSchema,
   problemTopicSchema,
   problemsBulkUpdateProblemsRequestSchema,
@@ -78,7 +81,7 @@ describe('problems contracts', () => {
     })
   })
 
-  it('defaults problem topic parent rollups and keeps options simple', () => {
+  it('defaults direct topic parents and requires alias-rich topic options', () => {
     expect(
       problemTopicSchema.parse({
         id: 'breadth-first-search',
@@ -96,14 +99,35 @@ describe('problems contracts', () => {
           {
             id: 'breadth-first-search',
             label: 'Breadth-First Search',
-            parentTopics: [{ id: 'graph-theory', label: 'Graph Theory' }],
+            aliases: ['BFS'],
           },
         ],
         companies: [{ id: 'meta', label: 'Meta' }],
       }),
     ).toEqual({
-      topics: [{ id: 'breadth-first-search', label: 'Breadth-First Search' }],
+      topics: [
+        {
+          id: 'breadth-first-search',
+          label: 'Breadth-First Search',
+          aliases: ['BFS'],
+        },
+      ],
       companies: [{ id: 'meta', label: 'Meta' }],
     })
+
+    expect(
+      problemLibraryOptionsSchema.safeParse({
+        topics: [{ id: 'dfs', label: 'Depth-First Search' }],
+        companies: [],
+      }).success,
+    ).toBe(false)
+    const rowWithoutEffectiveTopicIds = {
+      ...createProblemLibraryResponse().rows[0],
+    }
+    delete (rowWithoutEffectiveTopicIds as { effectiveTopicIds?: string[] })
+      .effectiveTopicIds
+    expect(
+      problemLibraryRowSchema.safeParse(rowWithoutEffectiveTopicIds).success,
+    ).toBe(false)
   })
 })

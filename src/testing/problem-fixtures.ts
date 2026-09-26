@@ -62,6 +62,7 @@ export function createProblemLibraryResponse(
         lastReviewedAt: null,
         lastSolvedAt: null,
         topics: [],
+        effectiveTopicIds: [],
         companies: [],
         trackMemberships: [],
       },

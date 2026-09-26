@@ -60,15 +60,19 @@ describe('db foundation', () => {
         'problem_practice_suspended_idx',
         'problem_topics_topic_idx',
         'topic_aliases_topic_idx',
-        'topic_relations_child_idx',
-        'topic_relations_parent_idx',
+        'topic_relations_source_idx',
+        'topic_relations_target_idx',
         'review_attempts_card_idx',
         'review_attempts_problem_slug_idx',
         'review_attempts_reviewed_at_idx',
         'topics_label_unique',
         'track_group_problems_problem_slug_idx',
+        'track_group_problems_track_idx',
+        'track_group_problems_track_problem_unique',
+        'track_groups_id_track_unique',
         'track_groups_track_idx',
         'track_problem_progress_problem_slug_idx',
+        'track_problem_progress_review_attempt_idx',
         'tracks_slug_unique',
       ]),
     )
@@ -91,15 +95,16 @@ describe('db foundation', () => {
     )
     expect(readSqliteColumnNames(handle.rawDb, 'topic_relations')).toEqual(
       expect.arrayContaining([
-        'parent_topic_id',
-        'child_topic_id',
+        'source_topic_id',
+        'target_topic_id',
+        'kind',
         'created_at',
         'updated_at',
       ]),
     )
   })
 
-  it('standardizes seeded alias topics without losing problem topic joins', async () => {
+  it('inserts seeded aliases without deleting preexisting topics or assignments', async () => {
     const handle = await createTestDb({ seed: false })
 
     handle.rawDb.exec(`
@@ -130,7 +135,7 @@ describe('db foundation', () => {
         handle.rawDb,
         "SELECT topic_id FROM problem_topics WHERE problem_slug = 'top-k-frequent-words' ORDER BY topic_id",
       ),
-    ).toEqual([['heap-priority-queue']])
+    ).toEqual([['heap-priority-queue'], ['heaps']])
     expect(
       readSqliteRows(
         handle.rawDb,
@@ -143,6 +148,12 @@ describe('db foundation', () => {
         "SELECT id, label FROM topics WHERE id = 'custom-topic'",
       ),
     ).toEqual([['custom-topic', 'Custom Topic']])
+    expect(
+      readSqliteRows(
+        handle.rawDb,
+        "SELECT id, label FROM topics WHERE id = 'heaps'",
+      ),
+    ).toEqual([['heaps', 'Heaps']])
   })
 
   it('migrates track progress ledger state without losing active session', async () => {

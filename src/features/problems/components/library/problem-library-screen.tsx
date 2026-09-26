@@ -76,7 +76,7 @@ export function ProblemLibraryScreen({
 
   return (
     <ProblemLibraryFrame>
-      <Surface className="grid w-full overflow-hidden p-0">
+      <Surface className="grid w-full overflow-visible p-0">
         <ProblemLibraryHeader
           newProblemAction={newProblemAction}
           summary={summary}

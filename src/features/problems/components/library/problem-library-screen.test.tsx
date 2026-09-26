@@ -107,7 +107,7 @@ describe('ProblemLibraryScreen', () => {
     expect(queryProblemRow('01 Matrix')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
-    await selectLibraryFacetOption(user, 'Topics', 'Array')
+    await selectLibraryTopicOption(user, 'Array')
     expect(getProblemRow('Two Sum')).toBeVisible()
     expect(queryProblemRow('Binary Search')).not.toBeInTheDocument()
 
@@ -253,6 +253,182 @@ describe('ProblemLibraryScreen', () => {
 
     await user.click(screen.getByRole('switch', { name: 'Hide suspended' }))
     expect(queryProblemRow('01 Matrix')).not.toBeInTheDocument()
+  })
+
+  it('filters canonical topics by effective membership and keeps other facets active', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockResolvedValueOnce(topicFilteringResponse)
+    renderProblemLibrary()
+
+    await findProblemRow('Graph traversal')
+    await user.click(screen.getByRole('button', { name: 'Expand filters' }))
+
+    await openTopics(user)
+    await user.click(screen.getByRole('checkbox', { name: /^Tree$/ }))
+    expect(getProblemRow('BST lookup')).toBeVisible()
+    expect(getProblemRow('Tree traversal')).toBeVisible()
+    expect(queryProblemRow('Graph traversal')).not.toBeInTheDocument()
+    expect(screen.getByText('Filtered').parentElement).toHaveTextContent('2')
+    expect(screen.getByText('Reviews Due').parentElement).toHaveTextContent('0')
+
+    await user.click(screen.getByLabelText('Include subtopics'))
+    expect(queryProblemRow('BST lookup')).not.toBeInTheDocument()
+    expect(queryProblemRow('Tree traversal')).not.toBeInTheDocument()
+    expect(screen.getByText('No problems match these filters.')).toBeVisible()
+
+    await user.click(screen.getByLabelText('Include subtopics'))
+    expect(getProblemRow('BST lookup')).toBeVisible()
+
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Search topics' }),
+      'DFS',
+    )
+    expect(
+      screen.getByRole('checkbox', { name: 'Depth-First Search' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('checkbox', { name: /^Tree$/ })).toBeNull()
+    expect(getProblemRow('BST lookup')).toBeVisible()
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Depth-First Search' }),
+    )
+    await user.selectOptions(screen.getByLabelText('Topic matching'), 'all')
+    expect(getProblemRow('Tree traversal')).toBeVisible()
+    expect(queryProblemRow('BST lookup')).not.toBeInTheDocument()
+    expect(queryProblemRow('Graph traversal')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Collapse filters' }))
+    expect(getProblemRow('Tree traversal')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Expand filters' }))
+    expect(
+      screen.getByRole('button', { name: 'Topics: 2 selected' }),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
+    expect(screen.getByLabelText('Topic matching')).toHaveValue('any')
+    expect(screen.getByLabelText('Include subtopics')).toBeChecked()
+    await openTopics(user)
+    expect(
+      screen.getByRole('searchbox', { name: 'Search topics' }),
+    ).toHaveValue('')
+    expect(getProblemRow('Graph traversal')).toBeVisible()
+    expect(getProblemRow('Tree traversal')).toBeVisible()
+    expect(getProblemRow('BST lookup')).toBeVisible()
+    expect(getProblemRow('Untagged problem')).toBeVisible()
+    expect(screen.getByText('Reviews Due').parentElement).toHaveTextContent('1')
+  })
+
+  it('does not filter by topic search text or unused topics and keeps global search separate', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockResolvedValueOnce(topicFilteringResponse)
+    renderProblemLibrary()
+
+    await findProblemRow('Graph traversal')
+    await user.click(screen.getByRole('button', { name: 'Expand filters' }))
+    await openTopics(user)
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Search topics' }),
+      'DFS',
+    )
+    expect(getProblemRow('Graph traversal')).toBeVisible()
+    expect(getProblemRow('Tree traversal')).toBeVisible()
+    expect(getProblemRow('BST lookup')).toBeVisible()
+    expect(getProblemRow('Untagged problem')).toBeVisible()
+
+    await user.clear(screen.getByRole('searchbox', { name: 'Search topics' }))
+    await user.click(screen.getByRole('checkbox', { name: /^Heap$/ }))
+    expect(screen.getByText('No problems match these filters.')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
+
+    await user.type(screen.getByLabelText('Search problems'), 'DFS')
+    expect(screen.getByText('No problems match these filters.')).toBeVisible()
+  })
+
+  it('combines topic matching with difficulty, status, premium, and suspended filters', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendMessage).mockResolvedValueOnce(topicFilteringResponse)
+    renderProblemLibrary()
+
+    await findProblemRow('Graph traversal')
+    await user.click(screen.getByRole('button', { name: 'Expand filters' }))
+    await openTopics(user)
+    await user.click(screen.getByRole('checkbox', { name: /^Tree$/ }))
+    await selectLibraryFacetOption(user, 'Difficulty', 'Easy')
+    expect(getProblemRow('BST lookup')).toBeVisible()
+    expect(queryProblemRow('Graph traversal')).not.toBeInTheDocument()
+
+    await selectLibraryFacetOption(user, 'Status', 'Suspended')
+    expect(getProblemRow('BST lookup')).toBeVisible()
+    await user.click(screen.getByRole('switch', { name: 'Hide premium' }))
+    expect(screen.getByText('No problems match these filters.')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
+    await openTopics(user)
+    await user.click(screen.getByRole('checkbox', { name: /^Tree$/ }))
+    await selectLibraryFacetOption(user, 'Difficulty', 'Easy')
+    await user.click(screen.getByRole('switch', { name: 'Hide suspended' }))
+    expect(screen.getByText('No problems match these filters.')).toBeVisible()
+  })
+
+  it('sends only filtered selected rows to bulk and selected-row actions without clearing selection', async () => {
+    const user = userEvent.setup()
+    const onMakeTrack = vi.fn()
+    vi.mocked(sendMessage).mockImplementation((method) =>
+      method === 'problems.getLibrary'
+        ? Promise.resolve(topicFilteringResponse)
+        : Promise.resolve(undefined),
+    )
+    renderProblemLibrary({
+      renderSelectedRowsAction: (selectedRows) => (
+        <Button
+          onClick={() => {
+            onMakeTrack(selectedRows.map((row) => row.problem.slug))
+          }}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          Make Track
+        </Button>
+      ),
+    })
+
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Select Graph traversal' }),
+    )
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select BST lookup' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Expand filters' }))
+    await openTopics(user)
+    await user.click(screen.getByRole('checkbox', { name: /^Tree$/ }))
+
+    const bulkBar = screen.getByRole('region', { name: 'Bulk actions' })
+    expect(within(bulkBar).getByText('1 selected')).toBeVisible()
+    expect(
+      screen.getByRole('checkbox', { name: 'Select BST lookup' }),
+    ).toBeChecked()
+    await user.click(
+      within(bulkBar).getByRole('button', { name: 'Make Track' }),
+    )
+    expect(onMakeTrack).toHaveBeenCalledWith(['bst-lookup'])
+
+    await user.click(within(bulkBar).getByRole('button', { name: 'Resume' }))
+    await waitFor(() =>
+      expect(sendMessage).toHaveBeenCalledWith('practice.setSuspended', {
+        surface: 'dashboard',
+        problemSlug: 'bst-lookup',
+        suspended: false,
+      }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Clear Filters' }))
+    expect(
+      screen.getByRole('checkbox', { name: 'Select Graph traversal' }),
+    ).toBeChecked()
+    expect(
+      screen.getByRole('checkbox', { name: 'Select BST lookup' }),
+    ).toBeChecked()
+    expect(screen.getByText('2 selected')).toBeVisible()
   })
 
   it('shows summary counts and expandable row details', async () => {
@@ -934,6 +1110,20 @@ async function selectLibraryFacetOption(
   await user.click(screen.getByRole('option', { name: optionLabel }))
 }
 
+async function openTopics(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /Topics:/ }))
+}
+
+async function selectLibraryTopicOption(
+  user: ReturnType<typeof userEvent.setup>,
+  topicName: string,
+) {
+  await openTopics(user)
+  await user.click(
+    screen.getByRole('checkbox', { name: new RegExp(`^${topicName}$`) }),
+  )
+}
+
 function getProblemTitleOrder() {
   const titles: string[] = []
 
@@ -994,7 +1184,10 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
     suspendedCount: 1,
   },
   options: {
-    topics: [topicArray, topicSearch],
+    topics: [
+      { id: topicArray.id, label: topicArray.label, aliases: [] },
+      { id: topicSearch.id, label: topicSearch.label, aliases: [] },
+    ],
     companies: [companyMeta, companyNetflix],
   },
   rows: [
@@ -1019,6 +1212,7 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
       lastReviewedAt: '2026-01-01T10:00:00.000Z',
       lastSolvedAt: '2026-01-01T10:00:00.000Z',
       topics: [topicArray],
+      effectiveTopicIds: ['array'],
       companies: [companyMeta],
       trackMemberships: [trackMembership],
     },
@@ -1038,6 +1232,7 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
       lastReviewedAt: null,
       lastSolvedAt: null,
       topics: [topicSearch],
+      effectiveTopicIds: ['binary-search'],
       companies: [companyNetflix],
       trackMemberships: [],
     },
@@ -1056,8 +1251,141 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
       lastReviewedAt: null,
       lastSolvedAt: null,
       topics: [],
+      effectiveTopicIds: [],
       companies: [],
       trackMemberships: [],
     },
   ],
 })
+
+const topicFilteringResponse: ProblemLibraryResponse =
+  createProblemLibraryResponse({
+    summary: {
+      totalCount: 4,
+      filteredCount: 4,
+      dueCount: 1,
+      suspendedCount: 1,
+    },
+    options: {
+      topics: [
+        {
+          id: 'depth-first-search',
+          label: 'Depth-First Search',
+          aliases: ['DFS'],
+        },
+        { id: 'graph-theory', label: 'Graph Theory', aliases: ['Graph'] },
+        { id: 'binary-tree', label: 'Binary Tree', aliases: [] },
+        { id: 'tree', label: 'Tree', aliases: ['Trees'] },
+        {
+          id: 'binary-search-tree',
+          label: 'Binary Search Tree',
+          aliases: ['BST'],
+        },
+        { id: 'heap', label: 'Heap', aliases: [] },
+      ],
+      companies: [],
+    },
+    rows: [
+      createTopicFilteringRow({
+        slug: 'graph-traversal',
+        title: 'Graph traversal',
+        difficulty: 'hard',
+        status: 'overdue',
+        topics: [
+          {
+            id: 'depth-first-search',
+            label: 'Depth-First Search',
+            parentTopics: [],
+          },
+          { id: 'graph-theory', label: 'Graph Theory', parentTopics: [] },
+        ],
+        effectiveTopicIds: ['depth-first-search', 'graph-theory'],
+      }),
+      createTopicFilteringRow({
+        slug: 'tree-traversal',
+        title: 'Tree traversal',
+        difficulty: 'medium',
+        status: 'scheduled',
+        topics: [
+          {
+            id: 'depth-first-search',
+            label: 'Depth-First Search',
+            parentTopics: [],
+          },
+          {
+            id: 'binary-tree',
+            label: 'Binary Tree',
+            parentTopics: [{ id: 'tree', label: 'Tree' }],
+          },
+        ],
+        effectiveTopicIds: ['depth-first-search', 'binary-tree', 'tree'],
+      }),
+      createTopicFilteringRow({
+        slug: 'bst-lookup',
+        title: 'BST lookup',
+        difficulty: 'easy',
+        status: 'suspended',
+        isPremium: true,
+        topics: [
+          {
+            id: 'binary-search-tree',
+            label: 'Binary Search Tree',
+            parentTopics: [{ id: 'binary-tree', label: 'Binary Tree' }],
+          },
+        ],
+        effectiveTopicIds: ['binary-search-tree', 'binary-tree', 'tree'],
+      }),
+      createTopicFilteringRow({
+        slug: 'untagged-problem',
+        title: 'Untagged problem',
+        difficulty: 'easy',
+        status: 'not-started',
+        topics: [],
+        effectiveTopicIds: [],
+      }),
+    ],
+  })
+
+function createTopicFilteringRow({
+  slug,
+  title,
+  difficulty,
+  status,
+  topics,
+  effectiveTopicIds,
+  isPremium = false,
+}: {
+  slug: string
+  title: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  status: 'due' | 'overdue' | 'scheduled' | 'suspended' | 'not-started'
+  topics: ProblemLibraryResponse['rows'][number]['topics']
+  effectiveTopicIds: string[]
+  isPremium?: boolean
+}): ProblemLibraryResponse['rows'][number] {
+  return {
+    problem: createSerializedProblem({ slug, title, difficulty, isPremium }),
+    status,
+    state: createSerializedNormalizedPracticeState({
+      isSuspended: status === 'suspended',
+      isDue: status === 'due' || status === 'overdue',
+      isOverdue: status === 'overdue',
+      overdueDays: status === 'overdue' ? 1 : 0,
+      isStarted: status !== 'not-started',
+      dueAt:
+        status === 'due' || status === 'overdue'
+          ? '2026-09-25T10:00:00.000Z'
+          : null,
+    }),
+    nextReviewAt:
+      status === 'due' || status === 'overdue'
+        ? '2026-09-25T10:00:00.000Z'
+        : null,
+    lastReviewedAt: null,
+    lastSolvedAt: null,
+    topics,
+    effectiveTopicIds,
+    companies: [],
+    trackMemberships: [],
+  }
+}

@@ -47,8 +47,8 @@ function createValidBackupFixture() {
       ],
       topicAliases: [
         {
-          aliasKey: 'hash-map',
-          label: 'Hash Map',
+          aliasKey: 'custom hash',
+          label: 'Custom Hash',
           topicId: 'hash-table',
           createdAt: timestamp,
           updatedAt: timestamp,
@@ -56,8 +56,9 @@ function createValidBackupFixture() {
       ],
       topicRelations: [
         {
-          parentTopicId: 'array',
-          childTopicId: 'hash-table',
+          sourceTopicId: 'hash-table',
+          targetTopicId: 'array',
+          kind: 'broader',
           createdAt: timestamp,
           updatedAt: timestamp,
         },
@@ -190,7 +191,7 @@ function createValidBackupFixture() {
 }
 
 describe('backup contracts', () => {
-  it('parses a valid v3 CogniPace backup and creates summary counts', () => {
+  it('parses a valid v4 CogniPace backup and creates summary counts', () => {
     const backup = parseBackupFileForCurrentApp(createValidBackupFixture())
 
     expect(backup).toEqual(createValidBackupFixture())
@@ -219,6 +220,97 @@ describe('backup contracts', () => {
     })
   })
 
+  it('migrates a v3 alias key and legacy false containment into v4 typed relations', () => {
+    const fixture = createValidBackupFixture()
+    const v3Backup = {
+      ...fixture,
+      schemaVersion: 3,
+      data: {
+        ...fixture.data,
+        topics: [
+          ...fixture.data.topics,
+          {
+            id: 'tree',
+            label: 'Tree',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+          {
+            id: 'breadth-first-search',
+            label: 'Breadth-First Search',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+          {
+            id: 'heap-priority-queue',
+            label: 'Heap (Priority Queue)',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+        topicAliases: [
+          {
+            aliasKey: 'priority-queue',
+            label: 'Priority Queue',
+            topicId: 'heap-priority-queue',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+        topicRelations: [
+          {
+            parentTopicId: 'tree',
+            childTopicId: 'breadth-first-search',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+      },
+    }
+
+    const parsed = parseBackupFileForCurrentApp(v3Backup)
+
+    expect(parsed.schemaVersion).toBe(4)
+    expect(parsed.data.topicAliases).toContainEqual(
+      expect.objectContaining({
+        aliasKey: 'priority queue',
+        topicId: 'heap-priority-queue',
+      }),
+    )
+    expect(parsed.data.topicRelations).not.toContainEqual(
+      expect.objectContaining({
+        sourceTopicId: 'breadth-first-search',
+        targetTopicId: 'tree',
+        kind: 'broader',
+      }),
+    )
+    expect(parsed.data.topicRelations).toContainEqual(
+      expect.objectContaining({
+        sourceTopicId: 'breadth-first-search',
+        targetTopicId: 'tree',
+        kind: 'applies-to',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      }),
+    )
+  })
+
+  it('rejects malformed v4 alias keys instead of repairing them', () => {
+    const fixture = createValidBackupFixture()
+    const malformed = {
+      ...fixture,
+      data: {
+        ...fixture.data,
+        topicAliases: fixture.data.topicAliases.map((alias) => ({
+          ...alias,
+          aliasKey: 'hash-map',
+        })),
+      },
+    }
+
+    expect(() => parseBackupFileForCurrentApp(malformed)).toThrow(/alias key/i)
+  })
+
   it('preserves hard as a recalled track completion rating', () => {
     const backup = createValidBackupFixture()
     const [progress] = backup.data.tracks.progress
@@ -235,7 +327,7 @@ describe('backup contracts', () => {
     ).toBe('hard')
   })
 
-  it('normalizes v2 backups into v3 topic graph backups', () => {
+  it('normalizes v2 backups through the v4 topic graph format', () => {
     const fixture = createValidBackupFixture()
     const v2Backup = {
       ...fixture,
@@ -250,18 +342,26 @@ describe('backup contracts', () => {
 
     const parsed = parseBackupFileForCurrentApp(v2Backup)
 
-    expect(parsed.schemaVersion).toBe(3)
-    expect(parsed.data.topics[0]).toMatchObject({
+    expect(parsed.schemaVersion).toBe(4)
+    expect(parsed.data.topics.find(({ id }) => id === 'array')).toMatchObject({
       id: 'array',
       label: 'Array',
       createdAt: timestamp,
       updatedAt: timestamp,
     })
-    expect(parsed.data.topicAliases).toEqual([])
-    expect(parsed.data.topicRelations).toEqual([])
+    expect(parsed.data.topicAliases.length).toBeGreaterThan(0)
+    expect(parsed.data.topicRelations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceTopicId: 'binary-tree',
+          targetTopicId: 'tree',
+          kind: 'broader',
+        }),
+      ]),
+    )
   })
 
-  it('normalizes v1 track progress rows to v3 track-owned topic graph backups', () => {
+  it('normalizes v1 track progress rows through the v4 topic graph format', () => {
     const fixture = createValidBackupFixture()
     const v1Backup = {
       ...fixture,
@@ -287,18 +387,18 @@ describe('backup contracts', () => {
 
     const parsed = parseBackupFileForCurrentApp(v1Backup)
 
-    expect(parsed.schemaVersion).toBe(3)
+    expect(parsed.schemaVersion).toBe(4)
     expect(parsed.data.tracks.progress[0]).toMatchObject({
       trackId: 'custom-track',
       problemSlug: 'two-sum',
       reviewAttemptId: null,
     })
-    expect(parsed.data.topics[0]).toMatchObject({
+    expect(parsed.data.topics.find(({ id }) => id === 'array')).toMatchObject({
       createdAt: timestamp,
       updatedAt: timestamp,
     })
-    expect(parsed.data.topicAliases).toEqual([])
-    expect(parsed.data.topicRelations).toEqual([])
+    expect(parsed.data.topicAliases.length).toBeGreaterThan(0)
+    expect(parsed.data.topicRelations.length).toBeGreaterThan(0)
   })
 
   it('rejects v1 progress rows that reference a missing track group', () => {

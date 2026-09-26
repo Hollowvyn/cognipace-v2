@@ -450,6 +450,104 @@ describe('sync service', () => {
     ])
   })
 
+  it('pullLatest normalizes a v3 remote topic graph before restore', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: false,
+      lastRemoteVersion: 'remote_1',
+    })
+    const v3Backup = {
+      ...backup,
+      schemaVersion: 3,
+      data: {
+        ...backup.data,
+        topics: [
+          {
+            id: 'array',
+            label: 'Array',
+            createdAt: backup.exportedAt,
+            updatedAt: backup.exportedAt,
+          },
+          {
+            id: 'hash-table',
+            label: 'Hash Table',
+            createdAt: backup.exportedAt,
+            updatedAt: backup.exportedAt,
+          },
+        ],
+        topicAliases: [],
+        topicRelations: [
+          {
+            parentTopicId: 'array',
+            childTopicId: 'hash-table',
+            createdAt: backup.exportedAt,
+            updatedAt: backup.exportedAt,
+          },
+        ],
+      },
+    }
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:10:00.000Z',
+        remoteVersion: 'remote_2',
+        content: JSON.stringify({
+          syncEnvelopeVersion: 1,
+          app: 'cognipace',
+          exportedAt: backup.exportedAt,
+          dataUpdatedAt: backup.exportedAt,
+          backup: v3Backup,
+        }),
+      }),
+    )
+
+    await expect(harness.service.pullLatest()).resolves.toMatchObject({
+      outcome: 'success',
+      direction: 'pull',
+    })
+    expect(harness.restoreBackup).toHaveBeenCalledTimes(1)
+    const restoredBackup = harness.restoreBackup.mock.calls[0]![0]
+    expect(restoredBackup.schemaVersion).toBe(4)
+    expect(restoredBackup.data.topicRelations).toContainEqual(
+      expect.objectContaining({
+        sourceTopicId: 'hash-table',
+        targetTopicId: 'array',
+        kind: 'broader',
+      }),
+    )
+  })
+
+  it('pullLatest rejects a v5 remote backup before restore', async () => {
+    const harness = createHarness()
+    harness.setMetadata({
+      enabled: true,
+      gistId: 'gist_1',
+      dirtySinceLastSync: false,
+      lastRemoteVersion: 'remote_1',
+    })
+    harness.githubClient.getGist.mockResolvedValue(
+      createGistSummary({
+        id: 'gist_1',
+        updatedAt: '2026-05-26T12:10:00.000Z',
+        remoteVersion: 'remote_2',
+        content: JSON.stringify({
+          syncEnvelopeVersion: 1,
+          app: 'cognipace',
+          exportedAt: backup.exportedAt,
+          dataUpdatedAt: backup.exportedAt,
+          backup: { ...backup, schemaVersion: 5 },
+        }),
+      }),
+    )
+
+    await expect(harness.service.pullLatest()).resolves.toMatchObject({
+      outcome: 'error',
+    })
+    expect(harness.restoreBackup).not.toHaveBeenCalled()
+  })
+
   it('pullLatest blocks dirty local data without restoring remote data', async () => {
     const harness = createHarness()
     harness.setMetadata({

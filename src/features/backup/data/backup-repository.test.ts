@@ -63,15 +63,16 @@ describe('backup repository', () => {
       updatedAt: now.toISOString(),
     })
     expect(backupData.topicAliases).toContainEqual({
-      aliasKey: 'custom-alias',
+      aliasKey: 'custom alias',
       label: 'Custom Alias',
       topicId: 'custom-topic',
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
     })
     expect(backupData.topicRelations).toContainEqual({
-      parentTopicId: 'custom-parent',
-      childTopicId: 'custom-topic',
+      sourceTopicId: 'custom-topic',
+      targetTopicId: 'custom-parent',
+      kind: 'broader',
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
     })
@@ -178,14 +179,15 @@ describe('backup repository', () => {
     expect(await db.select().from(settingsKv)).toHaveLength(1)
     expect(await db.select().from(topicAliases)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ aliasKey: 'custom-alias' }),
+        expect.objectContaining({ aliasKey: 'custom alias' }),
       ]),
     )
     expect(await db.select().from(topicRelations)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          parentTopicId: 'custom-parent',
-          childTopicId: 'custom-topic',
+          sourceTopicId: 'custom-topic',
+          targetTopicId: 'custom-parent',
+          kind: 'broader',
         }),
       ]),
     )
@@ -296,15 +298,16 @@ async function insertCustomState(db: TestDb) {
     },
   ])
   await db.insert(topicAliases).values({
-    aliasKey: 'custom-alias',
+    aliasKey: 'custom alias',
     label: 'Custom Alias',
     topicId: 'custom-topic',
     createdAt: timestamp,
     updatedAt: timestamp,
   })
   await db.insert(topicRelations).values({
-    parentTopicId: 'custom-parent',
-    childTopicId: 'custom-topic',
+    sourceTopicId: 'custom-topic',
+    targetTopicId: 'custom-parent',
+    kind: 'broader',
     createdAt: timestamp,
     updatedAt: timestamp,
   })
