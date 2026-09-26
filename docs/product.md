@@ -177,10 +177,18 @@ Library edits replace the direct topic assignments.
 
 Direct assignments remain distinct from graph-derived membership. A narrower
 topic inherits its `broader` ancestors for read-model rollups, while
-cross-cutting `applies-to` relations do not imply ancestry or membership. This
-supports future Library filtering and Analytics work without changing current
-Library interactions. The current product does not include a topic graph
-management UI.
+cross-cutting `applies-to` relations do not imply ancestry or membership. The
+Library Topics filter searches canonical names and their aliases, but each
+selectable option remains one canonical topic. Selecting a topic includes its
+descendants by default; users can turn off Include subtopics to match direct
+assignments only. Match any is the default when several topics are selected;
+Match all requires every selected topic. These rules apply alongside the other
+Library filters, and an empty topic selection places no topic constraint.
+
+The product does not include a topic graph management UI. Graph-derived
+membership is a Problems read-model capability used by Library filtering; it
+does not change direct problem assignments or imply that Analytics uses topic
+ancestors.
 
 ### Tracks
 

@@ -365,14 +365,63 @@ UI text.
 Expected: Library reflects persisted problem metadata and remains usable after
 reloading the extension. Track problem rows use the same review-status labels.
 
+#### Library Topic Filters
+
+Use an isolated profile with disposable problems and the curated topic options.
+Verify these acceptance cases in the real Library UI:
+
+- Search `DFS` in the Topics picker and select Depth-First Search. The picker
+  shows one canonical option for the match; the selected value is Depth-First
+  Search, and typing alone does not change the problem rows. An alias is a way
+  to find a canonical topic, not another selectable identity.
+- Select Tree with Include subtopics on (the default). A problem directly
+  tagged Binary Search Tree matches Tree. Turn Include subtopics off and
+  confirm that problem no longer matches. A DFS-tagged problem does not match
+  Tree just because DFS has an `applies-to` relation to Tree.
+- For a problem tagged DFS and Binary Tree, select Tree and DFS and choose Match
+  all with subtopics enabled: it matches. A problem tagged only Binary Tree
+  does not match that same All selection. With Match any, a DFS and Graph Theory
+  problem matches the Tree-or-DFS selection because of its direct DFS tag.
+- Select both Tree and Binary Tree with Match all and subtopics on; a Binary
+  Search Tree assignment satisfies both selected IDs. This is a repeated path
+  to the same problem, so it appears once and contributes once to visible and
+  due counts.
+- In the disposable profile, select a canonical topic that none of its
+  problems use. The normal no-results state appears. Clear the selection to
+  restore all topics. With no selected topics, both Any and All impose no topic
+  constraint; picker search text alone also leaves rows unchanged.
+- Type a picker query, select a topic, switch to Match all, and turn off Include
+  subtopics. Clear Filters resets the query and selected IDs, restores Match
+  any and Include subtopics, clears every other facet and global search, and
+  restores the unfiltered rows. Confirm global Search problems retains its
+  existing problem-text behavior and does not gain alias search semantics.
+- Combine Tree with a difficulty, status, Hide premium, or Hide suspended
+  filter. Confirm the result satisfies both the topic and other facet
+  constraints, and that the filtered and Reviews Due counts reflect the rows
+  actually shown.
+- Expand Library filters, then use Tab to reach the Topics button, open it, and
+  search/select by keyboard. Escape closes the picker and returns focus to its
+  trigger. Tab continues through native controls without trapping focus; an
+  outside pointer closes the picker while focus follows the clicked control.
+- Select multiple rows, apply a topic filter that hides one of them, and verify
+  the bulk-action count and any selected-row or create-track action use only
+  the visible filtered selection. Clear the filter and confirm the still-selected
+  row returns to the selection; filtering does not discard its selection state.
+
+Also check that the picker remains visible and usable at narrow and desktop
+widths, including the no-results state, and that its longest canonical topic
+label fits. This visual check supplements the automated screen and picker tests.
+
 ### Topic Taxonomy And Backup Compatibility
 
 Use an isolated Chrome profile with disposable test data. The runtime has 81
 canonical topics; `Heap` resolves as an alias of `Heap (Priority Queue)`.
-Current Library controls remain unchanged in this phase. The repository does
-not provide a prepared browser profile containing a v7 database snapshot, so
-the v7 upgrade and rejected-collision paths below are automated database tests,
-not browser smoke steps. Run both with:
+The human Library smoke above covers filtering behavior, not database upgrade
+or backup compatibility. Earlier-phase migration evidence comes from the
+automated database tests and the separate manual backup flow below. The
+repository does not provide a prepared browser profile containing a v7
+database snapshot, so the v7 upgrade and rejected-collision paths below are
+automated database tests, not browser smoke steps. Run both with:
 
 ```sh
 npm run test -- --run src/platform/db/instance.test.ts -t "preserves populated v7 data|retains the v7 snapshot"
@@ -405,7 +454,11 @@ Capture screenshots or a recording of the visible edit, capture-merge, and
 backup-round-trip flows when collecting manual smoke evidence. Use dummy data;
 redact topic values, settings, fingerprints, and all snapshot or recovery bytes
 from shared proof. Such screenshots do not prove the v7 migration or collision
-recovery behavior; the Vitest command above covers those internal paths.
+recovery behavior; the Vitest command above covers those internal paths. Record
+the populated-database upgrade and recovery evidence from Phase 1 separately,
+and the backup v4 export/import evidence from Phase 2 separately. Do not treat
+the Library filtering recording as proof of either migration or backup
+compatibility.
 
 ### Tracks
 

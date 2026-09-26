@@ -404,6 +404,22 @@ canonical topic.
   a DFS-to-Tree `applies-to` relation does not imply ancestry, and a legacy
   BFS-to-Tree relation is discarded rather than making BFS a Tree child.
 
+The Problems Library read model owns this expansion: each row returns its
+direct `topics` separately from `effectiveTopicIds`, and the Library options
+include canonical topics with their aliases. The Library topic predicate
+consumes those validated fields; it does not traverse the graph in the UI. By
+default the filter matches against effective membership, so a selected broader
+topic matches directly tagged descendants. Direct-only mode checks `topics`
+instead. Any requires at least one selected ID and All requires every selected
+ID in the chosen membership set. No selected IDs means no topic constraint,
+regardless of mode. Alias search discovers canonical options and selecting an
+alias match selects its canonical ID; picker query text alone does not filter
+problem rows. Topic matching combines with other facets and global search keeps
+its existing semantics. Filtering uses each problem row once, and counts,
+selected-row bulk actions, and track creation consume the same filtered rows.
+Graph-derived membership is currently used by the Library read model; this does
+not claim that Analytics includes topic ancestors.
+
 Manual Library create, edit, and bulk metadata writes use replace semantics for
 direct problem topics: the saved topic list replaces the previous direct topic
 assignments after alias resolution. LeetCode capture writes use merge semantics:
