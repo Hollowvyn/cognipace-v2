@@ -146,6 +146,7 @@ describe('tracks API hooks', () => {
       ['tracks'],
       ['app-shell-data'],
       ['problems'],
+      ['analytics'],
       ['practice-details'],
       ['today-queue'],
     ]

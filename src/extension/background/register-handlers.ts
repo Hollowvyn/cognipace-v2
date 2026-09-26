@@ -148,7 +148,7 @@ import {
   updateTrack,
 } from '@/features/tracks/server/tracks-service'
 import { getDashboardUrl } from '@/platform/chrome/extension-pages'
-import { flushDbSnapshot, getAppDb, type Db } from '@/platform/db'
+import { flushDbSnapshot, type Db } from '@/platform/db'
 import { z } from 'zod'
 
 import { broadcastCacheInvalidation } from './cache-invalidation-broadcaster'
@@ -157,6 +157,7 @@ import {
   createDevSmokeService,
 } from './dev-smoke-service'
 import { assertCanSenderCallExtensionMethod } from './runtime-policy'
+import { getBackgroundDb as getAppDb } from './app-db'
 import { createAlarmScheduler } from './scheduler/alarm-scheduler'
 import { createSyncAutoSync } from './sync-auto-sync'
 import {

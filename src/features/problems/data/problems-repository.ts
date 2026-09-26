@@ -26,7 +26,6 @@ import {
   problemTopics,
   problems,
   reviewAttempts,
-  topicRelations,
   topics,
   trackGroupProblems,
   trackGroups,
@@ -50,6 +49,10 @@ import {
   mergeProblemTopicLabels,
   replaceProblemTopicLabels,
 } from './topic-resolver'
+import { readTopicReadModel, type TopicReadModel } from './topic-read-model'
+import type { ProblemTopicOption } from './topic-read-model'
+
+export type { ProblemTopicOption } from './topic-read-model'
 
 export function createProblemsRepository(db: Db) {
   return new ProblemsRepository(db)
@@ -113,15 +116,17 @@ export class ProblemsRepository {
 
   async getLibrary(options: ProblemLibraryReadOptions = {}) {
     const generatedAt = options.now ?? new Date()
+    const topicReadModel = await readTopicReadModel(this.db)
     const rows = await this.readLibraryRows({
       now: generatedAt,
+      topicReadModel,
     })
     const summary = summarizeLibraryRows(rows)
 
     return {
       generatedAt,
       summary,
-      options: await this.readLibraryOptions(this.db),
+      options: await this.readLibraryOptions(this.db, topicReadModel),
       rows,
     } satisfies ProblemLibrary
   }
@@ -136,14 +141,22 @@ export class ProblemsRepository {
       return []
     }
 
+    const topicReadModel = await readTopicReadModel(this.db)
+
     return this.readLibraryRows({
       now: options.now ?? new Date(),
       problemSlugs: requestedSlugs,
+      topicReadModel,
     })
   }
 
   async getForEdit(problemSlug: string) {
-    return this.readProblemForEdit(this.db, normalizeLeetCodeSlug(problemSlug))
+    const topicReadModel = await readTopicReadModel(this.db)
+    return this.readProblemForEdit(
+      this.db,
+      normalizeLeetCodeSlug(problemSlug),
+      topicReadModel,
+    )
   }
 
   async createProblem(input: CreateProblemInput, now = new Date()) {
@@ -315,6 +328,7 @@ export class ProblemsRepository {
   private async readLibraryRows(options: {
     now: Date
     problemSlugs?: readonly string[] | undefined
+    topicReadModel: TopicReadModel
   }) {
     const baseRows = await this.db
       .select({
@@ -340,7 +354,7 @@ export class ProblemsRepository {
     const slugs = baseRows.map((row) => row.problem.slug)
     const [topicsBySlug, companiesBySlug, tracksBySlug, lastSolvedBySlug] =
       await Promise.all([
-        readLabelsByProblem(this.db, 'topic', slugs),
+        readLabelsByProblem(this.db, 'topic', slugs, options.topicReadModel),
         readLabelsByProblem(this.db, 'company', slugs),
         this.readTrackMembershipsByProblem(this.db, slugs),
         this.readLastSolvedByProblem(this.db, slugs),
@@ -352,6 +366,7 @@ export class ProblemsRepository {
         ? mapProblemPracticeForLibrary(row.practice)
         : null
       const card = row.card ? mapFsrsCardForLibrary(row.card) : null
+      const directTopics = topicsBySlug.get(problem.slug) ?? []
       const state = deriveNormalizedPracticeState({
         problemSlug: problem.slug,
         cardId: `${problem.slug}:${defaultFsrsCardKind}`,
@@ -368,7 +383,10 @@ export class ProblemsRepository {
         nextReviewAt: state.dueAt,
         lastReviewedAt: state.lastReviewedAt,
         lastSolvedAt: lastSolvedBySlug.get(problem.slug) ?? null,
-        topics: topicsBySlug.get(problem.slug) ?? [],
+        topics: directTopics,
+        effectiveTopicIds: options.topicReadModel.effectiveTopicIds(
+          directTopics.map((topic) => topic.id),
+        ),
         companies: companiesBySlug.get(problem.slug) ?? [],
         trackMemberships: tracksBySlug.get(problem.slug) ?? [],
       } satisfies ProblemLibraryRow
@@ -378,6 +396,7 @@ export class ProblemsRepository {
   private async readProblemForEdit(
     db: ProblemReadDb,
     problemSlug: string,
+    topicReadModel: TopicReadModel,
   ): Promise<ProblemForEdit | null> {
     const problem = await this.readProblemRow(db, problemSlug)
 
@@ -387,10 +406,10 @@ export class ProblemsRepository {
 
     const [topicsBySlug, companiesBySlug, tracksBySlug, options] =
       await Promise.all([
-        readLabelsByProblem(db, 'topic', [problemSlug]),
+        readLabelsByProblem(db, 'topic', [problemSlug], topicReadModel),
         readLabelsByProblem(db, 'company', [problemSlug]),
         this.readTrackMembershipsByProblem(db, [problemSlug]),
-        this.readLibraryOptions(db),
+        this.readLibraryOptions(db, topicReadModel),
       ])
 
     return {
@@ -518,14 +537,14 @@ export class ProblemsRepository {
     return lastSolvedBySlug
   }
 
-  private async readLibraryOptions(db: ProblemReadDb) {
-    const [topicOptions, companyOptions] = await Promise.all([
-      readLabelOptions(db, 'topic'),
-      readLabelOptions(db, 'company'),
-    ])
+  private async readLibraryOptions(
+    db: ProblemReadDb,
+    topicReadModel: TopicReadModel,
+  ) {
+    const companyOptions = await readLabelOptions(db, 'company')
 
     return {
-      topics: topicOptions,
+      topics: topicReadModel.options,
       companies: companyOptions,
     } satisfies ProblemLibraryOptions
   }
@@ -628,24 +647,11 @@ function groupLabelsByProblem(
   return grouped
 }
 
-function groupParentTopics(
-  rows: readonly (ProblemTopicParentLabel & { childTopicId: string })[],
-) {
-  const grouped = new Map<string, ProblemTopicParentLabel[]>()
-
-  for (const row of rows) {
-    const parentTopics = grouped.get(row.childTopicId) ?? []
-    parentTopics.push({ id: row.id, label: row.label })
-    grouped.set(row.childTopicId, parentTopics)
-  }
-
-  return grouped
-}
-
 async function readLabelsByProblem(
   db: ProblemReadDb,
   kind: TaxonomyKind,
   problemSlugs: readonly string[],
+  topicReadModel?: TopicReadModel,
 ) {
   if (problemSlugs.length === 0) {
     return new Map<string, ProblemTaxonomyLabel[]>()
@@ -667,42 +673,16 @@ async function readLabelsByProblem(
     return groupLabelsByProblem(labelRows)
   }
 
-  const parentTopicsByChildTopicId = await readParentTopicsByChildTopicId(
-    db,
-    uniqueNormalizedStrings(
-      labelRows.map((row) => row.id),
-      (topicId) => topicId,
-    ),
-  )
+  if (!topicReadModel) {
+    throw new Error('Topic read model is required for topic labels.')
+  }
 
   return groupLabelsByProblem(
     labelRows.map((row) => ({
       ...row,
-      parentTopics: parentTopicsByChildTopicId.get(row.id) ?? [],
+      parentTopics: topicReadModel.parentTopics(row.id),
     })),
   )
-}
-
-async function readParentTopicsByChildTopicId(
-  db: ProblemReadDb,
-  childTopicIds: readonly string[],
-) {
-  if (childTopicIds.length === 0) {
-    return new Map<string, ProblemTopicParentLabel[]>()
-  }
-
-  const rows = await db
-    .select({
-      childTopicId: topicRelations.childTopicId,
-      id: topics.id,
-      label: topics.label,
-    })
-    .from(topicRelations)
-    .innerJoin(topics, eq(topics.id, topicRelations.parentTopicId))
-    .where(inArray(topicRelations.childTopicId, [...childTopicIds]))
-    .orderBy(asc(topics.label))
-
-  return groupParentTopics(rows)
 }
 
 async function readLabelOptions(db: ProblemReadDb, kind: TaxonomyKind) {
@@ -891,7 +871,7 @@ export interface ProblemTrackMembership {
 }
 
 export interface ProblemLibraryOptions {
-  topics: ProblemTopicParentLabel[]
+  topics: ProblemTopicOption[]
   companies: ProblemTopicParentLabel[]
 }
 
@@ -903,6 +883,7 @@ export interface ProblemLibraryRow {
   lastReviewedAt: Date | null
   lastSolvedAt: Date | null
   topics: ProblemTaxonomyLabel[]
+  effectiveTopicIds: string[]
   companies: ProblemTaxonomyLabel[]
   trackMemberships: ProblemTrackMembership[]
 }

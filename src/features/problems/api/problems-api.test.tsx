@@ -169,6 +169,7 @@ async function expectProblemMutation<TRequest>(input: {
   expect(invalidateQueries.mock.calls.map(([call]) => call)).toEqual([
     { queryKey: ['problems'] },
     { queryKey: ['app-shell-data'] },
+    { queryKey: ['analytics'] },
     { queryKey: ['practice-details'] },
     { queryKey: ['today-queue'] },
     { queryKey: ['tracks'] },

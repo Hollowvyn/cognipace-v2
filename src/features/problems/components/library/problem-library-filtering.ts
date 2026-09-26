@@ -33,7 +33,15 @@ export interface ProblemLibraryFilters {
   statusValues: ProblemLibraryStatus[]
   trackIds: string[]
   topicIds: string[]
+  topicMatchMode: 'any' | 'all'
+  includeSubtopics: boolean
+  topicQuery: string
 }
+
+export type ProblemTopicFilter = Pick<
+  ProblemLibraryFilters,
+  'topicIds' | 'topicMatchMode' | 'includeSubtopics'
+>
 
 export const defaultProblemLibraryFilters = {
   companyIds: [],
@@ -44,6 +52,9 @@ export const defaultProblemLibraryFilters = {
   statusValues: [],
   trackIds: [],
   topicIds: [],
+  topicMatchMode: 'any',
+  includeSubtopics: true,
+  topicQuery: '',
 } as const satisfies ProblemLibraryFilters
 
 export function createProblemLibraryColumnFilters(
@@ -61,11 +72,16 @@ export function createProblemLibraryColumnFilters(
     problemLibraryColumnIds.status,
     filters.statusValues,
   )
-  pushArrayColumnFilter(
-    columnFilters,
-    problemLibraryColumnIds.topicIds,
-    filters.topicIds,
-  )
+  if (filters.topicIds.length > 0) {
+    columnFilters.push({
+      id: problemLibraryColumnIds.topicIds,
+      value: {
+        topicIds: filters.topicIds,
+        topicMatchMode: filters.topicMatchMode,
+        includeSubtopics: filters.includeSubtopics,
+      } satisfies ProblemTopicFilter,
+    })
+  }
   pushArrayColumnFilter(
     columnFilters,
     problemLibraryColumnIds.trackIds,
@@ -108,10 +124,13 @@ export function summarizeVisibleLibraryRows(
 export function hasProblemLibraryFilters(filters: ProblemLibraryFilters) {
   return (
     filters.search.trim().length > 0 ||
+    filters.topicQuery !== '' ||
     filters.difficultyValues.length > 0 ||
     filters.statusValues.length > 0 ||
     filters.trackIds.length > 0 ||
     filters.topicIds.length > 0 ||
+    filters.topicMatchMode !== 'any' ||
+    !filters.includeSubtopics ||
     filters.companyIds.length > 0 ||
     filters.hidePremium ||
     filters.hideSuspended
@@ -153,6 +172,32 @@ export const problemLibraryIncludesAnyFilter: FilterFn<ProblemLibraryRow> = (
 
 problemLibraryIncludesAnyFilter.autoRemove = (value) =>
   toStringArray(value).length === 0
+
+export function matchesProblemTopics(
+  row: Pick<ProblemLibraryRow, 'topics' | 'effectiveTopicIds'>,
+  filter: ProblemTopicFilter,
+): boolean {
+  if (filter.topicIds.length === 0) return true
+
+  const actual = new Set(
+    filter.includeSubtopics
+      ? row.effectiveTopicIds
+      : row.topics.map((topic) => topic.id),
+  )
+
+  return filter.topicMatchMode === 'all'
+    ? filter.topicIds.every((id) => actual.has(id))
+    : filter.topicIds.some((id) => actual.has(id))
+}
+
+export const problemLibraryTopicFilter: FilterFn<ProblemLibraryRow> = (
+  row,
+  _columnId,
+  value: ProblemTopicFilter,
+) => matchesProblemTopics(row.original, value)
+
+problemLibraryTopicFilter.autoRemove = (value: ProblemTopicFilter) =>
+  value.topicIds.length === 0
 
 export const problemLibraryExcludeTrueFilter: FilterFn<ProblemLibraryRow> = (
   row,

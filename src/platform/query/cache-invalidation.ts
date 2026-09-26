@@ -29,6 +29,7 @@ const queryKeysByInvalidationTag = {
   problems: [
     queryKeys.problems.all,
     queryKeys.appShell.all,
+    queryKeys.analytics.all,
     queryKeys.practice.all,
     queryKeys.queue.all,
     queryKeys.tracks.all,

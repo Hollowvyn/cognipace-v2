@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { readQueryKeysForInvalidation } from './cache-invalidation'
+import { queryKeys } from './query-keys'
 
 describe('cache invalidation query-key mapping', () => {
   it('maps feature tags to every mounted query family they can affect', () => {
@@ -24,10 +25,17 @@ describe('cache invalidation query-key mapping', () => {
     expect(readQueryKeysForInvalidation(['problems'])).toEqual([
       ['problems'],
       ['app-shell-data'],
+      ['analytics'],
       ['practice-details'],
       ['today-queue'],
       ['tracks'],
     ])
+  })
+
+  it('invalidates Analytics after problem topic metadata changes', () => {
+    expect(readQueryKeysForInvalidation(['problems'])).toContainEqual(
+      queryKeys.analytics.all,
+    )
   })
 
   it('deduplicates query families when multiple tags overlap', () => {
