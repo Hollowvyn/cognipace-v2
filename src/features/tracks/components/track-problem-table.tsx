@@ -1,10 +1,11 @@
 import { ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import {
-  flexRender,
-  getCoreRowModel,
-  getExpandedRowModel,
-  useReactTable,
+  createExpandedRowModel,
+  useTable,
+  tableFeatures,
+  rowExpandingFeature,
+  FlexRender,
   type ColumnDef,
   type ExpandedState,
   type Row,
@@ -25,6 +26,11 @@ import { cn } from '@/utils/cn'
 
 import type { TrackProblemRow } from '../api/tracks-contracts'
 
+const trackTableFeatures = tableFeatures({
+  rowExpandingFeature,
+  expandedRowModel: createExpandedRowModel(),
+})
+
 export function TrackProblemTable({
   renderEditProblemAction,
   rows,
@@ -43,12 +49,10 @@ export function TrackProblemTable({
     [rows],
   )
 
-  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table owns table state and exposes non-memoizable handlers by design.
-  const table = useReactTable({
+  const table = useTable({
+    features: trackTableFeatures,
     columns,
     data,
-    getCoreRowModel: getCoreRowModel(),
-    getExpandedRowModel: getExpandedRowModel(),
     getRowCanExpand: () => true,
     getRowId: (row) =>
       `${row.membership.groupId}:${row.membership.problemPosition}:${row.problem.slug}`,
@@ -83,12 +87,9 @@ export function TrackProblemTable({
                   key={header.id}
                   scope="col"
                 >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
+                  {header.isPlaceholder ? null : (
+                    <table.FlexRender header={header} />
+                  )}
                 </th>
               ))}
             </tr>
@@ -113,7 +114,7 @@ function TrackProblemTableRow({
   row,
 }: {
   renderEditProblemAction: RenderProblemEditAction
-  row: Row<TrackProblemRow>
+  row: Row<typeof trackTableFeatures, TrackProblemRow>
 }) {
   return (
     <>
@@ -123,28 +124,25 @@ function TrackProblemTableRow({
           row.getIsExpanded() && 'bg-muted/55',
         )}
       >
-        {row.getVisibleCells().map((cell) =>
+        {row.getAllCells().map((cell) =>
           cell.column.id === trackProblemColumnIds.problem ? (
             <th
               className={getCellClassName(cell.column.id)}
               key={cell.id}
               scope="row"
             >
-              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              <FlexRender cell={cell} />
             </th>
           ) : (
             <td className={getCellClassName(cell.column.id)} key={cell.id}>
-              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              <FlexRender cell={cell} />
             </td>
           ),
         )}
       </tr>
       {row.getIsExpanded() ? (
         <tr className="border-b border-border bg-background/35">
-          <td
-            className="px-6 py-5 md:px-8"
-            colSpan={row.getVisibleCells().length}
-          >
+          <td className="px-6 py-5 md:px-8" colSpan={row.getAllCells().length}>
             <ProblemRowDetails
               actions={
                 <ProblemRowActionsBar>
@@ -163,7 +161,10 @@ function TrackProblemTableRow({
   )
 }
 
-function createTrackProblemColumns(): ColumnDef<TrackProblemRow>[] {
+function createTrackProblemColumns(): ColumnDef<
+  typeof trackTableFeatures,
+  TrackProblemRow
+>[] {
   return [
     {
       id: trackProblemColumnIds.order,
@@ -223,7 +224,11 @@ function createTrackProblemColumns(): ColumnDef<TrackProblemRow>[] {
   ]
 }
 
-function ProblemOrderCell({ row }: { row: Row<TrackProblemRow> }) {
+function ProblemOrderCell({
+  row,
+}: {
+  row: Row<typeof trackTableFeatures, TrackProblemRow>
+}) {
   const isExpanded = row.getIsExpanded()
 
   return (

@@ -1,9 +1,5 @@
 export type DashboardSection =
-  | 'overview'
-  | 'tracks'
-  | 'library'
-  | 'analytics'
-  | 'settings'
+  'overview' | 'tracks' | 'library' | 'analytics' | 'settings'
 
 export type DashboardRoutePresentation = 'page' | 'modal' | 'modal-placeholder'
 
@@ -46,8 +42,7 @@ export type DashboardTopLevelPath =
   | typeof dashboardPaths.settings
 
 export type DashboardModalClosePath =
-  | typeof dashboardPaths.tracks
-  | typeof dashboardPaths.library
+  typeof dashboardPaths.tracks | typeof dashboardPaths.library
 
 export interface DashboardTopLevelRoute {
   activeExact?: boolean

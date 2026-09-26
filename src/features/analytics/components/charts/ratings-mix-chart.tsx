@@ -133,8 +133,7 @@ export function RatingsMixChart({
                 ]}
                 labelFormatter={(label, payload) => {
                   const point = payload?.[0]?.payload as
-                    | RatingsMixPoint
-                    | undefined
+                    RatingsMixPoint | undefined
                   return point
                     ? formatBucketLabel(point.bucketStart, point.bucketEnd)
                     : toChartLabel(label)

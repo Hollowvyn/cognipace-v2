@@ -474,9 +474,5 @@ type MissingProtocolMethod = Exclude<
 const protocolMethodCoverageCheck: Record<MissingProtocolMethod, never> = {}
 void protocolMethodCoverageCheck
 
-const extensionMessenger = defineExtensionMessaging<ProtocolMap>()
-
-export const onMessage = extensionMessenger.onMessage.bind(extensionMessenger)
-
-export const sendMessage =
-  extensionMessenger.sendMessage.bind(extensionMessenger)
+export const { onMessage, sendMessage } =
+  defineExtensionMessaging<ProtocolMap>()

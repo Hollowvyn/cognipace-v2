@@ -1,6 +1,13 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import type { ColumnDef, Row, SortingFn } from '@tanstack/react-table'
+import {
+  sortFn_alphanumeric,
+  sortFn_basic,
+  sortFn_text,
+  type ColumnDef,
+  type Row,
+  type SortFn,
+} from '@tanstack/react-table'
 
 import { createLeetCodeProblemUrl } from '@/lib/leetcode'
 import { cn } from '@/utils/cn'
@@ -18,8 +25,12 @@ import {
   problemLibraryTopicFilter,
 } from './problem-library-filtering'
 import { ProblemStatusBadge } from './problem-status-badge'
+import type { problemLibraryTableFeatures } from './problem-library-table-features'
 
-export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
+export function createProblemLibraryColumns(): ColumnDef<
+  typeof problemLibraryTableFeatures,
+  ProblemLibraryRow
+>[] {
   return [
     {
       id: problemLibraryColumnIds.expander,
@@ -52,6 +63,7 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
       id: problemLibraryColumnIds.title,
       accessorFn: (row) => row.problem.title,
       header: 'Problem',
+      sortFn: problemTitleSorting,
       cell: ({ row }) => <ProblemTitleCell row={row.original} />,
       sortDescFirst: false,
     },
@@ -60,7 +72,7 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
       accessorFn: (row) => row.problem.difficulty,
       header: 'Difficulty',
       filterFn: problemLibraryIncludesAnyFilter,
-      sortingFn: problemDifficultySorting,
+      sortFn: problemDifficultySorting,
       sortDescFirst: false,
       cell: ({ row }) => (
         <ProblemDifficultyBadge difficulty={row.original.problem.difficulty} />
@@ -71,7 +83,7 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
       accessorFn: (row) => row.status,
       header: 'Status',
       filterFn: problemLibraryIncludesAnyFilter,
-      sortingFn: problemStatusSorting,
+      sortFn: problemStatusSorting,
       sortDescFirst: false,
       cell: ({ row }) => <ProblemStatusBadge status={row.original.status} />,
     },
@@ -81,7 +93,7 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
       header: 'Retention',
       sortDescFirst: false,
       sortUndefined: 'last',
-      sortingFn: 'basic',
+      sortFn: 'basic',
       cell: ({ row }) => (
         <span className="tabular-nums text-foreground">
           {formatPercentMetric(row.original.state.retrievability)}
@@ -94,7 +106,7 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
       header: 'Last Review',
       sortDescFirst: false,
       sortUndefined: 'last',
-      sortingFn: problemIsoDateSorting,
+      sortFn: problemIsoDateSorting,
       cell: ({ row }) => (
         <span className="tabular-nums text-muted-foreground">
           {formatDateCell(row.original.lastReviewedAt, 'Never reviewed')}
@@ -107,7 +119,7 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
       header: 'Next Review',
       sortDescFirst: false,
       sortUndefined: 'last',
-      sortingFn: problemIsoDateSorting,
+      sortFn: problemIsoDateSorting,
       cell: ({ row }) => (
         <span className="tabular-nums text-muted-foreground">
           {formatDateCell(row.original.nextReviewAt, 'Unscheduled')}
@@ -179,7 +191,11 @@ function ProblemSelectionCheckbox({
   )
 }
 
-function ProblemRowDisclosure({ row }: { row: Row<ProblemLibraryRow> }) {
+function ProblemRowDisclosure({
+  row,
+}: {
+  row: Row<typeof problemLibraryTableFeatures, ProblemLibraryRow>
+}) {
   const isExpanded = row.getIsExpanded()
   const problem = row.original.problem
 
@@ -233,18 +249,50 @@ const statusSortOrder = {
   suspended: 4,
 } as const
 
-const problemDifficultySorting: SortingFn<ProblemLibraryRow> = (rowA, rowB) =>
+// Preserve v8's title ordering, including its sampling after the first ten
+// filtered rows. V9 samples the first ten instead, changing existing Libraries.
+const titleSortByRows = new WeakMap<
+  Row<typeof problemLibraryTableFeatures, ProblemLibraryRow>[],
+  SortFn<typeof problemLibraryTableFeatures, ProblemLibraryRow>
+>()
+
+const problemTitleSorting: SortFn<
+  typeof problemLibraryTableFeatures,
+  ProblemLibraryRow
+> = (rowA, rowB, columnId) => {
+  const rows = rowA.table.getFilteredRowModel().flatRows
+  let sort = titleSortByRows.get(rows)
+
+  if (!sort) {
+    sort =
+      rows.length <= 10
+        ? sortFn_basic
+        : rows.slice(10).some((row) => /[0-9]/.test(row.original.problem.title))
+          ? sortFn_alphanumeric
+          : sortFn_text
+    titleSortByRows.set(rows, sort)
+  }
+
+  return sort(rowA, rowB, columnId)
+}
+
+const problemDifficultySorting: SortFn<
+  typeof problemLibraryTableFeatures,
+  ProblemLibraryRow
+> = (rowA, rowB) =>
   difficultySortOrder[rowA.original.problem.difficulty] -
   difficultySortOrder[rowB.original.problem.difficulty]
 
-const problemStatusSorting: SortingFn<ProblemLibraryRow> = (rowA, rowB) =>
+const problemStatusSorting: SortFn<
+  typeof problemLibraryTableFeatures,
+  ProblemLibraryRow
+> = (rowA, rowB) =>
   statusSortOrder[rowA.original.status] - statusSortOrder[rowB.original.status]
 
-const problemIsoDateSorting: SortingFn<ProblemLibraryRow> = (
-  rowA,
-  rowB,
-  columnId,
-) =>
+const problemIsoDateSorting: SortFn<
+  typeof problemLibraryTableFeatures,
+  ProblemLibraryRow
+> = (rowA, rowB, columnId) =>
   String(rowA.getValue<string | undefined>(columnId) ?? '').localeCompare(
     String(rowB.getValue<string | undefined>(columnId) ?? ''),
   )

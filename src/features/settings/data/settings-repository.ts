@@ -14,8 +14,7 @@ import {
 
 const settingsKey = 'user-settings'
 type UserSettingsPatchInput =
-  | UserSettingsPatch
-  | ((currentSettings: UserSettings) => UserSettingsPatch)
+  UserSettingsPatch | ((currentSettings: UserSettings) => UserSettingsPatch)
 
 export function createSettingsRepository(db: Db) {
   return new SettingsRepository(db)

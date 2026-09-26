@@ -2266,8 +2266,7 @@ function readLatestSyncFactoryOptions(): SyncFactoryOptions {
 
 function readLatestSyncFactoryCall(): [unknown, unknown, unknown] {
   const call = backgroundMocks.createBackgroundSyncService.mock.calls.at(-1) as
-    | [unknown, unknown, unknown]
-    | undefined
+    [unknown, unknown, unknown] | undefined
 
   if (!call) {
     throw new Error('Expected sync service factory to be called.')

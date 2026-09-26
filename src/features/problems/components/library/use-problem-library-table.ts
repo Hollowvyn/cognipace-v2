@@ -1,17 +1,12 @@
 import { useCallback, useMemo, useState } from 'react'
 import {
-  getCoreRowModel,
-  getExpandedRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
+  useTable,
   type ExpandedState,
   type PaginationState,
   type RowSelectionState,
   type SortingState,
   type Updater,
-  type VisibilityState,
+  type ColumnVisibilityState,
 } from '@tanstack/react-table'
 
 import type { ProblemLibraryRow } from '../../api/problems-contracts'
@@ -30,12 +25,13 @@ const hiddenFilterColumns = {
   [problemLibraryColumnIds.isSuspended]: false,
   [problemLibraryColumnIds.topicIds]: false,
   [problemLibraryColumnIds.trackIds]: false,
-} as const satisfies VisibilityState
+} as const satisfies ColumnVisibilityState
 
 const defaultPagination = {
   pageIndex: 0,
   pageSize: 20,
 } as const satisfies PaginationState
+import { problemLibraryTableFeatures } from './problem-library-table-features'
 
 export function useProblemLibraryTable(rows: readonly ProblemLibraryRow[]) {
   const [expanded, setExpanded] = useState<ExpandedState>({})
@@ -62,20 +58,15 @@ export function useProblemLibraryTable(rows: readonly ProblemLibraryRow[]) {
     )
   }, [])
 
-  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table owns table state and exposes non-memoizable handlers by design.
-  const table = useReactTable({
+  const table = useTable({
+    features: problemLibraryTableFeatures,
     columns,
     data,
     enableRowSelection: true,
     enableSortingRemoval: false,
     globalFilterFn: problemLibraryGlobalFilter,
-    getCoreRowModel: getCoreRowModel(),
-    getExpandedRowModel: getExpandedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getRowCanExpand: () => true,
     getRowId: (row) => row.problem.slug,
-    getSortedRowModel: getSortedRowModel(),
     onExpandedChange: setSingleExpandedRow,
     onPaginationChange: setPagination,
     onRowSelectionChange: setRowSelection,

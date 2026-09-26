@@ -20,11 +20,7 @@ import {
 import { readErrorMessage } from '@/utils/errors'
 
 export type OverlaySyncStatus =
-  | 'booting'
-  | 'reading-page'
-  | 'syncing-problem'
-  | 'ready'
-  | 'error'
+  'booting' | 'reading-page' | 'syncing-problem' | 'ready' | 'error'
 
 export type LeetCodeOverlayContext = OverlayAppShellData['overlay']
 

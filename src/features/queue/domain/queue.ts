@@ -9,10 +9,7 @@ import type { UserSettings } from '@/features/settings'
 export type QueueItemCategory = 'due' | 'new' | 'reinforcement'
 
 export type RecommendationReason =
-  | 'overdue'
-  | 'due-today'
-  | 'reinforcement'
-  | 'new-problem'
+  'overdue' | 'due-today' | 'reinforcement' | 'new-problem'
 
 export interface QueueCandidate {
   problem: Problem
