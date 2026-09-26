@@ -15,6 +15,7 @@ import {
   problemLibraryExcludeTrueFilter,
   problemLibraryColumnIds,
   problemLibraryIncludesAnyFilter,
+  problemLibraryTopicFilter,
 } from './problem-library-filtering'
 import { ProblemStatusBadge } from './problem-status-badge'
 
@@ -116,7 +117,7 @@ export function createProblemLibraryColumns(): ColumnDef<ProblemLibraryRow>[] {
     {
       id: problemLibraryColumnIds.topicIds,
       accessorFn: (row) => row.topics.map((topic) => topic.id),
-      filterFn: problemLibraryIncludesAnyFilter,
+      filterFn: problemLibraryTopicFilter,
     },
     {
       id: problemLibraryColumnIds.companyIds,
