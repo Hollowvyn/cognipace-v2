@@ -22,11 +22,7 @@ export type LeetCodeProblemContentConfidence = 'high' | 'medium' | 'low'
 
 /** Source that produced an editor or submitted-code snapshot. */
 export type LeetCodeCodeSnapshotSource =
-  | 'api'
-  | 'monaco'
-  | 'textarea'
-  | 'code-block'
-  | 'none'
+  'api' | 'monaco' | 'textarea' | 'code-block' | 'none'
 
 /** Source that produced the submission result. */
 export type LeetCodeSubmissionResultSource = 'api' | 'dom'

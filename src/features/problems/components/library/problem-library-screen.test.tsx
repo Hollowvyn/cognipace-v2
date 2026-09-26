@@ -199,6 +199,44 @@ describe('ProblemLibraryScreen', () => {
     expect(screen.queryByText('3 selected')).not.toBeInTheDocument()
   })
 
+  it('selects only the current page and resets pagination when filtering', async () => {
+    const user = userEvent.setup()
+    const template = libraryResponse.rows[0]!
+    const rows = Array.from({ length: 21 }, (_, index) => ({
+      ...template,
+      problem: createSerializedProblem({
+        slug: `problem-${index + 1}`,
+        title: `Problem ${String(index + 1).padStart(2, '0')}`,
+      }),
+    }))
+    vi.mocked(sendMessage).mockResolvedValueOnce(
+      createProblemLibraryResponse({ rows }),
+    )
+    renderProblemLibrary()
+
+    await findProblemRow('Problem 01')
+    expect(screen.getByText('1-20 of 21')).toBeVisible()
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select current page' }),
+    )
+    expect(screen.getByText('20 selected')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByText('21-21 of 21')).toBeVisible()
+    expect(
+      screen.getByRole('checkbox', { name: 'Select Problem 21' }),
+    ).not.toBeChecked()
+    expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
+
+    await user.type(screen.getByLabelText('Search problems'), 'Problem 01')
+    expect(getProblemRow('Problem 01')).toBeVisible()
+    expect(screen.getByText('1-1 of 1')).toBeVisible()
+    expect(
+      screen.getByRole('checkbox', { name: 'Select Problem 01' }),
+    ).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
+  })
+
   it('hides premium and suspended rows from switch filters', async () => {
     const user = userEvent.setup()
     vi.mocked(sendMessage).mockResolvedValueOnce(libraryResponse)
@@ -283,6 +321,35 @@ describe('ProblemLibraryScreen', () => {
       within(getProblemRow('Binary Search')).getByText('New'),
     ).toBeVisible()
   })
+
+  it.each([
+    { extraTitles: [], expected: ['Problem 10', 'Problem 2', 'alpha'] },
+    {
+      extraTitles: Array.from({ length: 9 }, (_, index) => `Zeta ${index}`),
+      expected: ['alpha', 'Problem 2', 'Problem 10'],
+    },
+  ])(
+    'preserves existing numeric title sorting with $extraTitles.length extra rows',
+    async ({ extraTitles, expected }) => {
+      const template = libraryResponse.rows[0]!
+      const titles = ['Problem 2', 'Problem 10', 'alpha', ...extraTitles]
+      vi.mocked(sendMessage).mockResolvedValueOnce(
+        createProblemLibraryResponse({
+          rows: titles.map((title, index) => ({
+            ...template,
+            problem: createSerializedProblem({ slug: `sort-${index}`, title }),
+          })),
+        }),
+      )
+      renderProblemLibrary()
+
+      await findProblemRow('Problem 2')
+      const visibleTitles = screen
+        .getAllByRole('rowheader')
+        .map((cell) => within(cell).getByRole('link').textContent)
+      expect(visibleTitles.slice(0, 3)).toEqual(expected)
+    },
+  )
 
   it('sorts rows and uses contextual empty date labels', async () => {
     const user = userEvent.setup()

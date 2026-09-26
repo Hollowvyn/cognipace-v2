@@ -11,17 +11,9 @@ import {
 
 export type OverlayVisualMode = 'collapsed' | 'expanded' | 'docked'
 export type OverlayReviewStatus =
-  | 'draft'
-  | 'saving'
-  | 'submitted-clean'
-  | 'submitted-dirty'
-  | 'updating'
+  'draft' | 'saving' | 'submitted-clean' | 'submitted-dirty' | 'updating'
 export type OverlayNextStepStatus =
-  | 'hidden'
-  | 'loading'
-  | 'ready'
-  | 'empty'
-  | 'error'
+  'hidden' | 'loading' | 'ready' | 'empty' | 'error'
 
 export type OverlayFeedback = {
   tone: 'neutral' | 'success' | 'warning' | 'danger'

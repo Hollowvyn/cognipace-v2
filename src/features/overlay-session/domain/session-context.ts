@@ -10,9 +10,7 @@ import {
 export type OverlayAssessmentContext = OverlayAppShellData['overlay']
 
 export type OverlaySubmissionSource =
-  | 'manual-overlay'
-  | 'collapsed-quick'
-  | 'leetcode-watcher'
+  'manual-overlay' | 'collapsed-quick' | 'leetcode-watcher'
 
 export type OverlayAssessmentLatestAttempt = {
   id: string

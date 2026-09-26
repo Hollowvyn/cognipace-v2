@@ -1,9 +1,5 @@
 export type TrackTargetStatusKind =
-  | 'none'
-  | 'upcoming'
-  | 'due-today'
-  | 'overdue'
-  | 'complete'
+  'none' | 'upcoming' | 'due-today' | 'overdue' | 'complete'
 
 export type TrackTargetStatusTone = 'neutral' | 'success' | 'warning' | 'danger'
 

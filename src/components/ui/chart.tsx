@@ -538,10 +538,7 @@ function getPayloadFill(payload: unknown): string | undefined {
 
 function isChartTooltipTuple(
   value:
-    | React.ReactNode
-    | [React.ReactNode, React.ReactNode]
-    | null
-    | undefined,
+    React.ReactNode | [React.ReactNode, React.ReactNode] | null | undefined,
 ): value is [React.ReactNode, React.ReactNode] {
   return Array.isArray(value) && value.length === 2
 }

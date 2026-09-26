@@ -7,6 +7,7 @@ import type {
   ProblemLibraryRow,
   ProblemLibraryStatus,
 } from '../../api/problems-contracts'
+import type { problemLibraryTableFeatures } from './problem-library-table-features'
 
 export const problemLibraryColumnIds = {
   companyIds: 'companyIds',
@@ -118,11 +119,10 @@ export function hasProblemLibraryFilters(filters: ProblemLibraryFilters) {
   )
 }
 
-export const problemLibraryGlobalFilter: FilterFn<ProblemLibraryRow> = (
-  row,
-  _columnId,
-  filterValue,
-) => {
+export const problemLibraryGlobalFilter: FilterFn<
+  typeof problemLibraryTableFeatures,
+  ProblemLibraryRow
+> = (row, _columnId, filterValue) => {
   const search = normalizeSearch(String(filterValue ?? ''))
 
   return !search || createProblemSearchText(row.original).includes(search)
@@ -131,11 +131,10 @@ export const problemLibraryGlobalFilter: FilterFn<ProblemLibraryRow> = (
 problemLibraryGlobalFilter.autoRemove = (value) =>
   normalizeSearch(String(value ?? '')).length === 0
 
-export const problemLibraryIncludesAnyFilter: FilterFn<ProblemLibraryRow> = (
-  row,
-  columnId,
-  filterValue,
-) => {
+export const problemLibraryIncludesAnyFilter: FilterFn<
+  typeof problemLibraryTableFeatures,
+  ProblemLibraryRow
+> = (row, columnId, filterValue) => {
   const selectedValues = toStringArray(filterValue)
 
   if (selectedValues.length === 0) {
@@ -154,11 +153,10 @@ export const problemLibraryIncludesAnyFilter: FilterFn<ProblemLibraryRow> = (
 problemLibraryIncludesAnyFilter.autoRemove = (value) =>
   toStringArray(value).length === 0
 
-export const problemLibraryExcludeTrueFilter: FilterFn<ProblemLibraryRow> = (
-  row,
-  columnId,
-  filterValue,
-) => {
+export const problemLibraryExcludeTrueFilter: FilterFn<
+  typeof problemLibraryTableFeatures,
+  ProblemLibraryRow
+> = (row, columnId, filterValue) => {
   if (filterValue !== true) {
     return true
   }
@@ -169,7 +167,7 @@ export const problemLibraryExcludeTrueFilter: FilterFn<ProblemLibraryRow> = (
 problemLibraryExcludeTrueFilter.autoRemove = (value) => value !== true
 
 export function getFilteredOriginalRows(
-  rows: readonly Row<ProblemLibraryRow>[],
+  rows: readonly Row<typeof problemLibraryTableFeatures, ProblemLibraryRow>[],
 ) {
   return rows.map((row) => row.original)
 }

@@ -1,11 +1,6 @@
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { MouseEvent, ReactNode } from 'react'
-import {
-  flexRender,
-  type Header,
-  type Row,
-  type Table,
-} from '@tanstack/react-table'
+import type { Header, Row, ReactTable } from '@tanstack/react-table'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
@@ -21,6 +16,7 @@ import {
 import { problemLibraryColumnIds } from './problem-library-filtering'
 import { ProblemLibraryRowDetails } from './problem-library-row-details'
 import type { RenderProblemEditAction } from './problem-row-actions'
+import type { problemLibraryTableFeatures } from './problem-library-table-features'
 
 export function ProblemLibraryTable({
   options,
@@ -31,7 +27,7 @@ export function ProblemLibraryTable({
   options: ProblemLibraryOptions
   renderEditProblemAction: RenderProblemEditAction
   renderSelectedRowsAction?: RenderSelectedRowsAction | undefined
-  table: Table<ProblemLibraryRow>
+  table: ReactTable<typeof problemLibraryTableFeatures, ProblemLibraryRow>
 }) {
   const selectedRows = table
     .getFilteredSelectedRowModel()
@@ -48,7 +44,11 @@ export function ProblemLibraryTable({
                 key={headerGroup.id}
               >
                 {headerGroup.headers.map((header) => (
-                  <SortableHeader header={header} key={header.id} />
+                  <SortableHeader
+                    header={header}
+                    key={header.id}
+                    table={table}
+                  />
                 ))}
               </tr>
             ))}
@@ -59,6 +59,7 @@ export function ProblemLibraryTable({
                 key={row.id}
                 renderEditProblemAction={renderEditProblemAction}
                 row={row}
+                table={table}
               />
             ))}
           </tbody>
@@ -81,8 +82,10 @@ export function ProblemLibraryTable({
 
 function SortableHeader({
   header,
+  table,
 }: {
-  header: Header<ProblemLibraryRow, unknown>
+  table: ReactTable<typeof problemLibraryTableFeatures, ProblemLibraryRow>
+  header: Header<typeof problemLibraryTableFeatures, ProblemLibraryRow, unknown>
 }) {
   const sortDirection = header.column.getIsSorted()
   const canSort = header.column.getCanSort()
@@ -105,7 +108,7 @@ function SortableHeader({
           onClick={header.column.getToggleSortingHandler()}
           type="button"
         >
-          {flexRender(header.column.columnDef.header, header.getContext())}
+          <table.FlexRender header={header} />
           {sortDirection ? (
             sortDirection === 'asc' ? (
               <ArrowUp aria-hidden="true" className="size-3" />
@@ -115,18 +118,20 @@ function SortableHeader({
           ) : null}
         </button>
       ) : (
-        flexRender(header.column.columnDef.header, header.getContext())
+        <table.FlexRender header={header} />
       )}
     </th>
   )
 }
 
 function ProblemLibraryTableRow({
+  table,
   renderEditProblemAction,
   row,
 }: {
   renderEditProblemAction: RenderProblemEditAction
-  row: Row<ProblemLibraryRow>
+  table: ReactTable<typeof problemLibraryTableFeatures, ProblemLibraryRow>
+  row: Row<typeof problemLibraryTableFeatures, ProblemLibraryRow>
 }) {
   function handleRowClick(event: MouseEvent<HTMLTableRowElement>) {
     if (shouldIgnoreRowExpansionClick(event.target)) {
@@ -152,11 +157,11 @@ function ProblemLibraryTableRow({
               key={cell.id}
               scope="row"
             >
-              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              <table.FlexRender cell={cell} />
             </th>
           ) : (
             <td className={getCellClassName(cell.column.id)} key={cell.id}>
-              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              <table.FlexRender cell={cell} />
             </td>
           ),
         )}
@@ -222,10 +227,10 @@ function ProblemLibraryPagination({
   table,
 }: {
   bulkActions: ReactNode
-  table: Table<ProblemLibraryRow>
+  table: ReactTable<typeof problemLibraryTableFeatures, ProblemLibraryRow>
 }) {
   const filteredCount = table.getFilteredRowModel().rows.length
-  const { pageIndex, pageSize } = table.getState().pagination
+  const { pageIndex, pageSize } = table.state.pagination
   const firstRow = filteredCount === 0 ? 0 : pageIndex * pageSize + 1
   const lastRow = Math.min(filteredCount, (pageIndex + 1) * pageSize)
 

@@ -16,11 +16,7 @@ export type SyncAction =
 export type SyncActionDirection = 'pull' | 'push' | null
 
 export type SyncActionOutcome =
-  | 'success'
-  | 'no-change'
-  | 'blocked'
-  | 'confirmation-required'
-  | 'error'
+  'success' | 'no-change' | 'blocked' | 'confirmation-required' | 'error'
 
 export type SyncActionReason =
   | 'not-configured'
