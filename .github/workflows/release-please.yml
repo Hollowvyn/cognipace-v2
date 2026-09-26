@@ -71,6 +71,10 @@ jobs:
         if: ${{ steps.release.outputs.release_created == 'true' }}
         run: npm run build
 
+      - name: Check Store metadata
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        run: npm run store:check
+
       - name: Zip extension
         if: ${{ steps.release.outputs.release_created == 'true' }}
         run: npm run zip

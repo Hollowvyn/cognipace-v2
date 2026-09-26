@@ -25,6 +25,7 @@
     "dev:firefox": "wxt -b firefox",
     "build": "wxt build",
     "zip": "wxt zip",
+    "store:check": "node scripts/validate-store-build.mjs",
     "prepare:wxt": "wxt prepare",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:check": "drizzle-kit check --config drizzle.config.ts",

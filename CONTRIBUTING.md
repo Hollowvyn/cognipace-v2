@@ -104,8 +104,10 @@ immediately, while other release-triggering work is batched into the Friday
 15:00 UTC run. Maintainers can run the `Release Please` workflow manually for
 off-cycle releases. Multiple merged pull requests can ship in one release.
 Merging the release pull request creates the GitHub Release and triggers the
-extension zip artifact upload. Chrome Web Store submission remains a manual
-maintainer step using the zip attached to the GitHub Release.
+extension zip artifact upload. Chrome Web Store submission remains a manual maintainer step using the exact ZIP attached to the GitHub Release. The first item is Private for approved trusted testers. Store-facing copy, privacy disclosures, assets, reviewer instructions,
+and the manual handoff are maintained in `docs/chrome-web-store.md` and
+`docs/release.md`. WXT-native submission automation is a later phase after
+the manual publication and update path is proven.
 
 The Release Please workflow uses the `RELEASE_PLEASE_TOKEN` repository secret so
 generated release pull requests still trigger normal pull request checks.
