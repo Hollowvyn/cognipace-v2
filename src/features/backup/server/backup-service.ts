@@ -113,13 +113,6 @@ function validateBackupReferences(data: BackupData) {
     'problem slug',
   )
   const topicIds = uniqueValues(data.topics, (row) => row.id, 'topic id')
-  uniqueValues(data.topics, (row) => row.label, 'topic label')
-  uniqueValues(data.topicAliases, (row) => row.aliasKey, 'topic alias key')
-  uniqueValues(
-    data.topicRelations,
-    (row) => JSON.stringify([row.kind, row.sourceTopicId, row.targetTopicId]),
-    'topic relation',
-  )
   buildTopicLookup(data.topics, data.topicAliases)
   buildTopicGraph(data.topics, data.topicRelations)
   const companyIds = uniqueValues(data.companies, (row) => row.id, 'company id')
@@ -200,21 +193,6 @@ function validateBackupReferences(data: BackupData) {
       return `${group?.trackId ?? 'missing'}\u0000${row.problemSlug}`
     }),
   )
-
-  for (const row of data.topicRelations) {
-    requireReference(
-      topicIds,
-      row.targetTopicId,
-      'topicRelation',
-      'target topic',
-    )
-    requireReference(
-      topicIds,
-      row.sourceTopicId,
-      'topicRelation',
-      'source topic',
-    )
-  }
 
   for (const row of data.problemTopics) {
     requireReference(problemSlugs, row.problemSlug, 'problemTopic', 'problem')

@@ -60,9 +60,6 @@ describe('openSnapshot', () => {
     })
 
     await expect(openSnapshot(deps)).rejects.toBe(operationError)
-    expect(
-      (operationError as Error & { cleanupError?: unknown }).cleanupError,
-    ).toBe(cleanupError)
   })
 
   it('preserves, restores, upgrades, prepares, validates, then publishes in order', async () => {

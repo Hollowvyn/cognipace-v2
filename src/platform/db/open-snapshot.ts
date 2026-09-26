@@ -52,17 +52,8 @@ export async function openSnapshot(deps: OpenSnapshotDependencies) {
   } catch (error) {
     try {
       handle?.rawDb.close()
-    } catch (cleanupError) {
-      if (error instanceof Error) {
-        try {
-          Object.defineProperty(error, 'cleanupError', {
-            value: cleanupError,
-            configurable: true,
-          })
-        } catch {
-          // Preserve the operation failure even when it cannot carry cleanup detail.
-        }
-      }
+    } catch {
+      // Keep the operation failure primary when best-effort close also fails.
     }
     throw error
   }

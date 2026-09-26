@@ -68,7 +68,7 @@ export async function validateSnapshotSchema(
   try {
     const actual = execProxy(handle.rawDb, schemaQuery, [], 'all')
     const expected = execProxy(reference.rawDb, schemaQuery, [], 'all')
-    if (!rowsEqual(actual.rows, expected.rows)) {
+    if (JSON.stringify(actual.rows) !== JSON.stringify(expected.rows)) {
       throw new Error(
         'The stored database schema does not match its supported version.',
       )
@@ -94,25 +94,4 @@ export function assertDatabaseIntegrity(handle: DbHandle) {
   if ((foreignKeys.rows as unknown as unknown[][]).length > 0) {
     throw new Error('The stored database failed its foreign key check.')
   }
-}
-
-function rowsEqual(left: unknown, right: unknown) {
-  if (!Array.isArray(left) || !Array.isArray(right)) return false
-  const leftRows = left as unknown[]
-  const rightRows = right as unknown[]
-  return (
-    leftRows.length === rightRows.length &&
-    leftRows.every((row, index) => {
-      const expectedRow = rightRows[index]
-      if (!Array.isArray(row) || !Array.isArray(expectedRow)) return false
-      const actualValues = row as unknown[]
-      const expectedValues = expectedRow as unknown[]
-      return (
-        actualValues.length === expectedValues.length &&
-        actualValues.every((value, column) =>
-          Object.is(value, expectedValues[column]),
-        )
-      )
-    })
-  )
 }

@@ -1,9 +1,6 @@
 import { buildTopicGraph, type TopicRelation } from './topic-graph'
 import { buildTopicLookup, normalizeTopicLookupKey } from './topic-taxonomy'
-import {
-  legacyTopicAliasRows,
-  legacyTopicBroaderEdges,
-} from './topic-legacy-manifest'
+import { legacyTopicAliasRows } from './topic-legacy-manifest'
 
 type Timestamp = number | string
 
@@ -43,12 +40,6 @@ const obsoleteBroaderKeys = new Set([
   JSON.stringify(['broader', 'memoization', 'dynamic-programming']),
   JSON.stringify(['broader', 'memoization', 'recursion']),
 ])
-
-const legacyEdgeKeys = new Set(
-  legacyTopicBroaderEdges.map(({ sourceTopicId, targetTopicId }) =>
-    JSON.stringify(['broader', sourceTopicId, targetTopicId]),
-  ),
-)
 
 function edgeKey(edge: TopicRelation) {
   return JSON.stringify([edge.kind, edge.sourceTopicId, edge.targetTopicId])
@@ -158,11 +149,7 @@ function removeObsoleteBroaderEdges<Edge extends TopicRelation>(
 ) {
   return edges.filter((edge) => {
     const key = edgeKey(edge)
-    return !(
-      edge.kind === 'broader' &&
-      obsoleteBroaderKeys.has(key) &&
-      legacyEdgeKeys.has(key)
-    )
+    return !(edge.kind === 'broader' && obsoleteBroaderKeys.has(key))
   })
 }
 
@@ -203,16 +190,7 @@ function buildEquivalenceMap(
 }
 
 function resolveId(id: string, equivalence: ReadonlyMap<string, string>) {
-  let targetId = id
-  const visited = new Set<string>()
-  while (equivalence.has(targetId)) {
-    if (visited.has(targetId)) {
-      throw new Error(`Topic equivalence cycle detected at "${targetId}".`)
-    }
-    visited.add(targetId)
-    targetId = equivalence.get(targetId)!
-  }
-  return targetId
+  return equivalence.get(id) ?? id
 }
 
 function reconcileAliases<T extends Timestamp>(
@@ -369,7 +347,7 @@ export function reconcileTopicRows<T extends Timestamp>(
     const retained = removeObsoleteBroaderEdges(relations)
     const converted = relations.flatMap((edge) => {
       const key = edgeKey(edge)
-      if (!obsoleteBroaderKeys.has(key) || !legacyEdgeKeys.has(key)) return []
+      if (!obsoleteBroaderKeys.has(key)) return []
       const appliesToEdge = { ...edge, kind: 'applies-to' as const }
       return appliesTo.has(edgeKey(appliesToEdge))
         ? [{ ...appliesToEdge, wasConverted: true }]

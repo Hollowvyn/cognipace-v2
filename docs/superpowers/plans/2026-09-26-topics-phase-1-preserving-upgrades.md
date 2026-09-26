@@ -34,75 +34,18 @@ Phase 2 supplies the first real new incremental migration.
 
 ## Task 1: Classify Storage Without Discarding Evidence
 
-- [ ] Add the following storage contract and classifier to `snapshot-state.ts`.
-      Write its test first, run red, then add the implementation. Reuse
+- [ ] Add a classifier to `snapshot-state.ts` that returns `empty` only when
+      neither key exists, `stored` with `{raw, fingerprint, bytes}` when both
+      values are valid, and `invalid` with `{raw, reason}` for partial or
+      malformed data. Every invalid result must preserve all available raw
+      values for recovery and reject before database creation or publication;
+      do not treat partial state as empty or overwrite active snapshot fields.
+      In particular, a present snapshot without a fingerprint is invalid. Reuse
       `SNAPSHOT_KEY`, `FINGERPRINT_KEY`, and `base64ToBytes` from `snapshot.ts`.
+      Write its test first, run red, then add the implementation.
 
-```ts
-export interface SnapshotStorage {
-  get(keys: string[]): Promise<Record<string, unknown>>
-  set(values: Record<string, unknown>): Promise<void>
-}
-
-export type SnapshotState =
-  | { kind: 'empty' }
-  | { kind: 'invalid'; raw: Record<string, unknown>; reason: string }
-  | {
-      kind: 'stored'
-      raw: Record<string, unknown>
-      fingerprint: string
-      bytes: Uint8Array
-    }
-
-export async function readSnapshotState(
-  storage: SnapshotStorage,
-): Promise<SnapshotState> {
-  const values = await storage.get([SNAPSHOT_KEY, FINGERPRINT_KEY])
-  const raw = Object.fromEntries(
-    [SNAPSHOT_KEY, FINGERPRINT_KEY]
-      .filter((key) => Object.hasOwn(values, key))
-      .map((key) => [key, values[key]]),
-  )
-  if (Object.keys(raw).length === 0) return { kind: 'empty' }
-  const fingerprint = raw[FINGERPRINT_KEY]
-  const encoded = raw[SNAPSHOT_KEY]
-  if (
-    typeof fingerprint !== 'string' ||
-    !/^[a-f0-9]{8}$/.test(fingerprint) ||
-    typeof encoded !== 'string' ||
-    encoded.length === 0
-  ) {
-    return {
-      kind: 'invalid',
-      raw,
-      reason: 'Incomplete or invalid snapshot fields.',
-    }
-  }
-  try {
-    const bytes = base64ToBytes(encoded)
-    if (bytes.length === 0) throw new Error('Empty snapshot.')
-    return { kind: 'stored', raw, fingerprint, bytes }
-  } catch {
-    return { kind: 'invalid', raw, reason: 'Snapshot bytes cannot be decoded.' }
-  }
-}
-```
-
-Use this complete initial test in `snapshot-state.test.ts` with imports from
-Vitest, `./snapshot-state`, and `./snapshot`. It asserts an observable loss case.
-
-```ts
-it('does not classify a missing fingerprint as a fresh install', async () => {
-  const raw = { [SNAPSHOT_KEY]: 'AAAA' }
-  const storage = { get: vi.fn().mockResolvedValue(raw), set: vi.fn() }
-  expect(await readSnapshotState(storage)).toEqual({
-    kind: 'invalid',
-    raw,
-    reason: 'Incomplete or invalid snapshot fields.',
-  })
-  expect(storage.set).not.toHaveBeenCalled()
-})
-```
+Add an initial loss-case test in `snapshot-state.test.ts`, using Vitest and the
+`./snapshot-state` and `./snapshot` modules.
 
 - [ ] Run `rtk npx vitest run src/platform/db/snapshot-state.test.ts`; initially
       expect missing-export failure, then pass. Extend the test table with both
@@ -115,39 +58,7 @@ it('does not classify a missing fingerprint as a fresh install', async () => {
       it differs, fail without overwriting it. Use deterministic equality over
       the two known storage fields and their presence, not a timestamp comparison.
 
-```ts
-export const RECOVERY_KEY = 'cognipace_db_recovery_topics_v1'
-
-const recoveryRecordSchema = z.strictObject({
-  version: z.literal(1),
-  raw: z.record(z.string(), z.unknown()),
-  savedAt: z.iso.datetime(),
-})
-
-export async function preserveRecovery(
-  storage: SnapshotStorage,
-  raw: Record<string, unknown>,
-  now: Date,
-) {
-  const existing = (await storage.get([RECOVERY_KEY]))[RECOVERY_KEY]
-  if (existing !== undefined) {
-    const candidate = recoveryRecordSchema.safeParse(existing)
-    if (
-      candidate.success &&
-      JSON.stringify(candidate.data.raw) === JSON.stringify(raw)
-    )
-      return
-    throw new Error(
-      'An earlier database recovery record must be exported before another upgrade.',
-    )
-  }
-  await storage.set({
-    [RECOVERY_KEY]: { version: 1, raw, savedAt: now.toISOString() },
-  })
-}
-```
-
-Import `z` from `zod`. The reader above always orders the two fields consistently.
+Use Zod to validate the two known storage fields in a stable order.
 The narrow recovery envelope retains unknown raw values so corrupt originals
 can be exported. Duplicate recovery writes cannot
 race because `getAppDb` coalesces opening. Do not automatically delete recovery
@@ -158,19 +69,13 @@ data after a successful upgrade.
 - [ ] Commit only these modules/tests with
       `fix(db): distinguish missing snapshots from damaged storage`.
 
+Implemented in `src/platform/db/snapshot-state.ts`, `src/platform/db/snapshot.ts`; covered by `src/platform/db/snapshot-state.test.ts`.
+
 ## Task 2: Define The Only Supported Legacy Upgrade
 
-- [ ] Refactor `migration-sql.ts` without changing its resulting string:
-
-```ts
-export const migrationEntries = Object.entries(migrationModules)
-  .sort(([left], [right]) => left.localeCompare(right))
-  .map(([path, sql]) => ({ path, sql: String(sql) }))
-
-export const migrationSql = migrationEntries
-  .map((entry) => entry.sql)
-  .join('\n')
-```
+- [ ] Export deterministically sorted named migration entries from
+      `migration-sql.ts`; derive `migrationSql` by joining each entry's `sql`
+      with `\n`, preserving the exact baseline string.
 
 - [ ] In `snapshot-upgrade.ts`, define `legacyTopicMigrationPaths` as the exact
       eight existing paths `./migrations/0000_initial.sql`,
@@ -182,34 +87,6 @@ export const migrationSql = migrationEntries
       as these immutable entries joined by `\n` and its `computeFingerprint` value.
       Reject any missing, reordered, or unexpected prefix before selecting an
       upgrade. Do not automatically support every arbitrary prefix.
-
-```ts
-export function selectUpgradeSql(
-  fromFingerprint: string,
-  entries: readonly { path: string; sql: string }[] = migrationEntries,
-): string {
-  if (fromFingerprint !== computeFingerprint(legacyTopicMigrationSql)) {
-    throw new Error(
-      'This database version requires recovery; its original data was retained.',
-    )
-  }
-  const prefix = entries.slice(0, legacyTopicMigrationPaths.length)
-  if (
-    prefix.length !== legacyTopicMigrationPaths.length ||
-    prefix.some(
-      (entry, index) => entry.path !== legacyTopicMigrationPaths[index],
-    ) ||
-    computeFingerprint(prefix.map((entry) => entry.sql).join('\n')) !==
-      computeFingerprint(legacyTopicMigrationSql)
-  ) {
-    throw new Error('The supported migration prefix has changed.')
-  }
-  return entries
-    .slice(prefix.length)
-    .map((entry) => entry.sql)
-    .join('\n')
-}
-```
 
 Pin the literal legacy fingerprint in a regression test after computing it from
 the baseline checkout with `computeFingerprint`; never update that fixture just
@@ -231,18 +108,6 @@ legacyTopicMigrationSql, locateWasm:createSqliteWasmLocator()})`; serialize and
       `execProxy(rawDb, sql, params, 'all')` row-returning adapter; do not interpolate
       user-controlled table identifiers. Compare values, not JSON object key order.
 
-```ts
-const schemaQuery = `SELECT type, name, tbl_name, sql FROM sqlite_schema
-  WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name`
-const actual = await execProxy(handle.rawDb, schemaQuery, [], 'all')
-const expected = await execProxy(reference.rawDb, schemaQuery, [], 'all')
-if (JSON.stringify(actual.rows) !== JSON.stringify(expected.rows)) {
-  throw new Error(
-    'The stored database schema does not match its supported version.',
-  )
-}
-```
-
 - [ ] Add `assertDatabaseIntegrity(handle)` using `PRAGMA integrity_check`
       (exactly one `ok` row) and `PRAGMA foreign_key_check` (no rows). Check source
       integrity before SQL and target integrity after callback. Apply only the
@@ -256,100 +121,30 @@ src/testing/db-foundation.test.ts`; expect pass for baseline, tampered schema,
       corrupt SQLite, and failed suffix cases. Assert historical SQL has not changed.
 - [ ] Commit `fix(db): recognize and validate supported snapshot upgrades`.
 
+Implemented in `src/platform/db/snapshot-upgrade.ts`, `src/platform/db/migration-sql.ts`; covered by `src/platform/db/snapshot-upgrade.test.ts`.
+
 ## Task 3: Make Publication Ordering Explicit
 
-- [ ] Create `open-snapshot.ts` and its test. Use these complete interfaces and
-      orchestration; storage adapters are connected in Task 4.
-
-```ts
-import type { DbHandle } from './client'
-import type { SnapshotState } from './snapshot-state'
-
-export interface PublishContext {
-  kind: 'fresh' | 'upgrade'
-  fromFingerprint: string | null
-}
-
-export interface OpenSnapshotDependencies {
-  currentFingerprint: string
-  read(): Promise<SnapshotState>
-  preserve(raw: Record<string, unknown>): Promise<void>
-  fresh(): Promise<DbHandle>
-  restore(bytes: Uint8Array): Promise<DbHandle>
-  validate(handle: DbHandle, fingerprint: string): Promise<void>
-  upgrade(handle: DbHandle, fingerprint: string): Promise<void>
-  prepare(handle: DbHandle, context: PublishContext): Promise<void>
-  publish(handle: DbHandle): Promise<void>
-}
-
-export async function openSnapshot(deps: OpenSnapshotDependencies) {
-  const state = await deps.read()
-  if (state.kind === 'invalid') {
-    await deps.preserve(state.raw)
-    throw new Error(`Database recovery required: ${state.reason}`)
-  }
-  let handle: DbHandle | undefined
-  try {
-    if (state.kind === 'empty') {
-      handle = await deps.fresh()
-      await deps.prepare(handle, { kind: 'fresh', fromFingerprint: null })
-      await deps.validate(handle, deps.currentFingerprint)
-      await deps.publish(handle)
-      return handle
-    }
-    if (state.fingerprint !== deps.currentFingerprint)
-      await deps.preserve(state.raw)
-    handle = await deps.restore(state.bytes)
-    await deps.validate(handle, state.fingerprint)
-    if (state.fingerprint === deps.currentFingerprint) return handle
-    await deps.upgrade(handle, state.fingerprint)
-    await deps.prepare(handle, {
-      kind: 'upgrade',
-      fromFingerprint: state.fingerprint,
-    })
-    await deps.validate(handle, deps.currentFingerprint)
-    await deps.publish(handle)
-    return handle
-  } catch (error) {
-    handle?.rawDb.close()
-    throw error
-  }
-}
-```
+- [ ] Create `open-snapshot.ts` and its test. Inject `read`, `preserve`,
+      `fresh`, `restore`, `validate`, `upgrade`, `prepare`, and `publish`; keep
+      storage and database adapters in Task 4. For an empty state, run
+      `fresh → prepare → validate current → publish`. For a stored state,
+      preserve raw storage before restoring when its fingerprint differs, then
+      run `restore → validate stored`; return a matching handle without upgrade
+      or publication. For an upgrade, continue with
+      `upgrade → prepare → validate current → publish`. Return a fresh or
+      upgraded handle only after publication succeeds.
 
 Matching-version corrupt data remains in its active storage fields even if no
 additional recovery record was needed. `restore` must close a partially created
 handle itself if deserialization throws before returning it.
 
-- [ ] Start with the failure assertion below. Provide all dependency functions
-      locally as spies rather than involving Chrome or a real database in this unit
-      test; real SQLite is covered in Tasks 2 and 4.
-
-```ts
-it('does not publish or return a handle when preparation fails', async () => {
-  const close = vi.fn()
-  const handle = { rawDb: { close } } as unknown as DbHandle
-  const deps: OpenSnapshotDependencies = {
-    currentFingerprint: '22222222',
-    read: vi.fn().mockResolvedValue({
-      kind: 'stored',
-      raw: {},
-      fingerprint: '11111111',
-      bytes: new Uint8Array([1]),
-    }),
-    preserve: vi.fn().mockResolvedValue(undefined),
-    fresh: vi.fn().mockResolvedValue(handle),
-    restore: vi.fn().mockResolvedValue(handle),
-    validate: vi.fn().mockResolvedValue(undefined),
-    upgrade: vi.fn().mockResolvedValue(undefined),
-    prepare: vi.fn().mockRejectedValue(new Error('alias conflict')),
-    publish: vi.fn().mockResolvedValue(undefined),
-  }
-  await expect(openSnapshot(deps)).rejects.toThrow('alias conflict')
-  expect(deps.publish).not.toHaveBeenCalled()
-  expect(close).toHaveBeenCalledOnce()
-})
-```
+- [ ] Use local spy dependencies rather than Chrome or a real database in this
+      unit test; real SQLite is covered in Tasks 2 and 4. If a staging operation
+      fails, reject with that operation error, skip later steps and publication,
+      and best-effort close any handle already returned. A close failure must not
+      replace the operation error. `restore` closes a partially created handle
+      itself if deserialization throws before returning it.
 
 - [ ] Run `rtk npx vitest run src/platform/db/open-snapshot.test.ts` red then
       green. Add an ordered event log asserting `preserve → restore → validate old
@@ -358,25 +153,11 @@ it('does not publish or return a handle when preparation fails', async () => {
       nor publish. A fresh install must be persisted even before the first mutation.
 - [ ] Commit `fix(db): publish upgraded snapshots only after preparation succeeds`.
 
+Implemented in `src/platform/db/open-snapshot.ts`; covered by `src/platform/db/open-snapshot.test.ts`.
+
 ## Task 4: Integrate The App Singleton And Failure Recovery
 
-- [ ] Add the optional callback to `instance.ts`; keep it platform-owned:
-
-```ts
-export interface AppDbOptions {
-  beforePublish?: (handle: DbHandle, context: PublishContext) => Promise<void>
-}
-
-export function getAppDb(options: AppDbOptions = {}) {
-  if (!handlePromise) {
-    handlePromise = openAppDb(options).catch((error: unknown) => {
-      handlePromise = null
-      throw error
-    })
-  }
-  return handlePromise
-}
-```
+- [ ] Add the optional callback to `instance.ts` and keep it platform-owned.
 
 `openAppDb(options)` constructs the dependencies from Tasks 1–3. Use Chrome
 storage through a `SnapshotStorage` adapter. With no Chrome storage, use an
@@ -399,20 +180,11 @@ checks schema and integrity. `upgrade` executes the selected SQL suffix.
       `resetAppDbForTesting`/a reload. Assert the database is unavailable until the
       callback and publication promises resolve.
 
-```ts
-const first = getAppDb({ beforePublish })
-const second = getAppDb({ beforePublish })
-expect(second).toBe(first)
-await expect(first).rejects.toThrow('storage unavailable')
-expect(storageValues[SNAPSHOT_KEY]).toBe(originalEncodedBytes)
-expect(storageValues[FINGERPRINT_KEY]).toBe(originalFingerprint)
-```
-
-The variables above belong to the integration fixture: `storageValues` is its
-in-memory Chrome map, and originals are captured before invoking startup. The
-mock rejects the combined active-snapshot storage write before modifying either
-key. Also test interruption after the recovery copy and after successful active
-publication to show the next startup selects the correct state.
+In the integration fixture, `storageValues` is the in-memory Chrome map, and
+originals are captured before invoking startup. The mock rejects the combined
+active-snapshot storage write before modifying either key. Also test interruption
+after the recovery copy and after successful active publication to show the next
+startup selects the correct state.
 
 - [ ] Export `AppDbOptions` from `src/platform/db/index.ts`. Remove permissive
       `readSnapshotFromStorage` from startup use; either tighten that function to
@@ -421,6 +193,8 @@ publication to show the next startup selects the correct state.
 src/platform/db/open-snapshot.test.ts src/platform/db/snapshot-state.test.ts
 src/platform/db/snapshot-upgrade.test.ts src/testing/db-foundation.test.ts`.
 - [ ] Commit `fix(db): preserve stored data across supported startup upgrades`.
+
+Implemented in `src/platform/db/instance.ts`, `src/extension/background/app-db.ts`; covered by `src/platform/db/instance.test.ts`, `src/extension/background/app-db.test.ts`.
 
 ## Task 5: Recovery Instructions And Phase Gate
 
