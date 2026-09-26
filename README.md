@@ -6,9 +6,7 @@ and study pacing. It keeps two loops visible while a user studies:
 - what to review now, using FSRS-backed spaced repetition
 - what to study next, using the active curated track
 
-CogniPace v2 is a rebuild of the original CogniPace extension. In this local
-workspace, the old implementation lives at `../CogniPace` for historical
-comparison, but this repository is self-contained for development.
+This repository is the canonical home of the maintained CogniPace extension.
 
 CogniPace is intentionally a browser extension, not a SaaS app or a general
 React dashboard. The main surfaces are the popup, the LeetCode overlay, the

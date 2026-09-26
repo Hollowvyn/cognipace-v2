@@ -39,9 +39,9 @@ hosted application backend.
 CogniPace is independently developed and is not affiliated with or endorsed by
 LeetCode.
 
-**Support URL:** https://github.com/Hollowvyn/cognipace-v2/issues
+**Support URL:** https://github.com/Hollowvyn/CogniPace/issues
 
-**Privacy URL:** https://github.com/Hollowvyn/cognipace-v2/blob/main/PRIVACY.md
+**Privacy URL:** https://github.com/Hollowvyn/CogniPace/blob/main/PRIVACY.md
 
 ## Permission Justifications
 

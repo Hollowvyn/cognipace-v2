@@ -62,4 +62,4 @@ Material changes to CogniPace data handling will be reflected in this policy and
 
 ## Contact
 
-For privacy questions or support, open an issue at https://github.com/Hollowvyn/cognipace-v2/issues.
+For privacy questions or support, open an issue at https://github.com/Hollowvyn/CogniPace/issues.

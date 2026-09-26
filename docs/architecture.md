@@ -2,7 +2,7 @@
 
 ## System Shape
 
-CogniPace v2 is a local-first WXT Chrome MV3 extension. It has four runtime
+CogniPace is a local-first WXT Chrome MV3 extension. It has four runtime
 surfaces:
 
 - Popup: compact command surface for review-now and study-next guidance.
