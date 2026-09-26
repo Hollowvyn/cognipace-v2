@@ -4,7 +4,10 @@ const migrationModules = import.meta.glob('./migrations/*.sql', {
   query: '?raw',
 })
 
-export const migrationSql = Object.entries(migrationModules)
+export const migrationEntries = Object.entries(migrationModules)
   .sort(([leftPath], [rightPath]) => leftPath.localeCompare(rightPath))
-  .map(([, sql]) => String(sql))
+  .map(([path, sql]) => ({ path, sql: String(sql) }))
+
+export const migrationSql = migrationEntries
+  .map((entry) => entry.sql)
   .join('\n')
