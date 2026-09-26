@@ -1,6 +1,11 @@
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { MouseEvent, ReactNode } from 'react'
-import type { Header, Row, ReactTable } from '@tanstack/react-table'
+import {
+  FlexRender,
+  type Header,
+  type Row,
+  type ReactTable,
+} from '@tanstack/react-table'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
@@ -44,11 +49,7 @@ export function ProblemLibraryTable({
                 key={headerGroup.id}
               >
                 {headerGroup.headers.map((header) => (
-                  <SortableHeader
-                    header={header}
-                    key={header.id}
-                    table={table}
-                  />
+                  <SortableHeader header={header} key={header.id} />
                 ))}
               </tr>
             ))}
@@ -59,7 +60,6 @@ export function ProblemLibraryTable({
                 key={row.id}
                 renderEditProblemAction={renderEditProblemAction}
                 row={row}
-                table={table}
               />
             ))}
           </tbody>
@@ -82,9 +82,7 @@ export function ProblemLibraryTable({
 
 function SortableHeader({
   header,
-  table,
 }: {
-  table: ReactTable<typeof problemLibraryTableFeatures, ProblemLibraryRow>
   header: Header<typeof problemLibraryTableFeatures, ProblemLibraryRow, unknown>
 }) {
   const sortDirection = header.column.getIsSorted()
@@ -108,7 +106,7 @@ function SortableHeader({
           onClick={header.column.getToggleSortingHandler()}
           type="button"
         >
-          <table.FlexRender header={header} />
+          <FlexRender header={header} />
           {sortDirection ? (
             sortDirection === 'asc' ? (
               <ArrowUp aria-hidden="true" className="size-3" />
@@ -118,19 +116,17 @@ function SortableHeader({
           ) : null}
         </button>
       ) : (
-        <table.FlexRender header={header} />
+        <FlexRender header={header} />
       )}
     </th>
   )
 }
 
 function ProblemLibraryTableRow({
-  table,
   renderEditProblemAction,
   row,
 }: {
   renderEditProblemAction: RenderProblemEditAction
-  table: ReactTable<typeof problemLibraryTableFeatures, ProblemLibraryRow>
   row: Row<typeof problemLibraryTableFeatures, ProblemLibraryRow>
 }) {
   function handleRowClick(event: MouseEvent<HTMLTableRowElement>) {
@@ -157,11 +153,11 @@ function ProblemLibraryTableRow({
               key={cell.id}
               scope="row"
             >
-              <table.FlexRender cell={cell} />
+              <FlexRender cell={cell} />
             </th>
           ) : (
             <td className={getCellClassName(cell.column.id)} key={cell.id}>
-              <table.FlexRender cell={cell} />
+              <FlexRender cell={cell} />
             </td>
           ),
         )}

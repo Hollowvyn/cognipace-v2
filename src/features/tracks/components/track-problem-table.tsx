@@ -5,7 +5,7 @@ import {
   useTable,
   tableFeatures,
   rowExpandingFeature,
-  type ReactTable,
+  FlexRender,
   type ColumnDef,
   type ExpandedState,
   type Row,
@@ -101,7 +101,6 @@ export function TrackProblemTable({
               key={row.id}
               renderEditProblemAction={renderEditProblemAction}
               row={row}
-              table={table}
             />
           ))}
         </tbody>
@@ -111,12 +110,10 @@ export function TrackProblemTable({
 }
 
 function TrackProblemTableRow({
-  table,
   renderEditProblemAction,
   row,
 }: {
   renderEditProblemAction: RenderProblemEditAction
-  table: ReactTable<typeof trackTableFeatures, TrackProblemRow>
   row: Row<typeof trackTableFeatures, TrackProblemRow>
 }) {
   return (
@@ -134,11 +131,11 @@ function TrackProblemTableRow({
               key={cell.id}
               scope="row"
             >
-              <table.FlexRender cell={cell} />
+              <FlexRender cell={cell} />
             </th>
           ) : (
             <td className={getCellClassName(cell.column.id)} key={cell.id}>
-              <table.FlexRender cell={cell} />
+              <FlexRender cell={cell} />
             </td>
           ),
         )}
