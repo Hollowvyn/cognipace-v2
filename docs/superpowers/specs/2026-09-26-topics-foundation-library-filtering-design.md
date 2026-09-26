@@ -2,9 +2,10 @@
 
 ## Status And Authority
 
-Design direction approved during brainstorming on 2026-09-26. This written
-specification is ready for user review; implementation planning has not started.
-Approval of the written specification is the next gate.
+Design direction and written specification approved on 2026-09-26. The user
+requested the implementation specification after reviewing this document.
+Execution is organized by the [master implementation plan](../plans/2026-09-26-topics-implementation.md)
+and three linked phase plans. No implementation is claimed by these documents.
 
 This is a planning artifact, not a claim of shipped behavior. Current authority
 remains `docs/product.md`, `docs/architecture.md`, `docs/testing.md`, `design.md`,
