@@ -490,12 +490,15 @@ Closes #${rename_issue_number}
 - [x] Production manifest remained CogniPace 1.3.2
 - [x] Release ZIP is \`dist/cognipace-1.3.2-chrome.zip\`
 - [x] Added/updated needed tests: N/A; identity-only metadata and prose change
-- [x] Manual smoke tested: N/A; no product behavior or UI changed
-- [x] Skipped validation: None
+- [ ] Manual smoke tested: Pending the human engineer's happy-path and
+  edge-path checks from `docs/testing.md`.
+- [ ] Skipped validation: Agent did not perform the required human-run smoke;
+  awaiting screenshot or screen-recording proof.
 
 ## Screenshots
 
-N/A; no product behavior or UI changed.
+Pending human screenshot or screen-recording proof of the documented happy
+path and edge path.
 
 ## Release and rollback
 
@@ -512,8 +515,11 @@ Run:
 gh pr checks --repo Hollowvyn/cognipace-v2 --watch
 ```
 
-Expected: every required check passes. Do not merge with pending or failed
-required checks.
+Expected: every required check passes. Since the PR hygiene check classifies
+`package.json` as behavior-related, keep the manual smoke and screenshot fields
+marked pending until the human engineer completes the production-package smoke
+flows in `docs/testing.md`. Do not state or check them as completed before that
+evidence exists. Do not merge with pending or failed required checks.
 
 - [ ] **Step 6: Merge through normal branch protection**
 
@@ -524,7 +530,8 @@ gh pr merge --repo Hollowvyn/cognipace-v2 --squash --delete-branch
 ```
 
 Expected: the pull request merges without bypassing branch protection. If
-review is required, stop and request the review instead of using admin bypass.
+review or human smoke proof is required, stop and request it instead of using
+admin bypass.
 
 ## Task 6: Rename And Verify The GitHub Repository
 
