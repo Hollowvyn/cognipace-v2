@@ -15,6 +15,6 @@ export const topics = sqliteTable('topics', {
 export const topicsRelations = relations(topics, ({ many }) => ({
   problems: many(problemTopics),
   aliases: many(topicAliases),
-  parentRelations: many(topicRelations, { relationName: 'parentTopic' }),
-  childRelations: many(topicRelations, { relationName: 'childTopic' }),
+  sourceRelations: many(topicRelations, { relationName: 'sourceTopic' }),
+  targetRelations: many(topicRelations, { relationName: 'targetTopic' }),
 }))

@@ -1,10 +1,7 @@
-import { eq, sql } from 'drizzle-orm'
-
 import { normalizeLeetCodeSlug } from '@/lib/leetcode'
 
 import type { Db } from './client'
 import {
-  problemTopics,
   problems,
   topicAliases,
   topicRelations,
@@ -16,8 +13,8 @@ import {
 } from './schema'
 import {
   seedTopicAliases,
-  seedTopicLabels,
   seedTopicRelations,
+  seedTopics,
 } from './topic-taxonomy-seed'
 
 type SeedProblem = {
@@ -586,11 +583,6 @@ const seedProblems = uniqueSeedProblems([
   ),
 ])
 
-const seedTopics = seedTopicLabels.map((label) => ({
-  id: toSeedId(label),
-  label,
-}))
-
 const seedTracks = [
   {
     id: byteByteGo101TrackId,
@@ -682,34 +674,22 @@ export async function seedInitialCatalog(db: Db, now = new Date()) {
     )
     .onConflictDoNothing()
 
-  await standardizeSeedTopicAliases(db)
-
   await db
     .insert(topicAliases)
     .values(
       seedTopicAliases.map((alias) => ({
-        aliasKey: toSeedId(alias.label),
-        label: alias.label,
-        topicId: toSeedId(alias.topicLabel),
+        ...alias,
         createdAt: timestamp,
         updatedAt: timestamp,
       })),
     )
-    .onConflictDoUpdate({
-      target: topicAliases.aliasKey,
-      set: {
-        label: sql`excluded.label`,
-        topicId: sql`excluded.topic_id`,
-        updatedAt: timestamp,
-      },
-    })
+    .onConflictDoNothing()
 
   await db
     .insert(topicRelations)
     .values(
       seedTopicRelations.map((relation) => ({
-        parentTopicId: toSeedId(relation.parentLabel),
-        childTopicId: toSeedId(relation.childLabel),
+        ...relation,
         createdAt: timestamp,
         updatedAt: timestamp,
       })),
@@ -769,48 +749,4 @@ function uniqueSeedProblems(input: readonly SeedProblem[]) {
 
 function toSeedId(value: string) {
   return normalizeLeetCodeSlug(value)
-}
-
-async function standardizeSeedTopicAliases(db: Db) {
-  const aliasTargetsByKey = new Map(
-    seedTopicAliases.map((alias) => [
-      toSeedId(alias.label),
-      toSeedId(alias.topicLabel),
-    ]),
-  )
-  const aliasTargetsByLabel = new Map(
-    seedTopicAliases.map((alias) => [alias.label, toSeedId(alias.topicLabel)]),
-  )
-  const existingTopics = await db
-    .select({ id: topics.id, label: topics.label })
-    .from(topics)
-
-  for (const topic of existingTopics) {
-    const targetTopicId =
-      aliasTargetsByKey.get(topic.id) ?? aliasTargetsByLabel.get(topic.label)
-
-    if (!targetTopicId || targetTopicId === topic.id) {
-      continue
-    }
-
-    const joins = await db
-      .select({ problemSlug: problemTopics.problemSlug })
-      .from(problemTopics)
-      .where(eq(problemTopics.topicId, topic.id))
-
-    if (joins.length > 0) {
-      await db
-        .insert(problemTopics)
-        .values(
-          joins.map((join) => ({
-            problemSlug: join.problemSlug,
-            topicId: targetTopicId,
-          })),
-        )
-        .onConflictDoNothing()
-    }
-
-    await db.delete(problemTopics).where(eq(problemTopics.topicId, topic.id))
-    await db.delete(topics).where(eq(topics.id, topic.id))
-  }
 }
