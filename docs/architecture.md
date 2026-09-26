@@ -360,11 +360,24 @@ Schema change rules:
   changed shape.
 - Keep database writes behind the owning feature repository or service.
 
-Local-data reset caveat: changing migrations changes the migration fingerprint.
-When a stored snapshot does not match the current migration SQL, the app clears
-the old snapshot and creates a fresh migrated database seeded from
-`src/platform/db/seed.ts`. Testers may lose local extension data after schema
-changes.
+Snapshot compatibility is deliberately bounded. The app opens a snapshot when
+its fingerprint matches the current migration SQL. The only older fingerprint
+eligible for automatic upgrade is the exact migration sequence listed in
+`src/platform/db/snapshot-upgrade.ts`; the app validates that schema and runs
+only the migrations after that supported prefix. When both snapshot keys are
+absent, the app treats the profile as a fresh install and creates and seeds a
+new database. A partial pair, malformed value, or unknown or unsupported
+fingerprint fails startup. Automatic downgrade is unsupported. On failure, the
+original available snapshot values remain available for recovery; the app does
+not clear them and silently seed a fresh database.
+
+Before a supported upgrade replaces the active snapshot, the app retains the
+original snapshot and fingerprint in `cognipace_db_recovery_topics_v1`. An
+existing recovery record is kept until it is exported and must not be overwritten
+by another upgrade. These recovery values are private local data. Never log or
+share their contents in an issue; use the scoped local export procedure in
+`docs/testing.md` if recovery is needed. Startup diagnostics must describe the
+failure without printing snapshot bytes, topic values, tokens, or settings.
 
 ### Problem Topic Graph
 
@@ -461,8 +474,9 @@ When adding or changing data dependencies:
 7. Update seed data in `src/platform/db/seed.ts` if fresh installs need default
    rows.
 8. Add or update repository and integration tests.
-9. Tell testers whether local extension data may reset because of the migration
-   fingerprint change.
+9. Follow the bounded migration compatibility and recovery behavior above and
+   the local recovery procedure in `docs/testing.md`. Never treat local data
+   reset as an acceptable default for a migration.
 
 ### Add Or Modify Dashboard Route
 
