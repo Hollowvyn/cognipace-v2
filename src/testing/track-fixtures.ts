@@ -62,6 +62,7 @@ export function createTrackProblemRow(
     lastReviewedAt: null,
     lastSolvedAt: null,
     topics: [],
+    effectiveTopicIds: [],
     companies: [],
     trackMemberships: [],
     membership: {

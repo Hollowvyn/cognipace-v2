@@ -80,6 +80,48 @@ describe('ProblemsRepository library data', () => {
     )
   })
 
+  it('publishes alias options and nested effective membership for unused topics', async () => {
+    const handle = await createTestDb()
+
+    await createProblem(
+      handle.db,
+      newProblemInput({
+        slugOrUrl: 'bst-rollup',
+        title: 'BST Rollup',
+        topicLabels: ['BST'],
+      }),
+    )
+
+    const library = await getProblemLibrary(handle.db, {
+      surface: 'dashboard',
+      at: '2026-01-01T10:01:00.000Z',
+    })
+    const row = library.rows.find(
+      ({ problem }) => problem.slug === 'bst-rollup',
+    )
+
+    expect(row?.topics).toEqual([
+      {
+        id: 'binary-search-tree',
+        label: 'Binary Search Tree',
+        parentTopics: [
+          { id: 'binary-tree', label: 'Binary Tree' },
+          { id: 'tree', label: 'Tree' },
+        ],
+      },
+    ])
+    expect(row?.effectiveTopicIds).toEqual([
+      'binary-search-tree',
+      'binary-tree',
+      'tree',
+    ])
+    expect(library.options.topics).toContainEqual({
+      id: 'depth-first-search',
+      label: 'Depth-First Search',
+      aliases: ['DFS'],
+    })
+  })
+
   it('creates user problems and edits seeded or user-created metadata with replacement labels', async () => {
     const handle = await createTestDb()
 
@@ -256,7 +298,7 @@ describe('ProblemsRepository library data', () => {
     ])
   })
 
-  it('returns parent rollups for direct problem topics', async () => {
+  it('does not infer parents from applies-to topic relations', async () => {
     const handle = await createTestDb()
 
     await createProblem(
@@ -276,16 +318,12 @@ describe('ProblemsRepository library data', () => {
       {
         id: 'breadth-first-search',
         label: 'Breadth-First Search',
-        parentTopics: [
-          { id: 'binary-tree', label: 'Binary Tree' },
-          { id: 'graph-theory', label: 'Graph Theory' },
-          { id: 'tree', label: 'Tree' },
-        ],
+        parentTopics: [],
       },
     ])
   })
 
-  it('includes parent rollups for direct topics in Library rows', async () => {
+  it('keeps applies-to relations out of Library parent rollups', async () => {
     const handle = await createTestDb()
 
     await createProblem(
@@ -307,11 +345,7 @@ describe('ProblemsRepository library data', () => {
       {
         id: 'breadth-first-search',
         label: 'Breadth-First Search',
-        parentTopics: [
-          { id: 'binary-tree', label: 'Binary Tree' },
-          { id: 'graph-theory', label: 'Graph Theory' },
-          { id: 'tree', label: 'Tree' },
-        ],
+        parentTopics: [],
       },
     ])
     expect(rows[0]?.companies).toEqual([{ id: 'meta', label: 'Meta' }])
@@ -461,13 +495,13 @@ describe('ProblemsRepository library data', () => {
       'two-sum',
     )
 
-    expect(saved?.topics).toEqual([
+    expect(saved?.topics).toMatchObject([
       {
-        id: 'custom-local-topic',
         label: 'Custom Local Topic',
         parentTopics: [],
       },
     ])
+    expect(saved?.topics[0]?.id).toMatch(/^topic-[0-9a-f-]{36}$/u)
   })
 
   it('returns Library rows only for requested slugs', async () => {

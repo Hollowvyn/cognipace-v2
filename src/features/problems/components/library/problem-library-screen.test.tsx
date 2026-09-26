@@ -927,7 +927,10 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
     suspendedCount: 1,
   },
   options: {
-    topics: [topicArray, topicSearch],
+    topics: [
+      { id: topicArray.id, label: topicArray.label, aliases: [] },
+      { id: topicSearch.id, label: topicSearch.label, aliases: [] },
+    ],
     companies: [companyMeta, companyNetflix],
   },
   rows: [
@@ -952,6 +955,7 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
       lastReviewedAt: '2026-01-01T10:00:00.000Z',
       lastSolvedAt: '2026-01-01T10:00:00.000Z',
       topics: [topicArray],
+      effectiveTopicIds: ['array'],
       companies: [companyMeta],
       trackMemberships: [trackMembership],
     },
@@ -971,6 +975,7 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
       lastReviewedAt: null,
       lastSolvedAt: null,
       topics: [topicSearch],
+      effectiveTopicIds: ['binary-search'],
       companies: [companyNetflix],
       trackMemberships: [],
     },
@@ -989,6 +994,7 @@ const libraryResponse: ProblemLibraryResponse = createProblemLibraryResponse({
       lastReviewedAt: null,
       lastSolvedAt: null,
       topics: [],
+      effectiveTopicIds: [],
       companies: [],
       trackMemberships: [],
     },

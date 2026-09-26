@@ -24,7 +24,7 @@ describe('ProblemForm', () => {
         return Promise.resolve(
           createProblemLibraryResponse({
             options: {
-              topics: [{ id: 'array', label: 'Array' }],
+              topics: [{ id: 'array', label: 'Array', aliases: [] }],
               companies: [{ id: 'meta', label: 'Meta' }],
             },
           }),
