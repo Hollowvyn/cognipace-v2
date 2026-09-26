@@ -175,7 +175,7 @@ describe('sync envelope', () => {
       backup: legacyBackup,
     })
 
-    expect(envelope.backup.schemaVersion).toBe(3)
+    expect(envelope.backup.schemaVersion).toBe(4)
     expect(envelope.backup.data.tracks.progress).toEqual([
       expect.objectContaining({
         trackId: 'leetcode-75',
@@ -183,5 +183,56 @@ describe('sync envelope', () => {
         reviewAttemptId: null,
       }),
     ])
+  })
+
+  it('normalizes v3 topic rows inside the unchanged sync envelope version', () => {
+    const v3Backup = {
+      ...backup,
+      schemaVersion: 3,
+      data: {
+        ...backup.data,
+        topics: [
+          {
+            id: 'array',
+            label: 'Array',
+            createdAt: backup.exportedAt,
+            updatedAt: backup.exportedAt,
+          },
+          {
+            id: 'hash-table',
+            label: 'Hash Table',
+            createdAt: backup.exportedAt,
+            updatedAt: backup.exportedAt,
+          },
+        ],
+        topicAliases: [],
+        topicRelations: [
+          {
+            parentTopicId: 'array',
+            childTopicId: 'hash-table',
+            createdAt: backup.exportedAt,
+            updatedAt: backup.exportedAt,
+          },
+        ],
+      },
+    }
+
+    const envelope = parseSyncEnvelopeForCurrentApp({
+      syncEnvelopeVersion,
+      app: 'cognipace',
+      exportedAt: backup.exportedAt,
+      dataUpdatedAt: backup.exportedAt,
+      backup: v3Backup,
+    })
+
+    expect(envelope.syncEnvelopeVersion).toBe(syncEnvelopeVersion)
+    expect(envelope.backup.schemaVersion).toBe(4)
+    expect(envelope.backup.data.topicRelations).toContainEqual(
+      expect.objectContaining({
+        sourceTopicId: 'hash-table',
+        targetTopicId: 'array',
+        kind: 'broader',
+      }),
+    )
   })
 })
