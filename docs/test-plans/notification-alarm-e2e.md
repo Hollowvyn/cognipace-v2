@@ -1,6 +1,6 @@
 # Notification Alarm End-to-End Test Plan
 
-This plan verifies the local due-notification flow for CogniPace v2. It covers
+This plan verifies the local due-notification flow for CogniPace. It covers
 the WXT build, Chrome extension alarm state, and real notification delivery.
 Run these steps after `#17` (scheduler) and `#18` (notification preferences)
 are merged.

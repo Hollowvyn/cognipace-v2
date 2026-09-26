@@ -90,7 +90,7 @@ normal pull request workflows.
    `npm run store:check`, and `npm run zip`.
 9. The release workflow uploads `cognipace-{version}-chrome-mv3.zip` to the
    GitHub Release. WXT creates the local package first at
-   `dist/cognipace-v2-{version}-chrome.zip`.
+   `dist/cognipace-{version}-chrome.zip`.
 10. For a Store release, upload that exact GitHub Release ZIP to the existing
     private Chrome Web Store item and submit the version for review.
 
@@ -108,7 +108,7 @@ Before opening the Store dashboard:
    `npm run store:check`, and `npm run zip` passed for the release.
 2. Confirm the GitHub Release contains the exact
    `cognipace-{version}-chrome-mv3.zip` asset. For local packaging, WXT's
-   source artifact is `dist/cognipace-v2-{version}-chrome.zip`.
+   source artifact is `dist/cognipace-{version}-chrome.zip`.
 3. Confirm `PRIVACY.md` is available from the public `main` branch.
 4. Confirm the Store listing, permission explanations, privacy selections, and
    reviewer instructions match `docs/chrome-web-store.md`.
