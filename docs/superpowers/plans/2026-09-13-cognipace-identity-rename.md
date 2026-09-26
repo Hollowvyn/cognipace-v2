@@ -21,6 +21,12 @@
   product CogniPace.
 - Modify: `docs/test-plans/notification-alarm-e2e.md` — active test plan uses
   the canonical product name.
+- Modify: `docs/release.md` — local WXT artifact examples match the renamed
+  npm package.
+- Modify: `docs/chrome-web-store.md` — current Store support and privacy URLs
+  point at the canonical GitHub repository.
+- Modify: `PRIVACY.md` — current contact URL points at the canonical GitHub
+  repository.
 - Preserve: `CHANGELOG.md` — historical release URLs and names.
 - Preserve: `docs/superpowers/**` except this design and plan — historical
   specs, plans, audits, issue links, PR links, and recorded filesystem paths.
@@ -40,19 +46,25 @@
 - Read: `README.md`
 - Read: `docs/architecture.md`
 - Read: `docs/test-plans/notification-alarm-e2e.md`
+- Read: `docs/release.md`
+- Read: `docs/chrome-web-store.md`
+- Read: `PRIVACY.md`
 
 - [ ] **Step 1: Enter the dedicated rename worktree**
 
 Run:
 
 ```bash
-cd /private/tmp/cognipace-rename.yoRPpa
+cd /Users/tobiolutimehin/WebstormProjects/cognipace-v2/.worktrees/rename-cognipace
 git status --short --branch
 ```
 
 Expected: branch `codex/rename-cognipace`; only this plan is uncommitted when
 the plan is being authored, and the worktree is clean when implementation
 begins.
+
+Before making product file changes, commit any execution-time plan amendments
+as a separate docs-only commit using the command in Task 5, Step 1.
 
 - [ ] **Step 2: Select the repository-pinned toolchain**
 
@@ -102,19 +114,20 @@ Run:
 ```bash
 rg -n -i --hidden \
   --glob '!node_modules/**' \
-  --glob '!.git/**' \
+  --glob '!.git*' \
   --glob '!.worktrees/**' \
   --glob '!dist/**' \
   --glob '!.output/**' \
   --glob '!CHANGELOG.md' \
   --glob '!docs/superpowers/**' \
+  --glob '!.git' \
   'cognipace[- _]?v2|cognipace v2' .
 ```
 
 Expected: matches only in `package.json`, the two lockfile root-name fields,
-`README.md`, `docs/architecture.md`, and
-`docs/test-plans/notification-alarm-e2e.md`. Stop and classify any additional
-match as current or historical before editing it.
+`README.md`, `docs/architecture.md`, `docs/test-plans/notification-alarm-e2e.md`,
+`docs/release.md`, `docs/chrome-web-store.md`, and `PRIVACY.md`. Stop and
+classify any additional match as current or historical before editing it.
 
 ## Task 2: Rename The Private Package
 
@@ -203,6 +216,9 @@ Expected: one commit containing only the package and lockfile name changes.
 - Modify: `README.md:9`
 - Modify: `docs/architecture.md:5`
 - Modify: `docs/test-plans/notification-alarm-e2e.md:3`
+- Modify: `docs/release.md:93,111`
+- Modify: `docs/chrome-web-store.md:42,44`
+- Modify: `PRIVACY.md:65`
 
 - [ ] **Step 1: Remove the obsolete README transition paragraph**
 
@@ -239,14 +255,26 @@ This plan verifies the local due-notification flow for CogniPace. It covers
 
 Preserve the rest of the test plan unchanged.
 
-- [ ] **Step 4: Prove transitional identity is absent from current surfaces**
+- [ ] **Step 4: Update the active release artifact examples**
+
+In `docs/release.md`, change both `dist/cognipace-v2-{version}-chrome.zip`
+references to `dist/cognipace-{version}-chrome.zip`. Preserve the official
+GitHub Release artifact name `cognipace-{version}-chrome-mv3.zip`.
+
+- [ ] **Step 5: Update current support and privacy links**
+
+In `docs/chrome-web-store.md`, change the Support URL and Privacy URL from
+`Hollowvyn/cognipace-v2` to `Hollowvyn/CogniPace`. In `PRIVACY.md`, change the
+Contact issue URL to `https://github.com/Hollowvyn/CogniPace/issues`.
+
+- [ ] **Step 6: Prove transitional identity is absent from current surfaces**
 
 Run:
 
 ```bash
 if rg -n -i --hidden \
   --glob '!node_modules/**' \
-  --glob '!.git/**' \
+  --glob '!.git*' \
   --glob '!.worktrees/**' \
   --glob '!dist/**' \
   --glob '!.output/**' \
@@ -259,26 +287,26 @@ fi
 
 Expected: no output and exit code 0 from the enclosing shell block.
 
-- [ ] **Step 5: Format and validate the documentation diff**
+- [ ] **Step 7: Format and validate the documentation diff**
 
 Run:
 
 ```bash
-npx prettier --write README.md docs/architecture.md docs/test-plans/notification-alarm-e2e.md
-npx prettier --check README.md docs/architecture.md docs/test-plans/notification-alarm-e2e.md
+npx prettier --write README.md docs/architecture.md docs/test-plans/notification-alarm-e2e.md docs/release.md docs/chrome-web-store.md PRIVACY.md
+npx prettier --check README.md docs/architecture.md docs/test-plans/notification-alarm-e2e.md docs/release.md docs/chrome-web-store.md PRIVACY.md
 git diff --check
-git diff -- README.md docs/architecture.md docs/test-plans/notification-alarm-e2e.md
+git diff -- README.md docs/architecture.md docs/test-plans/notification-alarm-e2e.md docs/release.md docs/chrome-web-store.md PRIVACY.md
 ```
 
-Expected: Prettier passes; the diff contains only the three approved current
+Expected: Prettier passes; the diff contains only the six approved current
 identity edits.
 
-- [ ] **Step 6: Commit the current documentation identity**
+- [ ] **Step 8: Commit the current documentation identity**
 
 Run:
 
 ```bash
-git add README.md docs/architecture.md docs/test-plans/notification-alarm-e2e.md
+git add README.md docs/architecture.md docs/test-plans/notification-alarm-e2e.md docs/release.md docs/chrome-web-store.md PRIVACY.md
 git diff --cached --check
 git commit -m "docs: retire transitional v2 identity"
 ```
@@ -382,7 +410,20 @@ only by the design, plan, package-name, and current-documentation commits.
 - Read: `docs/agent-governance.md`
 - External mutation: GitHub issue and pull request
 
-- [ ] **Step 1: Push the task branch**
+- [ ] **Step 1: Commit the plan amendment before implementation**
+
+Run:
+
+```bash
+git add docs/superpowers/plans/2026-09-13-cognipace-identity-rename.md
+git diff --cached --check
+git commit -m "docs: include live support and release references"
+```
+
+Expected: the plan scope matches the current repository and its task issue
+body follows `.github/ISSUE_TEMPLATE/task.yml`.
+
+- [ ] **Step 2: Push the task branch**
 
 Run:
 
@@ -392,22 +433,37 @@ git push --set-upstream origin codex/rename-cognipace
 
 Expected: the branch is available on GitHub without a force push.
 
-- [ ] **Step 2: Create the tracking issue**
+- [ ] **Step 3: Create the tracking issue**
 
 Run:
 
 ```bash
 rename_issue_url=$(gh issue create \
   --repo Hollowvyn/cognipace-v2 \
-  --title "Adopt canonical CogniPace repository identity" \
-  --body "Rename the maintained package, current documentation, GitHub repository, and local checkout from the transitional v2 identity to CogniPace. Preserve historical links and extension runtime identity. Design: docs/superpowers/specs/2026-09-13-cognipace-identity-rename-design.md. Plan: docs/superpowers/plans/2026-09-13-cognipace-identity-rename.md.")
+  --title "[Task]: Adopt canonical CogniPace repository identity" \
+  --body "## Details
+
+Rename the maintained package, current documentation, GitHub repository, and local checkout from the transitional v2 identity to CogniPace. Preserve historical links and extension runtime identity.
+
+## Done when
+
+The package, active documentation, GitHub repository, remote, and local checkout use the canonical CogniPace identity; all linked worktrees remain usable; extension build and release artifacts validate.
+
+## Area
+
+Build/test/release; Docs/process
+
+## Design and plan
+
+- docs/superpowers/specs/2026-09-13-cognipace-identity-rename-design.md
+- docs/superpowers/plans/2026-09-13-cognipace-identity-rename.md")
 rename_issue_number=${rename_issue_url##*/}
 printf '%s\n' "$rename_issue_url"
 ```
 
 Expected: one issue URL and a numeric `rename_issue_number`.
 
-- [ ] **Step 3: Open the pull request**
+- [ ] **Step 4: Open the pull request**
 
 Run in the same shell so `rename_issue_number` remains available:
 
@@ -448,7 +504,7 @@ Maintenance-only repository identity change. Roll back tracked files by revertin
 
 Expected: a pull-request URL using the maintenance-only `chore` title.
 
-- [ ] **Step 4: Wait for required checks**
+- [ ] **Step 5: Wait for required checks**
 
 Run:
 
@@ -459,7 +515,7 @@ gh pr checks --repo Hollowvyn/cognipace-v2 --watch
 Expected: every required check passes. Do not merge with pending or failed
 required checks.
 
-- [ ] **Step 5: Merge through normal branch protection**
+- [ ] **Step 6: Merge through normal branch protection**
 
 Run:
 
