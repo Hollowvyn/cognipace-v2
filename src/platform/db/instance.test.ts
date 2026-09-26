@@ -15,6 +15,10 @@ import { saveReviewResult } from '@/features/practice/server/practice-service'
 // eslint-disable-next-line no-restricted-imports
 import { createSettingsRepository } from '@/features/settings/data/settings-repository'
 import { getBackgroundDb } from '@/extension/background/app-db'
+// eslint-disable-next-line no-restricted-imports
+import { createProblemsRepository } from '@/features/problems/data/problems-repository'
+// eslint-disable-next-line no-restricted-imports
+import { buildTopicGraph } from '@/features/problems/domain/topic-graph'
 import { createDb, createSqliteWasmLocator } from './client'
 import { getAppDb, flushDbSnapshot, resetAppDbForTesting } from './instance'
 import { migrationSql } from './migration-sql'
@@ -25,6 +29,8 @@ import {
 import { RECOVERY_KEY } from './snapshot-state'
 import {
   bytesToBase64,
+  base64ToBytes,
+  deserializeDb,
   FINGERPRINT_KEY,
   SNAPSHOT_KEY,
   computeFingerprint,
@@ -100,6 +106,9 @@ function readOwnedRows(db: Awaited<ReturnType<typeof getAppDb>>) {
   return Object.fromEntries(
     [
       'problems',
+      'companies',
+      'problem_companies',
+      'problem_topics',
       'problem_practice',
       'fsrs_cards',
       'review_attempts',
@@ -108,7 +117,13 @@ function readOwnedRows(db: Awaited<ReturnType<typeof getAppDb>>) {
       'track_group_problems',
       'track_session',
       'settings_kv',
-    ].map((table) => [table, readRows(db, table)]),
+      'track_problem_progress',
+    ].map((table) => [
+      table,
+      readRows(db, table).sort((left, right) =>
+        JSON.stringify(left).localeCompare(JSON.stringify(right)),
+      ),
+    ]),
   )
 }
 
@@ -317,6 +332,213 @@ describe('app database startup', () => {
         [FINGERPRINT_KEY]: legacyTopicMigrationFingerprint,
       },
     })
+  })
+
+  it('preserves populated v7 data while the background callback reconciles before 0008 publication', async () => {
+    const fakeStorage = installStorage()
+    const legacyHandle = await createDb({
+      migrationSql: legacyTopicMigrationSql,
+      locateWasm: createSqliteWasmLocator(),
+    })
+    legacyHandle.rawDb.exec(`
+      INSERT INTO problems (slug, title, difficulty, is_premium, created_at, updated_at)
+      VALUES ('legacy-two-sum', 'Two Sum', 'easy', 1, 101, 102);
+      INSERT INTO companies (id, label)
+      VALUES ('legacy-company', 'Legacy Company');
+      INSERT INTO problem_companies (problem_slug, company_id)
+      VALUES ('legacy-two-sum', 'legacy-company');
+      INSERT INTO problem_practice (
+        problem_slug, status, first_seen_at, last_seen_at, last_reviewed_at,
+        last_rating, last_elapsed_seconds, best_elapsed_seconds, interview_pattern,
+        time_complexity, space_complexity, languages, notes, solved_count,
+        attempt_count, is_suspended, created_at, updated_at
+      ) VALUES (
+        'legacy-two-sum', 'scheduled', 101, 201, 201, 'good', 42, 40,
+        'two-pointers', 'O(n)', 'O(1)', '["TypeScript"]', 'keep this note',
+        2, 3, 0, 101, 202
+      );
+      INSERT INTO fsrs_cards (
+        id, problem_slug, card_kind, due_at, stability, difficulty, elapsed_days,
+        scheduled_days, learning_steps, reps, lapses, state, last_review_at,
+        created_at, updated_at
+      ) VALUES (
+        'legacy-card', 'legacy-two-sum', 'default', 987654321, 4.5, 5.5, 3,
+        7, 0, 2, 1, 'review', 201, 101, 202
+      );
+      INSERT INTO review_attempts (
+        id, problem_slug, card_id, rating, review_mode, reviewed_at, elapsed_seconds,
+        is_correct, interview_pattern, time_complexity, space_complexity, languages,
+        notes, fsrs_review_log, created_at, updated_at
+      ) VALUES (
+        'legacy-review', 'legacy-two-sum', 'legacy-card', 'good', 'free-practice',
+        201, 42, 1, 'two-pointers', 'O(n)', 'O(1)', '["TypeScript"]',
+        'review note', '{"rating":"good"}', 201, 202
+      );
+      INSERT INTO tracks (id, slug, title, description, due_at, created_at, updated_at)
+      VALUES ('legacy-track', 'legacy-track', 'Legacy Track', 'preserve order', 456789, 101, 202);
+      INSERT INTO track_groups (id, track_id, title, position, created_at, updated_at)
+      VALUES ('legacy-group', 'legacy-track', 'Ordered group', 4, 101, 202);
+      INSERT INTO track_group_problems (track_group_id, track_id, problem_slug, position)
+      VALUES ('legacy-group', 'legacy-track', 'legacy-two-sum', 7);
+      INSERT INTO track_problem_progress (
+        track_id, problem_slug, review_attempt_id, completed_at, completed_rating,
+        created_at, updated_at
+      ) VALUES ('legacy-track', 'legacy-two-sum', 'legacy-review', 201, 'good', 101, 202);
+      INSERT INTO track_session (id, active_track_id, active_group_id, started_at, updated_at)
+      VALUES ('active-session', 'legacy-track', 'legacy-group', 101, 202);
+      INSERT INTO settings_kv (key, value, updated_at)
+      VALUES ('topic-upgrade-test', '{"kept":true}', 303);
+
+      INSERT INTO topics (id, label, created_at, updated_at)
+      VALUES
+        ('depth-first-search', 'Depth-First Search', 11, 12),
+        ('breadth-first-search', 'Breadth-First Search', 13, 14),
+        ('graph-theory', 'Graph Theory', 15, 16),
+        ('tree', 'Tree', 17, 18),
+        ('custom-pattern', 'Custom Pattern', 19, 20);
+      INSERT INTO problem_topics (problem_slug, topic_id)
+      VALUES
+        ('legacy-two-sum', 'depth-first-search'),
+        ('legacy-two-sum', 'breadth-first-search'),
+        ('legacy-two-sum', 'custom-pattern');
+      INSERT INTO topic_aliases (alias_key, label, topic_id, created_at, updated_at)
+      VALUES ('MY   Pattern Alias ', 'My   Pattern Alias ', 'custom-pattern', 21, 22);
+      INSERT INTO topic_relations (parent_topic_id, child_topic_id, created_at, updated_at)
+      VALUES
+        ('tree', 'depth-first-search', 23, 24),
+        ('tree', 'breadth-first-search', 25, 26);
+    `)
+
+    const expectedOwnedRows = readOwnedRows(legacyHandle)
+    const originalSnapshot = bytesToBase64(serializeDb(legacyHandle))
+    legacyHandle.rawDb.close()
+    fakeStorage.values[SNAPSHOT_KEY] = originalSnapshot
+    fakeStorage.values[FINGERPRINT_KEY] = legacyTopicMigrationFingerprint
+
+    let publishSawReconciledDatabase = false
+    const originalSet = fakeStorage.set
+    fakeStorage.set = vi.fn(async (values: Record<string, unknown>) => {
+      if (SNAPSHOT_KEY in values && FINGERPRINT_KEY in values) {
+        const published = await createDb({
+          locateWasm: createSqliteWasmLocator(),
+        })
+        try {
+          deserializeDb(published, base64ToBytes(String(values[SNAPSHOT_KEY])))
+          const aliases = published.rawDb.exec({
+            sql: "SELECT alias_key FROM topic_aliases WHERE topic_id = 'custom-pattern'",
+            returnValue: 'resultRows',
+          })
+          const relations = published.rawDb.exec({
+            sql: 'SELECT source_topic_id, target_topic_id, kind FROM topic_relations',
+            returnValue: 'resultRows',
+          })
+          publishSawReconciledDatabase =
+            aliases.some(([aliasKey]) => aliasKey === 'my pattern alias') &&
+            relations.some(
+              ([source, target, kind]) =>
+                source === 'depth-first-search' &&
+                target === 'tree' &&
+                kind === 'applies-to',
+            )
+        } finally {
+          published.rawDb.close()
+        }
+      }
+      return originalSet(values)
+    })
+
+    const upgraded = await getBackgroundDb()
+    openedHandles.push(upgraded)
+
+    expect(publishSawReconciledDatabase).toBe(true)
+    expect(readOwnedRows(upgraded)).toEqual(expectedOwnedRows)
+    expect(fakeStorage.values[RECOVERY_KEY]).toMatchObject({
+      version: 1,
+      raw: {
+        [SNAPSHOT_KEY]: originalSnapshot,
+        [FINGERPRINT_KEY]: legacyTopicMigrationFingerprint,
+      },
+    })
+
+    const upgradedRows = upgraded.rawDb.exec({
+      sql: 'SELECT source_topic_id, target_topic_id, kind FROM topic_relations',
+      returnValue: 'resultRows',
+    })
+    const currentTopicIds = upgraded.rawDb.exec({
+      sql: 'SELECT id FROM topics',
+      returnValue: 'resultRows',
+    }) as Array<[string]>
+    const typedRelations = upgradedRows as Array<
+      [string, string, 'broader' | 'applies-to']
+    >
+    const topicGraph = buildTopicGraph(
+      currentTopicIds.map(([id]) => ({ id })),
+      typedRelations.map(([sourceTopicId, targetTopicId, kind]) => ({
+        sourceTopicId,
+        targetTopicId,
+        kind,
+      })),
+    )
+    expect(topicGraph.effectiveTopicIds(['breadth-first-search'])).toEqual([
+      'breadth-first-search',
+    ])
+
+    const savedWithAlias = await createProblemsRepository(
+      upgraded.db,
+    ).createProblem(
+      {
+        slugOrUrl: 'alias-resolution-after-upgrade',
+        title: 'Alias Resolution After Upgrade',
+        difficulty: 'medium',
+        isPremium: false,
+        topicLabels: [' my pattern alias '],
+        companyLabels: [],
+      },
+      now,
+    )
+    expect(savedWithAlias.topics).toEqual([
+      expect.objectContaining({
+        id: 'custom-pattern',
+        label: 'Custom Pattern',
+      }),
+    ])
+  })
+
+  it('retains the v7 snapshot and existing recovery copy when alias reconciliation rejects a collision', async () => {
+    const fakeStorage = installStorage()
+    const legacyHandle = await createDb({
+      migrationSql: legacyTopicMigrationSql,
+      locateWasm: createSqliteWasmLocator(),
+    })
+    legacyHandle.rawDb.exec(`
+      INSERT INTO topics (id, label, created_at, updated_at)
+      VALUES ('tree', 'Tree', 1, 2), ('graph-theory', 'Graph Theory', 3, 4);
+      INSERT INTO topic_aliases (alias_key, label, topic_id, created_at, updated_at)
+      VALUES
+        ('first-key', 'Shared Alias', 'tree', 5, 6),
+        ('second-key', ' shared   alias ', 'graph-theory', 7, 8);
+    `)
+    const originalSnapshot = bytesToBase64(serializeDb(legacyHandle))
+    legacyHandle.rawDb.close()
+    const oldRecoveryRecord = {
+      version: 1,
+      raw: {
+        [SNAPSHOT_KEY]: originalSnapshot,
+        [FINGERPRINT_KEY]: legacyTopicMigrationFingerprint,
+      },
+      savedAt: '2026-09-26T10:00:00.000Z',
+    }
+    fakeStorage.values[SNAPSHOT_KEY] = originalSnapshot
+    fakeStorage.values[FINGERPRINT_KEY] = legacyTopicMigrationFingerprint
+    fakeStorage.values[RECOVERY_KEY] = oldRecoveryRecord
+
+    await expect(getBackgroundDb()).rejects.toThrow(/conflicting alias/i)
+
+    expect(fakeStorage.values[SNAPSHOT_KEY]).toBe(originalSnapshot)
+    expect(fakeStorage.values[FINGERPRINT_KEY]).toBe(
+      legacyTopicMigrationFingerprint,
+    )
+    expect(fakeStorage.values[RECOVERY_KEY]).toEqual(oldRecoveryRecord)
   })
 
   it('discards an open made stale by reset without replacing the new handle or snapshot', async () => {

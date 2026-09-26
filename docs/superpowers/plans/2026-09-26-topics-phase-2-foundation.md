@@ -453,7 +453,7 @@ the Problems reconciliation callback corrects known rows after this conversion.
 { id: 'hash-set', label: 'Hash Set' },
 ```
 
-Export the resulting 80 rows as `seedTopics`; retain `seedTopicLabels =
+Export the resulting 81 rows as `seedTopics`; retain `seedTopicLabels =
 seedTopics.map(topic => topic.label)` only if an existing caller still needs it.
 The source-of-truth inventory test contains the user's 73 labels including Heap
 and Meet in the Middle; Heap resolves by alias, so every input must resolve even
@@ -628,7 +628,7 @@ it('rekeys custom aliases and corrects old edges without inventing assignments',
 2. Build equivalence only from new safe aliases: a noncanonical topic whose
    normalized display label exactly matches a safe alias can merge into that
    alias's canonical target. Never infer equivalence from a slug-like ID alone.
-   Do not merge any of the 80 canonical IDs. A colliding canonical ID is an error.
+   Do not merge any of the 81 canonical IDs. A colliding canonical ID is an error.
 3. Remap every problem join, alias target, and both edge endpoints through the
    equivalence map. Retain old equivalent labels as direct aliases to the final
    target. Drop only self-edges produced by a proven identity merge; reject

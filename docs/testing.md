@@ -365,6 +365,48 @@ UI text.
 Expected: Library reflects persisted problem metadata and remains usable after
 reloading the extension. Track problem rows use the same review-status labels.
 
+### Topic Taxonomy And Backup Compatibility
+
+Use an isolated Chrome profile with disposable test data. The runtime has 81
+canonical topics; `Heap` resolves as an alias of `Heap (Priority Queue)`.
+Current Library controls remain unchanged in this phase. The repository does
+not provide a prepared browser profile containing a v7 database snapshot, so
+the v7 upgrade and rejected-collision paths below are automated database tests,
+not browser smoke steps. Run both with:
+
+```sh
+npm run test -- --run src/platform/db/instance.test.ts -t "preserves populated v7 data|retains the v7 snapshot"
+```
+
+These in-memory tests create their own legacy database. The successful-upgrade
+case checks reviews, FSRS due dates, problem and company metadata, track order
+and progress, settings, alias re-keying and resolution, BFS membership, and
+reconciliation before publication. The collision case checks rejection while
+preserving the stored snapshot and recovery record. Do not report these tests as
+human-visible browser evidence.
+
+For manual checks, use an isolated profile with disposable data and the
+existing Library, capture, and backup flows:
+
+1. Edit a disposable problem and set topics to `Tree` and `DFS`. Save and
+   reopen it; confirm those are the selected direct topics. Edit the topic list
+   again with one omitted and confirm manual save replaces the direct list.
+2. Capture LeetCode topic metadata for that problem and confirm the capture
+   merges new labels while retaining the existing manual topics.
+3. Enter a non-ASCII label such as `动态规划` and a slash-containing label such
+   as `Tree / Graph` in a disposable problem. Save, reload, and edit again;
+   confirm Unicode and slash text survive lookup and persistence.
+4. Export a backup and inspect only the disposable fixture's taxonomy rows.
+   Confirm it declares schema version 4 and typed relations have source,
+   target, and kind fields. Import that file into another disposable profile
+   and verify assignments, aliases, and both relation kinds round-trip.
+
+Capture screenshots or a recording of the visible edit, capture-merge, and
+backup-round-trip flows when collecting manual smoke evidence. Use dummy data;
+redact topic values, settings, fingerprints, and all snapshot or recovery bytes
+from shared proof. Such screenshots do not prove the v7 migration or collision
+recovery behavior; the Vitest command above covers those internal paths.
+
 ### Tracks
 
 1. Open the dashboard.
