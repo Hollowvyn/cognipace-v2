@@ -104,6 +104,11 @@ export const seedTopicLabels = seedTopics.map(({ label }) => label)
 export const seedTopicAliases = [
   { label: 'Arrays', aliasKey: 'arrays', topicId: 'array' },
   { label: 'DP', aliasKey: 'dp', topicId: 'dynamic-programming' },
+  {
+    label: '动态规划',
+    aliasKey: '动态规划',
+    topicId: 'dynamic-programming',
+  },
   { label: 'DFS', aliasKey: 'dfs', topicId: 'depth-first-search' },
   { label: 'BFS', aliasKey: 'bfs', topicId: 'breadth-first-search' },
   { label: 'Graph', aliasKey: 'graph', topicId: 'graph-theory' },

@@ -98,6 +98,7 @@ describe('curated topic catalogue', () => {
     expect(lookup.get('bit')?.id).toBe('binary-indexed-tree')
     expect(lookup.get('dsu')?.id).toBe('union-find')
     expect(lookup.get('kmp')?.id).toBe('kmp')
+    expect(lookup.get('动态规划')?.id).toBe('dynamic-programming')
     expect(lookup.get('minimax')?.id).toBe('minimax')
     expect(lookup.get('arrays & hashing')).toBeUndefined()
     expect(
