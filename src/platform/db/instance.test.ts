@@ -1,14 +1,36 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('./proxy', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./proxy')>()
+
+  return {
+    ...actual,
+    setOnMutationHook: vi.fn(actual.setOnMutationHook),
+  }
+})
+
 // This platform integration test uses feature repositories to seed valid owned-row graphs.
 // eslint-disable-next-line no-restricted-imports
 import { saveReviewResult } from '@/features/practice/server/practice-service'
 // eslint-disable-next-line no-restricted-imports
 import { createSettingsRepository } from '@/features/settings/data/settings-repository'
+import { getBackgroundDb } from '@/extension/background/app-db'
+import { createDb, createSqliteWasmLocator } from './client'
 import { getAppDb, flushDbSnapshot, resetAppDbForTesting } from './instance'
 import { migrationSql } from './migration-sql'
+import {
+  legacyTopicMigrationFingerprint,
+  legacyTopicMigrationSql,
+} from './snapshot-upgrade'
 import { RECOVERY_KEY } from './snapshot-state'
-import { FINGERPRINT_KEY, SNAPSHOT_KEY, computeFingerprint } from './snapshot'
+import {
+  bytesToBase64,
+  FINGERPRINT_KEY,
+  SNAPSHOT_KEY,
+  computeFingerprint,
+  serializeDb,
+} from './snapshot'
+import { setOnMutationHook } from './proxy'
 
 const now = new Date('2026-09-26T12:00:00.000Z')
 const openedHandles: Awaited<ReturnType<typeof getAppDb>>[] = []
@@ -214,6 +236,87 @@ describe('app database startup', () => {
     expect(fakeStorage.values[FINGERPRINT_KEY]).toEqual(
       computeFingerprint(migrationSql),
     )
+  })
+
+  it('does not publish or install mutation hooks when beforePublish rejects, then retries cleanly', async () => {
+    const fakeStorage = installStorage()
+    const setMutationHook = vi.mocked(setOnMutationHook)
+    setMutationHook.mockClear()
+    const reconciliationFailure = new Error('reconciliation failed')
+
+    await expect(
+      getAppDb({
+        beforePublish: () => Promise.reject(reconciliationFailure),
+      }),
+    ).rejects.toBe(reconciliationFailure)
+
+    expect(fakeStorage.values[SNAPSHOT_KEY]).toBeUndefined()
+    expect(fakeStorage.values[FINGERPRINT_KEY]).toBeUndefined()
+    expect(setMutationHook).not.toHaveBeenCalled()
+
+    const retried = await openTestDb()
+    expect(fakeStorage.values[SNAPSHOT_KEY]).toEqual(expect.any(String))
+    expect(fakeStorage.values[FINGERPRINT_KEY]).toBe(
+      computeFingerprint(migrationSql),
+    )
+    expect(setMutationHook).toHaveBeenCalledTimes(1)
+    expect(setMutationHook).toHaveBeenLastCalledWith(expect.any(Function))
+    expect(retried).toBeDefined()
+  })
+
+  it('retains a populated legacy snapshot and recovery pair when reconciliation publication fails', async () => {
+    const fakeStorage = installStorage()
+    const legacyHandle = await createDb({
+      migrationSql: legacyTopicMigrationSql,
+      locateWasm: createSqliteWasmLocator(),
+    })
+    legacyHandle.rawDb.exec(`
+      INSERT INTO topics (id, label, created_at, updated_at)
+      VALUES
+        ('depth-first-search', 'Depth-First Search', 11, 12),
+        ('graph-theory', 'Graph Theory', 13, 14);
+      INSERT INTO topic_relations (parent_topic_id, child_topic_id, created_at, updated_at)
+      VALUES ('graph-theory', 'depth-first-search', 15, 16);
+    `)
+    const originalSnapshot = bytesToBase64(serializeDb(legacyHandle))
+    legacyHandle.rawDb.close()
+    fakeStorage.values[SNAPSHOT_KEY] = originalSnapshot
+    fakeStorage.values[FINGERPRINT_KEY] = legacyTopicMigrationFingerprint
+    fakeStorage.rejectActiveSnapshotWrite = true
+
+    await expect(getBackgroundDb()).rejects.toThrow('storage unavailable')
+
+    expect(fakeStorage.values[SNAPSHOT_KEY]).toBe(originalSnapshot)
+    expect(fakeStorage.values[FINGERPRINT_KEY]).toBe(
+      legacyTopicMigrationFingerprint,
+    )
+    expect(fakeStorage.values[RECOVERY_KEY]).toMatchObject({
+      version: 1,
+      raw: {
+        [SNAPSHOT_KEY]: originalSnapshot,
+        [FINGERPRINT_KEY]: legacyTopicMigrationFingerprint,
+      },
+    })
+
+    fakeStorage.rejectActiveSnapshotWrite = false
+    const retry = await getBackgroundDb()
+    openedHandles.push(retry)
+    expect(
+      retry.rawDb.exec({
+        sql: `SELECT kind FROM topic_relations WHERE source_topic_id = 'depth-first-search' AND target_topic_id = 'graph-theory'`,
+        returnValue: 'resultRows',
+      }),
+    ).toEqual([['applies-to']])
+    expect(fakeStorage.values[FINGERPRINT_KEY]).toBe(
+      computeFingerprint(migrationSql),
+    )
+    expect(fakeStorage.values[RECOVERY_KEY]).toMatchObject({
+      version: 1,
+      raw: {
+        [SNAPSHOT_KEY]: originalSnapshot,
+        [FINGERPRINT_KEY]: legacyTopicMigrationFingerprint,
+      },
+    })
   })
 
   it('discards an open made stale by reset without replacing the new handle or snapshot', async () => {
